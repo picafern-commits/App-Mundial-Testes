@@ -1329,7 +1329,7 @@ function applyPermissionsToUi() {
   // Ações admin
   document.querySelectorAll("[data-result-game]").forEach(btn => {
     const inAdmin = btn.closest("#adminTab");
-    if (inAdmin && !canEditResults()) btn.classList.add("hidden");
+    if (inAdmin && !hasPermission("editResults")) btn.classList.add("hidden");
   });
 
   $("openExcelModalBtn")?.classList.toggle("hidden", !hasPermission("importExcel"));
@@ -2309,7 +2309,7 @@ async function saveBet(gameId, homeGuess, awayGuess, playerName = "Manual") {
   toast("Aposta guardada.");
 }
 async function setResult(gameId, homeScore, awayScore) {
-  if (!canEditResults()) { toast("Sem permissão para editar resultados."); return false; }
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
 
   if (homeScore === "" || awayScore === "") {
     toast("Preenche o resultado completo.");
@@ -2345,7 +2345,7 @@ async function setResult(gameId, homeScore, awayScore) {
   return true;
 }
 async function clearResult(gameId) {
-  if (!canEditResults()) { toast("Sem permissão para editar resultados."); return false; }
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
 
   const game = games.find(item => item.id === gameId);
   if (!game) return false;
@@ -2913,18 +2913,6 @@ function closeBetsModal() {
   $("betsModal")?.classList.add("hidden");
 }
 
-
-function canEditResults() {
-  if (typeof hasPermission === "function") return canEditResults();
-  return Boolean(typeof isAdmin !== "undefined" && isAdmin);
-}
-
-function resultButtonHtml(game) {
-  if (!game || !canEditResults()) return "";
-  const label = hasResult(game) ? "Editar resultado" : "Adicionar resultado";
-  return `<button class="primary small result-admin-only" type="button" data-result-game="${escapeHtml(game.id)}">${escapeHtml(label)}</button>`;
-}
-
 function showGameBets(gameId) {
   const game = games.find(item => item.id === gameId);
   if (!game) return;
@@ -3037,7 +3025,7 @@ function updateResultPreview() {
 }
 
 function openResultModal(gameId) {
-  if (!canEditResults()) { toast("Sem permissão para editar resultados."); return; }
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return; }
 
   const game = games.find(item => item.id === gameId);
   if (!game) return;
@@ -3064,7 +3052,7 @@ function closeResultModal() {
 }
 
 async function saveResultFromModal() {
-  if (!canEditResults()) { toast("Sem permissão para editar resultados."); return false; }
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
 
   const gameId = $("resultGameIdInput").value;
   const homeScore = $("modalHomeScoreInput").value;
@@ -3093,7 +3081,7 @@ async function saveResultFromModal() {
 }
 
 async function clearResultFromModal() {
-  if (!canEditResults()) { toast("Sem permissão para editar resultados."); return false; }
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
 
   const gameId = $("resultGameIdInput").value;
   if (!gameId) return;
@@ -3144,7 +3132,6 @@ document.addEventListener("click", event => {
 
   const resultButton = event.target.closest("[data-result-game]");
   if (resultButton) {
-    if (!canEditResults()) { toast("Sem permissão para adicionar/editar resultados."); return; }
     openResultModal(resultButton.dataset.resultGame);
     return;
   }

@@ -2973,30 +2973,258 @@ button{
 }
 
 
-/* v58 — Corrigir botão de resultado no mobile */
-.result-admin-only.hidden{
-  display:none!important;
+/* v58 — Modal Ver Apostas uniforme em todos os dispositivos */
+/* A estrutura fica sempre igual: resumo em linha e tabela/lista em colunas.
+   Em ecrãs pequenos, o modal permite scroll horizontal interno em vez de mudar o layout. */
+
+#betsModal{
+  padding:14px!important;
+  align-items:center!important;
+  justify-content:center!important;
 }
-.game-card .result-admin-only,
-.match-card .result-admin-only{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  max-width:100%;
-  white-space:normal;
-  line-height:1.1;
+
+#betsModal .bets-modal-card{
+  width:min(1060px, calc(100vw - 28px))!important;
+  max-width:1060px!important;
+  max-height:calc(100dvh - 28px)!important;
+  overflow:auto!important;
+  display:block!important;
+  box-sizing:border-box!important;
+  padding:18px!important;
+  border-radius:18px!important;
 }
-@media(max-width:650px){
-  .game-actions,
-  .match-actions{
-    display:flex!important;
-    flex-wrap:wrap!important;
-    gap:8px!important;
+
+#betsModal .modal-head{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:14px!important;
+  min-width:720px!important;
+  margin-bottom:12px!important;
+}
+
+#betsModal .modal-head > div{
+  min-width:0!important;
+}
+
+#betsModal .modal-head h2{
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  line-height:1.15!important;
+}
+
+#betsModal .modal-head p{
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+
+#betsModal .icon-button{
+  flex:0 0 auto!important;
+}
+
+#betsModal .bets-game-summary{
+  display:grid!important;
+  grid-template-columns:1.25fr repeat(4, 1fr)!important;
+  gap:10px!important;
+  min-width:720px!important;
+  margin:0 0 14px!important;
+}
+
+#betsModal .bets-summary-card{
+  min-width:0!important;
+  overflow:hidden!important;
+  box-sizing:border-box!important;
+  padding:12px!important;
+}
+
+#betsModal .bets-summary-card span,
+#betsModal .bets-summary-card strong{
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+
+#betsModal .bets-summary-card strong{
+  font-size:clamp(18px, 2.2vw, 24px)!important;
+}
+
+#betsModal .bets-modal-body{
+  min-width:720px!important;
+  overflow:visible!important;
+  display:block!important;
+}
+
+#betsModal .bets-list-head{
+  display:grid!important;
+  grid-template-columns:minmax(230px,1fr) 110px 180px 76px!important;
+  gap:12px!important;
+  align-items:center!important;
+  padding:0 14px 8px!important;
+  box-sizing:border-box!important;
+  min-width:720px!important;
+}
+
+#betsModal .bets-list{
+  max-height:min(54dvh,520px)!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  display:grid!important;
+  gap:8px!important;
+  padding:0 3px 2px 0!important;
+  min-width:720px!important;
+}
+
+#betsModal .bet-user-row{
+  display:grid!important;
+  grid-template-columns:minmax(230px,1fr) 110px 180px 76px!important;
+  gap:12px!important;
+  align-items:center!important;
+  min-height:58px!important;
+  padding:10px 14px!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+}
+
+#betsModal .bet-user-main{
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  gap:10px!important;
+  min-width:0!important;
+  width:100%!important;
+  overflow:hidden!important;
+  grid-column:auto!important;
+}
+
+#betsModal .bet-position{
+  flex:0 0 30px!important;
+}
+
+#betsModal .bet-user-main strong{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+
+#betsModal .bet-score-pill,
+#betsModal .bet-type-pill{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  min-height:32px!important;
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  display:inline-flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:6px 9px!important;
+  border-radius:999px!important;
+  font-size:12px!important;
+}
+
+#betsModal .bet-score-pill{
+  font-size:16px!important;
+}
+
+#betsModal .bet-user-row b{
+  min-width:0!important;
+  text-align:right!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:20px!important;
+  display:block!important;
+  background:transparent!important;
+  padding:0!important;
+  border-radius:0!important;
+}
+
+/* Anula a versão mobile/card vertical das versões anteriores */
+@media(max-width:900px){
+  #betsModal .bets-game-summary{
+    grid-template-columns:1.25fr repeat(4, 1fr)!important;
   }
-  .game-card .result-admin-only,
-  .match-card .result-admin-only{
-    width:100%!important;
-    min-height:42px!important;
-    font-size:14px!important;
+  #betsModal .bets-summary-card.main{
+    grid-column:auto!important;
+  }
+  #betsModal .bets-list-head,
+  #betsModal .bet-user-row{
+    grid-template-columns:minmax(230px,1fr) 110px 180px 76px!important;
+    gap:12px!important;
+  }
+}
+
+@media(max-width:650px){
+  #betsModal{
+    padding:max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom))!important;
+    align-items:center!important;
+    justify-content:center!important;
+  }
+
+  #betsModal .bets-modal-card{
+    width:calc(100vw - 20px)!important;
+    max-height:calc(100svh - 20px)!important;
+    padding:14px!important;
+    overflow:auto!important;
+    border-radius:16px!important;
+  }
+
+  #betsModal .modal-head{
+    display:flex!important;
+    min-width:720px!important;
+  }
+
+  #betsModal .modal-head h2{
+    white-space:nowrap!important;
+    font-size:22px!important;
+  }
+
+  #betsModal .modal-head p{
+    white-space:nowrap!important;
+    font-size:12px!important;
+  }
+
+  #betsModal .bets-game-summary{
+    display:grid!important;
+    grid-template-columns:1.25fr repeat(4, 1fr)!important;
+    min-width:720px!important;
+  }
+
+  #betsModal .bets-list-head{
+    display:grid!important;
+    min-width:720px!important;
+  }
+
+  #betsModal .bet-user-row{
+    display:grid!important;
+    grid-template-columns:minmax(230px,1fr) 110px 180px 76px!important;
+    min-width:720px!important;
+    min-height:58px!important;
+    padding:10px 14px!important;
+  }
+
+  #betsModal .bet-user-main{
+    grid-column:auto!important;
+  }
+
+  #betsModal .bet-score-pill,
+  #betsModal .bet-type-pill,
+  #betsModal .bet-user-row b{
+    position:static!important;
+  }
+
+  #betsModal .bet-score-pill::before,
+  #betsModal .bet-type-pill::before,
+  #betsModal .bet-user-row b::before{
+    content:none!important;
   }
 }
