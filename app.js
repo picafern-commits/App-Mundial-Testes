@@ -192,6 +192,7 @@ function defaultSettings() {
     extraPredictions: {},
     importedPoints: {},
     users: [],
+    knockout: { adminUnlocked: false, matches: [] },
     lastImport: null
   };
 }
@@ -248,6 +249,11 @@ function mergeSettings(input = {}) {
     extraResults: { ...base.extraResults, ...(input.extraResults || {}) },
     extraPredictions: { ...(input.extraPredictions || {}) },
     importedPoints: { ...(input.importedPoints || {}) },
+    knockout: {
+      ...base.knockout,
+      ...(input.knockout || {}),
+      matches: Array.isArray(input.knockout?.matches) ? input.knockout.matches : []
+    },
     users: Array.isArray(input.users) ? input.users : [],
     users: Array.isArray(input.users) ? input.users : []
   };
@@ -1019,7 +1025,274 @@ function rescueLocalBetsIfNeeded() {
   }
 }
 
-function renderAll() { renderAdminState(); renderCalendar(); renderScore(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderCalendarFilterState(); }
+
+const KNOCKOUT_ROUNDS = [
+  { key: "r32", label: "16 avos", count: 16, next: "r16" },
+  { key: "r16", label: "Oitavos", count: 8, next: "qf" },
+  { key: "qf", label: "Quartos", count: 4, next: "sf" },
+  { key: "sf", label: "Meias-finais", count: 2, next: "final" },
+  { key: "final", label: "Final", count: 1, next: "" }
+];
+
+function knockoutTeamOptions() {
+  return [...new Set(MATCH_ROWS.flatMap(row => [row[1], row[2]]))].sort((a, b) => a.localeCompare(b, "pt"));
+}
+
+function defaultKnockoutMatches() {
+  const matches = [];
+  KNOCKOUT_ROUNDS.forEach(round => {
+    for (let index = 1; index <= round.count; index += 1) {
+      const nextIndex = round.next ? Math.ceil(index / 2) : null;
+      matches.push({
+        id: `ko_${round.key}_${String(index).padStart(2, "0")}`,
+        round: round.key,
+        roundLabel: round.label,
+        index,
+        homeTeam: "",
+        awayTeam: "",
+        homeScore: null,
+        awayScore: null,
+        nextMatchId: round.next ? `ko_${round.next}_${String(nextIndex).padStart(2, "0")}` : "",
+        nextSlot: round.next ? (index % 2 === 1 ? "homeTeam" : "awayTeam") : "",
+        updatedAt: ""
+      });
+    }
+  });
+  return matches;
+}
+
+function ensureKnockoutSettings() {
+  appSettings.knockout = {
+    adminUnlocked: Boolean(appSettings.knockout?.adminUnlocked),
+    matches: Array.isArray(appSettings.knockout?.matches) ? appSettings.knockout.matches : []
+  };
+
+  const defaults = defaultKnockoutMatches();
+  const existing = new Map(appSettings.knockout.matches.map(match => [match.id, match]));
+  appSettings.knockout.matches = defaults.map(match => ({ ...match, ...(existing.get(match.id) || {}) }));
+  propagateKnockoutWinners(false);
+}
+
+function knockoutMatches() {
+  ensureKnockoutSettings();
+  return appSettings.knockout.matches;
+}
+
+function knockoutMatchById(id) {
+  return knockoutMatches().find(match => match.id === id);
+}
+
+function groupStageFinished() {
+  return games.length > 0 && games.every(hasResult);
+}
+
+function knockoutAvailable() {
+  return groupStageFinished() || Boolean(appSettings.knockout?.adminUnlocked);
+}
+
+function knockoutWinner(match) {
+  if (!match || !match.homeTeam || !match.awayTeam) return "";
+  if (match.homeScore === null || match.homeScore === undefined || match.homeScore === "" || match.awayScore === null || match.awayScore === undefined || match.awayScore === "") return "";
+  const home = Number(match.homeScore);
+  const away = Number(match.awayScore);
+  if (!Number.isFinite(home) || !Number.isFinite(away) || home === away) return "";
+  return home > away ? match.homeTeam : match.awayTeam;
+}
+
+function clearAutoKnockoutSlots() {
+  const firstRound = KNOCKOUT_ROUNDS[0].key;
+  knockoutMatches().forEach(match => {
+    if (match.round !== firstRound) {
+      match.homeTeam = "";
+      match.awayTeam = "";
+    }
+  });
+}
+
+function propagateKnockoutWinners(shouldSave = true) {
+  if (!appSettings.knockout) return;
+  clearAutoKnockoutSlots();
+
+  KNOCKOUT_ROUNDS.forEach(round => {
+    knockoutMatches()
+      .filter(match => match.round === round.key)
+      .forEach(match => {
+        const winner = knockoutWinner(match);
+        if (!winner || !match.nextMatchId || !match.nextSlot) return;
+        const next = knockoutMatchById(match.nextMatchId);
+        if (next) next[match.nextSlot] = winner;
+      });
+  });
+
+  if (shouldSave) {
+    saveLocalData("fase final propagada");
+    persistSettings();
+  }
+}
+
+function knockoutEntryButtonHtml() {
+  const available = knockoutAvailable();
+  const missing = games.filter(game => !hasResult(game)).length;
+  const text = available ? "Abrir Fase Final" : `Fase Final bloqueada · faltam ${missing} resultado(s)`;
+  return `
+    <div class="knockout-entry-card ${available ? "available" : "locked"}">
+      <div>
+        <strong>Fase Final</strong>
+        <span>${available ? "Eliminatórias disponíveis." : "Só abre quando todos os jogos dos grupos tiverem resultado. O Admin pode ativar para trabalhar."}</span>
+      </div>
+      <button id="openKnockoutFromCalendarBtn" class="${available ? "primary" : "secondary"}" type="button" ${available ? "" : "disabled"}>${escapeHtml(text)}</button>
+    </div>`;
+}
+
+function openKnockoutPage() {
+  if (!knockoutAvailable()) {
+    toast("Fase Final bloqueada. O Admin pode ativar no painel Admin.");
+    return;
+  }
+
+  document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
+  document.querySelector('[data-tab="knockoutTab"]')?.classList.add("active");
+  $("knockoutTab")?.classList.add("active");
+  renderKnockout();
+}
+
+function renderKnockout() {
+  ensureKnockoutSettings();
+  const notice = $("knockoutLockNotice");
+  const container = $("knockoutBracket");
+  if (!container) return;
+
+  if (!knockoutAvailable()) {
+    const missing = games.filter(game => !hasResult(game)).length;
+    if (notice) notice.innerHTML = `<strong>Fase Final bloqueada</strong><span>Faltam ${missing} resultado(s) da fase de grupos. O Admin pode ativar esta página para trabalhar.</span>`;
+    container.innerHTML = "";
+    return;
+  }
+
+  if (notice) {
+    notice.innerHTML = appSettings.knockout?.adminUnlocked && !groupStageFinished()
+      ? `<strong>Modo Admin ativo</strong><span>A Fase Final está desbloqueada para preparação, mesmo antes de todos os grupos acabarem.</span>`
+      : `<strong>Fase Final ativa</strong><span>Os vencedores passam automaticamente para a próxima ronda.</span>`;
+  }
+
+  container.innerHTML = KNOCKOUT_ROUNDS.map(round => {
+    const matches = knockoutMatches().filter(match => match.round === round.key);
+    return `
+      <section class="knockout-round">
+        <h3>${escapeHtml(round.label)}</h3>
+        <div class="knockout-round-matches">
+          ${matches.map(renderKnockoutMatch).join("")}
+        </div>
+      </section>`;
+  }).join("");
+}
+
+function renderKnockoutMatch(match) {
+  const winner = knockoutWinner(match);
+  const editable = isAdmin && knockoutAvailable();
+  const lockedText = !match.homeTeam || !match.awayTeam ? "À espera de equipas" : winner ? `Vencedor: ${winner}` : "Por decidir";
+
+  return `
+    <article class="knockout-match ${winner ? "has-winner" : ""}">
+      <div class="knockout-match-title">${escapeHtml(match.roundLabel)} ${match.index}</div>
+      <div class="ko-team ${winner === match.homeTeam ? "winner" : ""}">
+        <span>${escapeHtml(match.homeTeam || "A definir")}</span>
+        <b>${match.homeScore ?? ""}</b>
+      </div>
+      <div class="ko-team ${winner === match.awayTeam ? "winner" : ""}">
+        <span>${escapeHtml(match.awayTeam || "A definir")}</span>
+        <b>${match.awayScore ?? ""}</b>
+      </div>
+      <small>${escapeHtml(lockedText)}</small>
+      ${editable ? `<button class="secondary small" type="button" data-ko-edit="${escapeHtml(match.id)}">Editar</button>` : ""}
+    </article>`;
+}
+
+function renderKnockoutAdmin() {
+  ensureKnockoutSettings();
+
+  const toggle = $("adminKnockoutUnlockedInput");
+  if (toggle) toggle.checked = Boolean(appSettings.knockout?.adminUnlocked);
+
+  const panel = $("knockoutAdminPanel");
+  if (!panel) return;
+
+  const teams = knockoutTeamOptions();
+  const teamOptions = team => `<option value="">A definir</option>${teams.map(item => `<option value="${escapeHtml(item)}" ${item === team ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}`;
+
+  panel.innerHTML = `
+    <div class="ko-admin-note">Para começar, escolhe as equipas dos jogos dos <strong>16 avos</strong>. Depois mete os resultados. O vencedor passa automaticamente.</div>
+    <div class="ko-admin-list">
+      ${knockoutMatches().map(match => `
+        <div class="ko-admin-row" data-ko-admin="${escapeHtml(match.id)}">
+          <strong>${escapeHtml(match.roundLabel)} ${match.index}</strong>
+          <select class="ko-home-team">${teamOptions(match.homeTeam)}</select>
+          <span>vs</span>
+          <select class="ko-away-team">${teamOptions(match.awayTeam)}</select>
+          <input class="ko-home-score" type="number" min="0" inputmode="numeric" value="${match.homeScore ?? ""}" placeholder="0" />
+          <span>-</span>
+          <input class="ko-away-score" type="number" min="0" inputmode="numeric" value="${match.awayScore ?? ""}" placeholder="0" />
+          <button class="primary small" type="button" data-ko-save="${escapeHtml(match.id)}">Guardar</button>
+        </div>
+      `).join("")}
+    </div>`;
+}
+
+async function saveKnockoutUnlock() {
+  ensureKnockoutSettings();
+  appSettings.knockout.adminUnlocked = Boolean($("adminKnockoutUnlockedInput")?.checked);
+  await persistSettings();
+  renderAll();
+  toast(appSettings.knockout.adminUnlocked ? "Fase Final desbloqueada para Admin." : "Fase Final volta a bloquear até acabarem os grupos.");
+}
+
+async function saveKnockoutMatchFromAdmin(matchId) {
+  ensureKnockoutSettings();
+  const row = document.querySelector(`[data-ko-admin="${CSS.escape(matchId)}"]`);
+  const match = knockoutMatchById(matchId);
+  if (!row || !match) return;
+
+  match.homeTeam = row.querySelector(".ko-home-team")?.value || "";
+  match.awayTeam = row.querySelector(".ko-away-team")?.value || "";
+
+  const homeScore = row.querySelector(".ko-home-score")?.value ?? "";
+  const awayScore = row.querySelector(".ko-away-score")?.value ?? "";
+  match.homeScore = homeScore === "" ? null : Number(homeScore);
+  match.awayScore = awayScore === "" ? null : Number(awayScore);
+  match.updatedAt = new Date().toISOString();
+
+  if (match.homeScore !== null && match.awayScore !== null && Number(match.homeScore) === Number(match.awayScore)) {
+    toast("Na fase final não pode ficar empate. Mete o resultado final/desempate.");
+    return;
+  }
+
+  propagateKnockoutWinners(false);
+  saveLocalData("fase final jogo guardado");
+  await persistSettings();
+  renderAll();
+  toast("Jogo da Fase Final guardado.");
+}
+
+function openKnockoutEditInAdmin(matchId) {
+  if (!isAdmin) {
+    toast("Entra no Admin para editar a Fase Final.");
+    return;
+  }
+  document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
+  document.querySelector('[data-tab="adminTab"]')?.classList.add("active");
+  $("adminTab")?.classList.add("active");
+  renderKnockoutAdmin();
+  setTimeout(() => {
+    const row = document.querySelector(`[data-ko-admin="${CSS.escape(matchId)}"]`);
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+    row?.classList.add("pulse-row");
+    setTimeout(() => row?.classList.remove("pulse-row"), 1500);
+  }, 80);
+}
+
+function renderAll() { renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); }
 
 function renderCalendarFilterState() {
   $("calendarMissingResultsBtn")?.classList.toggle("active-filter", calendarViewMode === "missing");
@@ -1030,10 +1303,10 @@ function renderCalendar() {
   const container = $("gamesList");
   const groups = groupByDate(filteredGames());
   const days = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  if (!days.length) { container.innerHTML = `<div class="empty">Não há jogos para mostrar neste filtro.</div>`; return; }
+  if (!days.length) { container.innerHTML = `<div class="empty">Não há jogos para mostrar neste filtro.</div>${knockoutEntryButtonHtml()}`; return; }
   container.innerHTML = days.map(([, dayGames]) => `
     <section class="day-block"><h3>${escapeHtml(dateHeader(dayGames[0].matchDate))}</h3><div class="match-list">${dayGames.map(renderMatchRow).join("")}</div></section>
-  `).join("");
+  `).join("") + knockoutEntryButtonHtml();
 }
 function renderMatchRow(game) {
   const status = statusOf(game);
@@ -1108,7 +1381,7 @@ function renderScore() {
         const withBets = gameRows.filter(item => item.bet).length;
 
         return `
-          <details class="player-score-card" ${index === 0 ? "open" : ""}>
+          <details class="player-score-card">
             <summary>
               <div class="player-rank">${index + 1}</div>
               <div class="player-score-main">
@@ -2074,6 +2347,24 @@ window.clearResultFromUI = id => clearResult(id);
 
 
 document.addEventListener("click", event => {
+  const knockoutOpenButton = event.target.closest("#openKnockoutFromCalendarBtn");
+  if (knockoutOpenButton) {
+    openKnockoutPage();
+    return;
+  }
+
+  const koEditButton = event.target.closest("[data-ko-edit]");
+  if (koEditButton) {
+    openKnockoutEditInAdmin(koEditButton.dataset.koEdit);
+    return;
+  }
+
+  const koSaveButton = event.target.closest("[data-ko-save]");
+  if (koSaveButton) {
+    saveKnockoutMatchFromAdmin(koSaveButton.dataset.koSave);
+    return;
+  }
+
   const resultButton = event.target.closest("[data-result-game]");
   if (resultButton) {
     openResultModal(resultButton.dataset.resultGame);
@@ -2088,10 +2379,15 @@ document.addEventListener("click", event => {
 
 document.querySelectorAll(".tab").forEach(button => {
   button.addEventListener("click", () => {
+    if (button.dataset.tab === "knockoutTab" && !knockoutAvailable()) {
+      toast("Fase Final bloqueada. O Admin pode ativar no painel Admin.");
+      return;
+    }
     document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
     document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
     button.classList.add("active");
     $(button.dataset.tab).classList.add("active");
+    if (button.dataset.tab === "knockoutTab") renderKnockout();
   });
 });
 $("unlockAdminBtn").addEventListener("click", () => {
@@ -2123,6 +2419,7 @@ $("confirmExcelImportBtn")?.addEventListener("click", confirmExcelImport);
 $("savePointsSettingsBtn")?.addEventListener("click", savePointsSettings);
 $("saveExtraResultsBtn")?.addEventListener("click", saveExtraResults);
 $("exportPontosBtn")?.addEventListener("click", exportPontosExcel);
+$("saveKnockoutUnlockBtn")?.addEventListener("click", saveKnockoutUnlock);
 
 
 $("closeResultModalBtn")?.addEventListener("click", closeResultModal);

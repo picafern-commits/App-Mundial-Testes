@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mundial Pontos 2026 · Pontuação Detalhada</title>
+  <title>Mundial Pontos 2026 · Pontuação Colapsada</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -23,6 +23,7 @@
     <nav class="tabs" aria-label="Navegação principal">
       <button class="tab active" type="button" data-tab="calendarTab">Calendário</button>
       <button class="tab" type="button" data-tab="scoreTab">Pontuação</button>
+      <button class="tab" type="button" data-tab="knockoutTab">Fase Final</button>
       <button class="tab" type="button" data-tab="adminTab">Admin</button>
     </nav>
 
@@ -48,6 +49,17 @@
         <div id="scoreSummary" class="score-summary leaderboard"></div>
       </section>
 
+      <section id="knockoutTab" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <h2>Fase Final</h2>
+            <p>Eliminatórias automáticas: mete o resultado e o vencedor passa para a próxima ronda.</p>
+          </div>
+        </div>
+        <div id="knockoutLockNotice" class="knockout-lock-notice"></div>
+        <div id="knockoutBracket" class="knockout-bracket"></div>
+      </section>
+
       <section id="adminTab" class="tab-panel">
         <div id="adminLocked" class="admin-lock">
           <h2>Admin</h2>
@@ -60,6 +72,24 @@
 
         <div id="adminUnlocked" class="hidden admin-stack admin-accordion">
           <div id="firebaseStatusBox" class="firebase-status-box">Firebase: a iniciar ligação...</div>
+
+          <details class="admin-card admin-collapse">
+            <summary>
+              <div>
+                <h2>Fase Final</h2>
+                <p>Ativa a página antes do fim dos grupos para poderes preparar e testar as eliminatórias.</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+            <div class="knockout-admin-tools">
+              <label class="check-row">
+                <input id="adminKnockoutUnlockedInput" type="checkbox" />
+                Ativar Fase Final no Calendário antes de todos os jogos terem resultado
+              </label>
+              <button id="saveKnockoutUnlockBtn" class="primary" type="button">Guardar bloqueio</button>
+            </div>
+            <div id="knockoutAdminPanel" class="knockout-admin-panel"></div>
+          </details>
 
           <details class="admin-card admin-collapse" open>
             <summary>

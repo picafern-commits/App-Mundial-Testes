@@ -1434,3 +1434,197 @@ button:disabled{
     font-size:18px;
   }
 }
+
+
+/* v44 Fase Final bloqueada + eliminatórias */
+.knockout-entry-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin-top:14px;
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:linear-gradient(135deg,rgba(255,212,90,.10),rgba(34,184,207,.08));
+  box-shadow:var(--shadow);
+}
+.knockout-entry-card strong,
+.knockout-lock-notice strong{
+  display:block;
+  color:var(--gold);
+  font-size:18px;
+}
+.knockout-entry-card span,
+.knockout-lock-notice span{
+  display:block;
+  margin-top:4px;
+  color:var(--muted);
+}
+.knockout-entry-card.locked{
+  opacity:.8;
+}
+.knockout-lock-notice{
+  margin-bottom:14px;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:rgba(255,255,255,.04);
+}
+.knockout-bracket{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(230px,1fr));
+  gap:16px;
+  align-items:start;
+  overflow-x:auto;
+  padding-bottom:12px;
+}
+.knockout-round{
+  min-width:230px;
+  display:grid;
+  gap:10px;
+}
+.knockout-round h3{
+  position:sticky;
+  top:62px;
+  z-index:1;
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  color:#07111d;
+  background:var(--gold);
+  font-size:15px;
+  text-align:center;
+  text-transform:uppercase;
+}
+.knockout-round-matches{
+  display:grid;
+  gap:12px;
+}
+.knockout-match{
+  position:relative;
+  display:grid;
+  gap:6px;
+  padding:11px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--panel);
+  box-shadow:0 12px 26px rgba(0,0,0,.18);
+}
+.knockout-match::after{
+  content:"";
+  position:absolute;
+  right:-17px;
+  top:50%;
+  width:16px;
+  border-top:1px solid rgba(255,212,90,.25);
+}
+.knockout-round:last-child .knockout-match::after{
+  display:none;
+}
+.knockout-match-title{
+  color:var(--muted);
+  font-size:11px;
+  font-weight:950;
+  text-transform:uppercase;
+}
+.ko-team{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 34px;
+  gap:8px;
+  align-items:center;
+  min-height:34px;
+  padding:7px 8px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:8px;
+  background:rgba(255,255,255,.035);
+}
+.ko-team span{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-weight:850;
+}
+.ko-team b{
+  color:var(--gold);
+  text-align:center;
+  font-size:18px;
+}
+.ko-team.winner{
+  border-color:rgba(255,212,90,.55);
+  background:rgba(255,212,90,.14);
+}
+.ko-team.winner span{
+  color:var(--gold);
+}
+.knockout-match small{
+  color:var(--muted);
+  font-size:12px;
+}
+.knockout-admin-tools{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+  margin:0 14px 14px;
+}
+.knockout-admin-panel{
+  margin:0 14px 14px;
+}
+.ko-admin-note{
+  margin-bottom:12px;
+  padding:12px;
+  border:1px dashed var(--line);
+  border-radius:10px;
+  color:var(--muted);
+  background:rgba(255,255,255,.035);
+}
+.ko-admin-list{
+  display:grid;
+  gap:8px;
+  max-height:520px;
+  overflow:auto;
+  padding-right:4px;
+}
+.ko-admin-row{
+  display:grid;
+  grid-template-columns:110px minmax(140px,1fr) auto minmax(140px,1fr) 64px auto 64px auto;
+  gap:8px;
+  align-items:center;
+  padding:10px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:rgba(255,255,255,.035);
+}
+.ko-admin-row select,
+.ko-admin-row input{
+  min-height:38px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  color:var(--text);
+  background:#060b13;
+  padding:8px 10px;
+}
+.ko-admin-row input{
+  text-align:center;
+  font-weight:950;
+}
+.pulse-row{
+  animation:pulseKo 1.5s ease;
+}
+@keyframes pulseKo{
+  0%,100%{ box-shadow:none; }
+  35%{ box-shadow:0 0 0 4px rgba(255,212,90,.28); }
+}
+@media(max-width:980px){
+  .knockout-entry-card{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .knockout-entry-card button{
+    width:100%;
+  }
+  .ko-admin-row{
+    grid-template-columns:1fr;
+  }
+}
