@@ -25,6 +25,8 @@ let selectedEditUser = "";
 let isAdmin = localStorage.getItem("mundial_admin_unlocked") === "1";
 let pendingExcelImport = null;
 let fullSyncTimer = null;
+let realtimeUnsubscribers = [];
+let realtimeRenderTimer = null;
 
 const MATCH_ROWS = [
   ["Grupo A", "México", "África do Sul", "2026-06-11T20:00"],
@@ -663,6 +665,7 @@ async function loadData() {
     }
     setTimeout(() => retryPendingGameSaves("arranque").catch(console.warn), 700);
     setTimeout(() => retryPendingFullSync("arranque").catch(console.warn), 1000);
+    setupRealtimeSync();
   } catch (error) {
     console.error("Erro ao carregar Firebase:", error);
     games = normalizeGames(local.games);
@@ -672,6 +675,100 @@ async function loadData() {
     storageMode = "local";
     setFirebaseStatus("error", `Firebase: erro ao carregar — ${error.message || "ver consola"}`);
     renderAll();
+  }
+}
+
+function cleanupRealtimeSync() {
+  realtimeUnsubscribers.forEach(unsubscribe => {
+    try { unsubscribe(); } catch {}
+  });
+  realtimeUnsubscribers = [];
+}
+
+function queueRealtimeRender(reason = "firebase realtime") {
+  if (realtimeRenderTimer) clearTimeout(realtimeRenderTimer);
+  realtimeRenderTimer = setTimeout(() => {
+    realtimeRenderTimer = null;
+    ensureKnockoutSettings();
+    saveLocalData(reason);
+    renderAll();
+  }, 120);
+}
+
+function setupRealtimeSync() {
+  cleanupRealtimeSync();
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) return;
+
+  const { collection, doc, onSnapshot } = firebaseApi;
+  if (typeof onSnapshot !== "function") return;
+
+  const keepPendingGameIds = () => new Set(pendingGameIds());
+  const keepPendingBetIds = () => new Set(pendingBetIds());
+  const keepDeleteBetIds = () => new Set(pendingDeleteBetIds());
+
+  realtimeUnsubscribers.push(onSnapshot(collection(db, "games"), snap => {
+    const pending = keepPendingGameIds();
+    const localPending = new Map(games.filter(game => pending.has(game.id)).map(game => [game.id, game]));
+    const remoteGames = snap.docs.map(item => ({ id: item.id, ...item.data() }));
+
+    games = mergeGamesByNewest(remoteGames, games).map(game =>
+      localPending.has(game.id) ? { ...game, ...localPending.get(game.id) } : game
+    );
+    queueRealtimeRender("firebase realtime jogos");
+  }, error => console.warn("Realtime jogos falhou:", error)));
+
+  realtimeUnsubscribers.push(onSnapshot(collection(db, "bets"), snap => {
+    const pending = keepPendingBetIds();
+    const deleted = keepDeleteBetIds();
+    const localPending = new Map(bets.filter(bet => pending.has(bet.id)).map(bet => [bet.id, bet]));
+    const remoteBets = normalizeBets(snap.docs.map(item => ({ id: item.id, ...item.data() })));
+    const byId = new Map(remoteBets.map(bet => [bet.id, bet]));
+
+    localPending.forEach((bet, id) => byId.set(id, bet));
+    deleted.forEach(id => byId.delete(id));
+    bets = normalizeBets([...byId.values()]);
+    queueRealtimeRender("firebase realtime apostas");
+  }, error => console.warn("Realtime apostas falhou:", error)));
+
+  realtimeUnsubscribers.push(onSnapshot(doc(db, "settings", "main"), snap => {
+    if (!snap.exists() || hasSettingsPending()) return;
+    appSettings = mergeSettings(snap.data() || {});
+    queueRealtimeRender("firebase realtime configuracoes");
+  }, error => console.warn("Realtime configuracoes falhou:", error)));
+
+  realtimeUnsubscribers.push(onSnapshot(doc(db, "users", normalizeEmail(currentUser.email)), async snap => {
+    if (!snap.exists()) return;
+    const wasPermissionsManager = hasPermission("managePermissions");
+    const data = snap.data() || {};
+    const configAdmin = isConfiguredAdmin(currentUser.email);
+    currentProfile = {
+      ...defaultProfileForUser(currentUser),
+      ...data,
+      uid: currentUser.uid,
+      email: normalizeEmail(currentUser.email),
+      role: configAdmin ? "admin" : (data.role || "user"),
+      active: data.active !== false,
+      permissions: {
+        ...(data.role === "admin" || configAdmin ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS),
+        ...(data.permissions || {})
+      }
+    };
+
+    if (!currentProfile.active) {
+      await firebaseAuthApi.signOut(firebaseAuth);
+      return;
+    }
+
+    applyPermissionsToUi();
+    if (wasPermissionsManager !== hasPermission("managePermissions")) setupRealtimeSync();
+  }, error => console.warn("Realtime perfil falhou:", error)));
+
+  if (hasPermission("managePermissions")) {
+    realtimeUnsubscribers.push(onSnapshot(collection(db, "users"), snap => {
+      permissionsCache = snap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
+        .sort((a, b) => normalizeEmail(a.email || a.id).localeCompare(normalizeEmail(b.email || b.id)));
+      renderPermissionsUsers();
+    }, error => console.warn("Realtime permissoes falhou:", error)));
   }
 }
 
@@ -1107,6 +1204,7 @@ function setLoginStatus(message, type = "info") {
 }
 
 function showLoginScreen() {
+  cleanupRealtimeSync();
   $("loginScreen")?.classList.remove("hidden");
   $("appShell")?.classList.add("auth-hidden");
   document.body.classList.remove("knockout-layout-active");
