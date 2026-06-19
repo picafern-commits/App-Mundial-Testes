@@ -4371,3 +4371,26 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
 .ko-layout-number{
   accent-color:#ffd45a;
 }
+
+
+/* v59 — Admin Fase Final: 16 avos manuais, restantes automáticos */
+.ko-admin-row.auto-round{
+  opacity:.92;
+}
+.ko-admin-row.auto-round > strong::after{
+  content:" automático";
+  display:block;
+  margin-top:3px;
+  color:var(--muted);
+  font-size:10px;
+  font-weight:950;
+  text-transform:uppercase;
+}
+.ko-readonly-team{
+  opacity:.78!important;
+  background:rgba(255,255,255,.045)!important;
+  color:var(--muted)!important;
+}
+.ko-admin-row input:disabled{
+  opacity:.58;
+}
