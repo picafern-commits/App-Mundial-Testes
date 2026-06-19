@@ -254,7 +254,6 @@ function mergeSettings(input = {}) {
       ...(input.knockout || {}),
       matches: Array.isArray(input.knockout?.matches) ? input.knockout.matches : []
     },
-    users: Array.isArray(input.users) ? input.users : [],
     users: Array.isArray(input.users) ? input.users : []
   };
 }
@@ -604,6 +603,7 @@ async function loadData() {
     games = normalizeGames(local.games);
     bets = normalizeBets(local.bets);
     appSettings = mergeSettings(local.settings || local.appSettings);
+    ensureKnockoutSettings();
     renderAll();
     return;
   }
@@ -644,6 +644,7 @@ async function loadData() {
 
     bets = normalizeBets(remoteBets.length ? remoteBets : localBets);
     appSettings = mergeSettings(mainSettingsDoc ? mainSettingsDoc.data() : localSettings);
+    ensureKnockoutSettings();
 
     saveLocalData("firebase carregado estável");
     setFirebaseStatus("success", `Firebase: ligado · ${bets.length} apostas carregadas`);
@@ -659,6 +660,7 @@ async function loadData() {
     games = normalizeGames(local.games);
     bets = normalizeBets(local.bets);
     appSettings = mergeSettings(local.settings || local.appSettings);
+    ensureKnockoutSettings();
     storageMode = "local";
     setFirebaseStatus("error", `Firebase: erro ao carregar — ${error.message || "ver consola"}`);
     renderAll();
@@ -1062,24 +1064,31 @@ function defaultKnockoutMatches() {
 }
 
 function ensureKnockoutSettings() {
+  const current = appSettings.knockout || {};
+  const defaults = defaultKnockoutMatches();
+  const existingMatches = Array.isArray(current.matches) ? current.matches : [];
+  const existing = new Map(existingMatches.map(match => [match.id, match]));
+
   appSettings.knockout = {
-    adminUnlocked: Boolean(appSettings.knockout?.adminUnlocked),
-    matches: Array.isArray(appSettings.knockout?.matches) ? appSettings.knockout.matches : []
+    adminUnlocked: Boolean(current.adminUnlocked),
+    matches: defaults.map(match => ({ ...match, ...(existing.get(match.id) || {}) }))
   };
 
-  const defaults = defaultKnockoutMatches();
-  const existing = new Map(appSettings.knockout.matches.map(match => [match.id, match]));
-  appSettings.knockout.matches = defaults.map(match => ({ ...match, ...(existing.get(match.id) || {}) }));
   propagateKnockoutWinners(false);
 }
 
 function knockoutMatches() {
-  ensureKnockoutSettings();
+  if (!appSettings.knockout || !Array.isArray(appSettings.knockout.matches) || !appSettings.knockout.matches.length) {
+    appSettings.knockout = {
+      adminUnlocked: Boolean(appSettings.knockout?.adminUnlocked),
+      matches: defaultKnockoutMatches()
+    };
+  }
   return appSettings.knockout.matches;
 }
 
 function knockoutMatchById(id) {
-  return knockoutMatches().find(match => match.id === id);
+  return (appSettings.knockout?.matches || []).find(match => match.id === id);
 }
 
 function groupStageFinished() {
@@ -1100,8 +1109,9 @@ function knockoutWinner(match) {
 }
 
 function clearAutoKnockoutSlots() {
+  const matches = appSettings.knockout?.matches || [];
   const firstRound = KNOCKOUT_ROUNDS[0].key;
-  knockoutMatches().forEach(match => {
+  matches.forEach(match => {
     if (match.round !== firstRound) {
       match.homeTeam = "";
       match.awayTeam = "";
@@ -1110,16 +1120,18 @@ function clearAutoKnockoutSlots() {
 }
 
 function propagateKnockoutWinners(shouldSave = true) {
-  if (!appSettings.knockout) return;
+  if (!appSettings.knockout || !Array.isArray(appSettings.knockout.matches)) return;
+
   clearAutoKnockoutSlots();
+  const matches = appSettings.knockout.matches;
 
   KNOCKOUT_ROUNDS.forEach(round => {
-    knockoutMatches()
+    matches
       .filter(match => match.round === round.key)
       .forEach(match => {
         const winner = knockoutWinner(match);
         if (!winner || !match.nextMatchId || !match.nextSlot) return;
-        const next = knockoutMatchById(match.nextMatchId);
+        const next = matches.find(item => item.id === match.nextMatchId);
         if (next) next[match.nextSlot] = winner;
       });
   });
