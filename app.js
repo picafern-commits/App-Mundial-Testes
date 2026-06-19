@@ -1785,7 +1785,7 @@ function onlineUsersPopupHeader() {
   return `
     <div class="online-users-popup-head">
       <strong>Utilizadores online</strong>
-      <button id="closeOnlineUsersBtn" class="online-users-close" type="button" aria-label="Fechar utilizadores online">×</button>
+      <button id="closeOnlineUsersBtn" class="online-users-close" type="button" aria-label="Fechar utilizadores online" onclick="return window.closeOnlineUsersPanelNow(event)">×</button>
     </div>`;
 }
 
@@ -2169,9 +2169,28 @@ function toggleKnockoutLayoutControlsFromTop() {
 }
 
 
+
+window.closeOnlineUsersPanelNow = function closeOnlineUsersPanelNow(event) {
+  try {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const panel = document.getElementById("onlineUsersPanel");
+    if (panel) {
+      panel.open = false;
+      panel.removeAttribute("open");
+    }
+  } catch (error) {
+    console.warn("Falhou fechar Users Online:", error);
+  }
+
+  return false;
+};
+
 function closeOnlineUsersPanel() {
-  const panel = $("onlineUsersPanel");
-  if (panel) panel.open = false;
+  window.closeOnlineUsersPanelNow();
 }
 
 function setupOnlineUsersCloseControls() {
@@ -4131,3 +4150,20 @@ window.addEventListener("beforeunload", () => {
 setupKnockoutAdjustTopButton();
 
 setupOnlineUsersCloseControls();
+
+
+// v70 backup: fecha Users Online por captura, mesmo no Safari/iPhone.
+if (!window.__onlineUsersCloseCaptureBound) {
+  window.__onlineUsersCloseCaptureBound = true;
+  document.addEventListener("pointerdown", event => {
+    const closeButton = event.target.closest?.("#closeOnlineUsersBtn, .online-users-close");
+    if (!closeButton) return;
+    window.closeOnlineUsersPanelNow(event);
+  }, true);
+
+  document.addEventListener("touchstart", event => {
+    const closeButton = event.target.closest?.("#closeOnlineUsersBtn, .online-users-close");
+    if (!closeButton) return;
+    window.closeOnlineUsersPanelNow(event);
+  }, true);
+}

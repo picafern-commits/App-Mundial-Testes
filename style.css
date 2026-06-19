@@ -4925,3 +4925,19 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
     font-size:30px!important;
   }
 }
+
+
+/* v70 — garantir que o X recebe clique no iPhone */
+.topbar .topbar-online-users .online-users-close{
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  position:relative!important;
+  z-index:99999!important;
+  cursor:pointer!important;
+  -webkit-tap-highlight-color:rgba(255,255,255,.18)!important;
+}
+
+.topbar .topbar-online-users .online-users-popup-head{
+  pointer-events:auto!important;
+  z-index:99998!important;
+}
