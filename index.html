@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mundial Pontos 2026 · Pontuação Detalhada</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Calendário da Fase de Grupos</p>
+        <h1>Mundial Pontos 2026</h1>
+      </div>
+      <div class="copy-actions" aria-label="Copiar para WhatsApp">
+        <button id="calendarMissingResultsBtn" class="primary" type="button">Por colocar resultado</button>
+            <button id="calendarAllGamesBtn" class="secondary" type="button">Todos os jogos</button>
+        <button id="copyScoreBtn" class="secondary" type="button">Copiar pontuação</button>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Navegação principal">
+      <button class="tab active" type="button" data-tab="calendarTab">Calendário</button>
+      <button class="tab" type="button" data-tab="scoreTab">Pontuação</button>
+      <button class="tab" type="button" data-tab="adminTab">Admin</button>
+    </nav>
+
+    <main>
+      <section id="calendarTab" class="tab-panel active">
+        <div class="section-head compact">
+          <div>
+            <h2>Fase de Grupos</h2>
+            <p>Jogos por data, com horas de Portugal.</p>
+          </div>
+          <input id="searchInput" class="search" type="search" placeholder="" />
+        </div>
+        <div id="gamesList" class="calendar-list"></div>
+      </section>
+
+      <section id="scoreTab" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <h2>Pontuação</h2>
+            <p>Classificação com total e detalhe dos jogos de cada jogador.</p>
+          </div>
+        </div>
+        <div id="scoreSummary" class="score-summary leaderboard"></div>
+      </section>
+
+      <section id="adminTab" class="tab-panel">
+        <div id="adminLocked" class="admin-lock">
+          <h2>Admin</h2>
+          <p>Introduz o PIN para lançar ou limpar resultados.</p>
+          <div class="pin-row">
+            <input id="adminPinInput" type="password" inputmode="numeric" placeholder="PIN" />
+            <button id="unlockAdminBtn" class="primary" type="button">Entrar</button>
+          </div>
+        </div>
+
+        <div id="adminUnlocked" class="hidden admin-stack admin-accordion">
+          <div id="firebaseStatusBox" class="firebase-status-box">Firebase: a iniciar ligação...</div>
+
+          <details class="admin-card admin-collapse" open>
+            <summary>
+              <div>
+                <h2>Editar resultados por utilizador</h2>
+                <p>Escolhe um user e edita todas as apostas dele diretamente na app, incluindo MVP, Melhor Marcador e Equipa Vencedora.</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+
+            <div class="user-editor-toolbar">
+              <label>Utilizador
+                <select id="editUserSelect"></select>
+              </label>
+              <button id="saveUserBetsBtn" class="primary" type="button">Guardar alterações</button>
+            </div>
+
+            <div id="userBetsEditor" class="user-bets-editor"></div>
+          </details>
+
+
+          <details class="admin-card admin-collapse">
+            <summary>
+              <div>
+                <h2>Exportar Pontos</h2>
+                <p>Gera o ficheiro Excel com a pontuação atual calculada pela app.</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+            <div class="collapse-actions">
+              <button id="exportPontosBtn" class="primary" type="button">Exportar Pontos Excel</button>
+            </div>
+          </details>
+
+<details class="admin-card admin-collapse">
+            <summary>
+              <div>
+                <h2>Users do Jogo</h2>
+                <p>Adiciona aqui os nomes de quem vai participar. Também aparecem automaticamente quando importas o Excel.</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+            <div class="collapse-actions"></div>
+            <div class="user-add-row">
+              <input id="newUserNameInput" type="text" placeholder="Nome do user. Ex: João" />
+              <button id="addUserBtn" class="primary" type="button">Adicionar user</button>
+            </div>
+            <div id="usersList" class="users-list"></div>
+          </details>
+
+          <details class="admin-card admin-collapse">
+            <summary>
+              <div>
+                <h2>Importar Excel Resultados</h2>
+                <p>Exporta o Excel Resultados, corrige no Excel e volta a importar aqui.</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+            <div class="collapse-actions">
+              <button id="exportResultadosBtn" class="secondary" type="button">Exportar Excel Resultados</button>
+              <button id="openExcelModalBtn" class="primary" type="button">Importar Excel Resultados</button>
+            </div>
+            <div id="importStatusBox" class="import-status-box idle">Ainda não foi feita nenhuma importação.</div>
+            <div id="importSummary" class="import-summary">Ainda não foi feita importação nesta sessão.</div>
+          </details>
+
+          <details class="admin-card admin-collapse">
+            <summary>
+              <div>
+                <h2>Sistema de Pontos</h2>
+                <p>O Admin pode editar quantos pontos vale cada campo. Resultado exato não acumula com o ponto da equipa vencedora/empate.</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+            <div class="collapse-actions">
+              <button id="savePointsSettingsBtn" class="primary" type="button">Guardar pontos</button>
+            </div>
+            <div class="points-settings-grid">
+              <label>Resultado exato
+                <input id="pointsExactInput" type="number" min="0" step="1" />
+              </label>
+              <label>Equipa vencedora / empate
+                <input id="pointsWinnerInput" type="number" min="0" step="1" />
+              </label>
+              <label>MVP
+                <input id="pointsMvpInput" type="number" min="0" step="1" />
+              </label>
+              <label>Melhor marcador
+                <input id="pointsTopScorerInput" type="number" min="0" step="1" />
+              </label>
+              <label>Equipa vencedora
+                <input id="pointsChampionInput" type="number" min="0" step="1" />
+              </label>
+            </div>
+          </details>
+
+          <details class="admin-card admin-collapse">
+            <summary>
+              <div>
+                <h2>Resultados especiais</h2>
+                <p>Mete aqui os vencedores finais para atribuir pontos extra aos users.</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+            <div class="collapse-actions">
+              <button id="saveExtraResultsBtn" class="primary" type="button">Guardar extras</button>
+            </div>
+            <div class="points-settings-grid">
+              <label>MVP final
+                <input id="finalMvpInput" type="text" placeholder="Ex: Vitinha" />
+              </label>
+              <label>Melhor marcador final
+                <input id="finalTopScorerInput" type="text" placeholder="Ex: Ronaldo" />
+              </label>
+              <label>Equipa vencedora final
+                <input id="finalChampionInput" type="text" placeholder="Ex: Portugal" />
+              </label>
+            </div>
+          </details>
+
+          <details class="admin-card admin-collapse" open>
+            <summary>
+              <div>
+                <h2>Resultados dos jogos</h2>
+                <p id="storageStatus">A carregar dados...</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+            <div id="adminGamesList" class="admin-list"></div>
+          </details>
+        </div>
+      </section>
+    </main>
+  </div>
+
+
+  <div id="excelModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="excelModalTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="excelModalTitle">Importar Excel dos Users</h2>
+          <p>Importa o ficheiro de apostas (<strong>Resultados.xlsx</strong>). Depois mete os resultados reais manualmente no Admin.</p>
+        </div>
+        <button id="closeExcelModalBtn" class="icon-button" type="button" aria-label="Fechar">×</button>
+      </div>
+
+      <div class="modal-grid">
+        <label>Excel Resultados
+          <input id="resultadosExcelInput" type="file" accept=".xlsx,.xls,.csv" />
+          <small>Apostas dos users por jogo.</small>
+        </label>
+        <label>Excel Pontos
+          <input id="pontosExcelInput" type="file" accept=".xlsx,.xls,.csv" />
+          <small>Pontos/resultados já obtidos até agora.</small>
+        </label>
+      </div>
+
+      <label class="check-row">
+        <input id="replaceExcelBetsInput" type="checkbox" checked />
+        Substituir apostas importadas anteriormente
+      </label>
+
+      <div id="excelPreview" class="excel-preview">
+        Seleciona os ficheiros e carrega em “Pré-visualizar”.
+      </div>
+
+      <div class="modal-actions">
+        <button id="previewExcelBtn" class="secondary" type="button">Pré-visualizar</button>
+        <button id="confirmExcelImportBtn" class="primary" type="button" disabled>Confirmar importação</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="resultModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="resultModalTitle">
+    <div class="modal-card result-modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="resultModalTitle">Adicionar resultado</h2>
+          <p id="resultModalSubtitle">Mete o resultado real do jogo. A pontuação recalcula automaticamente.</p>
+        </div>
+        <button id="closeResultModalBtn" class="icon-button" type="button" aria-label="Fechar">×</button>
+      </div>
+
+      <input id="resultGameIdInput" type="hidden" />
+
+      <div class="result-game-preview">
+        <div class="result-team">
+          <span id="resultHomeFlag">🏳️</span>
+          <strong id="resultHomeTeam">Equipa casa</strong>
+        </div>
+        <div class="result-vs">VS</div>
+        <div class="result-team right">
+          <span id="resultAwayFlag">🏳️</span>
+          <strong id="resultAwayTeam">Equipa fora</strong>
+        </div>
+      </div>
+
+      <div class="result-fields-grid">
+        <label>Grupo
+          <input id="resultGroupInput" type="text" disabled />
+        </label>
+        <label>Data / Hora Portugal
+          <input id="resultDateInput" type="text" disabled />
+        </label>
+        <label>Resultado casa
+          <input id="modalHomeScoreInput" type="number" min="0" inputmode="numeric" placeholder="0" />
+        </label>
+        <label>Resultado fora
+          <input id="modalAwayScoreInput" type="number" min="0" inputmode="numeric" placeholder="0" />
+        </label>
+      </div>
+
+      <div class="result-points-preview" id="resultPointsPreview">
+        Sem resultado guardado.
+      </div>
+
+      <div class="modal-actions">
+        <button id="clearModalResultBtn" class="secondary danger-soft" type="button">Limpar resultado</button>
+        <button id="saveModalResultBtn" class="primary" type="button">Guardar resultado</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
