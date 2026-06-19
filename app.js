@@ -2480,9 +2480,51 @@ document.addEventListener("click", event => {
   if (clearBtn) clearUserGameRow(clearBtn);
 });
 
+
+let deferredInstallPrompt = null;
+
+function setupPwaInstall() {
+  const installBtn = $("installAppBtn");
+  if (!installBtn) return;
+
+  window.addEventListener("beforeinstallprompt", event => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    installBtn.classList.remove("hidden");
+  });
+
+  installBtn.addEventListener("click", async () => {
+    if (!deferredInstallPrompt) {
+      toast("No Edge: menu ⋯ > Apps > Instalar este site como aplicação.");
+      return;
+    }
+
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    installBtn.classList.add("hidden");
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    installBtn.classList.add("hidden");
+    toast("App instalada.");
+  });
+}
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .catch(error => console.warn("Service worker não registado:", error));
+  });
+}
+
 window.addEventListener("beforeunload", () => {
   try { saveLocalData("beforeunload"); } catch {}
 });
 
+setupPwaInstall();
+registerServiceWorker();
 await initFirebase();
 await loadData();
