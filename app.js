@@ -1867,6 +1867,7 @@ function renderKnockout() {
 
 function renderKnockoutPhotoLayout(finalMatch, champion, thirdPlaceTeams) {
   const roundColumns = buildKnockoutPhotoColumns();
+  const canEditLayout = isAdminProfile() && hasPermission("editKnockout");
   return `
     <div class="bracket-photo-shell">
       <div class="bracket-title-row">
@@ -1874,6 +1875,13 @@ function renderKnockoutPhotoLayout(finalMatch, champion, thirdPlaceTeams) {
         <strong>Fases finais</strong>
         <span>Mundial Pontos 2026</span>
       </div>
+
+      ${canEditLayout ? `
+        <details class="ko-page-layout-panel">
+          <summary>Ajustar cards</summary>
+          ${renderKnockoutLayoutControls("page")}
+        </details>
+      ` : ""}
 
       <div class="bracket-photo-grid bracket-photo-grid-split">
         ${roundColumns.left.map(renderKnockoutPhotoColumn).join("")}

@@ -4260,3 +4260,78 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
     flex:1;
   }
 }
+
+/* v62: editor de posicao dentro da pagina Fase Final, so Admin */
+#knockoutBracket .bracket-photo-shell{
+  position:relative!important;
+}
+
+.ko-page-layout-panel{
+  position:absolute;
+  top:56px;
+  right:18px;
+  z-index:20;
+  width:min(390px, calc(100% - 36px));
+  border:1px solid rgba(255,212,90,.34);
+  border-radius:10px;
+  background:rgba(7,11,19,.94);
+  box-shadow:0 18px 44px rgba(0,0,0,.34);
+}
+
+.ko-page-layout-panel summary{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:34px;
+  padding:8px 12px;
+  color:#07111d;
+  background:linear-gradient(135deg,#ffd45a,#fff0a5);
+  border-radius:9px;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:950;
+  text-transform:uppercase;
+}
+
+.ko-page-layout-panel[open] summary{
+  border-radius:9px 9px 0 0;
+}
+
+.ko-page-layout-panel .ko-layout-editor{
+  max-height:calc(100dvh - 180px);
+  margin:0;
+  overflow:auto;
+  border:0;
+  border-radius:0 0 10px 10px;
+  background:rgba(7,11,19,.96);
+}
+
+.ko-page-layout-panel .ko-layout-head{
+  align-items:stretch;
+  flex-direction:column;
+}
+
+.ko-page-layout-panel .ko-layout-head span{
+  font-size:11px;
+}
+
+.ko-page-layout-panel .ko-layout-actions{
+  justify-content:stretch;
+}
+
+.ko-page-layout-panel .ko-layout-actions button{
+  flex:1;
+}
+
+.ko-page-layout-panel .ko-layout-grid{
+  grid-template-columns:1fr;
+  gap:8px;
+}
+
+.ko-page-layout-panel .ko-layout-control{
+  padding:8px;
+}
+
+.ko-page-layout-panel .ko-layout-control span{
+  font-size:11px;
+}
