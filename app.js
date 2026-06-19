@@ -1443,41 +1443,48 @@ function switchToFirstAllowedTab() {
 }
 
 function applyPermissionsToUi() {
-  updateSessionBox();
+  try {
+    updateSessionBox();
 
-  document.querySelector('[data-tab="calendarTab"]')?.classList.toggle("hidden", !hasPermission("calendar"));
-  document.querySelector('[data-tab="scoreTab"]')?.classList.toggle("hidden", !hasPermission("score"));
-  document.querySelector('[data-tab="knockoutTab"]')?.classList.toggle("hidden", !hasPermission("knockout"));
-  document.querySelector('[data-tab="adminTab"]')?.classList.toggle("hidden", !hasPermission("admin"));
+    document.querySelector('[data-tab="calendarTab"]')?.classList.toggle("hidden", !hasPermission("calendar"));
+    document.querySelector('[data-tab="scoreTab"]')?.classList.toggle("hidden", !hasPermission("score"));
+    document.querySelector('[data-tab="knockoutTab"]')?.classList.toggle("hidden", !hasPermission("knockout"));
+    document.querySelector('[data-tab="adminTab"]')?.classList.toggle("hidden", !hasPermission("admin"));
 
-  $("adminTab")?.classList.toggle("no-access", !hasPermission("admin"));
+    $("adminTab")?.classList.toggle("no-access", !hasPermission("admin"));
 
-  // Ações admin
-  document.querySelectorAll("[data-result-game]").forEach(btn => {
-    const inAdmin = btn.closest("#adminTab");
-    if (inAdmin && !hasPermission("editResults")) btn.classList.add("hidden");
-  });
+    document.querySelectorAll("[data-result-game]").forEach(btn => {
+      const inAdmin = btn.closest("#adminTab");
+      if (inAdmin) btn.classList.toggle("hidden", !hasPermission("editResults"));
+    });
 
-  $("openExcelModalBtn")?.classList.toggle("hidden", !hasPermission("importExcel"));
-  $("exportResultadosBtn")?.classList.toggle("hidden", !hasPermission("importExcel"));
-  $("addUserBtn")?.classList.toggle("hidden", !hasPermission("editUsers"));
-  $("savePointsSettingsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
-  $("saveExtraResultsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
-  $("saveKnockoutUnlockBtn")?.classList.toggle("hidden", !hasPermission("editKnockout"));
+    $("openExcelModalBtn")?.classList.toggle("hidden", !hasPermission("importExcel"));
+    $("exportResultadosBtn")?.classList.toggle("hidden", !hasPermission("importExcel"));
+    $("addUserBtn")?.classList.toggle("hidden", !hasPermission("editUsers"));
+    $("savePointsSettingsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
+    $("saveExtraResultsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
+    $("saveKnockoutUnlockBtn")?.classList.toggle("hidden", !hasPermission("editKnockout"));
 
-  document.querySelectorAll("[data-ko-save], [data-ko-edit]").forEach(btn => {
-    btn.classList.toggle("hidden", !hasPermission("editKnockout"));
-  });
+    document.querySelectorAll("[data-ko-save], [data-ko-edit]").forEach(btn => {
+      btn.classList.toggle("hidden", !hasPermission("editKnockout"));
+    });
 
-  const permissionsCard = $("permissionsUsersList")?.closest(".admin-card");
-  permissionsCard?.classList.toggle("hidden", !hasPermission("managePermissions"));
+    const permissionsCard = $("permissionsUsersList")?.closest(".admin-card");
+    permissionsCard?.classList.toggle("hidden", !hasPermission("managePermissions"));
 
-  const activePanel = document.querySelector(".tab-panel.active");
-  if (activePanel && !permissionTabAllowed(activePanel.id)) {
-    switchToFirstAllowedTab();
+    const activePanel = document.querySelector(".tab-panel.active");
+    if (activePanel && !permissionTabAllowed(activePanel.id)) {
+      switchToFirstAllowedTab();
+    }
+
+    try {
+      renderPermissionsUsers();
+    } catch (renderPermsError) {
+      console.warn("Render permissões falhou:", renderPermsError);
+    }
+  } catch (error) {
+    console.warn("Aplicar permissões falhou:", error);
   }
-
-  renderPermissionsUsers();
 }
 
 
@@ -1573,6 +1580,45 @@ function authFriendlyError(error) {
   return "Erro no login. Verifica o Firebase e tenta novamente.";
 }
 
+
+async function loadDataForLoginStartup() {
+  try {
+    await loadData();
+    return true;
+  } catch (error) {
+    console.error("loadData bloqueou o arranque. A usar dados locais:", error);
+
+    try {
+      const local = getLocalData();
+      games = normalizeGames(local.games);
+      bets = normalizeBets(local.bets);
+      appSettings = mergeSettings(local.settings || local.appSettings);
+      ensureKnockoutSettings();
+      storageMode = storageMode || "local";
+      renderAll();
+      setFirebaseStatus("error", `Firebase: dados carregados localmente (${shortFirebaseError(error)})`);
+      return false;
+    } catch (localError) {
+      console.error("Também falhou carregar local:", localError);
+
+      try {
+        games = normalizeGames(SEED_GAMES);
+        bets = [];
+        appSettings = mergeSettings(defaultSettings());
+        ensureKnockoutSettings();
+        storageMode = "local";
+        renderAll();
+        setFirebaseStatus("error", "App: iniciou com dados base por segurança");
+        return false;
+      } catch (criticalError) {
+        console.error("Erro crítico no arranque:", criticalError);
+        setLoginStatus("Erro crítico ao carregar a app. Ver consola.", "error");
+        return false;
+      }
+    }
+  }
+}
+
 function setupAuthGate() {
   if (!firebaseAuthApi || !firebaseAuth) {
     showLoginScreen();
@@ -1592,37 +1638,48 @@ function setupAuthGate() {
       return;
     }
 
+    setLoginStatus("A carregar conta...", "loading");
+    showAppScreen();
+
     try {
-      setLoginStatus("A carregar permissões...", "loading");
       currentProfile = await readUserProfile(user);
-
-      if (!currentProfile.active) {
-        await firebaseAuthApi.signOut(firebaseAuth);
-        setLoginStatus("Conta bloqueada pelo Admin.", "error");
-        return;
-      }
-
-      showAppScreen();
-      updateSessionBox();
-      await loadPermissionsUsers();
-      await loadData();
-      applyPermissionsToUi();
-      setLoginStatus("Login efetuado.", "success");
-    } catch (error) {
-      console.error("Erro no arranque com login:", error);
-      try {
-        currentProfile = defaultProfileForUser(user);
-        showAppScreen();
-        updateSessionBox();
-        await loadData();
-        applyPermissionsToUi();
-        setLoginStatus("Login efetuado. Permissões carregadas em modo local.", "success");
-      } catch (fallbackError) {
-        console.error("Erro fallback no login:", fallbackError);
-        setLoginStatus("Erro ao carregar a app depois do login.", "error");
-        showLoginScreen();
-      }
+    } catch (profileError) {
+      console.warn("Perfil/permissões falharam. A usar perfil local:", profileError);
+      currentProfile = defaultProfileForUser(user);
     }
+
+    if (!currentProfile) {
+      currentProfile = defaultProfileForUser(user);
+    }
+
+    if (currentProfile.active === false) {
+      try { await firebaseAuthApi.signOut(firebaseAuth); } catch {}
+      showLoginScreen();
+      setLoginStatus("Conta bloqueada pelo Admin.", "error");
+      return;
+    }
+
+    updateSessionBox();
+
+    try {
+      await loadPermissionsUsers();
+    } catch (permissionsError) {
+      console.warn("Lista de permissões não carregou:", permissionsError);
+    }
+
+    const loaded = await loadDataForLoginStartup();
+
+    try {
+      applyPermissionsToUi();
+      updateSessionBox();
+    } catch (uiError) {
+      console.warn("UI de permissões falhou:", uiError);
+    }
+
+    setLoginStatus(
+      loaded ? "Login efetuado." : "Login efetuado. Dados carregados em modo de segurança.",
+      "success"
+    );
   });
 }
 
@@ -2344,7 +2401,37 @@ function openKnockoutEditInAdmin(matchId) {
   }, 80);
 }
 
-function renderAll() { renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); updateActiveAppSection(); }
+function renderAll() {
+  const steps = [
+    ["estado admin", renderAdminState],
+    ["calendário", renderCalendar],
+    ["pontuação", renderScore],
+    ["fase final", renderKnockout],
+    ["admin", renderAdmin],
+    ["sistema de pontos", renderSettingsForm],
+    ["users", renderUsers],
+    ["apostas por user", renderUserBetsEditor],
+    ["admin fase final", renderKnockoutAdmin],
+    ["filtros calendário", renderCalendarFilterState],
+    ["permissões", applyPermissionsToUi],
+    ["secção ativa", updateActiveAppSection]
+  ];
+
+  const errors = [];
+
+  steps.forEach(([label, fn]) => {
+    try {
+      if (typeof fn === "function") fn();
+    } catch (error) {
+      console.error(`Erro ao renderizar ${label}:`, error);
+      errors.push(label);
+    }
+  });
+
+  if (errors.length) {
+    setFirebaseStatus("error", `App: algumas secções não carregaram (${errors.join(", ")})`);
+  }
+}
 
 function renderCalendarFilterState() {
   $("calendarMissingResultsBtn")?.classList.toggle("active-filter", calendarViewMode === "missing");

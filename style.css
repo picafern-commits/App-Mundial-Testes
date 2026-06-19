@@ -4402,3 +4402,11 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
   border-color:rgba(69,255,156,.35);
   background:rgba(69,255,156,.08);
 }
+
+
+/* v61 — Login/arranque robusto */
+.login-status.success{
+  color:#83ffbf;
+  border-color:rgba(69,255,156,.35);
+  background:rgba(69,255,156,.08);
+}
