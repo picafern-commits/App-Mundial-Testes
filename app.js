@@ -27,6 +27,9 @@ let pendingExcelImport = null;
 let fullSyncTimer = null;
 let realtimeUnsubscribers = [];
 let realtimeRenderTimer = null;
+let onlineUsersCache = [];
+let presenceIntervalId = null;
+let onlineUsersIntervalId = null;
 
 const MATCH_ROWS = [
   ["Grupo A", "México", "África do Sul", "2026-06-11T20:00"],
@@ -755,7 +758,8 @@ function setupRealtimeSync() {
     };
 
     if (!currentProfile.active) {
-      await firebaseAuthApi.signOut(firebaseAuth);
+      await updateMyPresence(true);
+  await firebaseAuthApi.signOut(firebaseAuth);
       return;
     }
 
@@ -1555,6 +1559,217 @@ function authFriendlyError(error) {
   return "Erro no login. Verifica o Firebase e tenta novamente.";
 }
 
+
+const PRESENCE_COLLECTION = "presence";
+const ONLINE_WINDOW_MS = 2 * 60 * 1000;
+const PRESENCE_UPDATE_MS = 30 * 1000;
+const ONLINE_USERS_REFRESH_MS = 30 * 1000;
+
+function displayNameFromEmail(email) {
+  const value = String(email || "").trim();
+  if (!value) return "User";
+  const local = value.split("@")[0] || value;
+  return local
+    .replace(/[._-]+/g, " ")
+    .replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function deviceLabel() {
+  const ua = navigator.userAgent || "";
+  if (/iphone|ipad|ipod/i.test(ua)) return "iPhone";
+  if (/android/i.test(ua)) return "Android";
+  if (/windows/i.test(ua)) return "PC";
+  if (/macintosh|mac os/i.test(ua)) return "Mac";
+  return "Web";
+}
+
+function presenceUserId() {
+  return currentUser?.uid || "";
+}
+
+function presenceTimestampMs(value) {
+  if (!value) return 0;
+  if (typeof value?.toDate === "function") return value.toDate().getTime();
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return new Date(value).getTime();
+  return 0;
+}
+
+function timeAgoLabel(timestamp) {
+  const time = presenceTimestampMs(timestamp);
+  if (!Number.isFinite(time) || !time) return "sem registo";
+
+  const diff = Math.max(0, Date.now() - time);
+  if (diff < 15000) return "agora";
+  if (diff < 60000) return `há ${Math.floor(diff / 1000)}s`;
+  if (diff < 3600000) return `há ${Math.floor(diff / 60000)} min`;
+  if (diff < 86400000) return `há ${Math.floor(diff / 3600000)} h`;
+  return `há ${Math.floor(diff / 86400000)} d`;
+}
+
+function isOnlinePresence(user) {
+  const time = presenceTimestampMs(user?.lastActiveAt);
+  return Number.isFinite(time) && time > 0 && Date.now() - time <= ONLINE_WINDOW_MS;
+}
+
+async function updateMyPresence(forceOffline = false) {
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser?.email || !presenceUserId()) return false;
+
+  try {
+    const { doc, setDoc } = firebaseApi;
+    const nowIso = new Date().toISOString();
+
+    await setDoc(doc(db, PRESENCE_COLLECTION, presenceUserId()), {
+      uid: presenceUserId(),
+      email: normalizeEmail(currentUser.email),
+      name: currentProfile?.name || displayNameFromEmail(currentUser.email),
+      role: currentProfile?.role || "user",
+      online: !forceOffline,
+      device: deviceLabel(),
+      lastActiveAt: nowIso,
+      updatedAt: nowIso
+    }, { merge: true });
+
+    return true;
+  } catch (error) {
+    console.warn("Presença online não atualizada:", error);
+    return false;
+  }
+}
+
+function stopPresenceTracking() {
+  if (presenceIntervalId) {
+    clearInterval(presenceIntervalId);
+    presenceIntervalId = null;
+  }
+}
+
+function startPresenceTracking() {
+  stopPresenceTracking();
+
+  updateMyPresence(false).catch(error => console.warn("Presença inicial falhou:", error));
+
+  presenceIntervalId = setInterval(() => {
+    updateMyPresence(false).catch(error => console.warn("Presença periódica falhou:", error));
+  }, PRESENCE_UPDATE_MS);
+}
+
+function stopOnlineUsersRefresh() {
+  if (onlineUsersIntervalId) {
+    clearInterval(onlineUsersIntervalId);
+    onlineUsersIntervalId = null;
+  }
+}
+
+function startOnlineUsersRefresh() {
+  stopOnlineUsersRefresh();
+
+  loadOnlineUsers().catch(error => console.warn("Users online inicial falhou:", error));
+
+  onlineUsersIntervalId = setInterval(() => {
+    loadOnlineUsers().catch(error => console.warn("Users online periódico falhou:", error));
+  }, ONLINE_USERS_REFRESH_MS);
+}
+
+async function loadOnlineUsers() {
+  const list = $("onlineUsersList");
+  const badge = $("onlineUsersBadge");
+
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) {
+    if (badge) badge.textContent = "offline";
+    if (list) list.innerHTML = `<div class="empty small-empty">Firebase ainda não está ligado.</div>`;
+    return;
+  }
+
+  try {
+    const { collection, getDocs } = firebaseApi;
+    const snap = await withTimeout(getDocs(collection(db, PRESENCE_COLLECTION)), 10000, "ler utilizadores online");
+
+    onlineUsersCache = snap.docs
+      .map(docSnap => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
+      .sort((a, b) => {
+        const ao = isOnlinePresence(a) ? 0 : 1;
+        const bo = isOnlinePresence(b) ? 0 : 1;
+        if (ao !== bo) return ao - bo;
+
+        const at = presenceTimestampMs(a.lastActiveAt);
+        const bt = presenceTimestampMs(b.lastActiveAt);
+        if (bt !== at) return bt - at;
+
+        return String(a.email || "").localeCompare(String(b.email || ""), "pt");
+      });
+
+    renderOnlineUsers();
+  } catch (error) {
+    console.warn("Erro ao carregar utilizadores online:", error);
+    if (badge) badge.textContent = "sem acesso";
+    if (list) {
+      list.innerHTML = `
+        <div class="empty small-empty">
+          Não foi possível carregar os utilizadores online. Confirma as regras da coleção presence no Firebase.
+        </div>`;
+    }
+  }
+}
+
+function renderOnlineUsers() {
+  const list = $("onlineUsersList");
+  const badge = $("onlineUsersBadge");
+  if (!list) return;
+
+  const onlineCount = onlineUsersCache.filter(isOnlinePresence).length;
+  if (badge) badge.textContent = `${onlineCount} online`;
+
+  if (!onlineUsersCache.length) {
+    list.innerHTML = `<div class="empty small-empty">Ainda não existem utilizadores com presença registada.</div>`;
+    return;
+  }
+
+  list.innerHTML = `
+    <div class="online-users-table">
+      <div class="online-users-row online-users-head">
+        <span>User</span>
+        <span>Estado</span>
+        <span>Última atividade</span>
+      </div>
+      ${onlineUsersCache.map(user => {
+        const online = isOnlinePresence(user);
+        const email = normalizeEmail(user.email || user.id);
+        const name = user.name || displayNameFromEmail(email);
+        return `
+          <div class="online-users-row ${online ? "is-online" : "is-offline"}">
+            <span class="online-user-name">
+              <strong>${escapeHtml(name)}</strong>
+              <small>${escapeHtml(user.device || "")}</small>
+            </span>
+            <span class="online-state">${online ? "Online 🟢" : "Offline ⚪"}</span>
+            <span class="online-last">${escapeHtml(timeAgoLabel(user.lastActiveAt))}</span>
+          </div>
+        `;
+      }).join("")}
+    </div>`;
+}
+
+function startOnlineFeaturesSafe() {
+  try {
+    startPresenceTracking();
+    startOnlineUsersRefresh();
+  } catch (error) {
+    console.warn("Funcionalidade users online não iniciou:", error);
+  }
+}
+
+function stopOnlineFeaturesSafe() {
+  try {
+    updateMyPresence(true).catch(error => console.warn("Marcar offline falhou:", error));
+    stopPresenceTracking();
+    stopOnlineUsersRefresh();
+  } catch (error) {
+    console.warn("Funcionalidade users online não parou:", error);
+  }
+}
+
 function setupAuthGate() {
   if (!firebaseAuthApi || !firebaseAuth) {
     showLoginScreen();
@@ -1569,6 +1784,7 @@ function setupAuthGate() {
 
     if (!user) {
       currentProfile = null;
+      stopOnlineFeaturesSafe();
       showLoginScreen();
       updateSessionBox();
       return;
@@ -1590,6 +1806,7 @@ function setupAuthGate() {
       await loadData();
       applyPermissionsToUi();
       setLoginStatus("Login efetuado.", "success");
+      startOnlineFeaturesSafe();
     } catch (error) {
       console.error("Erro no arranque com login:", error);
       setLoginStatus("Erro ao carregar permissões.", "error");
@@ -3746,3 +3963,13 @@ setupPageWheelScroll();
 registerServiceWorker();
 await initFirebase();
 setupAuthGate();
+
+
+// beforeunload_presence_v63
+window.addEventListener("beforeunload", () => {
+  try {
+    updateMyPresence(true);
+  } catch (error) {
+    console.warn("Não foi possível marcar offline ao sair:", error);
+  }
+});
