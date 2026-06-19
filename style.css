@@ -4164,3 +4164,99 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
 body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) .knockout-match:nth-child(even)::before{
   left:calc(-3% - 8px)!important;
 }
+
+/* v61: editor admin para posicao dos cards da Fase Final */
+#knockoutBracket .bracket-photo-round .bracket-photo-matches{
+  transform:translateY(var(--ko-column-offset, 0px))!important;
+}
+
+#knockoutBracket .bracket-center-column{
+  transform:translateY(var(--ko-column-offset, 0px))!important;
+}
+
+.ko-layout-editor{
+  display:grid;
+  gap:12px;
+  margin:0 14px 14px;
+  padding:12px;
+  border:1px solid rgba(255,212,90,.22);
+  border-radius:10px;
+  background:rgba(255,212,90,.055);
+}
+
+.ko-layout-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.ko-layout-head strong{
+  display:block;
+  color:var(--gold);
+  font-size:15px;
+}
+
+.ko-layout-head span{
+  display:block;
+  margin-top:3px;
+  color:var(--muted);
+  font-size:12px;
+}
+
+.ko-layout-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+.ko-layout-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+  gap:10px;
+}
+
+.ko-layout-control{
+  display:grid;
+  grid-template-columns:1fr 62px;
+  gap:8px;
+  align-items:center;
+  padding:10px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:8px;
+  background:rgba(7,11,19,.45);
+}
+
+.ko-layout-control span{
+  grid-column:1 / -1;
+  color:var(--text);
+  font-size:12px;
+  font-weight:900;
+}
+
+.ko-layout-range{
+  width:100%;
+  accent-color:var(--gold);
+}
+
+.ko-layout-number{
+  min-height:32px!important;
+  padding:5px 7px!important;
+  text-align:center;
+}
+
+@media(max-width:760px){
+  .ko-layout-head{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .ko-layout-actions{
+    justify-content:stretch;
+  }
+
+  .ko-layout-actions button{
+    flex:1;
+  }
+}

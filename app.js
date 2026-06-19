@@ -1612,9 +1612,30 @@ const KNOCKOUT_ROUNDS = [
   { key: "final", label: "Final", count: 1, next: "" }
 ];
 
+const KNOCKOUT_LAYOUT_KEYS = [
+  ["r32_left", "Segunda fase esquerda"],
+  ["r16_left", "Oitavas esquerda"],
+  ["qf_left", "Quartas esquerda"],
+  ["sf_left", "Semifinal esquerda"],
+  ["center", "Final"],
+  ["sf_right", "Semifinal direita"],
+  ["qf_right", "Quartas direita"],
+  ["r16_right", "Oitavas direita"],
+  ["r32_right", "Segunda fase direita"]
+];
+
 
 function isManualKnockoutRound(match) {
   return match?.round === KNOCKOUT_ROUNDS[0].key;
+}
+
+function defaultKnockoutLayout() {
+  return Object.fromEntries(KNOCKOUT_LAYOUT_KEYS.map(([key]) => [key, 0]));
+}
+
+function knockoutLayoutValue(key) {
+  const value = Number(appSettings.knockout?.layout?.[key] ?? 0);
+  return Number.isFinite(value) ? Math.max(-180, Math.min(180, value)) : 0;
 }
 
 function knockoutTeamOptions() {
@@ -1654,6 +1675,7 @@ function ensureKnockoutSettings() {
 
   appSettings.knockout = {
     adminUnlocked: Boolean(current.adminUnlocked),
+    layout: { ...defaultKnockoutLayout(), ...(current.layout || {}) },
     matches: defaults.map(match => {
       const saved = existing.get(match.id) || {};
       return {
@@ -1672,6 +1694,7 @@ function knockoutMatches() {
   if (!appSettings.knockout || !Array.isArray(appSettings.knockout.matches) || !appSettings.knockout.matches.length) {
     appSettings.knockout = {
       adminUnlocked: Boolean(appSettings.knockout?.adminUnlocked),
+      layout: { ...defaultKnockoutLayout(), ...(appSettings.knockout?.layout || {}) },
       matches: defaultKnockoutMatches()
     };
   }
@@ -1901,8 +1924,9 @@ function buildKnockoutPhotoColumns() {
 }
 
 function renderKnockoutPhotoColumn(column) {
+  const layoutKey = `${column.key}_${column.side}`;
   return `
-    <section class="bracket-photo-round round-${column.key} bracket-side-${column.side}">
+    <section class="bracket-photo-round round-${column.key} bracket-side-${column.side}" data-ko-layout="${escapeHtml(layoutKey)}" style="--ko-column-offset:${knockoutLayoutValue(layoutKey)}px">
       <h3>${escapeHtml(column.label)}</h3>
       <div class="bracket-photo-matches">
         ${column.matches.map(match => renderKnockoutMatch(match)).join("")}
@@ -1912,7 +1936,7 @@ function renderKnockoutPhotoColumn(column) {
 
 function renderKnockoutCenter(finalMatch, champion, thirdPlaceTeams) {
   return `
-    <section class="bracket-center-column">
+    <section class="bracket-center-column" data-ko-layout="center" style="--ko-column-offset:${knockoutLayoutValue("center")}px">
       <div class="bracket-final-badge ${champion ? "has-champion" : ""}">
         <span>FINAL</span>
         <strong>${escapeHtml(champion || "Campeao")}</strong>
@@ -1960,6 +1984,34 @@ function renderKnockoutMatch(match) {
     </article>`;
 }
 
+function renderKnockoutLayoutControls() {
+  return `
+    <div class="ko-layout-editor">
+      <div class="ko-layout-head">
+        <div>
+          <strong>Posição dos cards</strong>
+          <span>Ajusta para cima/baixo cada coluna da Fase Final.</span>
+        </div>
+        <div class="ko-layout-actions">
+          <button class="secondary small" type="button" data-ko-layout-reset>Repor</button>
+          <button class="primary small" type="button" data-ko-layout-save>Guardar posições</button>
+        </div>
+      </div>
+      <div class="ko-layout-grid">
+        ${KNOCKOUT_LAYOUT_KEYS.map(([key, label]) => {
+          const value = knockoutLayoutValue(key);
+          return `
+            <label class="ko-layout-control">
+              <span>${escapeHtml(label)}</span>
+              <input class="ko-layout-range" type="range" min="-180" max="180" step="2" value="${value}" data-ko-layout-input="${escapeHtml(key)}" />
+              <input class="ko-layout-number" type="number" min="-180" max="180" step="2" value="${value}" data-ko-layout-number="${escapeHtml(key)}" />
+            </label>
+          `;
+        }).join("")}
+      </div>
+    </div>`;
+}
+
 function renderKnockoutAdmin() {
   ensureKnockoutSettings();
 
@@ -1977,6 +2029,7 @@ function renderKnockoutAdmin() {
       <strong>Regra da Fase Final:</strong> só defines manualmente os jogos dos <strong>16 avos</strong>.
       As rondas seguintes são automáticas. Se o jogo acabar empatado, preenche os <strong>penáltis</strong> para definir quem passa.
     </div>
+    ${renderKnockoutLayoutControls()}
     <div class="ko-admin-list">
       ${knockoutMatches().map(match => {
         const manualRound = isManualKnockoutRound(match);
@@ -2026,6 +2079,39 @@ async function saveKnockoutUnlock() {
   await persistSettings();
   renderAll();
   toast(appSettings.knockout.adminUnlocked ? "Fase Final desbloqueada para Admin." : "Fase Final volta a bloquear até acabarem os grupos.");
+}
+
+function syncKnockoutLayoutInputs(key, value) {
+  document.querySelectorAll(`[data-ko-layout-input="${CSS.escape(key)}"], [data-ko-layout-number="${CSS.escape(key)}"]`).forEach(input => {
+    input.value = value;
+  });
+}
+
+function previewKnockoutLayoutPosition(key, value) {
+  document.querySelectorAll(`[data-ko-layout="${CSS.escape(key)}"]`).forEach(element => {
+    element.style.setProperty("--ko-column-offset", `${value}px`);
+  });
+}
+
+async function saveKnockoutLayoutFromAdmin(reset = false) {
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
+
+  ensureKnockoutSettings();
+  const nextLayout = defaultKnockoutLayout();
+
+  if (!reset) {
+    KNOCKOUT_LAYOUT_KEYS.forEach(([key]) => {
+      const input = document.querySelector(`[data-ko-layout-number="${CSS.escape(key)}"]`) ||
+        document.querySelector(`[data-ko-layout-input="${CSS.escape(key)}"]`);
+      const value = Number(input?.value ?? 0);
+      nextLayout[key] = Number.isFinite(value) ? Math.max(-180, Math.min(180, value)) : 0;
+    });
+  }
+
+  appSettings.knockout.layout = nextLayout;
+  await persistSettings();
+  renderAll();
+  toast(reset ? "Posições repostas." : "Posições da Fase Final guardadas.");
 }
 
 async function saveKnockoutMatchFromAdmin(matchId) {
@@ -3326,6 +3412,18 @@ document.addEventListener("click", event => {
     return;
   }
 
+  const koLayoutSaveButton = event.target.closest("[data-ko-layout-save]");
+  if (koLayoutSaveButton) {
+    saveKnockoutLayoutFromAdmin(false);
+    return;
+  }
+
+  const koLayoutResetButton = event.target.closest("[data-ko-layout-reset]");
+  if (koLayoutResetButton) {
+    saveKnockoutLayoutFromAdmin(true);
+    return;
+  }
+
   const resultButton = event.target.closest("[data-result-game]");
   if (resultButton) {
     openResultModal(resultButton.dataset.resultGame);
@@ -3522,6 +3620,18 @@ document.addEventListener("change", event => {
       if (isAdminRole) input.checked = true;
     });
   }
+});
+
+document.addEventListener("input", event => {
+  const layoutRange = event.target.closest("[data-ko-layout-input]");
+  const layoutNumber = event.target.closest("[data-ko-layout-number]");
+  const layoutInput = layoutRange || layoutNumber;
+  if (!layoutInput) return;
+
+  const key = layoutInput.dataset.koLayoutInput || layoutInput.dataset.koLayoutNumber;
+  const value = Math.max(-180, Math.min(180, Number(layoutInput.value) || 0));
+  syncKnockoutLayoutInputs(key, value);
+  previewKnockoutLayoutPosition(key, value);
 });
 
 window.addEventListener("beforeunload", () => {
