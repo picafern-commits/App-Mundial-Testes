@@ -2124,6 +2124,51 @@ function openKnockoutPage() {
   renderKnockout();
 }
 
+
+function toggleKnockoutLayoutControlsFromTop() {
+  const candidates = [
+    $("knockoutLayoutPanel"),
+    $("knockoutLayoutControls"),
+    $("knockoutAdjustPanel"),
+    document.querySelector(".knockout-layout-panel"),
+    document.querySelector(".ko-layout-panel"),
+    document.querySelector(".knockout-adjust-panel"),
+    document.querySelector("[data-knockout-layout-panel]")
+  ].filter(Boolean);
+
+  if (!candidates.length) {
+    const adminTabButton = document.querySelector('[data-tab="adminTab"]');
+    if (adminTabButton) {
+      toast("Os ajustes dos cards estão no Admin.");
+      adminTabButton.click();
+      setTimeout(() => {
+        document.querySelector("#knockoutAdminPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 150);
+    } else {
+      toast("Painel de ajustes não encontrado.");
+    }
+    return;
+  }
+
+  candidates.forEach(panel => {
+    panel.classList.toggle("hidden");
+    panel.classList.toggle("force-open");
+    if (!panel.classList.contains("hidden")) {
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+}
+
+function setupKnockoutAdjustTopButton() {
+  const button = $("openKnockoutLayoutBtn");
+  if (!button || button.dataset.bound === "1") return;
+
+  button.dataset.bound = "1";
+  button.addEventListener("click", () => {
+    toggleKnockoutLayoutControlsFromTop();
+  });
+}
+
 function renderKnockout() {
   ensureKnockoutSettings();
   const notice = $("knockoutLockNotice");
@@ -2600,7 +2645,8 @@ function openKnockoutEditInAdmin(matchId) {
   }, 80);
 }
 
-function renderAll() { renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); updateActiveAppSection(); }
+function renderAll() {
+  setupKnockoutAdjustTopButton(); renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); updateActiveAppSection(); }
 
 function renderCalendarFilterState() {
   $("calendarMissingResultsBtn")?.classList.toggle("active-filter", calendarViewMode === "missing");
@@ -4040,3 +4086,5 @@ window.addEventListener("beforeunload", () => {
     console.warn("Não foi possível marcar offline ao sair:", error);
   }
 });
+
+setupKnockoutAdjustTopButton();

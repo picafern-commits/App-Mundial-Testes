@@ -4703,3 +4703,37 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
     grid-template-columns:1fr!important;
   }
 }
+
+
+/* v66 — Botão Ajustar cards na barra da Fase Final */
+.knockout-top-actions{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:10px;
+  margin:-2px 0 12px;
+}
+
+.knockout-adjust-top-btn{
+  min-height:40px!important;
+  height:40px!important;
+  box-sizing:border-box!important;
+  border-radius:8px!important;
+  padding:9px 13px!important;
+  font-size:14px!important;
+  font-weight:850!important;
+  white-space:nowrap!important;
+}
+
+#knockoutTab .page-actions .knockout-adjust-top-btn,
+#knockoutTab .tab-actions .knockout-adjust-top-btn,
+#knockoutTab .section-actions .knockout-adjust-top-btn,
+#knockoutTab .toolbar .knockout-adjust-top-btn,
+#knockoutTab .topbar-actions .knockout-adjust-top-btn,
+#knockoutTab .actions .knockout-adjust-top-btn{
+  margin-left:auto!important;
+}
+
+.force-open{
+  display:block!important;
+}
