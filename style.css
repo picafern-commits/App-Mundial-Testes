@@ -2720,3 +2720,254 @@ button{
     align-self:center;
   }
 }
+
+
+/* v56 — Memorizar conta no login */
+.remember-account-row{
+  display:flex!important;
+  align-items:center;
+  gap:9px!important;
+  color:var(--muted)!important;
+  font-size:13px!important;
+  font-weight:900!important;
+  margin-top:-2px;
+}
+.remember-account-row input{
+  width:18px!important;
+  height:18px!important;
+  min-height:auto!important;
+  accent-color:#ffd45a;
+}
+
+
+/* v57 — Correção visual do modal Ver Apostas */
+#betsModal{
+  padding:16px!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+#betsModal .bets-modal-card{
+  width:min(1040px, calc(100vw - 32px))!important;
+  max-width:1040px!important;
+  max-height:calc(100dvh - 32px)!important;
+  overflow:hidden!important;
+  display:grid!important;
+  grid-template-rows:auto auto minmax(0,1fr)!important;
+  padding:18px!important;
+  box-sizing:border-box!important;
+}
+#betsModal .modal-head{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:14px!important;
+  min-width:0!important;
+  margin-bottom:12px!important;
+}
+#betsModal .modal-head > div{
+  min-width:0!important;
+}
+#betsModal .modal-head h2{
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  max-width:100%!important;
+}
+#betsModal .modal-head p{
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+#betsModal .icon-button{
+  flex:0 0 auto!important;
+}
+#betsModal .bets-game-summary{
+  display:grid!important;
+  grid-template-columns:1.25fr repeat(4, minmax(108px, .8fr))!important;
+  gap:10px!important;
+  margin:0 0 14px!important;
+  min-width:0!important;
+}
+#betsModal .bets-summary-card{
+  min-width:0!important;
+  overflow:hidden!important;
+  box-sizing:border-box!important;
+}
+#betsModal .bets-summary-card span{
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+#betsModal .bets-summary-card strong{
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+#betsModal .bets-modal-body{
+  min-height:0!important;
+  overflow:hidden!important;
+  display:grid!important;
+  grid-template-rows:auto minmax(0,1fr)!important;
+}
+#betsModal .bets-list-head{
+  display:grid!important;
+  grid-template-columns:minmax(220px,1fr) 112px minmax(150px,190px) 78px!important;
+  gap:12px!important;
+  align-items:center!important;
+  padding:0 14px 8px!important;
+  box-sizing:border-box!important;
+}
+#betsModal .bets-list{
+  max-height:none!important;
+  min-height:0!important;
+  overflow:auto!important;
+  display:grid!important;
+  gap:8px!important;
+  padding:0 3px 2px 0!important;
+}
+#betsModal .bet-user-row{
+  display:grid!important;
+  grid-template-columns:minmax(220px,1fr) 112px minmax(150px,190px) 78px!important;
+  gap:12px!important;
+  align-items:center!important;
+  min-height:58px!important;
+  padding:10px 14px!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+}
+#betsModal .bet-user-main{
+  min-width:0!important;
+  width:100%!important;
+  overflow:hidden!important;
+}
+#betsModal .bet-user-main strong{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+#betsModal .bet-score-pill,
+#betsModal .bet-type-pill{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+#betsModal .bet-score-pill{
+  justify-content:center!important;
+}
+#betsModal .bet-type-pill{
+  justify-content:center!important;
+}
+#betsModal .bet-user-row b{
+  min-width:0!important;
+  text-align:right!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+
+/* Tablet / janelas médias */
+@media(max-width:900px){
+  #betsModal .bets-game-summary{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  #betsModal .bets-summary-card.main{
+    grid-column:1/-1!important;
+  }
+  #betsModal .bets-list-head,
+  #betsModal .bet-user-row{
+    grid-template-columns:minmax(180px,1fr) 96px minmax(130px,160px) 64px!important;
+    gap:8px!important;
+  }
+}
+
+/* iPhone/mobile: cada aposta vira card vertical, nada sai fora */
+@media(max-width:650px){
+  #betsModal{
+    padding:max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom))!important;
+    align-items:stretch!important;
+  }
+  #betsModal .bets-modal-card{
+    width:100%!important;
+    max-height:calc(100svh - 20px)!important;
+    padding:14px!important;
+    border-radius:16px!important;
+  }
+  #betsModal .modal-head{
+    gap:10px!important;
+  }
+  #betsModal .modal-head h2{
+    white-space:normal!important;
+    font-size:20px!important;
+    line-height:1.12!important;
+  }
+  #betsModal .modal-head p{
+    white-space:normal!important;
+    font-size:12px!important;
+  }
+  #betsModal .bets-game-summary{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:8px!important;
+  }
+  #betsModal .bets-summary-card{
+    padding:10px!important;
+  }
+  #betsModal .bets-summary-card strong{
+    font-size:20px!important;
+  }
+  #betsModal .bets-list-head{
+    display:none!important;
+  }
+  #betsModal .bet-user-row{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:8px!important;
+    min-height:auto!important;
+    padding:12px!important;
+  }
+  #betsModal .bet-user-main{
+    grid-column:1/-1!important;
+    display:flex!important;
+  }
+  #betsModal .bet-score-pill,
+  #betsModal .bet-type-pill,
+  #betsModal .bet-user-row b{
+    position:relative!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    justify-content:center!important;
+    min-height:46px!important;
+    border-radius:12px!important;
+    padding:17px 10px 7px!important;
+    text-align:left!important;
+    font-size:14px!important;
+  }
+  #betsModal .bet-score-pill::before,
+  #betsModal .bet-type-pill::before,
+  #betsModal .bet-user-row b::before{
+    content:attr(data-label)!important;
+    position:absolute!important;
+    top:5px!important;
+    left:10px!important;
+    color:var(--muted)!important;
+    font-size:9px!important;
+    font-weight:950!important;
+    text-transform:uppercase!important;
+    line-height:1!important;
+  }
+  #betsModal .bet-user-row b{
+    color:var(--gold)!important;
+    background:rgba(255,212,90,.09)!important;
+    border-radius:12px!important;
+  }
+  #betsModal .bet-type-pill{
+    grid-column:1/-1!important;
+    white-space:normal!important;
+    min-height:48px!important;
+  }
+}

@@ -1354,6 +1354,43 @@ function applyPermissionsToUi() {
   renderPermissionsUsers();
 }
 
+
+const REMEMBER_EMAIL_KEY = "mundial_pontos_2026_remember_email_v56";
+
+function setupRememberedAccount() {
+  const emailInput = $("loginEmailInput");
+  const rememberInput = $("rememberEmailInput");
+  if (!emailInput) return;
+
+  try {
+    const savedEmail = localStorage.getItem(REMEMBER_EMAIL_KEY) || "";
+    if (savedEmail && !emailInput.value) {
+      emailInput.value = savedEmail;
+    }
+    if (rememberInput) {
+      rememberInput.checked = true;
+    }
+  } catch (error) {
+    console.warn("Não foi possível ler email memorizado:", error);
+  }
+}
+
+function saveRememberedAccount(email) {
+  const rememberInput = $("rememberEmailInput");
+  const shouldRemember = rememberInput ? rememberInput.checked : true;
+  const normalized = normalizeEmail(email);
+
+  try {
+    if (shouldRemember && normalized) {
+      localStorage.setItem(REMEMBER_EMAIL_KEY, normalized);
+    } else {
+      localStorage.removeItem(REMEMBER_EMAIL_KEY);
+    }
+  } catch (error) {
+    console.warn("Não foi possível guardar email memorizado:", error);
+  }
+}
+
 async function handleLogin() {
   if (!firebaseAuthApi || !firebaseAuth) {
     setLoginStatus("Firebase/Auth não está pronto.", "error");
@@ -1369,6 +1406,7 @@ async function handleLogin() {
 
   try {
     setLoginStatus("A entrar...", "loading");
+    saveRememberedAccount(email);
     await firebaseAuthApi.signInWithEmailAndPassword(firebaseAuth, email, password);
   } catch (error) {
     console.error(error);
@@ -1391,6 +1429,7 @@ async function handleCreateAccount() {
 
   try {
     setLoginStatus("A criar conta...", "loading");
+    saveRememberedAccount(email);
     await firebaseAuthApi.createUserWithEmailAndPassword(firebaseAuth, email, password);
   } catch (error) {
     console.error(error);
@@ -1417,6 +1456,8 @@ function setupAuthGate() {
 
   firebaseAuthApi.onAuthStateChanged(firebaseAuth, async user => {
     currentUser = user || null;
+
+    if (user?.email) saveRememberedAccount(user.email);
 
     if (!user) {
       currentProfile = null;
@@ -2940,13 +2981,13 @@ function showGameBets(gameId) {
           const typeClass = gameBetTypeClass(bet, game);
           return `
             <article class="bet-user-row ${typeClass}">
-              <div class="bet-user-main">
+              <div class="bet-user-main" data-label="Jogador">
                 <span class="bet-position">${index + 1}</span>
-                <strong>${escapeHtml(bet.playerName)}</strong>
+                <strong title="${escapeHtml(bet.playerName)}">${escapeHtml(bet.playerName)}</strong>
               </div>
-              <div class="bet-score-pill">${bet.homeGuess}-${bet.awayGuess}</div>
-              <div class="bet-type-pill">${escapeHtml(typeLabel)}</div>
-              <b>${hasResult(game) ? points : "-"}</b>
+              <div class="bet-score-pill" data-label="Aposta">${bet.homeGuess}-${bet.awayGuess}</div>
+              <div class="bet-type-pill" data-label="Tipo">${escapeHtml(typeLabel)}</div>
+              <b data-label="Pontos">${hasResult(game) ? points : "-"}</b>
             </article>
           `;
         }).join("")}
@@ -3278,6 +3319,7 @@ window.addEventListener("beforeunload", () => {
   try { saveLocalData("beforeunload"); } catch {}
 });
 
+setupRememberedAccount();
 setupIosAppMode();
 setupPwaInstall();
 registerServiceWorker();
