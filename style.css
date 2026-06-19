@@ -4594,3 +4594,112 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
     max-width:100%;
   }
 }
+
+
+/* v65 — Users Online no lugar do botão Copiar pontuação */
+.topbar .topbar-online-users{
+  position:relative!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  overflow:visible!important;
+  display:inline-block!important;
+}
+
+.topbar .topbar-online-users summary{
+  min-height:40px!important;
+  height:40px!important;
+  box-sizing:border-box!important;
+  border-radius:8px!important;
+  padding:9px 13px!important;
+  border:1px solid rgba(34,184,207,.35)!important;
+  background:rgba(34,184,207,.13)!important;
+  color:var(--text)!important;
+  font-weight:850!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:8px!important;
+  cursor:pointer!important;
+  list-style:none!important;
+  white-space:nowrap!important;
+}
+
+.topbar .topbar-online-users summary::-webkit-details-marker{
+  display:none!important;
+}
+
+.topbar .topbar-online-users[open] summary{
+  border-color:rgba(38,194,129,.45)!important;
+  background:rgba(38,194,129,.15)!important;
+}
+
+.online-users-trigger-label{
+  font-size:14px!important;
+  line-height:1!important;
+}
+
+.topbar .topbar-online-users .online-users-badge{
+  min-height:20px!important;
+  height:20px!important;
+  padding:2px 7px!important;
+  border-radius:999px!important;
+  font-size:10px!important;
+  line-height:1!important;
+  font-weight:950!important;
+}
+
+.topbar .topbar-online-users .online-users-list{
+  position:absolute!important;
+  right:0!important;
+  top:calc(100% + 8px)!important;
+  width:min(520px, calc(100vw - 24px))!important;
+  max-height:min(520px, calc(100vh - 150px))!important;
+  overflow:auto!important;
+  padding:10px!important;
+  border:1px solid var(--line)!important;
+  border-radius:16px!important;
+  background:rgba(7,11,19,.98)!important;
+  box-shadow:0 22px 60px rgba(0,0,0,.42)!important;
+  z-index:80!important;
+  backdrop-filter:blur(16px)!important;
+}
+
+.topbar .topbar-online-users .online-users-table{
+  min-width:0!important;
+}
+
+.topbar .topbar-online-users .online-users-row{
+  grid-template-columns:minmax(150px,1fr) 110px 120px!important;
+}
+
+#copyScoreBtn.hidden{
+  display:none!important;
+}
+
+@media(max-width:900px){
+  .topbar .topbar-online-users .online-users-list{
+    right:auto!important;
+    left:50%!important;
+    transform:translateX(-50%)!important;
+  }
+}
+
+@media(max-width:680px){
+  .topbar .topbar-online-users summary{
+    width:auto!important;
+    min-width:0!important;
+  }
+
+  .topbar .topbar-online-users .online-users-list{
+    left:auto!important;
+    right:0!important;
+    transform:none!important;
+    width:min(360px, calc(100vw - 18px))!important;
+  }
+
+  .topbar .topbar-online-users .online-users-row{
+    grid-template-columns:1fr!important;
+  }
+}

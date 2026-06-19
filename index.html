@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Mundial Pontos 2026 · Nomes Users</title>
+  <title>Mundial Pontos 2026 · Users Online Botão</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Mundial 2026" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -76,7 +76,16 @@
       <div class="copy-actions" aria-label="Copiar para WhatsApp">
         <button id="calendarMissingResultsBtn" class="primary" type="button">Por colocar resultado</button>
             <button id="calendarAllGamesBtn" class="secondary" type="button">Todos os jogos</button>
-        <button id="copyScoreBtn" class="secondary" type="button">Copiar pontuação</button>
+        <details id="onlineUsersPanel" class="online-users-panel topbar-online-users">
+          <summary class="secondary online-users-trigger">
+            <span class="online-users-trigger-label">Users</span>
+            <span id="onlineUsersBadge" class="online-users-badge">0 online</span>
+          </summary>
+          <div id="onlineUsersList" class="online-users-list">
+            <div class="empty small-empty">A carregar utilizadores...</div>
+          </div>
+        </details>
+        <button id="copyScoreBtn" class="secondary hidden" type="button">Copiar pontuação</button>
         <button id="installAppBtn" class="secondary install-btn hidden" type="button">Instalar app</button>
       </div>
     </header>
@@ -89,21 +98,7 @@
     </nav>
 
     <main>
-
-      <details id="onlineUsersPanel" class="online-users-panel">
-        <summary>
-          <div>
-            <h2>Utilizadores online</h2>
-            <p>Estado atual dos users ligados à app.</p>
-          </div>
-          <span id="onlineUsersBadge" class="online-users-badge">0 online</span>
-        </summary>
-        <div id="onlineUsersList" class="online-users-list">
-          <div class="empty small-empty">A carregar utilizadores...</div>
-        </div>
-      </details>
-
-      <section id="calendarTab" class="tab-panel active">
+<section id="calendarTab" class="tab-panel active">
         <div class="section-head compact">
           <div>
             <h2>Fase de Grupos</h2>

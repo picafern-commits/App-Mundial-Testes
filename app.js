@@ -3856,7 +3856,7 @@ $("calendarAllGamesBtn")?.addEventListener("click", () => {
   renderCalendarFilterState();
 });
 
-$("copyScoreBtn").addEventListener("click", () => copyText(scoreText(), "Classificação copiada."));
+$("copyScoreBtn")?.addEventListener("click", () => copyText(scoreText(), "Classificação copiada."));
 $("addUserBtn")?.addEventListener("click", addUser);
 $("newUserNameInput")?.addEventListener("keydown", event => { if (event.key === "Enter") addUser(); });
 $("exportResultadosBtn")?.addEventListener("click", exportResultadosExcel);
