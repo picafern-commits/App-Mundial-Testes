@@ -3257,7 +3257,8 @@ button{
 }
 #knockoutBracket .bracket-center-column{
   min-height:800px!important;
-  padding-top:52px!important;
+  padding-top:22px!important;
+  align-content:start!important;
 }
 #knockoutBracket .bracket-final-badge{
   width:190px!important;
@@ -3351,6 +3352,13 @@ button{
 #knockoutBracket .third-place-card{
   width:210px!important;
 }
+#knockoutBracket .bracket-center-final{
+  margin-top:18px!important;
+  justify-self:center!important;
+}
+#knockoutBracket .bracket-center-final .knockout-match{
+  margin-inline:auto!important;
+}
 #knockoutBracket .third-place-card{
   margin-top:88px!important;
   padding:7px 8px!important;
@@ -3363,4 +3371,13 @@ button{
 #knockoutBracket .third-place-card::before,
 #knockoutBracket .third-place-card::after{
   display:none!important;
+}
+#knockoutBracket .round-sf .knockout-match::before{
+  display:none!important;
+  content:none!important;
+}
+#knockoutBracket .bracket-center-column::before,
+#knockoutBracket .bracket-center-column::after{
+  display:none!important;
+  content:none!important;
 }

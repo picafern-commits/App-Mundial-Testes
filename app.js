@@ -1801,8 +1801,6 @@ function renderKnockoutPhotoColumn(column) {
 }
 
 function renderKnockoutCenter(finalMatch, champion, thirdPlaceTeams) {
-  const thirdHome = thirdPlaceTeams[0] || "Perdedor semifinal 1";
-  const thirdAway = thirdPlaceTeams[1] || "Perdedor semifinal 2";
   return `
     <section class="bracket-center-column">
       <div class="bracket-final-badge ${champion ? "has-champion" : ""}">
@@ -1812,12 +1810,6 @@ function renderKnockoutCenter(finalMatch, champion, thirdPlaceTeams) {
       <div class="bracket-center-final">
         ${finalMatch ? renderKnockoutMatch(finalMatch) : ""}
       </div>
-      <article class="third-place-card">
-        <div class="knockout-match-title">3.º Lugar</div>
-        <div class="ko-team"><span>${escapeHtml(thirdHome)}</span><b></b></div>
-        <div class="ko-team"><span>${escapeHtml(thirdAway)}</span><b></b></div>
-      </article>
-      <small class="bracket-note">Vencedores avançam automaticamente</small>
     </section>`;
 }
 
