@@ -4737,3 +4737,59 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
 .force-open{
   display:block!important;
 }
+
+
+/* v67 — Corrigir dropdown Users Online no telemóvel */
+@media(max-width:760px){
+  .topbar .topbar-online-users{
+    position:static!important;
+  }
+
+  .topbar .topbar-online-users .online-users-list{
+    position:fixed!important;
+    left:10px!important;
+    right:10px!important;
+    top:74px!important;
+    width:auto!important;
+    max-width:none!important;
+    min-width:0!important;
+    transform:none!important;
+    max-height:calc(100vh - 96px)!important;
+    overflow:auto!important;
+    box-sizing:border-box!important;
+    z-index:9999!important;
+  }
+
+  .topbar .topbar-online-users .online-users-table{
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  .topbar .topbar-online-users .online-users-row{
+    width:100%!important;
+    min-width:0!important;
+    grid-template-columns:1fr!important;
+    box-sizing:border-box!important;
+  }
+
+  .topbar .topbar-online-users .online-user-name strong,
+  .topbar .topbar-online-users .online-user-name small,
+  .topbar .topbar-online-users .online-last,
+  .topbar .topbar-online-users .online-state{
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+}
+
+@media(max-width:420px){
+  .topbar .topbar-online-users .online-users-list{
+    left:8px!important;
+    right:8px!important;
+    top:68px!important;
+    max-height:calc(100vh - 84px)!important;
+    padding:8px!important;
+    border-radius:14px!important;
+  }
+}
