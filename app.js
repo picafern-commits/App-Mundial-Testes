@@ -2159,6 +2159,41 @@ function toggleKnockoutLayoutControlsFromTop() {
   });
 }
 
+
+function closeOnlineUsersPanel() {
+  const panel = $("onlineUsersPanel");
+  if (panel) panel.open = false;
+}
+
+function setupOnlineUsersCloseControls() {
+  const panel = $("onlineUsersPanel");
+  const closeBtn = $("closeOnlineUsersBtn");
+
+  if (closeBtn && closeBtn.dataset.bound !== "1") {
+    closeBtn.dataset.bound = "1";
+    closeBtn.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeOnlineUsersPanel();
+    });
+  }
+
+  if (!window.__onlineUsersOutsideCloseBound) {
+    window.__onlineUsersOutsideCloseBound = true;
+
+    document.addEventListener("click", event => {
+      const activePanel = $("onlineUsersPanel");
+      if (!activePanel || !activePanel.open) return;
+      if (activePanel.contains(event.target)) return;
+      activePanel.open = false;
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") closeOnlineUsersPanel();
+    });
+  }
+}
+
 function setupKnockoutAdjustTopButton() {
   const button = $("openKnockoutLayoutBtn");
   if (!button || button.dataset.bound === "1") return;
@@ -2646,6 +2681,7 @@ function openKnockoutEditInAdmin(matchId) {
 }
 
 function renderAll() {
+  setupOnlineUsersCloseControls();
   setupKnockoutAdjustTopButton(); renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); updateActiveAppSection(); }
 
 function renderCalendarFilterState() {
@@ -4088,3 +4124,5 @@ window.addEventListener("beforeunload", () => {
 });
 
 setupKnockoutAdjustTopButton();
+
+setupOnlineUsersCloseControls();
