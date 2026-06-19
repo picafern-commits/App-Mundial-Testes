@@ -3489,6 +3489,18 @@ function registerServiceWorker() {
 }
 
 
+function setupPageWheelScroll() {
+  document.addEventListener("wheel", event => {
+    if (document.body.classList.contains("knockout-layout-active")) return;
+    if (event.defaultPrevented || !event.deltaY) return;
+    if (event.target.closest(".modal, .modal-card, .ko-admin-list")) return;
+
+    const before = window.scrollY;
+    window.scrollBy({ top: event.deltaY, left: 0, behavior: "auto" });
+    if (window.scrollY !== before) event.preventDefault();
+  }, { passive: false });
+}
+
 $("loginBtn")?.addEventListener("click", handleLogin);
 $("createAccountBtn")?.addEventListener("click", handleCreateAccount);
 $("logoutBtn")?.addEventListener("click", logout);
@@ -3519,6 +3531,7 @@ window.addEventListener("beforeunload", () => {
 setupRememberedAccount();
 setupIosAppMode();
 setupPwaInstall();
+setupPageWheelScroll();
 registerServiceWorker();
 await initFirebase();
 setupAuthGate();

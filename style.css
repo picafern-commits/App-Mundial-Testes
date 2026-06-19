@@ -4101,3 +4101,66 @@ body.knockout-layout-active #knockoutBracket.knockout-bracket{
 #knockoutBracket .bracket-photo-grid-split .ko-status-line{
   min-height:12px!important;
 }
+
+/* v60: cards centrados nas barras e scroll utilizavel no conteudo */
+body:not(.knockout-layout-active),
+body:not(.knockout-layout-active) .app-shell,
+body:not(.knockout-layout-active) main,
+body:not(.knockout-layout-active) .tab-panel{
+  touch-action:auto!important;
+}
+
+body:not(.knockout-layout-active){
+  height:auto!important;
+  min-height:100dvh!important;
+  overflow-y:scroll!important;
+}
+
+body:not(.knockout-layout-active) .app-shell{
+  height:auto!important;
+  min-height:100dvh!important;
+  overflow-y:visible!important;
+}
+
+body.knockout-layout-active #knockoutBracket .bracket-photo-round h3{
+  display:grid!important;
+  place-items:center!important;
+}
+
+body.knockout-layout-active #knockoutBracket .bracket-photo-matches{
+  align-items:center!important;
+}
+
+body.knockout-layout-active #knockoutBracket .bracket-photo-grid-split .knockout-match{
+  width:94%!important;
+  max-width:220px!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+
+body.knockout-layout-active #knockoutBracket .round-r32 .knockout-match{
+  max-width:230px!important;
+}
+
+body.knockout-layout-active #knockoutBracket .bracket-center-final .knockout-match{
+  width:100%!important;
+  max-width:128px!important;
+}
+
+body.knockout-layout-active #knockoutBracket .bracket-side-left .knockout-match::after{
+  right:calc(-3% - 8px)!important;
+}
+
+body.knockout-layout-active #knockoutBracket .bracket-side-left:not(.round-sf) .knockout-match:nth-child(odd)::before,
+body.knockout-layout-active #knockoutBracket .bracket-side-left:not(.round-sf) .knockout-match:nth-child(even)::before{
+  right:calc(-3% - 8px)!important;
+}
+
+body.knockout-layout-active #knockoutBracket .bracket-side-right .knockout-match::after{
+  left:calc(-3% - 8px)!important;
+}
+
+body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) .knockout-match:nth-child(odd)::before,
+body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) .knockout-match:nth-child(even)::before{
+  left:calc(-3% - 8px)!important;
+}
