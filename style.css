@@ -4344,3 +4344,30 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
 .ko-page-layout-panel .ko-layout-control span{
   font-size:11px;
 }
+
+
+/* v58 — Estabilização dos ajustes da Fase Final */
+#knockoutBracket [data-ko-layout]{
+  --ko-column-offset: var(--ko-column-offset, 0px);
+  --ko-match-offset: var(--ko-match-offset, 0px);
+}
+
+#knockoutBracket .bracket-photo-round[data-ko-layout] .bracket-photo-matches{
+  transform:translateY(var(--ko-column-offset, 0px))!important;
+  will-change:transform;
+}
+
+#knockoutBracket .bracket-center-column[data-ko-layout]{
+  transform:translateY(var(--ko-column-offset, 0px))!important;
+  will-change:transform;
+}
+
+#knockoutBracket .knockout-match[data-ko-layout]{
+  transform:translateY(var(--ko-match-offset, 0px))!important;
+  will-change:transform;
+}
+
+.ko-layout-range,
+.ko-layout-number{
+  accent-color:#ffd45a;
+}

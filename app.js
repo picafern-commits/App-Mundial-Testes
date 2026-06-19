@@ -1,4 +1,4 @@
-﻿const APP_CONFIG = window.MUNDIAL_CONFIG || {};
+const APP_CONFIG = window.MUNDIAL_CONFIG || {};
 const ADMIN_PIN = APP_CONFIG.adminPin || "1234";
 const STORAGE_KEY = "mundial_pontos_2026_import_id_jogo_v32";
 const PENDING_FIREBASE_KEY = `${STORAGE_KEY}_pending_games_v1`;
@@ -29,149 +29,149 @@ let realtimeUnsubscribers = [];
 let realtimeRenderTimer = null;
 
 const MATCH_ROWS = [
-  ["Grupo A", "MÃ©xico", "Ãfrica do Sul", "2026-06-11T20:00"],
-  ["Grupo A", "Coreia do Sul", "ChÃ©quia", "2026-06-12T03:00"],
-  ["Grupo B", "CanadÃ¡", "BÃ³snia", "2026-06-12T20:00"],
+  ["Grupo A", "México", "África do Sul", "2026-06-11T20:00"],
+  ["Grupo A", "Coreia do Sul", "Chéquia", "2026-06-12T03:00"],
+  ["Grupo B", "Canadá", "Bósnia", "2026-06-12T20:00"],
   ["Grupo D", "Estados Unidos", "Paraguai", "2026-06-13T02:00"],
-  ["Grupo B", "Qatar", "SuÃ­Ã§a", "2026-06-13T20:00"],
+  ["Grupo B", "Qatar", "Suíça", "2026-06-13T20:00"],
   ["Grupo C", "Brasil", "Marrocos", "2026-06-13T23:00"],
-  ["Grupo C", "Haiti", "EscÃ³cia", "2026-06-14T02:00"],
-  ["Grupo D", "AustrÃ¡lia", "Turquia", "2026-06-14T05:00"],
-  ["Grupo E", "Alemanha", "CuraÃ§ao", "2026-06-14T18:00"],
-  ["Grupo F", "PaÃ­ses Baixos", "JapÃ£o", "2026-06-14T21:00"],
+  ["Grupo C", "Haiti", "Escócia", "2026-06-14T02:00"],
+  ["Grupo D", "Austrália", "Turquia", "2026-06-14T05:00"],
+  ["Grupo E", "Alemanha", "Curaçao", "2026-06-14T18:00"],
+  ["Grupo F", "Países Baixos", "Japão", "2026-06-14T21:00"],
   ["Grupo E", "Costa do Marfim", "Equador", "2026-06-15T00:00"],
-  ["Grupo F", "SuÃ©cia", "TunÃ­sia", "2026-06-15T03:00"],
+  ["Grupo F", "Suécia", "Tunísia", "2026-06-15T03:00"],
   ["Grupo H", "Espanha", "Cabo Verde", "2026-06-15T17:00"],
-  ["Grupo G", "BÃ©lgica", "Egito", "2026-06-15T20:00"],
-  ["Grupo H", "ArÃ¡bia Saudita", "Uruguai", "2026-06-15T23:00"],
-  ["Grupo G", "IrÃ£o", "Nova ZelÃ¢ndia", "2026-06-16T02:00"],
-  ["Grupo I", "FranÃ§a", "Senegal", "2026-06-16T20:00"],
+  ["Grupo G", "Bélgica", "Egito", "2026-06-15T20:00"],
+  ["Grupo H", "Arábia Saudita", "Uruguai", "2026-06-15T23:00"],
+  ["Grupo G", "Irão", "Nova Zelândia", "2026-06-16T02:00"],
+  ["Grupo I", "França", "Senegal", "2026-06-16T20:00"],
   ["Grupo I", "Iraque", "Noruega", "2026-06-16T23:00"],
-  ["Grupo J", "Argentina", "ArgÃ©lia", "2026-06-17T02:00"],
-  ["Grupo J", "Ãustria", "JordÃ¢nia", "2026-06-17T05:00"],
+  ["Grupo J", "Argentina", "Argélia", "2026-06-17T02:00"],
+  ["Grupo J", "Áustria", "Jordânia", "2026-06-17T05:00"],
   ["Grupo K", "Portugal", "RD Congo", "2026-06-17T18:00"],
-  ["Grupo L", "Inglaterra", "CroÃ¡cia", "2026-06-17T21:00"],
-  ["Grupo L", "Gana", "PanamÃ¡", "2026-06-18T00:00"],
-  ["Grupo K", "UzbequistÃ£o", "ColÃ´mbia", "2026-06-18T03:00"],
-  ["Grupo A", "ChÃ©quia", "Ãfrica do Sul", "2026-06-18T17:00"],
-  ["Grupo B", "SuÃ­Ã§a", "BÃ³snia", "2026-06-18T20:00"],
-  ["Grupo B", "CanadÃ¡", "Qatar", "2026-06-18T23:00"],
-  ["Grupo A", "MÃ©xico", "Coreia do Sul", "2026-06-19T02:00"],
-  ["Grupo D", "Estados Unidos", "AustrÃ¡lia", "2026-06-19T20:00"],
-  ["Grupo C", "EscÃ³cia", "Marrocos", "2026-06-19T23:00"],
+  ["Grupo L", "Inglaterra", "Croácia", "2026-06-17T21:00"],
+  ["Grupo L", "Gana", "Panamá", "2026-06-18T00:00"],
+  ["Grupo K", "Uzbequistão", "Colômbia", "2026-06-18T03:00"],
+  ["Grupo A", "Chéquia", "África do Sul", "2026-06-18T17:00"],
+  ["Grupo B", "Suíça", "Bósnia", "2026-06-18T20:00"],
+  ["Grupo B", "Canadá", "Qatar", "2026-06-18T23:00"],
+  ["Grupo A", "México", "Coreia do Sul", "2026-06-19T02:00"],
+  ["Grupo D", "Estados Unidos", "Austrália", "2026-06-19T20:00"],
+  ["Grupo C", "Escócia", "Marrocos", "2026-06-19T23:00"],
   ["Grupo C", "Brasil", "Haiti", "2026-06-20T01:30"],
   ["Grupo D", "Turquia", "Paraguai", "2026-06-20T04:00"],
-  ["Grupo F", "PaÃ­ses Baixos", "SuÃ©cia", "2026-06-20T18:00"],
+  ["Grupo F", "Países Baixos", "Suécia", "2026-06-20T18:00"],
   ["Grupo E", "Alemanha", "Costa do Marfim", "2026-06-20T21:00"],
-  ["Grupo E", "Equador", "CuraÃ§ao", "2026-06-21T01:00"],
-  ["Grupo F", "TunÃ­sia", "JapÃ£o", "2026-06-21T05:00"],
-  ["Grupo H", "Espanha", "ArÃ¡bia Saudita", "2026-06-21T17:00"],
-  ["Grupo G", "BÃ©lgica", "IrÃ£o", "2026-06-21T20:00"],
+  ["Grupo E", "Equador", "Curaçao", "2026-06-21T01:00"],
+  ["Grupo F", "Tunísia", "Japão", "2026-06-21T05:00"],
+  ["Grupo H", "Espanha", "Arábia Saudita", "2026-06-21T17:00"],
+  ["Grupo G", "Bélgica", "Irão", "2026-06-21T20:00"],
   ["Grupo H", "Uruguai", "Cabo Verde", "2026-06-21T23:00"],
-  ["Grupo G", "Nova ZelÃ¢ndia", "Egito", "2026-06-22T02:00"],
-  ["Grupo J", "Argentina", "Ãustria", "2026-06-22T18:00"],
-  ["Grupo I", "FranÃ§a", "Iraque", "2026-06-22T22:00"],
+  ["Grupo G", "Nova Zelândia", "Egito", "2026-06-22T02:00"],
+  ["Grupo J", "Argentina", "Áustria", "2026-06-22T18:00"],
+  ["Grupo I", "França", "Iraque", "2026-06-22T22:00"],
   ["Grupo I", "Noruega", "Senegal", "2026-06-23T01:00"],
-  ["Grupo J", "JordÃ¢nia", "ArgÃ©lia", "2026-06-23T04:00"],
-  ["Grupo K", "Portugal", "UzbequistÃ£o", "2026-06-23T18:00"],
+  ["Grupo J", "Jordânia", "Argélia", "2026-06-23T04:00"],
+  ["Grupo K", "Portugal", "Uzbequistão", "2026-06-23T18:00"],
   ["Grupo L", "Inglaterra", "Gana", "2026-06-23T21:00"],
-  ["Grupo L", "PanamÃ¡", "CroÃ¡cia", "2026-06-24T00:00"],
-  ["Grupo K", "ColÃ´mbia", "RD Congo", "2026-06-24T03:00"],
-  ["Grupo B", "SuÃ­Ã§a", "CanadÃ¡", "2026-06-24T20:00"],
-  ["Grupo B", "BÃ³snia", "Qatar", "2026-06-24T20:00"],
-  ["Grupo C", "EscÃ³cia", "Brasil", "2026-06-24T23:00"],
+  ["Grupo L", "Panamá", "Croácia", "2026-06-24T00:00"],
+  ["Grupo K", "Colômbia", "RD Congo", "2026-06-24T03:00"],
+  ["Grupo B", "Suíça", "Canadá", "2026-06-24T20:00"],
+  ["Grupo B", "Bósnia", "Qatar", "2026-06-24T20:00"],
+  ["Grupo C", "Escócia", "Brasil", "2026-06-24T23:00"],
   ["Grupo C", "Marrocos", "Haiti", "2026-06-24T23:00"],
-  ["Grupo A", "Ãfrica do Sul", "Coreia do Sul", "2026-06-25T02:00"],
-  ["Grupo A", "ChÃ©quia", "MÃ©xico", "2026-06-25T02:00"],
-  ["Grupo E", "CuraÃ§ao", "Costa do Marfim", "2026-06-25T21:00"],
+  ["Grupo A", "África do Sul", "Coreia do Sul", "2026-06-25T02:00"],
+  ["Grupo A", "Chéquia", "México", "2026-06-25T02:00"],
+  ["Grupo E", "Curaçao", "Costa do Marfim", "2026-06-25T21:00"],
   ["Grupo E", "Equador", "Alemanha", "2026-06-25T21:00"],
-  ["Grupo F", "TunÃ­sia", "PaÃ­ses Baixos", "2026-06-26T00:00"],
-  ["Grupo F", "JapÃ£o", "SuÃ©cia", "2026-06-26T00:00"],
+  ["Grupo F", "Tunísia", "Países Baixos", "2026-06-26T00:00"],
+  ["Grupo F", "Japão", "Suécia", "2026-06-26T00:00"],
   ["Grupo D", "Turquia", "Estados Unidos", "2026-06-26T03:00"],
-  ["Grupo D", "Paraguai", "AustrÃ¡lia", "2026-06-26T03:00"],
-  ["Grupo I", "Noruega", "FranÃ§a", "2026-06-26T20:00"],
+  ["Grupo D", "Paraguai", "Austrália", "2026-06-26T03:00"],
+  ["Grupo I", "Noruega", "França", "2026-06-26T20:00"],
   ["Grupo I", "Senegal", "Iraque", "2026-06-26T20:00"],
-  ["Grupo H", "Cabo Verde", "ArÃ¡bia Saudita", "2026-06-27T01:00"],
+  ["Grupo H", "Cabo Verde", "Arábia Saudita", "2026-06-27T01:00"],
   ["Grupo H", "Uruguai", "Espanha", "2026-06-27T01:00"],
-  ["Grupo G", "Nova ZelÃ¢ndia", "BÃ©lgica", "2026-06-27T04:00"],
-  ["Grupo G", "Egito", "IrÃ£o", "2026-06-27T04:00"],
-  ["Grupo L", "PanamÃ¡", "Inglaterra", "2026-06-27T22:00"],
-  ["Grupo L", "CroÃ¡cia", "Gana", "2026-06-27T22:00"],
-  ["Grupo K", "ColÃ´mbia", "Portugal", "2026-06-28T00:30"],
-  ["Grupo K", "RD Congo", "UzbequistÃ£o", "2026-06-28T00:30"],
-  ["Grupo J", "ArgÃ©lia", "Ãustria", "2026-06-28T03:00"],
-  ["Grupo J", "JordÃ¢nia", "Argentina", "2026-06-28T03:00"]
+  ["Grupo G", "Nova Zelândia", "Bélgica", "2026-06-27T04:00"],
+  ["Grupo G", "Egito", "Irão", "2026-06-27T04:00"],
+  ["Grupo L", "Panamá", "Inglaterra", "2026-06-27T22:00"],
+  ["Grupo L", "Croácia", "Gana", "2026-06-27T22:00"],
+  ["Grupo K", "Colômbia", "Portugal", "2026-06-28T00:30"],
+  ["Grupo K", "RD Congo", "Uzbequistão", "2026-06-28T00:30"],
+  ["Grupo J", "Argélia", "Áustria", "2026-06-28T03:00"],
+  ["Grupo J", "Jordânia", "Argentina", "2026-06-28T03:00"]
 ];
 
 const FLAGS = {
-  "Portugal": "ðŸ‡µðŸ‡¹",
-  "Ãfrica do Sul": "ðŸ‡¿ðŸ‡¦",
-  "MÃ©xico": "ðŸ‡²ðŸ‡½",
-  "Coreia do Sul": "ðŸ‡°ðŸ‡·",
-  "ChÃ©quia": "ðŸ‡¨ðŸ‡¿",
-  "CanadÃ¡": "ðŸ‡¨ðŸ‡¦",
-  "BÃ³snia": "ðŸ‡§ðŸ‡¦",
-  "Estados Unidos": "ðŸ‡ºðŸ‡¸",
-  "Paraguai": "ðŸ‡µðŸ‡¾",
-  "Qatar": "ðŸ‡¶ðŸ‡¦",
-  "SuÃ­Ã§a": "ðŸ‡¨ðŸ‡­",
-  "Brasil": "ðŸ‡§ðŸ‡·",
-  "Marrocos": "ðŸ‡²ðŸ‡¦",
-  "Haiti": "ðŸ‡­ðŸ‡¹",
-  "EscÃ³cia": "ðŸ´",
-  "AustrÃ¡lia": "ðŸ‡¦ðŸ‡º",
-  "Turquia": "ðŸ‡¹ðŸ‡·",
-  "Alemanha": "ðŸ‡©ðŸ‡ª",
-  "CuraÃ§ao": "ðŸ‡¨ðŸ‡¼",
-  "PaÃ­ses Baixos": "ðŸ‡³ðŸ‡±",
-  "JapÃ£o": "ðŸ‡¯ðŸ‡µ",
-  "Costa do Marfim": "ðŸ‡¨ðŸ‡®",
-  "Equador": "ðŸ‡ªðŸ‡¨",
-  "SuÃ©cia": "ðŸ‡¸ðŸ‡ª",
-  "TunÃ­sia": "ðŸ‡¹ðŸ‡³",
-  "Espanha": "ðŸ‡ªðŸ‡¸",
-  "Cabo Verde": "ðŸ‡¨ðŸ‡»",
-  "BÃ©lgica": "ðŸ‡§ðŸ‡ª",
-  "Egito": "ðŸ‡ªðŸ‡¬",
-  "ArÃ¡bia Saudita": "ðŸ‡¸ðŸ‡¦",
-  "Uruguai": "ðŸ‡ºðŸ‡¾",
-  "IrÃ£o": "ðŸ‡®ðŸ‡·",
-  "Nova ZelÃ¢ndia": "ðŸ‡³ðŸ‡¿",
-  "FranÃ§a": "ðŸ‡«ðŸ‡·",
-  "Senegal": "ðŸ‡¸ðŸ‡³",
-  "Iraque": "ðŸ‡®ðŸ‡¶",
-  "Noruega": "ðŸ‡³ðŸ‡´",
-  "Argentina": "ðŸ‡¦ðŸ‡·",
-  "ArgÃ©lia": "ðŸ‡©ðŸ‡¿",
-  "Ãustria": "ðŸ‡¦ðŸ‡¹",
-  "JordÃ¢nia": "ðŸ‡¯ðŸ‡´",
-  "RD Congo": "ðŸ‡¨ðŸ‡©",
-  "Inglaterra": "ðŸ´",
-  "CroÃ¡cia": "ðŸ‡­ðŸ‡·",
-  "Gana": "ðŸ‡¬ðŸ‡­",
-  "PanamÃ¡": "ðŸ‡µðŸ‡¦",
-  "UzbequistÃ£o": "ðŸ‡ºðŸ‡¿",
-  "ColÃ´mbia": "ðŸ‡¨ðŸ‡´"
+  "Portugal": "🇵🇹",
+  "África do Sul": "🇿🇦",
+  "México": "🇲🇽",
+  "Coreia do Sul": "🇰🇷",
+  "Chéquia": "🇨🇿",
+  "Canadá": "🇨🇦",
+  "Bósnia": "🇧🇦",
+  "Estados Unidos": "🇺🇸",
+  "Paraguai": "🇵🇾",
+  "Qatar": "🇶🇦",
+  "Suíça": "🇨🇭",
+  "Brasil": "🇧🇷",
+  "Marrocos": "🇲🇦",
+  "Haiti": "🇭🇹",
+  "Escócia": "🏴",
+  "Austrália": "🇦🇺",
+  "Turquia": "🇹🇷",
+  "Alemanha": "🇩🇪",
+  "Curaçao": "🇨🇼",
+  "Países Baixos": "🇳🇱",
+  "Japão": "🇯🇵",
+  "Costa do Marfim": "🇨🇮",
+  "Equador": "🇪🇨",
+  "Suécia": "🇸🇪",
+  "Tunísia": "🇹🇳",
+  "Espanha": "🇪🇸",
+  "Cabo Verde": "🇨🇻",
+  "Bélgica": "🇧🇪",
+  "Egito": "🇪🇬",
+  "Arábia Saudita": "🇸🇦",
+  "Uruguai": "🇺🇾",
+  "Irão": "🇮🇷",
+  "Nova Zelândia": "🇳🇿",
+  "França": "🇫🇷",
+  "Senegal": "🇸🇳",
+  "Iraque": "🇮🇶",
+  "Noruega": "🇳🇴",
+  "Argentina": "🇦🇷",
+  "Argélia": "🇩🇿",
+  "Áustria": "🇦🇹",
+  "Jordânia": "🇯🇴",
+  "RD Congo": "🇨🇩",
+  "Inglaterra": "🏴",
+  "Croácia": "🇭🇷",
+  "Gana": "🇬🇭",
+  "Panamá": "🇵🇦",
+  "Uzbequistão": "🇺🇿",
+  "Colômbia": "🇨🇴"
 };
 
 const TEAM_ALIASES = {
-  "mexico": "MÃ©xico", "africa do sul": "Ãfrica do Sul", "Ã¡frica do sul": "Ãfrica do Sul",
-  "coreia do sul": "Coreia do Sul", "republica checa": "ChÃ©quia", "rep checa": "ChÃ©quia", "czechia": "ChÃ©quia", "czech republic": "ChÃ©quia", "repÃºblica checa": "ChÃ©quia", "chequia": "ChÃ©quia", "chÃ©quia": "ChÃ©quia",
-  "canada": "CanadÃ¡", "bosnia": "BÃ³snia", "bosnia e herzegovina": "BÃ³snia", "bÃ³snia e herzegovina": "BÃ³snia", "bÃ³snia": "BÃ³snia", "bosnia-herzegovina": "BÃ³snia", "bÃ³snia-herzegovina": "BÃ³snia",
-  "qatar": "Qatar", "suica": "SuÃ­Ã§a", "suiÃ§a": "SuÃ­Ã§a", "suÃ­Ã§a": "SuÃ­Ã§a", "brasil": "Brasil", "marrocos": "Marrocos",
-  "haiti": "Haiti", "escocia": "EscÃ³cia", "escÃ³cia": "EscÃ³cia", "australia": "AustrÃ¡lia", "austrÃ¡lia": "AustrÃ¡lia",
-  "turquia": "Turquia", "alemanha": "Alemanha", "curacao": "CuraÃ§ao", "curaÃ§ao": "CuraÃ§ao",
-  "paises baixos": "PaÃ­ses Baixos", "holanda": "PaÃ­ses Baixos", "netherlands": "PaÃ­ses Baixos", "paÃ­ses baixos": "PaÃ­ses Baixos", "japao": "JapÃ£o", "japÃ£o": "JapÃ£o",
-  "costa do marfim": "Costa do Marfim", "equador": "Equador", "suecia": "SuÃ©cia", "suÃ©cia": "SuÃ©cia",
-  "tunisia": "TunÃ­sia", "tunÃ­sia": "TunÃ­sia", "espanha": "Espanha", "cabo verde": "Cabo Verde",
-  "belgica": "BÃ©lgica", "bÃ©lgica": "BÃ©lgica", "egito": "Egito", "arabia saudita": "ArÃ¡bia Saudita", "arÃ¡bia saudita": "ArÃ¡bia Saudita",
-  "uruguai": "Uruguai", "irao": "IrÃ£o", "irÃ£o": "IrÃ£o", "nova zelandia": "Nova ZelÃ¢ndia", "nova zelÃ¢ndia": "Nova ZelÃ¢ndia",
-  "franca": "FranÃ§a", "franÃ§a": "FranÃ§a", "senegal": "Senegal", "iraque": "Iraque", "noruega": "Noruega",
-  "argentina": "Argentina", "argelia": "ArgÃ©lia", "argÃ©lia": "ArgÃ©lia", "austria": "Ãustria", "Ã¡ustria": "Ãustria",
-  "jordania": "JordÃ¢nia", "jordÃ¢nia": "JordÃ¢nia", "rd congo": "RD Congo", "r d congo": "RD Congo", "dr congo": "RD Congo", "congo dr": "RD Congo", "r.d. congo": "RD Congo", "r d. congo": "RD Congo", "rd. congo": "RD Congo", "r.d congo": "RD Congo", "rdcongo": "RD Congo", "rdc": "RD Congo", "congo rd": "RD Congo", "d r congo": "RD Congo", "d.r. congo": "RD Congo", "democratic republic of congo": "RD Congo",
-  "republica democratica do congo": "RD Congo", "rep democratica do congo": "RD Congo", "repÃºblica democrÃ¡tica do congo": "RD Congo", "inglaterra": "Inglaterra", "croacia": "CroÃ¡cia", "croÃ¡cia": "CroÃ¡cia",
-  "gana": "Gana", "panama": "PanamÃ¡", "panamÃ¡": "PanamÃ¡", "uzbequistao": "UzbequistÃ£o", "uzbequistÃ£o": "UzbequistÃ£o", "uzbekistan": "UzbequistÃ£o",
-  "colombia": "ColÃ´mbia", "colÃ´mbia": "ColÃ´mbia", "columbia": "ColÃ´mbia"
+  "mexico": "México", "africa do sul": "África do Sul", "áfrica do sul": "África do Sul",
+  "coreia do sul": "Coreia do Sul", "republica checa": "Chéquia", "rep checa": "Chéquia", "czechia": "Chéquia", "czech republic": "Chéquia", "república checa": "Chéquia", "chequia": "Chéquia", "chéquia": "Chéquia",
+  "canada": "Canadá", "bosnia": "Bósnia", "bosnia e herzegovina": "Bósnia", "bósnia e herzegovina": "Bósnia", "bósnia": "Bósnia", "bosnia-herzegovina": "Bósnia", "bósnia-herzegovina": "Bósnia",
+  "qatar": "Qatar", "suica": "Suíça", "suiça": "Suíça", "suíça": "Suíça", "brasil": "Brasil", "marrocos": "Marrocos",
+  "haiti": "Haiti", "escocia": "Escócia", "escócia": "Escócia", "australia": "Austrália", "austrália": "Austrália",
+  "turquia": "Turquia", "alemanha": "Alemanha", "curacao": "Curaçao", "curaçao": "Curaçao",
+  "paises baixos": "Países Baixos", "holanda": "Países Baixos", "netherlands": "Países Baixos", "países baixos": "Países Baixos", "japao": "Japão", "japão": "Japão",
+  "costa do marfim": "Costa do Marfim", "equador": "Equador", "suecia": "Suécia", "suécia": "Suécia",
+  "tunisia": "Tunísia", "tunísia": "Tunísia", "espanha": "Espanha", "cabo verde": "Cabo Verde",
+  "belgica": "Bélgica", "bélgica": "Bélgica", "egito": "Egito", "arabia saudita": "Arábia Saudita", "arábia saudita": "Arábia Saudita",
+  "uruguai": "Uruguai", "irao": "Irão", "irão": "Irão", "nova zelandia": "Nova Zelândia", "nova zelândia": "Nova Zelândia",
+  "franca": "França", "frança": "França", "senegal": "Senegal", "iraque": "Iraque", "noruega": "Noruega",
+  "argentina": "Argentina", "argelia": "Argélia", "argélia": "Argélia", "austria": "Áustria", "áustria": "Áustria",
+  "jordania": "Jordânia", "jordânia": "Jordânia", "rd congo": "RD Congo", "r d congo": "RD Congo", "dr congo": "RD Congo", "congo dr": "RD Congo", "r.d. congo": "RD Congo", "r d. congo": "RD Congo", "rd. congo": "RD Congo", "r.d congo": "RD Congo", "rdcongo": "RD Congo", "rdc": "RD Congo", "congo rd": "RD Congo", "d r congo": "RD Congo", "d.r. congo": "RD Congo", "democratic republic of congo": "RD Congo",
+  "republica democratica do congo": "RD Congo", "rep democratica do congo": "RD Congo", "república democrática do congo": "RD Congo", "inglaterra": "Inglaterra", "croacia": "Croácia", "croácia": "Croácia",
+  "gana": "Gana", "panama": "Panamá", "panamá": "Panamá", "uzbequistao": "Uzbequistão", "uzbequistão": "Uzbequistão", "uzbekistan": "Uzbequistão",
+  "colombia": "Colômbia", "colômbia": "Colômbia", "columbia": "Colômbia"
 };
 
 const SEED_GAMES = MATCH_ROWS.map(([group, homeTeam, awayTeam, matchDate], index) => ({
@@ -184,7 +184,7 @@ const SEED_GAMES = MATCH_ROWS.map(([group, homeTeam, awayTeam, matchDate], index
 const $ = id => document.getElementById(id);
 const clone = value => JSON.parse(JSON.stringify(value));
 const hasResult = game => game.homeScore !== null && game.homeScore !== undefined && game.awayScore !== null && game.awayScore !== undefined;
-const flag = team => FLAGS[team] || "ðŸ³ï¸";
+const flag = team => FLAGS[team] || "🏳ï¸";
 const outcome = (home, away) => Number(home) > Number(away) ? "home" : Number(home) < Number(away) ? "away" : "draw";
 const normalizeKey = value => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const normalizeComparable = value => normalizeKey(value);
@@ -300,7 +300,7 @@ function saveLocalData(reason = "") {
 
 
 
-function withTimeout(promise, ms = 12000, label = "operaÃ§Ã£o") {
+function withTimeout(promise, ms = 12000, label = "operação") {
   let timer;
   const timeout = new Promise((_, reject) => {
     timer = setTimeout(() => reject(new Error(`${label} demorou demasiado tempo`)), ms);
@@ -525,8 +525,8 @@ async function initFirebase() {
     firebaseAuth = null;
     firebaseAuthApi = null;
     storageMode = "local";
-    setFirebaseStatus("error", "Firebase: configuraÃ§Ã£o em falta no config.js");
-    setLoginStatus("Firebase: configuraÃ§Ã£o em falta no config.js", "error");
+    setFirebaseStatus("error", "Firebase: configuração em falta no config.js");
+    setLoginStatus("Firebase: configuração em falta no config.js", "error");
     return false;
   }
 
@@ -547,14 +547,14 @@ async function initFirebase() {
     setLoginStatus("Firebase ligado. Faz login.", "success");
     return true;
   } catch (error) {
-    console.error("Firebase nÃ£o ligou:", error);
+    console.error("Firebase não ligou:", error);
     db = null;
     firebaseApi = null;
     firebaseAuth = null;
     firebaseAuthApi = null;
     storageMode = "local";
-    setFirebaseStatus("error", `Firebase: nÃ£o ligou â€” ${error.message || "erro"}`);
-    setLoginStatus(`Firebase nÃ£o ligou â€” ${error.message || "erro"}`, "error");
+    setFirebaseStatus("error", `Firebase: não ligou — ${error.message || "erro"}`);
+    setLoginStatus(`Firebase não ligou — ${error.message || "erro"}`, "error");
     return false;
   }
 }
@@ -580,27 +580,27 @@ function applyLocalSnapshotIfBetter(context = "") {
       }
     }
   } catch (error) {
-    console.warn("NÃ£o foi possÃ­vel comparar dados locais.", error);
+    console.warn("Não foi possível comparar dados locais.", error);
   }
 }
 
 
 async function safeGetCollection(name) {
-  if (!db || !firebaseApi) return { docs: [], ok: false, error: "Firebase nÃ£o iniciado" };
+  if (!db || !firebaseApi) return { docs: [], ok: false, error: "Firebase não iniciado" };
 
   try {
     const { collection, getDocs } = firebaseApi;
     const snap = await withTimeout(getDocs(collection(db, name)), 12000, `ler ${name}`);
     return { docs: snap.docs, empty: snap.empty, ok: true, error: "" };
   } catch (error) {
-    console.error(`Erro ao ler coleÃ§Ã£o ${name}:`, error);
+    console.error(`Erro ao ler coleção ${name}:`, error);
     return { docs: [], empty: true, ok: false, error: error.message || String(error) };
   }
 }
 
 function shortFirebaseError(error) {
   const text = String(error || "");
-  if (text.includes("Missing or insufficient permissions")) return "sem permissÃµes nas regras";
+  if (text.includes("Missing or insufficient permissions")) return "sem permissões nas regras";
   if (text.includes("Failed to fetch")) return "falha de rede/CORS";
   if (text.includes("demorou demasiado")) return "tempo esgotado";
   return text.slice(0, 90) || "erro desconhecido";
@@ -630,7 +630,7 @@ async function loadData() {
     const betsSnap = localBets.length
       ? { docs: [], skipped: true }
       : await withTimeout(getDocs(collection(db, "bets")), 12000, "ler apostas");
-    const settingsSnap = await withTimeout(getDocs(collection(db, "settings")), 12000, "ler configuraÃ§Ãµes");
+    const settingsSnap = await withTimeout(getDocs(collection(db, "settings")), 12000, "ler configurações");
 
     const remoteGames = gamesSnap.docs.map(item => ({ id: item.id, ...item.data() }));
     const remoteBets = betsSnap.docs.map(item => ({ id: item.id, ...item.data() }));
@@ -648,7 +648,7 @@ async function loadData() {
       games = localGames.length ? localGames : clone(SEED_GAMES);
       setTimeout(() => {
         Promise.all(games.map(game => setDoc(doc(db, "games", game.id), game, { merge: true })))
-          .catch(error => console.warn("NÃ£o conseguiu criar jogos no Firebase", error));
+          .catch(error => console.warn("Não conseguiu criar jogos no Firebase", error));
       }, 200);
     }
 
@@ -656,8 +656,8 @@ async function loadData() {
     appSettings = mergeSettings(mainSettingsDoc ? mainSettingsDoc.data() : localSettings);
     ensureKnockoutSettings();
 
-    saveLocalData("firebase carregado estÃ¡vel");
-    setFirebaseStatus("success", `Firebase: ligado Â· ${bets.length} apostas carregadas`);
+    saveLocalData("firebase carregado estável");
+    setFirebaseStatus("success", `Firebase: ligado · ${bets.length} apostas carregadas`);
     renderAll();
 
     if (!betsSnap.skipped && !remoteBets.length && localBets.length && pendingBetIds().length) {
@@ -673,7 +673,7 @@ async function loadData() {
     appSettings = mergeSettings(local.settings || local.appSettings);
     ensureKnockoutSettings();
     storageMode = "local";
-    setFirebaseStatus("error", `Firebase: erro ao carregar â€” ${error.message || "ver consola"}`);
+    setFirebaseStatus("error", `Firebase: erro ao carregar — ${error.message || "ver consola"}`);
     renderAll();
   }
 }
@@ -733,8 +733,8 @@ function setupRealtimeSync() {
   realtimeUnsubscribers.push(onSnapshot(doc(db, "settings", "main"), snap => {
     if (!snap.exists() || hasSettingsPending()) return;
     appSettings = mergeSettings(snap.data() || {});
-    queueRealtimeRender("firebase realtime configuracoes");
-  }, error => console.warn("Realtime configuracoes falhou:", error)));
+    queueRealtimeRender("firebase realtime configurações");
+  }, error => console.warn("Realtime configurações falhou:", error)));
 
   realtimeUnsubscribers.push(onSnapshot(doc(db, "users", normalizeEmail(currentUser.email)), async snap => {
     if (!snap.exists()) return;
@@ -798,7 +798,7 @@ async function persistAllGames() {
    * quando o Firestore esta lento, offline ou sem permissoes.
    */
   games.forEach(game => {
-    if (hasResult(game) && !game.updatedAt) stampGame(game, "migraÃ§Ã£o resultado existente");
+    if (hasResult(game) && !game.updatedAt) stampGame(game, "migração resultado existente");
   });
   games.forEach(game => markGamePending(game.id));
   scheduleFullSync("guardar jogos", 300);
@@ -828,8 +828,8 @@ async function persistAllBets(importedBets, replaceImported = true) {
 
 async function persistSettings() {
   markSettingsPending();
-  saveLocalData("guardar configuracoes local");
-  scheduleFullSync("guardar configuracoes", 300);
+  saveLocalData("guardar configurações local");
+  scheduleFullSync("guardar configurações", 300);
 }
 
 function betsForGame(gameId) { return bets.filter(bet => bet.gameId === gameId); }
@@ -852,10 +852,10 @@ function pointsForBet(bet, game) {
   const winnerPoints = Number(appSettings?.points?.winner) || 1;
 
   // Regra 1: resultado exato certo recebe 3 pontos.
-  // Regra 2: se acertar o resultado exato, nÃ£o acumula o ponto do vencedor/empate.
+  // Regra 2: se acertar o resultado exato, não acumula o ponto do vencedor/empate.
   if (isExactBet(bet, game)) return exactPoints;
 
-  // Regra 3: se nÃ£o acertou o resultado, mas acertou vencedor/empate, recebe 1 ponto.
+  // Regra 3: se não acertou o resultado, mas acertou vencedor/empate, recebe 1 ponto.
   if (isOutcomeBet(bet, game)) return winnerPoints;
 
   return 0;
@@ -919,8 +919,8 @@ function playerStats(playerName) {
   stats.champion = extras.champion;
   stats.extraPoints = extras.total;
 
-  // Total mostrado na pÃ¡gina PontuaÃ§Ã£o: sempre calculado pela app.
-  // NÃ£o usa pontos importados do Excel.
+  // Total mostrado na página Pontuação: sempre calculado pela app.
+  // Não usa pontos importados do Excel.
   stats.points = stats.gamePoints + stats.extraPoints;
   stats.calculatedTotal = stats.points;
   stats.accuracy = stats.settled ? Math.round((stats.exact / stats.settled) * 100) : 0;
@@ -966,8 +966,8 @@ async function saveGameFastToFirebase(game, options = {}) {
   saveLocalData("saveGameFast local");
 
   if (!db || !firebaseApi || storageMode !== "firebase") {
-    setFirebaseStatus("error", "Firebase: nÃ£o estÃ¡ ligado â€” resultado ficou sÃ³ local");
-    throw new Error("Firebase nÃ£o estÃ¡ ligado");
+    setFirebaseStatus("error", "Firebase: não está ligado — resultado ficou só local");
+    throw new Error("Firebase não está ligado");
   }
 
   const { doc, setDoc, serverTimestamp } = firebaseApi;
@@ -1022,7 +1022,7 @@ async function saveBetsFastToFirebase(reason = "bets") {
   const ids = pendingBetIds();
   const betsToSave = ids.length ? bets.filter(bet => ids.includes(bet.id)) : bets;
 
-  // Lotes pequenos para nÃ£o deixar a app presa.
+  // Lotes pequenos para não deixar a app presa.
   const chunks = [];
   for (let i = 0; i < betsToSave.length; i += 250) chunks.push(betsToSave.slice(i, i + 250));
 
@@ -1128,7 +1128,7 @@ function rescueLocalBetsIfNeeded() {
       appSettings = mergeSettings(local.settings || local.appSettings);
     }
   } catch (error) {
-    console.warn("NÃ£o foi possÃ­vel recuperar apostas locais.", error);
+    console.warn("Não foi possível recuperar apostas locais.", error);
   }
 }
 
@@ -1234,7 +1234,7 @@ function updateSessionBox() {
   }
   box.classList.remove("hidden");
   const role = currentProfile?.role === "admin" ? "Admin" : "User";
-  label.textContent = `${currentUser.email || "Conta"} Â· ${role}`;
+  label.textContent = `${currentUser.email || "Conta"} · ${role}`;
 }
 
 async function readUserProfile(user) {
@@ -1287,7 +1287,7 @@ async function loadPermissionsUsers() {
     permissionsCache = snap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
       .sort((a, b) => normalizeEmail(a.email || a.id).localeCompare(normalizeEmail(b.email || b.id)));
   } catch (error) {
-    console.error("Erro ao carregar permissÃµes:", error);
+    console.error("Erro ao carregar permissões:", error);
   }
 }
 
@@ -1304,18 +1304,18 @@ function renderPermissionsUsers() {
   if (!list) return;
 
   if (!hasPermission("managePermissions")) {
-    list.innerHTML = `<div class="empty small-empty">NÃ£o tens permissÃ£o para gerir utilizadores.</div>`;
+    list.innerHTML = `<div class="empty small-empty">Não tens permissão para gerir utilizadores.</div>`;
     return;
   }
 
   if (!permissionsCache.length) {
-    list.innerHTML = `<div class="empty small-empty">Ainda nÃ£o existem utilizadores registados.</div>`;
+    list.innerHTML = `<div class="empty small-empty">Ainda não existem utilizadores registados.</div>`;
     return;
   }
 
   const labels = {
-    calendar: "CalendÃ¡rio",
-    score: "PontuaÃ§Ã£o",
+    calendar: "Calendário",
+    score: "Pontuação",
     knockout: "Fase Final",
     admin: "Admin",
     editResults: "Editar resultados",
@@ -1323,7 +1323,7 @@ function renderPermissionsUsers() {
     editUsers: "Users do jogo",
     editPoints: "Sistema pontos",
     editKnockout: "Editar Fase Final",
-    managePermissions: "PermissÃµes"
+    managePermissions: "Permissões"
   };
 
   list.innerHTML = permissionsCache.map(user => {
@@ -1338,7 +1338,7 @@ function renderPermissionsUsers() {
         <div class="permission-user-head">
           <div>
             <strong>${escapeHtml(email)}</strong>
-            <span>${isAdminUser ? "Admin" : "User normal"} Â· ${active ? "Ativo" : "Bloqueado"}</span>
+            <span>${isAdminUser ? "Admin" : "User normal"} · ${active ? "Ativo" : "Bloqueado"}</span>
           </div>
           <div class="permission-user-actions">
             <select data-role-email="${escapeHtml(email)}">
@@ -1361,11 +1361,11 @@ function renderPermissionsUsers() {
 }
 
 async function savePermissionUser(email) {
-  if (!db || !firebaseApi) return toast("Firebase nÃ£o estÃ¡ ligado.");
-  if (!hasPermission("managePermissions")) return toast("Sem permissÃ£o para gerir utilizadores.");
+  if (!db || !firebaseApi) return toast("Firebase não está ligado.");
+  if (!hasPermission("managePermissions")) return toast("Sem permissão para gerir utilizadores.");
 
   const normalized = normalizeEmail(email);
-  if (!normalized) return toast("Email invÃ¡lido.");
+  if (!normalized) return toast("Email inválido.");
 
   const card = document.querySelector(`[data-permission-card="${CSS.escape(normalized)}"]`);
   const role = document.querySelector(`[data-role-email="${CSS.escape(normalized)}"]`)?.value || $("permissionRoleInput")?.value || "user";
@@ -1389,8 +1389,8 @@ async function savePermissionUser(email) {
   };
 
   const { doc, setDoc } = firebaseApi;
-  await withTimeout(setDoc(doc(db, "users", normalized), profile, { merge: true }), 12000, "guardar permissÃµes");
-  toast("PermissÃµes guardadas.");
+  await withTimeout(setDoc(doc(db, "users", normalized), profile, { merge: true }), 12000, "guardar permissões");
+  toast("Permissões guardadas.");
   await loadPermissionsUsers();
   renderPermissionsUsers();
 
@@ -1434,7 +1434,7 @@ function applyPermissionsToUi() {
 
   $("adminTab")?.classList.toggle("no-access", !hasPermission("admin"));
 
-  // AÃ§Ãµes admin
+  // Ações admin
   document.querySelectorAll("[data-result-game]").forEach(btn => {
     const inAdmin = btn.closest("#adminTab");
     if (inAdmin && !hasPermission("editResults")) btn.classList.add("hidden");
@@ -1479,7 +1479,7 @@ function setupRememberedAccount() {
       rememberInput.checked = true;
     }
   } catch (error) {
-    console.warn("NÃ£o foi possÃ­vel ler email memorizado:", error);
+    console.warn("Não foi possível ler email memorizado:", error);
   }
 }
 
@@ -1495,13 +1495,13 @@ function saveRememberedAccount(email) {
       localStorage.removeItem(REMEMBER_EMAIL_KEY);
     }
   } catch (error) {
-    console.warn("NÃ£o foi possÃ­vel guardar email memorizado:", error);
+    console.warn("Não foi possível guardar email memorizado:", error);
   }
 }
 
 async function handleLogin() {
   if (!firebaseAuthApi || !firebaseAuth) {
-    setLoginStatus("Firebase/Auth nÃ£o estÃ¡ pronto.", "error");
+    setLoginStatus("Firebase/Auth não está pronto.", "error");
     return;
   }
 
@@ -1524,7 +1524,7 @@ async function handleLogin() {
 
 async function handleCreateAccount() {
   if (!firebaseAuthApi || !firebaseAuth) {
-    setLoginStatus("Firebase/Auth nÃ£o estÃ¡ pronto.", "error");
+    setLoginStatus("Firebase/Auth não está pronto.", "error");
     return;
   }
 
@@ -1548,8 +1548,8 @@ async function handleCreateAccount() {
 function authFriendlyError(error) {
   const code = String(error?.code || error?.message || "");
   if (code.includes("auth/invalid-credential") || code.includes("auth/wrong-password")) return "Email ou password incorretos.";
-  if (code.includes("auth/user-not-found")) return "Conta nÃ£o encontrada.";
-  if (code.includes("auth/email-already-in-use")) return "Este email jÃ¡ tem conta. Usa Entrar.";
+  if (code.includes("auth/user-not-found")) return "Conta não encontrada.";
+  if (code.includes("auth/email-already-in-use")) return "Este email já tem conta. Usa Entrar.";
   if (code.includes("auth/weak-password")) return "A password tem de ter pelo menos 6 caracteres.";
   if (code.includes("auth/operation-not-allowed")) return "Ativa Email/Password no Firebase Authentication.";
   return "Erro no login. Verifica o Firebase e tenta novamente.";
@@ -1558,7 +1558,7 @@ function authFriendlyError(error) {
 function setupAuthGate() {
   if (!firebaseAuthApi || !firebaseAuth) {
     showLoginScreen();
-    setLoginStatus("Firebase Auth nÃ£o estÃ¡ configurado.", "error");
+    setLoginStatus("Firebase Auth não está configurado.", "error");
     return;
   }
 
@@ -1575,7 +1575,7 @@ function setupAuthGate() {
     }
 
     try {
-      setLoginStatus("A carregar permissÃµes...", "loading");
+      setLoginStatus("A carregar permissões...", "loading");
       currentProfile = await readUserProfile(user);
 
       if (!currentProfile.active) {
@@ -1592,7 +1592,7 @@ function setupAuthGate() {
       setLoginStatus("Login efetuado.", "success");
     } catch (error) {
       console.error("Erro no arranque com login:", error);
-      setLoginStatus("Erro ao carregar permissÃµes.", "error");
+      setLoginStatus("Erro ao carregar permissões.", "error");
       showLoginScreen();
     }
   });
@@ -1601,7 +1601,7 @@ function setupAuthGate() {
 async function logout() {
   if (!firebaseAuthApi || !firebaseAuth) return;
   await firebaseAuthApi.signOut(firebaseAuth);
-  toast("SessÃ£o terminada.");
+  toast("Sessão terminada.");
 }
 
 const KNOCKOUT_ROUNDS = [
@@ -1614,17 +1614,17 @@ const KNOCKOUT_ROUNDS = [
 
 const KNOCKOUT_LAYOUT_KEYS = [
   ["r32_left", "Segunda fase esquerda"],
-  ["r16_left", "Oitavas esquerda"],
-  ["r16_left_pair_1", "Oitavas esquerda 1-2"],
-  ["r16_left_pair_2", "Oitavas esquerda 3-4"],
-  ["qf_left", "Quartas esquerda"],
-  ["sf_left", "Semifinal esquerda"],
+  ["r16_left", "Oitavos esquerda"],
+  ["r16_left_pair_1", "Oitavos esquerda 1-2"],
+  ["r16_left_pair_2", "Oitavos esquerda 3-4"],
+  ["qf_left", "Quartos esquerda"],
+  ["sf_left", "Meia-final esquerda"],
   ["center", "Final"],
-  ["sf_right", "Semifinal direita"],
-  ["qf_right", "Quartas direita"],
-  ["r16_right", "Oitavas direita"],
-  ["r16_right_pair_1", "Oitavas direita 5-6"],
-  ["r16_right_pair_2", "Oitavas direita 7-8"],
+  ["sf_right", "Meia-final direita"],
+  ["qf_right", "Quartos direita"],
+  ["r16_right", "Oitavos direita"],
+  ["r16_right_pair_1", "Oitavos direita 5-6"],
+  ["r16_right_pair_2", "Oitavos direita 7-8"],
   ["r32_right", "Segunda fase direita"]
 ];
 
@@ -1789,12 +1789,12 @@ function propagateKnockoutWinners(shouldSave = true) {
 function knockoutEntryButtonHtml() {
   const available = knockoutAvailable();
   const missing = games.filter(game => !hasResult(game)).length;
-  const text = available ? "Abrir Fase Final" : `Fase Final bloqueada Â· faltam ${missing} resultado(s)`;
+  const text = available ? "Abrir Fase Final" : `Fase Final bloqueada · faltam ${missing} resultado(s)`;
   return `
     <div class="knockout-entry-card ${available ? "available" : "locked"}">
       <div>
         <strong>Fase Final</strong>
-        <span>${available ? "EliminatÃ³rias disponÃ­veis." : "SÃ³ abre quando todos os jogos dos grupos tiverem resultado. O Admin pode ativar para trabalhar."}</span>
+        <span>${available ? "Eliminatórias disponíveis." : "Só abre quando todos os jogos dos grupos tiverem resultado. O Admin pode ativar para trabalhar."}</span>
       </div>
       <button id="openKnockoutFromCalendarBtn" class="${available ? "primary" : "secondary"}" type="button" ${available ? "" : "disabled"}>${escapeHtml(text)}</button>
     </div>`;
@@ -1822,7 +1822,7 @@ function renderKnockout() {
 
   if (!knockoutAvailable()) {
     const missing = games.filter(game => !hasResult(game)).length;
-    if (notice) notice.innerHTML = `<strong>Fase Final bloqueada</strong><span>Faltam ${missing} resultado(s) da fase de grupos. O Admin pode ativar esta pÃ¡gina para trabalhar.</span>`;
+    if (notice) notice.innerHTML = `<strong>Fase Final bloqueada</strong><span>Faltam ${missing} resultado(s) da fase de grupos. O Admin pode ativar esta página para trabalhar.</span>`;
     container.innerHTML = "";
     return;
   }
@@ -1835,8 +1835,8 @@ function renderKnockout() {
   if (notice) notice.innerHTML = "";
   if (false && notice) {
     notice.innerHTML = appSettings.knockout?.adminUnlocked && !groupStageFinished()
-      ? `<strong>Modo Admin ativo</strong><span>A Fase Final estÃ¡ desbloqueada para preparaÃ§Ã£o, mesmo antes de todos os grupos acabarem.</span>`
-      : `<strong>Fase Final ativa</strong><span>Tu defines a primeira ronda; depois os vencedores passam automaticamente atÃ© Ã  final.</span>`;
+      ? `<strong>Modo Admin ativo</strong><span>A Fase Final está desbloqueada para preparação, mesmo antes de todos os grupos acabarem.</span>`
+      : `<strong>Fase Final ativa</strong><span>Tu defines a primeira ronda; depois os vencedores passam automaticamente até à final.</span>`;
   }
 
   container.innerHTML = `
@@ -1860,13 +1860,15 @@ function renderKnockout() {
         }).join("")}
 
         <section class="bracket-champion-card ${champion ? "has-champion" : ""}">
-          <span>CampeÃ£o</span>
+          <span>Campeão</span>
           <strong>${escapeHtml(champion || "Por decidir")}</strong>
         </section>
       </div>
     </div>`;
 
   container.innerHTML = renderKnockoutPhotoLayout(finalMatch, champion, thirdPlaceTeams);
+  applyKnockoutLayoutFromSettings();
+  requestAnimationFrame(applyKnockoutLayoutFromSettings);
 }
 
 function renderKnockoutPhotoLayout(finalMatch, champion, thirdPlaceTeams) {
@@ -1905,9 +1907,9 @@ function buildKnockoutPhotoColumns() {
   const byRound = key => knockoutMatches().filter(match => match.round === key);
   const labels = {
     r32: "Segunda fase",
-    r16: "Oitavas de final",
-    qf: "Quartas de final",
-    sf: "Semifinal"
+    r16: "Oitavos de final",
+    qf: "Quartos de final",
+    sf: "Meia-final"
   };
   const split = key => {
     const list = byRound(key);
@@ -1956,7 +1958,7 @@ function renderKnockoutCenter(finalMatch, champion, thirdPlaceTeams) {
     <section class="bracket-center-column" data-ko-layout="center" style="--ko-column-offset:${knockoutLayoutValue("center")}px">
       <div class="bracket-final-badge ${champion ? "has-champion" : ""}">
         <span>FINAL</span>
-        <strong>${escapeHtml(champion || "Campeao")}</strong>
+        <strong>${escapeHtml(champion || "Campeão")}</strong>
       </div>
       <div class="bracket-center-final">
         ${finalMatch ? renderKnockoutMatch(finalMatch) : ""}
@@ -1971,7 +1973,7 @@ function renderKnockoutMatch(match, layoutKey = "") {
   const hasScore = match.homeScore !== null && match.homeScore !== undefined && match.homeScore !== "" && match.awayScore !== null && match.awayScore !== undefined && match.awayScore !== "";
   const isDraw = hasScore && Number(match.homeScore) === Number(match.awayScore);
   const hasPens = match.homePenalties !== null && match.homePenalties !== undefined && match.homePenalties !== "" && match.awayPenalties !== null && match.awayPenalties !== undefined && match.awayPenalties !== "";
-  const lockedText = waiting ? "" : winner ? "Vencedor" : isDraw ? "Faltam penÃ¡ltis" : "Por decidir";
+  const lockedText = waiting ? "" : winner ? "Vencedor" : isDraw ? "Faltam penáltis" : "Por decidir";
 
   return `
     <article class="knockout-match ${winner ? "has-winner" : ""} ${waiting ? "waiting" : ""}" ${layoutKey ? `data-ko-layout="${escapeHtml(layoutKey)}" style="--ko-match-offset:${knockoutLayoutValue(layoutKey)}px"` : ""}>
@@ -1989,7 +1991,7 @@ function renderKnockoutMatch(match, layoutKey = "") {
 
       ${(isDraw || hasPens) ? `
         <div class="ko-penalties-line">
-          <span>PenÃ¡ltis</span>
+          <span>Penáltis</span>
           <strong>${hasPens ? `${match.homePenalties}-${match.awayPenalties}` : "por preencher"}</strong>
         </div>
       ` : ""}
@@ -2006,12 +2008,12 @@ function renderKnockoutLayoutControls() {
     <div class="ko-layout-editor">
       <div class="ko-layout-head">
         <div>
-          <strong>PosiÃ§Ã£o dos cards</strong>
+          <strong>Posição dos cards</strong>
           <span>Ajusta para cima/baixo cada coluna da Fase Final.</span>
         </div>
         <div class="ko-layout-actions">
           <button class="secondary small" type="button" data-ko-layout-reset>Repor</button>
-          <button class="primary small" type="button" data-ko-layout-save>Guardar posiÃ§Ãµes</button>
+          <button class="primary small" type="button" data-ko-layout-save>Guardar posições</button>
         </div>
       </div>
       <div class="ko-layout-grid">
@@ -2043,8 +2045,8 @@ function renderKnockoutAdmin() {
 
   panel.innerHTML = `
     <div class="ko-admin-note">
-      <strong>Regra da Fase Final:</strong> sÃ³ defines manualmente os jogos dos <strong>16 avos</strong>.
-      As rondas seguintes sÃ£o automÃ¡ticas. Se o jogo acabar empatado, preenche os <strong>penÃ¡ltis</strong> para definir quem passa.
+      <strong>Regra da Fase Final:</strong> só defines manualmente os jogos dos <strong>16 avos</strong>.
+      As rondas seguintes são automáticas. Se o jogo acabar empatado, preenche os <strong>penáltis</strong> para definir quem passa.
     </div>
     ${renderKnockoutLayoutControls()}
     <div class="ko-admin-list">
@@ -2073,7 +2075,7 @@ function renderKnockoutAdmin() {
               </span>
             </label>
 
-            <label class="ko-score-label ko-penalty-label">PenÃ¡ltis
+            <label class="ko-score-label ko-penalty-label">Penáltis
               <span class="ko-score-pair">
                 <input class="ko-home-penalties" type="number" min="0" inputmode="numeric" value="${match.homePenalties ?? ""}" placeholder="0" ${canScore ? "" : "disabled"} />
                 <em>-</em>
@@ -2089,14 +2091,32 @@ function renderKnockoutAdmin() {
 }
 
 async function saveKnockoutUnlock() {
-  if (!hasPermission("editKnockout")) { toast("Sem permissao."); return; }
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
 
   ensureKnockoutSettings();
   appSettings.knockout.adminUnlocked = Boolean($("adminKnockoutUnlockedInput")?.checked);
   await persistSettings();
   renderAll();
-  toast(appSettings.knockout.adminUnlocked ? "Fase Final desbloqueada para Admin." : "Fase Final volta a bloquear ate acabarem os grupos.");
+  toast(appSettings.knockout.adminUnlocked ? "Fase Final desbloqueada para Admin." : "Fase Final volta a bloquear até acabarem os grupos.");
 }
+
+function applyKnockoutLayoutFromSettings() {
+  if (!appSettings.knockout) return;
+  const layout = { ...defaultKnockoutLayout(), ...(appSettings.knockout.layout || {}) };
+
+  Object.entries(layout).forEach(([key, rawValue]) => {
+    const value = Number(rawValue);
+    const safeValue = Number.isFinite(value) ? Math.max(-180, Math.min(180, value)) : 0;
+
+    document.querySelectorAll(`[data-ko-layout="${CSS.escape(key)}"]`).forEach(element => {
+      element.style.setProperty("--ko-column-offset", `${safeValue}px`);
+      element.style.setProperty("--ko-match-offset", `${safeValue}px`);
+    });
+
+    syncKnockoutLayoutInputs(key, safeValue);
+  });
+}
+
 function syncKnockoutLayoutInputs(key, value) {
   document.querySelectorAll(`[data-ko-layout-input="${CSS.escape(key)}"], [data-ko-layout-number="${CSS.escape(key)}"]`).forEach(input => {
     input.value = value;
@@ -2104,46 +2124,62 @@ function syncKnockoutLayoutInputs(key, value) {
 }
 
 function previewKnockoutLayoutPosition(key, value) {
+  const safeValue = Number.isFinite(Number(value)) ? Math.max(-180, Math.min(180, Number(value))) : 0;
+
   document.querySelectorAll(`[data-ko-layout="${CSS.escape(key)}"]`).forEach(element => {
-    element.style.setProperty("--ko-column-offset", `${value}px`);
-    element.style.setProperty("--ko-match-offset", `${value}px`);
+    element.style.setProperty("--ko-column-offset", `${safeValue}px`);
+    element.style.setProperty("--ko-match-offset", `${safeValue}px`);
   });
+
+  syncKnockoutLayoutInputs(key, safeValue);
 }
 
 async function saveKnockoutLayoutFromAdmin(reset = false) {
-  if (!hasPermission("editKnockout")) { toast("Sem permissao."); return; }
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
 
   ensureKnockoutSettings();
-  const nextLayout = defaultKnockoutLayout();
 
-  if (!reset) {
+  const nextLayout = { ...defaultKnockoutLayout(), ...(appSettings.knockout.layout || {}) };
+
+  if (reset) {
+    Object.keys(nextLayout).forEach(key => { nextLayout[key] = 0; });
+  } else {
     KNOCKOUT_LAYOUT_KEYS.forEach(([key]) => {
       const input = document.querySelector(`[data-ko-layout-number="${CSS.escape(key)}"]`) ||
         document.querySelector(`[data-ko-layout-input="${CSS.escape(key)}"]`);
-      const value = Number(input?.value ?? 0);
+      const value = Number(input?.value ?? nextLayout[key] ?? 0);
       nextLayout[key] = Number.isFinite(value) ? Math.max(-180, Math.min(180, value)) : 0;
     });
   }
 
   appSettings.knockout.layout = nextLayout;
-  renderAll();
   markSettingsPending();
-  saveLocalData(reset ? "posicoes fase final repostas" : "posicoes fase final guardadas");
+  saveLocalData(reset ? "posições fase final repostas" : "posições fase final guardadas");
+
+  renderKnockout();
+  renderKnockoutAdmin();
+  applyKnockoutLayoutFromSettings();
+  requestAnimationFrame(applyKnockoutLayoutFromSettings);
 
   try {
-    const saved = await saveSettingsFastToFirebase(reset ? "repor posicoes fase final" : "guardar posicoes fase final");
-    if (saved) setFirebaseStatus("success", "Firebase: posicoes da Fase Final guardadas");
-    else scheduleFullSync("guardar posicoes fase final", 300);
+    const saved = await saveSettingsFastToFirebase(reset ? "repor posições fase final" : "guardar posições fase final");
+    if (saved) {
+      setFirebaseStatus("success", "Firebase: posições da Fase Final guardadas");
+      applyKnockoutLayoutFromSettings();
+      requestAnimationFrame(applyKnockoutLayoutFromSettings);
+    } else {
+      scheduleFullSync("guardar posições fase final", 300);
+    }
   } catch (error) {
-    console.error("Falhou guardar posicoes da Fase Final:", error);
-    scheduleFullSync("guardar posicoes fase final", 600);
-    setFirebaseStatus("error", `Firebase: posicoes pendentes (${shortFirebaseError(error)})`);
+    console.error("Falhou guardar posições da Fase Final:", error);
+    scheduleFullSync("guardar posições fase final", 600);
+    setFirebaseStatus("error", `Firebase: posições pendentes (${shortFirebaseError(error)})`);
   }
 
-  toast(reset ? "Posicoes repostas." : "Posicoes da Fase Final guardadas.");
+  toast(reset ? "Posições repostas." : "Posições da Fase Final guardadas.");
 }
 async function saveKnockoutMatchFromAdmin(matchId) {
-  if (!hasPermission("editKnockout")) { toast("Sem permissÃ£o."); return; }
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
 
   ensureKnockoutSettings();
   const row = document.querySelector(`[data-ko-admin="${CSS.escape(matchId)}"]`);
@@ -2182,7 +2218,7 @@ async function saveKnockoutMatchFromAdmin(matchId) {
 
   if (isDraw) {
     if (homePenalties === "" || awayPenalties === "") {
-      toast("Jogo empatado. Preenche o resultado dos penÃ¡ltis.");
+      toast("Jogo empatado. Preenche o resultado dos penáltis.");
       return;
     }
 
@@ -2190,7 +2226,7 @@ async function saveKnockoutMatchFromAdmin(matchId) {
     match.awayPenalties = Number(awayPenalties);
 
     if (Number(match.homePenalties) === Number(match.awayPenalties)) {
-      toast("Os penÃ¡ltis nÃ£o podem ficar empatados.");
+      toast("Os penáltis não podem ficar empatados.");
       return;
     }
   } else {
@@ -2198,12 +2234,12 @@ async function saveKnockoutMatchFromAdmin(matchId) {
     match.awayPenalties = awayPenalties === "" ? null : Number(awayPenalties);
 
     if ((homePenalties === "") !== (awayPenalties === "")) {
-      toast("Preenche os dois campos dos penÃ¡ltis ou deixa os dois vazios.");
+      toast("Preenche os dois campos dos penáltis ou deixa os dois vazios.");
       return;
     }
 
     if (homePenalties !== "" && Number(match.homePenalties) === Number(match.awayPenalties)) {
-      toast("Se preencheres penÃ¡ltis, eles nÃ£o podem ficar empatados.");
+      toast("Se preencheres penáltis, eles não podem ficar empatados.");
       return;
     }
   }
@@ -2216,14 +2252,14 @@ async function saveKnockoutMatchFromAdmin(matchId) {
   renderAll();
 
   if (manualRound) {
-    toast("Jogo da primeira ronda guardado. Vencedor avanÃ§a automaticamente.");
+    toast("Jogo da primeira ronda guardado. Vencedor avança automaticamente.");
   } else {
-    toast("Resultado guardado. Vencedor avanÃ§ou automaticamente.");
+    toast("Resultado guardado. Vencedor avançou automaticamente.");
   }
 }
 
 function openKnockoutEditInAdmin(matchId) {
-  if (!hasPermission("editKnockout")) { toast("Sem permissÃ£o para editar a Fase Final."); return; }
+  if (!hasPermission("editKnockout")) { toast("Sem permissão para editar a Fase Final."); return; }
 
   if (!isAdmin) {
     toast("Entra no Admin para editar a Fase Final.");
@@ -2254,7 +2290,7 @@ function renderCalendar() {
   const container = $("gamesList");
   const groups = groupByDate(filteredGames());
   const days = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  if (!days.length) { container.innerHTML = `<div class="empty">NÃ£o hÃ¡ jogos para mostrar neste filtro.</div>${knockoutEntryButtonHtml()}`; return; }
+  if (!days.length) { container.innerHTML = `<div class="empty">Não há jogos para mostrar neste filtro.</div>${knockoutEntryButtonHtml()}`; return; }
   container.innerHTML = days.map(([, dayGames]) => `
     <section class="day-block"><h3>${escapeHtml(dateHeader(dayGames[0].matchDate))}</h3><div class="match-list">${dayGames.map(renderMatchRow).join("")}</div></section>
   `).join("") + knockoutEntryButtonHtml();
@@ -2263,7 +2299,7 @@ function renderMatchRow(game) {
   const status = statusOf(game);
   const scoreText = hasResult(game) ? `${game.homeScore}-${game.awayScore}` : "VS";
   const gameBets = betsForGame(game.id);
-  const settledText = hasResult(game) ? `${gameBets.length} apostas Â· pontos atribuÃ­dos` : `${gameBets.length} apostas importadas`;
+  const settledText = hasResult(game) ? `${gameBets.length} apostas · pontos atribuídos` : `${gameBets.length} apostas importadas`;
   const resultButtonText = hasResult(game) ? "Editar resultado" : "Adicionar resultado";
 
   return `
@@ -2320,7 +2356,7 @@ function renderScore() {
   if (!target) return;
 
   if (!rows.length) {
-    target.innerHTML = `<div class="empty">Importa o Excel de Resultados para criar a classificaÃ§Ã£o.</div>`;
+    target.innerHTML = `<div class="empty">Importa o Excel de Resultados para criar a classificação.</div>`;
     return;
   }
 
@@ -2337,10 +2373,10 @@ function renderScore() {
               <div class="player-rank">${index + 1}</div>
               <div class="player-score-main">
                 <strong>${escapeHtml(row.playerName)}</strong>
-                <span>${row.exact} exatos Â· ${row.winner} vencedor/empate Â· ${settled} jogos com resultado Â· ${withBets} apostas</span>
+                <span>${row.exact} exatos · ${row.winner} vencedor/empate · ${settled} jogos com resultado · ${withBets} apostas</span>
               </div>
               <div class="player-total">${row.points} pts</div>
-              <div class="player-arrow">âŒ„</div>
+              <div class="player-arrow">⌄</div>
             </summary>
 
             <div class="player-games-table">
@@ -2355,7 +2391,7 @@ function renderScore() {
                 <div class="player-game-row ${className}">
                   <span>
                     <b>${escapeHtml(game.homeTeam)} - ${escapeHtml(game.awayTeam)}</b>
-                    <small>${escapeHtml(game.group)} Â· ${dateHeader(game.matchDate)} Â· ${timePortugal(game.matchDate)}</small>
+                    <small>${escapeHtml(game.group)} · ${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}</small>
                   </span>
                   <span>${bet ? `${bet.homeGuess}-${bet.awayGuess}` : "-"}</span>
                   <span>${hasResult(game) ? `${game.homeScore}-${game.awayScore}` : "-"}</span>
@@ -2393,7 +2429,7 @@ function buildStandings() {
 function renderGroups() {
   $("groupsTables").innerHTML = buildStandings().map(({ group, rows }) => `
     <section class="group-table"><h3>${escapeHtml(group)}</h3><div class="table">
-      <div class="table-row head"><span>#</span><span>SeleÃ§Ã£o</span><span>J</span><span>DG</span><span>Pts</span></div>
+      <div class="table-row head"><span>#</span><span>Seleção</span><span>J</span><span>DG</span><span>Pts</span></div>
       ${rows.map((row, index) => `<div class="table-row"><span>${index + 1}</span><strong>${escapeHtml(row.team)}</strong><span>${row.played}</span><span>${row.gd}</span><b>${row.points}</b></div>`).join("")}
     </div></section>`).join("");
 }
@@ -2415,7 +2451,7 @@ function renderSettingsForm() {
   $("finalTopScorerInput").value = appSettings.extraResults.topScorer || "";
   $("finalChampionInput").value = appSettings.extraResults.champion || "";
   if (appSettings.lastImport) {
-    $("importSummary").innerHTML = `<strong>Ãšltima importaÃ§Ã£o:</strong> ${escapeHtml(new Date(appSettings.lastImport.at).toLocaleString("pt-PT"))} Â· ${appSettings.lastImport.bets || 0} apostas Â· ${appSettings.lastImport.players || 0} users Â· ${appSettings.lastImport.results || 0} resultados.`;
+    $("importSummary").innerHTML = `<strong>Última importação:</strong> ${escapeHtml(new Date(appSettings.lastImport.at).toLocaleString("pt-PT"))} · ${appSettings.lastImport.bets || 0} apostas · ${appSettings.lastImport.players || 0} users · ${appSettings.lastImport.results || 0} resultados.`;
   }
 }
 
@@ -2428,8 +2464,8 @@ function renderApiSettings() {
   const summary = $("apiSyncSummary");
   if (summary) {
     summary.innerHTML = api.lastSync
-      ? `<strong>Ãšltima sincronizaÃ§Ã£o:</strong> ${escapeHtml(new Date(api.lastSync.at).toLocaleString("pt-PT"))} Â· ${api.lastSync.updated || 0} resultados atualizados Â· ${api.lastSync.matched || 0} jogos encontrados na app.`
-      : "Ainda nÃ£o foi feita sincronizaÃ§Ã£o automÃ¡tica.";
+      ? `<strong>Última sincronização:</strong> ${escapeHtml(new Date(api.lastSync.at).toLocaleString("pt-PT"))} · ${api.lastSync.updated || 0} resultados atualizados · ${api.lastSync.matched || 0} jogos encontrados na app.`
+      : "Ainda não foi feita sincronização automática.";
   }
 }
 
@@ -2459,7 +2495,7 @@ function renderUserBetsEditor() {
 
   const players = allPlayers();
   if (!players.length) {
-    container.innerHTML = `<div class="empty">Ainda nÃ£o existem users. Importa o Excel ou adiciona users no Admin.</div>`;
+    container.innerHTML = `<div class="empty">Ainda não existem users. Importa o Excel ou adiciona users no Admin.</div>`;
     renderUserBetsSelector();
     return;
   }
@@ -2483,7 +2519,7 @@ function renderUserBetsEditor() {
           <input id="editExtraTopScorerInput" type="text" value="${escapeHtml(extra.topScorer || "")}" placeholder="Nome do melhor marcador" />
         </label>
         <label>Equipa Vencedora
-          <input id="editExtraChampionInput" type="text" value="${escapeHtml(extra.champion || "")}" placeholder="SeleÃ§Ã£o vencedora" />
+          <input id="editExtraChampionInput" type="text" value="${escapeHtml(extra.champion || "")}" placeholder="Seleção vencedora" />
         </label>
       </div>
     </div>
@@ -2496,7 +2532,7 @@ function renderUserBetsEditor() {
             <div class="user-game-meta">
               <span>${escapeHtml(game.group)}</span>
               <strong>${escapeHtml(game.homeTeam)} - ${escapeHtml(game.awayTeam)}</strong>
-              <small>${dateHeader(game.matchDate)} Â· ${timePortugal(game.matchDate)}</small>
+              <small>${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}</small>
             </div>
             <div class="user-game-score">
               <input class="edit-home-score" type="number" min="0" inputmode="numeric" value="${bet ? bet.homeGuess : ""}" aria-label="Aposta ${escapeHtml(game.homeTeam)}" />
@@ -2512,7 +2548,7 @@ function renderUserBetsEditor() {
 }
 
 async function saveEditedUserBets() {
-  if (!hasPermission("editUsers")) { toast("Sem permissÃ£o."); return; }
+  if (!hasPermission("editUsers")) { toast("Sem permissão."); return; }
 
   const playerName = selectedEditUser;
   if (!playerName) {
@@ -2599,7 +2635,7 @@ function renderAdmin() {
   const container = $("adminGamesList");
   if (!isAdmin) { container.innerHTML = ""; return; }
   container.innerHTML = games.map(game => `
-    <article class="admin-row"><div class="admin-match"><span class="group-pill">${escapeHtml(game.group)}</span><strong>${escapeHtml(game.homeTeam)} vs ${escapeHtml(game.awayTeam)}</strong><small>${timePortugal(game.matchDate)} Â· ${escapeHtml(dateHeader(game.matchDate))} Â· ${betsForGame(game.id).length} apostas</small></div>
+    <article class="admin-row"><div class="admin-match"><span class="group-pill">${escapeHtml(game.group)}</span><strong>${escapeHtml(game.homeTeam)} vs ${escapeHtml(game.awayTeam)}</strong><small>${timePortugal(game.matchDate)} · ${escapeHtml(dateHeader(game.matchDate))} · ${betsForGame(game.id).length} apostas</small></div>
       <div class="result-inputs modal-result-actions">
         <span class="admin-result-chip">${hasResult(game) ? `Resultado: ${game.homeScore}-${game.awayScore}` : "Sem resultado"}</span>
         <button class="primary" type="button" data-result-game="${escapeHtml(game.id)}">${hasResult(game) ? "Editar resultado" : "Adicionar resultado"}</button>
@@ -2619,7 +2655,7 @@ async function saveBet(gameId, homeGuess, awayGuess, playerName = "Manual") {
   toast("Aposta guardada.");
 }
 async function setResult(gameId, homeScore, awayScore) {
-  if (!hasPermission("editResults")) { toast("Sem permissÃ£o para editar resultados."); return false; }
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
 
   if (homeScore === "" || awayScore === "") {
     toast("Preenche o resultado completo.");
@@ -2628,7 +2664,7 @@ async function setResult(gameId, homeScore, awayScore) {
 
   const game = games.find(item => item.id === gameId);
   if (!game) {
-    toast("Jogo nÃ£o encontrado.");
+    toast("Jogo não encontrado.");
     return false;
   }
 
@@ -2649,13 +2685,13 @@ async function setResult(gameId, homeScore, awayScore) {
     markGamePending(game.id);
     saveLocalData("resultado pendente firebase");
     setFirebaseStatus("error", `Firebase: resultado pendente (${shortFirebaseError(error)})`);
-    toast("Resultado ficou guardado localmente e serÃ¡ reenviado.");
+    toast("Resultado ficou guardado localmente e será reenviado.");
   });
 
   return true;
 }
 async function clearResult(gameId) {
-  if (!hasPermission("editResults")) { toast("Sem permissÃ£o para editar resultados."); return false; }
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
 
   const game = games.find(item => item.id === gameId);
   if (!game) return false;
@@ -2677,7 +2713,7 @@ async function clearResult(gameId) {
     markGamePending(game.id);
     saveLocalData("limpar resultado pendente firebase");
     setFirebaseStatus("error", `Firebase: limpeza pendente (${shortFirebaseError(error)})`);
-    toast("AlteraÃ§Ã£o ficou guardada localmente e serÃ¡ reenviada.");
+    toast("Alteração ficou guardada localmente e será reenviada.");
   });
 
   return true;
@@ -2686,20 +2722,20 @@ async function clearResult(gameId) {
 function todayGames() { const key = todayKey(); return games.filter(game => dateKey(game.matchDate) === key); }
 function scoreText() {
   const rows = leaderboard();
-  if (!rows.length) return "â­ ClassificaÃ§Ã£o Mundial 2026\n\nAinda nÃ£o hÃ¡ apostas importadas.";
-  return "â­ ClassificaÃ§Ã£o Mundial 2026\n\n" + rows.map((row, index) => `${index + 1}. ${row.playerName} - ${row.points} pts`).join("\n");
+  if (!rows.length) return "⭐ Classificação Mundial 2026\n\nAinda não há apostas importadas.";
+  return "⭐ Classificação Mundial 2026\n\n" + rows.map((row, index) => `${index + 1}. ${row.playerName} - ${row.points} pts`).join("\n");
 }
 function todayText() {
   const list = todayGames();
-  if (!list.length) return "â­ Jogos de Hoje\n\nHoje nÃ£o hÃ¡ jogos registados.";
+  if (!list.length) return "⭐ Jogos de Hoje\n\nHoje não há jogos registados.";
   const grouped = [...groupByGroup(list).entries()];
-  return "â­ Jogos de Hoje\n\n" + grouped.map(([group, rows]) => {
+  return "⭐ Jogos de Hoje\n\n" + grouped.map(([group, rows]) => {
     const lines = rows.map(game => `${game.homeTeam} vs ${game.awayTeam} - ${timePortugal(game.matchDate)}`);
     return `${group}\n${lines.join("\n")}`;
   }).join("\n\n");
 }
 function groupsText() {
-  return "â­ ClassificaÃ§Ã£o dos Grupos\n\n" + buildStandings().map(({ group, rows }) => {
+  return "⭐ Classificação dos Grupos\n\n" + buildStandings().map(({ group, rows }) => {
     const lines = rows.map((row, index) => `${index + 1}. ${row.team} - ${row.points} pts`);
     return `${group}\n${lines.join("\n")}`;
   }).join("\n\n");
@@ -2725,7 +2761,7 @@ function parseScore(value) {
   if (!raw) return null;
 
   // formatos aceites: 2-1, 2 - 1, 2:1, 2/1, 2 x 1
-  const normal = raw.replace(/[â€“â€”]/g, "-").replace(/\s+/g, " ");
+  const normal = raw.replace(/[–—]/g, "-").replace(/\s+/g, " ");
   const match = normal.match(/(^|\D)(\d{1,2})\s*(?:-|:|\/|x)\s*(\d{1,2})(\D|$)/i);
   if (!match) return null;
 
@@ -2735,17 +2771,17 @@ function splitMatchLabel(label) {
   const raw = String(label || "").trim();
   if (!raw) return null;
 
-  const scoreMatch = raw.match(/\s+(\d+\s*[-â€“:\/x]\s*\d+)\s*$/i);
+  const scoreMatch = raw.match(/\s+(\d+\s*[-–:\/x]\s*\d+)\s*$/i);
   const score = scoreMatch ? parseScore(scoreMatch[1]) : null;
   const cleanLabel = scoreMatch ? raw.slice(0, scoreMatch.index).trim() : raw;
 
-  const directParts = cleanLabel.split(/\s+(?:-|â€“|â€”|vs|v\.?|x)\s+/i);
+  const directParts = cleanLabel.split(/\s+(?:-|–|—|vs|v\.?|x)\s+/i);
   if (directParts.length >= 2) {
     return { home: canonicalTeam(directParts[0]), away: canonicalTeam(directParts.slice(1).join(" - ")), score };
   }
 
-  // Caso venha sem espaÃ§os: "ColÃ´mbia-RD Congo"
-  const looseParts = cleanLabel.split(/\s*(?:-|â€“|â€”)\s*/).filter(Boolean);
+  // Caso venha sem espaços: "Colômbia-RD Congo"
+  const looseParts = cleanLabel.split(/\s*(?:-|–|—)\s*/).filter(Boolean);
   if (looseParts.length >= 2) {
     return { home: canonicalTeam(looseParts[0]), away: canonicalTeam(looseParts.slice(1).join(" - ")), score };
   }
@@ -2790,7 +2826,7 @@ function findGameByTeams(home, away, group = "") {
   return findGameMatch(home, away, group)?.game || null;
 }
 async function readWorkbookFile(file) {
-  if (!window.XLSX) throw new Error("Biblioteca Excel ainda nÃ£o carregou. Verifica ligaÃ§Ã£o Ã  internet.");
+  if (!window.XLSX) throw new Error("Biblioteca Excel ainda não carregou. Verifica ligação à internet.");
   const buffer = await file.arrayBuffer();
   if (file.name.toLowerCase().endsWith(".csv")) {
     const text = new TextDecoder("utf-8").decode(buffer);
@@ -2844,21 +2880,21 @@ function importStatusFromResult(result) {
   const errorsCount = result?.errors?.length ?? 0;
 
   if (errorsCount > 0 && betsCount === 0 && resultsCount === 0) {
-    setImportStatus("error", "Erro ao importar Excel", `${errorsCount} avisos/erros encontrados. VÃª os detalhes abaixo.`);
+    setImportStatus("error", "Erro ao importar Excel", `${errorsCount} avisos/erros encontrados. Vê os detalhes abaixo.`);
     return;
   }
 
   if (errorsCount > 0) {
-    setImportStatus("warning", "Excel importado com avisos", `${betsCount} apostas Â· ${usersCount} users Â· ${errorsCount} avisos.`);
+    setImportStatus("warning", "Excel importado com avisos", `${betsCount} apostas · ${usersCount} users · ${errorsCount} avisos.`);
     return;
   }
 
-  setImportStatus("success", "Excel importado com sucesso", `${betsCount} apostas importadas Â· ${usersCount} users.`);
+  setImportStatus("success", "Excel importado com sucesso", `${betsCount} apostas importadas · ${usersCount} users.`);
 }
 
 function parseResultadosWorkbookRows(rows) {
   const info = findPlayersRow(rows);
-  if (!info) return { bets: [], extras: {}, errors: ["NÃ£o encontrei a linha Jogadores no ficheiro Resultados."] };
+  if (!info) return { bets: [], extras: {}, errors: ["Não encontrei a linha Jogadores no ficheiro Resultados."] };
   const importedBets = [];
   const extras = {};
   const errors = [];
@@ -2892,7 +2928,7 @@ function parseResultadosWorkbookRows(rows) {
       matchInfo = findGameMatch(parsedMatch.home, parsedMatch.away, currentGroup);
     }
 
-    if (!matchInfo) { errors.push(`Jogo nÃ£o encontrado: ${currentGroup} Â· ${label}${excelGameId ? ` Â· ID: ${excelGameId}` : ""}`); continue; }
+    if (!matchInfo) { errors.push(`Jogo não encontrado: ${currentGroup} · ${label}${excelGameId ? ` · ID: ${excelGameId}` : ""}`); continue; }
     const game = matchInfo.game;
     info.players.forEach(player => {
       const score = parseScore(row[player.col]);
@@ -2906,7 +2942,7 @@ function parseResultadosWorkbookRows(rows) {
 }
 function parsePontosWorkbookRows(rows) {
   const info = findPlayersRow(rows);
-  if (!info) return { results: [], importedPoints: {}, errors: ["NÃ£o encontrei a linha Jogadores no ficheiro Pontos."] };
+  if (!info) return { results: [], importedPoints: {}, errors: ["Não encontrei a linha Jogadores no ficheiro Pontos."] };
   const results = [];
   const importedPoints = {};
   const errors = [];
@@ -2924,7 +2960,7 @@ function parsePontosWorkbookRows(rows) {
         const finalScore = matchInfo.reversed ? [parsedMatch.score[1], parsedMatch.score[0]] : parsedMatch.score;
         results.push({ gameId: matchInfo.game.id, homeScore: finalScore[0], awayScore: finalScore[1] });
       }
-      else errors.push(`Resultado sem jogo encontrado: ${currentGroup} Â· ${label}`);
+      else errors.push(`Resultado sem jogo encontrado: ${currentGroup} · ${label}`);
     }
     info.players.forEach(player => {
       const value = Number(String(row[player.col] ?? "").replace(",", "."));
@@ -2934,7 +2970,7 @@ function parsePontosWorkbookRows(rows) {
   return { results, importedPoints, errors };
 }
 async function previewExcelImport() {
-  if (!hasPermission("importExcel")) { toast("Sem permissÃ£o."); return; }
+  if (!hasPermission("importExcel")) { toast("Sem permissão."); return; }
 
   const resultadosFile = $("resultadosExcelInput").files?.[0];
   const pontosFile = $("pontosExcelInput").files?.[0];
@@ -2966,7 +3002,7 @@ async function previewExcelImport() {
   importStatusFromResult(combined);
 preview.innerHTML = `
       <div class="preview-grid"><div><strong>${combined.bets.length}</strong><span>apostas lidas</span></div><div><strong>${players.size}</strong><span>users</span></div><div><strong>${combined.results.length}</strong><span>resultados de jogos</span></div><div><strong>${Object.keys(combined.extras).length}</strong><span>extras</span></div></div>
-      ${combined.errors.length ? `<details open><summary>${combined.errors.length} avisos â€” estas linhas nÃ£o foram importadas</summary><ul>${combined.errors.slice(0, 80).map(err => `<li>${escapeHtml(err)}</li>`).join("")}</ul></details>` : `<p class="ok-line">Sem erros crÃ­ticos encontrados.</p>`}
+      ${combined.errors.length ? `<details open><summary>${combined.errors.length} avisos — estas linhas não foram importadas</summary><ul>${combined.errors.slice(0, 80).map(err => `<li>${escapeHtml(err)}</li>`).join("")}</ul></details>` : `<p class="ok-line">Sem erros críticos encontrados.</p>`}
     `;
     $("confirmExcelImportBtn").disabled = false;
   } catch (error) {
@@ -2976,9 +3012,9 @@ preview.innerHTML = `
   }
 }
 async function confirmExcelImport() {
-  if (!hasPermission("importExcel")) { toast("Sem permissÃ£o."); return; }
+  if (!hasPermission("importExcel")) { toast("Sem permissão."); return; }
 
-  if (!pendingExcelImport) return toast("Faz primeiro a prÃ©-visualizaÃ§Ã£o.");
+  if (!pendingExcelImport) return toast("Faz primeiro a pré-visualização.");
   const replace = $("replaceExcelBetsInput").checked;
   pendingExcelImport.results.forEach(result => {
     const game = games.find(item => item.id === result.gameId);
@@ -3003,11 +3039,11 @@ async function confirmExcelImport() {
   $("excelModal").classList.add("hidden");
   $("confirmExcelImportBtn").disabled = true;
   renderAll();
-  setImportStatus("success", "Excel importado e guardado", "As apostas foram gravadas. Podes atualizar a pÃ¡gina sem perder os dados.");
-  toast("Excel importado. ClassificaÃ§Ã£o recalculada.");
+  setImportStatus("success", "Excel importado e guardado", "As apostas foram gravadas. Podes atualizar a página sem perder os dados.");
+  toast("Excel importado. Classificação recalculada.");
 }
 async function savePointsSettings() {
-  if (!hasPermission("editPoints")) { toast("Sem permissÃ£o."); return; }
+  if (!hasPermission("editPoints")) { toast("Sem permissão."); return; }
 
   appSettings.points = {
     exact: Number($("pointsExactInput").value) || 0,
@@ -3019,14 +3055,14 @@ async function savePointsSettings() {
   await persistSettings(); renderAll(); toast("Sistema de pontos atualizado.");
 }
 async function saveExtraResults() {
-  if (!hasPermission("editPoints")) { toast("Sem permissÃ£o."); return; }
+  if (!hasPermission("editPoints")) { toast("Sem permissão."); return; }
 
   appSettings.extraResults = { mvp: $("finalMvpInput").value.trim(), topScorer: $("finalTopScorerInput").value.trim(), champion: $("finalChampionInput").value.trim() };
   await persistSettings(); renderAll(); toast("Resultados especiais guardados.");
 }
 
 async function addUser() {
-  if (!hasPermission("editUsers")) { toast("Sem permissÃ£o."); return; }
+  if (!hasPermission("editUsers")) { toast("Sem permissão."); return; }
 
   const input = $("newUserNameInput");
   const name = input?.value.trim();
@@ -3041,9 +3077,9 @@ async function addUser() {
 }
 
 async function removeUser(name) {
-  if (!hasPermission("editUsers")) { toast("Sem permissÃ£o."); return; }
+  if (!hasPermission("editUsers")) { toast("Sem permissão."); return; }
 
-  if (!confirm(`Remover ${name} da lista de users? As apostas importadas nÃ£o sÃ£o apagadas.`)) return;
+  if (!confirm(`Remover ${name} da lista de users? As apostas importadas não são apagadas.`)) return;
   appSettings.users = (appSettings.users || []).filter(user => user !== name);
   await persistSettings();
   renderAll();
@@ -3055,7 +3091,7 @@ function renderUsers() {
   if (!el) return;
   const users = allPlayers();
   if (!users.length) {
-    el.innerHTML = `<div class="empty small-empty">Ainda nÃ£o existem users. Adiciona manualmente ou importa o Excel.</div>`;
+    el.innerHTML = `<div class="empty small-empty">Ainda não existem users. Adiciona manualmente ou importa o Excel.</div>`;
     return;
   }
   el.innerHTML = users.map(name => {
@@ -3064,7 +3100,7 @@ function renderUsers() {
     return `<div class="user-pill-row">
       <div>
         <strong>${escapeHtml(name)}</strong>
-        <small>${stats.points} pts Â· ${stats.totalBets} apostas${isManual ? " Â· user manual" : " Â· via Excel"}</small>
+        <small>${stats.points} pts · ${stats.totalBets} apostas${isManual ? " · user manual" : " · via Excel"}</small>
       </div>
       <button class="secondary small" type="button" onclick="window.removeUserFromUI('${escapeHtml(name).replace(/'/g, "\\'")}')">Remover</button>
     </div>`;
@@ -3087,7 +3123,7 @@ function resultLabelForExport(game) {
 
 function exportResultadosExcel() {
   if (!window.XLSX) {
-    toast("Biblioteca Excel ainda nÃ£o carregou.");
+    toast("Biblioteca Excel ainda não carregou.");
     return;
   }
 
@@ -3095,7 +3131,7 @@ function exportResultadosExcel() {
   const rows = [];
 
   rows.push(["Mundial 2026 - Resultados / Apostas"]);
-  rows.push(["Preenche as apostas no formato 2-1. NÃ£o alteres a coluna ID Jogo, ela serve para a app importar sem falhas."]);
+  rows.push(["Preenche as apostas no formato 2-1. Não alteres a coluna ID Jogo, ela serve para a app importar sem falhas."]);
   rows.push([]);
   rows.push(["Jogadores", "ID Jogo", ...players]);
 
@@ -3127,7 +3163,7 @@ function exportResultadosExcel() {
     ...players.map(() => ({ wch: 16 }))
   ];
 
-  // Congelar a linha dos jogadores e a primeira coluna em programas compatÃ­veis.
+  // Congelar a linha dos jogadores e a primeira coluna em programas compatíveis.
   ws["!freeze"] = { xSplit: 2, ySplit: 4 };
 
   XLSX.utils.book_append_sheet(wb, ws, "Resultados");
@@ -3137,7 +3173,7 @@ function exportResultadosExcel() {
     ["Users", players.length],
     ["Jogos", games.length],
     ["Apostas importadas", bets.length],
-    ["Ãšltima exportaÃ§Ã£o", new Date().toLocaleString("pt-PT")]
+    ["Última exportação", new Date().toLocaleString("pt-PT")]
   ];
   const wsResumo = XLSX.utils.aoa_to_sheet(resumo);
   wsResumo["!cols"] = [{ wch: 22 }, { wch: 18 }];
@@ -3149,7 +3185,7 @@ function exportResultadosExcel() {
 
 function exportPontosExcel() {
   if (!window.XLSX) {
-    toast("Biblioteca Excel ainda nÃ£o carregou.");
+    toast("Biblioteca Excel ainda não carregou.");
     return;
   }
 
@@ -3234,7 +3270,7 @@ function showGameBets(gameId) {
   const body = $("betsModalBody");
 
   if (!modal || !title || !summary || !body) {
-    const rows = betsForGame(gameId).sort((a, b) => a.playerName.localeCompare(b.playerName)).map(bet => `${bet.playerName}: ${bet.homeGuess}-${bet.awayGuess}${hasResult(game) ? ` Â· ${pointsForBet(bet, game)} pts` : ""}`);
+    const rows = betsForGame(gameId).sort((a, b) => a.playerName.localeCompare(b.playerName)).map(bet => `${bet.playerName}: ${bet.homeGuess}-${bet.awayGuess}${hasResult(game) ? ` · ${pointsForBet(bet, game)} pts` : ""}`);
     alert(`${game.homeTeam} vs ${game.awayTeam}\n\n${rows.length ? rows.join("\n") : "Sem apostas para este jogo."}`);
     return;
   }
@@ -3249,7 +3285,7 @@ function showGameBets(gameId) {
   const totalPoints = rows.reduce((sum, bet) => sum + pointsForBet(bet, game), 0);
 
   title.textContent = `${game.homeTeam} - ${game.awayTeam}`;
-  subtitle.textContent = `${game.group} Â· ${dateHeader(game.matchDate)} Â· ${timePortugal(game.matchDate)}`;
+  subtitle.textContent = `${game.group} · ${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}`;
 
   summary.innerHTML = `
     <div class="bets-summary-card main">
@@ -3275,7 +3311,7 @@ function showGameBets(gameId) {
   `;
 
   if (!rows.length) {
-    body.innerHTML = `<div class="empty">Ainda nÃ£o existem apostas importadas para este jogo.</div>`;
+    body.innerHTML = `<div class="empty">Ainda não existem apostas importadas para este jogo.</div>`;
   } else {
     body.innerHTML = `
       <div class="bets-list-head">
@@ -3319,7 +3355,7 @@ function resultImpactPreview(game, homeScore, awayScore) {
   const winner = gameBets.filter(bet => !isExactBet(bet, tempGame) && isOutcomeBet(bet, tempGame)).length;
   const totalPoints = gameBets.reduce((sum, bet) => sum + pointsForBet(bet, tempGame), 0);
 
-  return `${gameBets.length} apostas Â· ${exact} resultados exatos Â· ${winner} vencedor/empate Â· ${totalPoints} pontos atribuÃ­dos`;
+  return `${gameBets.length} apostas · ${exact} resultados exatos · ${winner} vencedor/empate · ${totalPoints} pontos atribuídos`;
 }
 
 function updateResultPreview() {
@@ -3335,20 +3371,20 @@ function updateResultPreview() {
 }
 
 function openResultModal(gameId) {
-  if (!hasPermission("editResults")) { toast("Sem permissÃ£o para editar resultados."); return; }
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return; }
 
   const game = games.find(item => item.id === gameId);
   if (!game) return;
 
   $("resultGameIdInput").value = game.id;
   $("resultModalTitle").textContent = hasResult(game) ? "Editar resultado" : "Adicionar resultado";
-  $("resultModalSubtitle").textContent = "Ao guardar, a app compara as apostas dos users e recalcula a classificaÃ§Ã£o.";
+  $("resultModalSubtitle").textContent = "Ao guardar, a app compara as apostas dos users e recalcula a classificação.";
   $("resultHomeFlag").textContent = "";
   $("resultAwayFlag").textContent = "";
   $("resultHomeTeam").textContent = game.homeTeam;
   $("resultAwayTeam").textContent = game.awayTeam;
   $("resultGroupInput").value = game.group;
-  $("resultDateInput").value = `${dateHeader(game.matchDate)} Â· ${timePortugal(game.matchDate)}`;
+  $("resultDateInput").value = `${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}`;
   $("modalHomeScoreInput").value = game.homeScore ?? "";
   $("modalAwayScoreInput").value = game.awayScore ?? "";
 
@@ -3362,7 +3398,7 @@ function closeResultModal() {
 }
 
 async function saveResultFromModal() {
-  if (!hasPermission("editResults")) { toast("Sem permissÃ£o para editar resultados."); return false; }
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
 
   const gameId = $("resultGameIdInput").value;
   const homeScore = $("modalHomeScoreInput").value;
@@ -3391,7 +3427,7 @@ async function saveResultFromModal() {
 }
 
 async function clearResultFromModal() {
-  if (!hasPermission("editResults")) { toast("Sem permissÃ£o para editar resultados."); return false; }
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
 
   const gameId = $("resultGameIdInput").value;
   if (!gameId) return;
@@ -3467,7 +3503,7 @@ document.addEventListener("click", event => {
 document.querySelectorAll(".tab").forEach(button => {
   button.addEventListener("click", () => {
     if (!permissionTabAllowed(button.dataset.tab)) {
-      toast("Sem permissÃ£o para abrir esta pÃ¡gina.");
+      toast("Sem permissão para abrir esta página.");
       return;
     }
     if (button.dataset.tab === "knockoutTab" && !knockoutAvailable()) {
@@ -3499,7 +3535,7 @@ $("calendarAllGamesBtn")?.addEventListener("click", () => {
   renderCalendarFilterState();
 });
 
-$("copyScoreBtn").addEventListener("click", () => copyText(scoreText(), "ClassificaÃ§Ã£o copiada."));
+$("copyScoreBtn").addEventListener("click", () => copyText(scoreText(), "Classificação copiada."));
 $("addUserBtn")?.addEventListener("click", addUser);
 $("newUserNameInput")?.addEventListener("keydown", event => { if (event.key === "Enter") addUser(); });
 $("exportResultadosBtn")?.addEventListener("click", exportResultadosExcel);
@@ -3589,7 +3625,7 @@ function setupPwaInstall() {
 
   installBtn.addEventListener("click", async () => {
     if (!deferredInstallPrompt) {
-      toast("No Edge: menu â‹¯ > Apps > Instalar este site como aplicaÃ§Ã£o.");
+      toast("No Edge: menu ⋯ > Apps > Instalar este site como aplicação.");
       return;
     }
 
@@ -3610,7 +3646,7 @@ function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js")
-      .catch(error => console.warn("Service worker nÃ£o registado:", error));
+      .catch(error => console.warn("Service worker não registado:", error));
   });
 }
 
