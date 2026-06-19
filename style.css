@@ -2971,3 +2971,32 @@ button{
     min-height:48px!important;
   }
 }
+
+
+/* v58 — Corrigir botão de resultado no mobile */
+.result-admin-only.hidden{
+  display:none!important;
+}
+.game-card .result-admin-only,
+.match-card .result-admin-only{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  max-width:100%;
+  white-space:normal;
+  line-height:1.1;
+}
+@media(max-width:650px){
+  .game-actions,
+  .match-actions{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:8px!important;
+  }
+  .game-card .result-admin-only,
+  .match-card .result-admin-only{
+    width:100%!important;
+    min-height:42px!important;
+    font-size:14px!important;
+  }
+}
