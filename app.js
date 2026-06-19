@@ -1680,50 +1680,63 @@ function openKnockoutPage() {
 
 function renderKnockout() {
   ensureKnockoutSettings();
-  const notice = $("knockoutLockNotice");
-  const container = $("knockoutBracket");
-  if (!container) return;
 
-  if (!knockoutAvailable()) {
-    const missing = games.filter(game => !hasResult(game)).length;
-    if (notice) notice.innerHTML = `<strong>Fase Final bloqueada</strong><span>Faltam ${missing} resultado(s) da fase de grupos. O Admin pode ativar esta página para trabalhar.</span>`;
-    container.innerHTML = "";
+  const notice = $("knockoutLockNotice");
+  const bracket = $("knockoutBracket");
+  if (!notice || !bracket) return;
+
+  const available = knockoutAvailable();
+  notice.classList.toggle("hidden", available);
+
+  if (!available) {
+    bracket.innerHTML = "";
     return;
   }
 
-  const finalMatch = knockoutMatches().find(match => match.round === "final");
-  const champion = knockoutWinner(finalMatch);
+  propagateKnockoutWinners(false);
 
-  if (notice) {
-    notice.innerHTML = appSettings.knockout?.adminUnlocked && !groupStageFinished()
-      ? `<strong>Modo Admin ativo</strong><span>A Fase Final está desbloqueada para preparação, mesmo antes de todos os grupos acabarem.</span>`
-      : `<strong>Fase Final ativa</strong><span>Tu defines a primeira ronda; depois os vencedores passam automaticamente até à final.</span>`;
-  }
+  const matches = knockoutMatches();
+  const byRound = {
+    r32: matches.filter(match => match.round === "r32"),
+    r16: matches.filter(match => match.round === "r16"),
+    qf: matches.filter(match => match.round === "qf"),
+    sf: matches.filter(match => match.round === "sf"),
+    final: matches.filter(match => match.round === "final")
+  };
 
-  container.innerHTML = `
-    <div class="bracket-photo-shell">
-      <div class="bracket-title-row">
-        <span>Esquerda</span>
-        <strong>Fase Final Mundial 2026</strong>
-        <span>Direita</span>
+  const champion = knockoutWinner(byRound.final[0]);
+
+  const placeMatch = (match, round, index) => `
+    <div class="ko-fixed-slot ko-${round}-slot ko-slot-${index + 1}">
+      ${renderKnockoutMatch(match)}
+    </div>`;
+
+  bracket.innerHTML = `
+    <div class="ko-fixed-shell">
+      <div class="ko-fixed-top">
+        <span>ESQUERDA</span>
+        <strong>FASE FINAL MUNDIAL 2026</strong>
+        <span>DIREITA</span>
       </div>
 
-      <div class="bracket-photo-grid">
-        ${KNOCKOUT_ROUNDS.map((round, roundIndex) => {
-          const matches = knockoutMatches().filter(match => match.round === round.key);
-          return `
-            <section class="bracket-photo-round round-${round.key}" style="--round-index:${roundIndex}">
-              <h3>${escapeHtml(round.label)}</h3>
-              <div class="bracket-photo-matches">
-                ${matches.map(match => renderKnockoutMatch(match)).join("")}
-              </div>
-            </section>`;
-        }).join("")}
+      <div class="ko-fixed-board">
+        <div class="ko-fixed-header ko-h-r32">16 AVOS</div>
+        <div class="ko-fixed-header ko-h-r16">OITAVOS</div>
+        <div class="ko-fixed-header ko-h-qf">QUARTOS</div>
+        <div class="ko-fixed-header ko-h-sf">MEIAS-FINAIS</div>
+        <div class="ko-fixed-header ko-h-final">FINAL</div>
 
-        <section class="bracket-champion-card ${champion ? "has-champion" : ""}">
-          <span>Campeão</span>
+        ${byRound.r32.map((match, index) => placeMatch(match, "r32", index)).join("")}
+        ${byRound.r16.map((match, index) => placeMatch(match, "r16", index)).join("")}
+        ${byRound.qf.map((match, index) => placeMatch(match, "qf", index)).join("")}
+        ${byRound.sf.map((match, index) => placeMatch(match, "sf", index)).join("")}
+        ${byRound.final.map((match, index) => placeMatch(match, "final", index)).join("")}
+
+        <div class="ko-fixed-champion">
+          <div class="ko-cup">🏆</div>
+          <span>CAMPEÃO</span>
           <strong>${escapeHtml(champion || "Por decidir")}</strong>
-        </section>
+        </div>
       </div>
     </div>`;
 }

@@ -3261,3 +3261,352 @@ button{
     padding:12px 12px 18px!important;
   }
 }
+
+
+/* v60 — Fase Final REAL: posições fixas, cards alinhados e sem ficarem fora do sítio */
+#knockoutTab{
+  overflow:hidden!important;
+}
+
+#knockoutBracket{
+  width:100%!important;
+  overflow:auto!important;
+  -webkit-overflow-scrolling:touch!important;
+  padding:0!important;
+}
+
+.ko-fixed-shell{
+  width:1260px!important;
+  min-width:1260px!important;
+  max-width:none!important;
+  margin:0 auto!important;
+  padding:14px 18px 20px!important;
+  box-sizing:border-box!important;
+}
+
+.ko-fixed-top{
+  height:42px!important;
+  display:grid!important;
+  grid-template-columns:1fr auto 1fr!important;
+  align-items:center!important;
+  gap:12px!important;
+  margin-bottom:10px!important;
+}
+
+.ko-fixed-top span{
+  color:var(--muted)!important;
+  font-size:11px!important;
+  font-weight:1000!important;
+  letter-spacing:.12em!important;
+  text-transform:uppercase!important;
+}
+
+.ko-fixed-top span:last-child{
+  text-align:right!important;
+}
+
+.ko-fixed-top strong{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  height:30px!important;
+  padding:0 30px!important;
+  border-radius:999px!important;
+  background:linear-gradient(135deg,#ffd45a,#fff3b8)!important;
+  color:#0b111b!important;
+  font-size:11px!important;
+  font-weight:1000!important;
+  letter-spacing:.06em!important;
+  white-space:nowrap!important;
+}
+
+.ko-fixed-board{
+  position:relative!important;
+  width:1220px!important;
+  height:1020px!important;
+  min-width:1220px!important;
+  box-sizing:border-box!important;
+}
+
+/* Cabeçalhos por coluna */
+.ko-fixed-header{
+  position:absolute!important;
+  top:0!important;
+  height:34px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border-radius:14px!important;
+  background:linear-gradient(135deg,#ffd45a,#fff4bd)!important;
+  color:#0b111b!important;
+  font-size:11px!important;
+  font-weight:1000!important;
+  letter-spacing:.06em!important;
+  text-transform:uppercase!important;
+}
+
+.ko-h-r32{ left:0!important; width:190px!important; }
+.ko-h-r16{ left:230px!important; width:190px!important; }
+.ko-h-qf{ left:460px!important; width:190px!important; }
+.ko-h-sf{ left:690px!important; width:190px!important; }
+.ko-h-final{ left:920px!important; width:190px!important; }
+
+/* Slots fixos */
+.ko-fixed-slot{
+  position:absolute!important;
+  width:190px!important;
+  height:70px!important;
+  box-sizing:border-box!important;
+}
+
+.ko-r32-slot{ left:0!important; }
+.ko-r16-slot{ left:230px!important; }
+.ko-qf-slot{ left:460px!important; }
+.ko-sf-slot{ left:690px!important; }
+.ko-final-slot{ left:920px!important; }
+
+/* 16 avos: 16 slots */
+.ko-r32-slot.ko-slot-1{ top:50px!important; }
+.ko-r32-slot.ko-slot-2{ top:110px!important; }
+.ko-r32-slot.ko-slot-3{ top:170px!important; }
+.ko-r32-slot.ko-slot-4{ top:230px!important; }
+.ko-r32-slot.ko-slot-5{ top:290px!important; }
+.ko-r32-slot.ko-slot-6{ top:350px!important; }
+.ko-r32-slot.ko-slot-7{ top:410px!important; }
+.ko-r32-slot.ko-slot-8{ top:470px!important; }
+.ko-r32-slot.ko-slot-9{ top:530px!important; }
+.ko-r32-slot.ko-slot-10{ top:590px!important; }
+.ko-r32-slot.ko-slot-11{ top:650px!important; }
+.ko-r32-slot.ko-slot-12{ top:710px!important; }
+.ko-r32-slot.ko-slot-13{ top:770px!important; }
+.ko-r32-slot.ko-slot-14{ top:830px!important; }
+.ko-r32-slot.ko-slot-15{ top:890px!important; }
+.ko-r32-slot.ko-slot-16{ top:950px!important; }
+
+/* Oitavos: sempre ao meio de cada 2 jogos */
+.ko-r16-slot.ko-slot-1{ top:80px!important; }
+.ko-r16-slot.ko-slot-2{ top:200px!important; }
+.ko-r16-slot.ko-slot-3{ top:320px!important; }
+.ko-r16-slot.ko-slot-4{ top:440px!important; }
+.ko-r16-slot.ko-slot-5{ top:560px!important; }
+.ko-r16-slot.ko-slot-6{ top:680px!important; }
+.ko-r16-slot.ko-slot-7{ top:800px!important; }
+.ko-r16-slot.ko-slot-8{ top:920px!important; }
+
+/* Quartos */
+.ko-qf-slot.ko-slot-1{ top:140px!important; }
+.ko-qf-slot.ko-slot-2{ top:380px!important; }
+.ko-qf-slot.ko-slot-3{ top:620px!important; }
+.ko-qf-slot.ko-slot-4{ top:860px!important; }
+
+/* Meias */
+.ko-sf-slot.ko-slot-1{ top:260px!important; }
+.ko-sf-slot.ko-slot-2{ top:740px!important; }
+
+/* Final */
+.ko-final-slot.ko-slot-1{ top:500px!important; }
+
+/* Champion */
+.ko-fixed-champion{
+  position:absolute!important;
+  left:1140px!important;
+  top:470px!important;
+  width:170px!important;
+  min-height:126px!important;
+  transform:translateX(-50%)!important;
+  border:1px solid rgba(255,212,90,.44)!important;
+  border-radius:16px!important;
+  background:linear-gradient(135deg,rgba(255,212,90,.16),rgba(255,255,255,.05))!important;
+  box-shadow:0 20px 50px rgba(255,212,90,.10)!important;
+  display:grid!important;
+  place-items:center!important;
+  text-align:center!important;
+  padding:14px!important;
+  box-sizing:border-box!important;
+}
+
+.ko-fixed-champion .ko-cup{
+  font-size:32px!important;
+  line-height:1!important;
+}
+
+.ko-fixed-champion span{
+  color:var(--muted)!important;
+  font-size:10px!important;
+  font-weight:1000!important;
+  letter-spacing:.08em!important;
+}
+
+.ko-fixed-champion strong{
+  color:var(--gold)!important;
+  font-size:19px!important;
+  line-height:1.1!important;
+}
+
+/* Cards dentro dos slots */
+.ko-fixed-slot .knockout-match{
+  width:190px!important;
+  height:70px!important;
+  min-height:70px!important;
+  max-height:70px!important;
+  padding:6px 7px!important;
+  box-sizing:border-box!important;
+  border-radius:11px!important;
+  background:rgba(8,14,24,.86)!important;
+  border:1px solid rgba(255,255,255,.10)!important;
+  box-shadow:0 8px 22px rgba(0,0,0,.24)!important;
+  overflow:visible!important;
+  position:relative!important;
+}
+
+.ko-fixed-slot .knockout-match-title{
+  margin:0 0 4px!important;
+  color:var(--muted)!important;
+  font-size:8px!important;
+  font-weight:1000!important;
+  letter-spacing:.06em!important;
+  text-transform:uppercase!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+.ko-fixed-slot .ko-team{
+  min-height:20px!important;
+  height:20px!important;
+  padding:2px 6px!important;
+  border-radius:7px!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 24px!important;
+  align-items:center!important;
+  gap:4px!important;
+  background:rgba(255,212,90,.08)!important;
+  border:1px solid rgba(255,212,90,.34)!important;
+  box-sizing:border-box!important;
+}
+
+.ko-fixed-slot .ko-team + .ko-team{
+  margin-top:3px!important;
+}
+
+.ko-fixed-slot .ko-team span{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:11px!important;
+  font-weight:900!important;
+}
+
+.ko-fixed-slot .ko-team b{
+  color:var(--gold)!important;
+  font-size:12px!important;
+  text-align:right!important;
+}
+
+.ko-fixed-slot .ko-status-line,
+.ko-fixed-slot .ko-penalties-line{
+  display:none!important;
+}
+
+/* Linhas horizontais */
+.ko-fixed-slot:not(.ko-final-slot) .knockout-match::after{
+  content:""!important;
+  position:absolute!important;
+  left:100%!important;
+  top:50%!important;
+  width:40px!important;
+  border-top:1px solid rgba(255,212,90,.40)!important;
+}
+
+/* Linhas verticais por par */
+.ko-r32-slot.ko-slot-1 .knockout-match::before,
+.ko-r32-slot.ko-slot-3 .knockout-match::before,
+.ko-r32-slot.ko-slot-5 .knockout-match::before,
+.ko-r32-slot.ko-slot-7 .knockout-match::before,
+.ko-r32-slot.ko-slot-9 .knockout-match::before,
+.ko-r32-slot.ko-slot-11 .knockout-match::before,
+.ko-r32-slot.ko-slot-13 .knockout-match::before,
+.ko-r32-slot.ko-slot-15 .knockout-match::before{
+  content:""!important;
+  position:absolute!important;
+  left:calc(100% + 39px)!important;
+  top:50%!important;
+  height:60px!important;
+  border-right:1px solid rgba(255,212,90,.30)!important;
+}
+
+.ko-r16-slot.ko-slot-1 .knockout-match::before,
+.ko-r16-slot.ko-slot-3 .knockout-match::before,
+.ko-r16-slot.ko-slot-5 .knockout-match::before,
+.ko-r16-slot.ko-slot-7 .knockout-match::before{
+  content:""!important;
+  position:absolute!important;
+  left:calc(100% + 39px)!important;
+  top:50%!important;
+  height:120px!important;
+  border-right:1px solid rgba(255,212,90,.30)!important;
+}
+
+.ko-qf-slot.ko-slot-1 .knockout-match::before,
+.ko-qf-slot.ko-slot-3 .knockout-match::before{
+  content:""!important;
+  position:absolute!important;
+  left:calc(100% + 39px)!important;
+  top:50%!important;
+  height:240px!important;
+  border-right:1px solid rgba(255,212,90,.30)!important;
+}
+
+.ko-sf-slot.ko-slot-1 .knockout-match::before{
+  content:""!important;
+  position:absolute!important;
+  left:calc(100% + 39px)!important;
+  top:50%!important;
+  height:480px!important;
+  border-right:1px solid rgba(255,212,90,.30)!important;
+}
+
+/* Linha final para campeão */
+.ko-final-slot .knockout-match::after{
+  content:""!important;
+  position:absolute!important;
+  left:100%!important;
+  top:50%!important;
+  width:50px!important;
+  border-top:1px solid rgba(255,212,90,.40)!important;
+}
+
+/* Remove os estilos antigos que estavam a empurrar tudo */
+#knockoutBracket .bracket-photo-grid,
+#knockoutBracket .bracket-photo-round,
+#knockoutBracket .bracket-photo-matches{
+  all:unset;
+}
+
+/* Tablet/mobile: mantém o desenho certo e permite deslizar */
+@media(max-width:1300px){
+  .ko-fixed-shell{
+    margin:0!important;
+  }
+}
+
+@media(max-width:760px){
+  #knockoutTab{
+    padding-left:0!important;
+    padding-right:0!important;
+  }
+
+  #knockoutBracket{
+    margin-left:-8px!important;
+    margin-right:-8px!important;
+    padding-left:8px!important;
+    padding-right:8px!important;
+  }
+
+  .ko-fixed-shell{
+    width:1260px!important;
+    min-width:1260px!important;
+    padding:12px 12px 18px!important;
+  }
+}
