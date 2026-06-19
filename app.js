@@ -1725,7 +1725,7 @@ async function loadOnlineUsers() {
 
   if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) {
     if (badge) badge.textContent = "offline";
-    if (list) list.innerHTML = `<div class="empty small-empty">Firebase ainda não está ligado.</div>`;
+    if (list) list.innerHTML = `${onlineUsersPopupHeader()}<div class="empty small-empty">Firebase ainda não está ligado.</div>`;
     return;
   }
 
@@ -1772,12 +1772,21 @@ async function loadOnlineUsers() {
     console.warn("Erro ao carregar utilizadores online:", error);
     if (badge) badge.textContent = "sem acesso";
     if (list) {
-      list.innerHTML = `
+      list.innerHTML = `${onlineUsersPopupHeader()}
         <div class="empty small-empty">
           Não foi possível carregar os utilizadores online. Confirma as regras da coleção presence no Firebase.
         </div>`;
     }
   }
+}
+
+
+function onlineUsersPopupHeader() {
+  return `
+    <div class="online-users-popup-head">
+      <strong>Utilizadores online</strong>
+      <button id="closeOnlineUsersBtn" class="online-users-close" type="button" aria-label="Fechar utilizadores online">×</button>
+    </div>`;
 }
 
 function renderOnlineUsers() {
@@ -1789,11 +1798,11 @@ function renderOnlineUsers() {
   if (badge) badge.textContent = `${onlineCount} online`;
 
   if (!onlineUsersCache.length) {
-    list.innerHTML = `<div class="empty small-empty">Ainda não existem utilizadores com presença registada.</div>`;
+    list.innerHTML = `${onlineUsersPopupHeader()}<div class="empty small-empty">Ainda não existem utilizadores com presença registada.</div>`;
     return;
   }
 
-  list.innerHTML = `
+  list.innerHTML = `${onlineUsersPopupHeader()}
     <div class="online-users-table">
       <div class="online-users-row online-users-head">
         <span>User</span>
@@ -2166,22 +2175,18 @@ function closeOnlineUsersPanel() {
 }
 
 function setupOnlineUsersCloseControls() {
-  const panel = $("onlineUsersPanel");
-  const closeBtn = $("closeOnlineUsersBtn");
-
-  if (closeBtn && closeBtn.dataset.bound !== "1") {
-    closeBtn.dataset.bound = "1";
-    closeBtn.addEventListener("click", event => {
-      event.preventDefault();
-      event.stopPropagation();
-      closeOnlineUsersPanel();
-    });
-  }
-
   if (!window.__onlineUsersOutsideCloseBound) {
     window.__onlineUsersOutsideCloseBound = true;
 
     document.addEventListener("click", event => {
+      const closeButton = event.target.closest?.("#closeOnlineUsersBtn, .online-users-close");
+      if (closeButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeOnlineUsersPanel();
+        return;
+      }
+
       const activePanel = $("onlineUsersPanel");
       if (!activePanel || !activePanel.open) return;
       if (activePanel.contains(event.target)) return;

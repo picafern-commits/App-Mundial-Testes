@@ -4851,3 +4851,77 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
     font-size:24px;
   }
 }
+
+
+/* v69 — X dos Users Online sempre visível no iPhone */
+.topbar .topbar-online-users .online-users-list{
+  padding:10px!important;
+}
+
+.topbar .topbar-online-users .online-users-popup-head{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  position:sticky!important;
+  top:0!important;
+  z-index:5!important;
+  margin:-10px -10px 10px!important;
+  padding:10px!important;
+  border-bottom:1px solid rgba(255,255,255,.10)!important;
+  background:rgba(7,11,19,.99)!important;
+  backdrop-filter:blur(16px)!important;
+}
+
+.topbar .topbar-online-users .online-users-popup-head strong{
+  display:block!important;
+  color:var(--text)!important;
+  font-size:14px!important;
+  font-weight:1000!important;
+}
+
+.topbar .topbar-online-users .online-users-close{
+  flex:0 0 auto!important;
+  width:38px!important;
+  height:38px!important;
+  min-width:38px!important;
+  min-height:38px!important;
+  border:1px solid rgba(255,255,255,.18)!important;
+  border-radius:12px!important;
+  background:rgba(255,255,255,.10)!important;
+  color:#fff!important;
+  font-size:28px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  cursor:pointer!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  padding:0!important;
+}
+
+.topbar .topbar-online-users .online-users-close:active{
+  transform:scale(.96);
+}
+
+@media(max-width:760px){
+  .topbar .topbar-online-users .online-users-list{
+    padding:10px!important;
+  }
+
+  .topbar .topbar-online-users .online-users-popup-head{
+    margin:-10px -10px 10px!important;
+    padding:10px 10px 9px!important;
+    padding-top:max(10px, env(safe-area-inset-top))!important;
+  }
+
+  .topbar .topbar-online-users .online-users-close{
+    width:42px!important;
+    height:42px!important;
+    min-width:42px!important;
+    min-height:42px!important;
+    font-size:30px!important;
+  }
+}
