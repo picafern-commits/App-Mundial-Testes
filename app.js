@@ -2849,11 +2849,111 @@ function exportPontosExcel() {
   toast("Excel Pontos exportado.");
 }
 
+
+function gameBetTypeLabel(bet, game) {
+  if (!game || !hasResult(game)) return "Por jogar";
+  if (!bet) return "Sem aposta";
+  if (typeof isExactBet === "function" && isExactBet(bet, game)) return "Resultado exato";
+  if (typeof isOutcomeBet === "function" && isOutcomeBet(bet, game)) {
+    return outcome(game.homeScore, game.awayScore) === "draw" ? "Empate certo" : "Vencedor certo";
+  }
+  return "Falhou";
+}
+
+function gameBetTypeClass(bet, game) {
+  if (!game || !hasResult(game)) return "pending";
+  if (!bet) return "missing";
+  if (typeof isExactBet === "function" && isExactBet(bet, game)) return "exact";
+  if (typeof isOutcomeBet === "function" && isOutcomeBet(bet, game)) return "winner";
+  return "miss";
+}
+
+function closeBetsModal() {
+  $("betsModal")?.classList.add("hidden");
+}
+
 function showGameBets(gameId) {
   const game = games.find(item => item.id === gameId);
   if (!game) return;
-  const rows = betsForGame(gameId).sort((a, b) => a.playerName.localeCompare(b.playerName)).map(bet => `${bet.playerName}: ${bet.homeGuess}-${bet.awayGuess}${hasResult(game) ? ` · ${pointsForBet(bet, game)} pts` : ""}`);
-  alert(`${game.homeTeam} vs ${game.awayTeam}\n\n${rows.length ? rows.join("\n") : "Sem apostas para este jogo."}`);
+
+  const modal = $("betsModal");
+  const title = $("betsModalTitle");
+  const subtitle = $("betsModalSubtitle");
+  const summary = $("betsGameSummary");
+  const body = $("betsModalBody");
+
+  if (!modal || !title || !summary || !body) {
+    const rows = betsForGame(gameId).sort((a, b) => a.playerName.localeCompare(b.playerName)).map(bet => `${bet.playerName}: ${bet.homeGuess}-${bet.awayGuess}${hasResult(game) ? ` · ${pointsForBet(bet, game)} pts` : ""}`);
+    alert(`${game.homeTeam} vs ${game.awayTeam}\n\n${rows.length ? rows.join("\n") : "Sem apostas para este jogo."}`);
+    return;
+  }
+
+  const rows = betsForGame(gameId).sort((a, b) =>
+    pointsForBet(b, game) - pointsForBet(a, game) ||
+    a.playerName.localeCompare(b.playerName, "pt")
+  );
+
+  const exactCount = rows.filter(bet => typeof isExactBet === "function" && isExactBet(bet, game)).length;
+  const winnerCount = rows.filter(bet => !(typeof isExactBet === "function" && isExactBet(bet, game)) && typeof isOutcomeBet === "function" && isOutcomeBet(bet, game)).length;
+  const totalPoints = rows.reduce((sum, bet) => sum + pointsForBet(bet, game), 0);
+
+  title.textContent = `${game.homeTeam} - ${game.awayTeam}`;
+  subtitle.textContent = `${game.group} · ${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}`;
+
+  summary.innerHTML = `
+    <div class="bets-summary-card main">
+      <span>Resultado</span>
+      <strong>${hasResult(game) ? `${game.homeScore}-${game.awayScore}` : "Por colocar"}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Apostas</span>
+      <strong>${rows.length}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Exatos</span>
+      <strong>${hasResult(game) ? exactCount : "-"}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Vencedor/empate</span>
+      <strong>${hasResult(game) ? winnerCount : "-"}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Pontos</span>
+      <strong>${hasResult(game) ? totalPoints : "-"}</strong>
+    </div>
+  `;
+
+  if (!rows.length) {
+    body.innerHTML = `<div class="empty">Ainda não existem apostas importadas para este jogo.</div>`;
+  } else {
+    body.innerHTML = `
+      <div class="bets-list-head">
+        <span>Jogador</span>
+        <span>Aposta</span>
+        <span>Tipo</span>
+        <span>Pontos</span>
+      </div>
+      <div class="bets-list">
+        ${rows.map((bet, index) => {
+          const points = pointsForBet(bet, game);
+          const typeLabel = gameBetTypeLabel(bet, game);
+          const typeClass = gameBetTypeClass(bet, game);
+          return `
+            <article class="bet-user-row ${typeClass}">
+              <div class="bet-user-main">
+                <span class="bet-position">${index + 1}</span>
+                <strong>${escapeHtml(bet.playerName)}</strong>
+              </div>
+              <div class="bet-score-pill">${bet.homeGuess}-${bet.awayGuess}</div>
+              <div class="bet-type-pill">${escapeHtml(typeLabel)}</div>
+              <b>${hasResult(game) ? points : "-"}</b>
+            </article>
+          `;
+        }).join("")}
+      </div>`;
+  }
+
+  modal.classList.remove("hidden");
 }
 
 
@@ -3050,6 +3150,11 @@ $("exportPontosBtn")?.addEventListener("click", exportPontosExcel);
 $("saveKnockoutUnlockBtn")?.addEventListener("click", saveKnockoutUnlock);
 
 
+
+$("closeBetsModalBtn")?.addEventListener("click", closeBetsModal);
+$("betsModal")?.addEventListener("click", event => { if (event.target.id === "betsModal") closeBetsModal(); });
+document.addEventListener("keydown", event => { if (event.key === "Escape" && !$("betsModal")?.classList.contains("hidden")) closeBetsModal(); });
+
 $("closeResultModalBtn")?.addEventListener("click", closeResultModal);
 $("saveModalResultBtn")?.addEventListener("click", saveResultFromModal);
 $("clearModalResultBtn")?.addEventListener("click", clearResultFromModal);
@@ -3073,6 +3178,40 @@ document.addEventListener("click", event => {
 
 
 let deferredInstallPrompt = null;
+
+
+function isIosDevice() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function isStandaloneMode() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function setupIosAppMode() {
+  const hint = $("iosInstallHint");
+  if (hint && isIosDevice() && !isStandaloneMode()) {
+    hint.classList.remove("hidden");
+  }
+
+  // Evita zoom por duplo toque no iPhone.
+  let lastTouchEnd = 0;
+  document.addEventListener("touchend", event => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 320) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
+
+  // Evita gestos de zoom em iOS quando suportado.
+  ["gesturestart", "gesturechange", "gestureend"].forEach(name => {
+    document.addEventListener(name, event => event.preventDefault(), { passive: false });
+  });
+
+  document.documentElement.classList.toggle("standalone-mode", isStandaloneMode());
+  document.documentElement.classList.toggle("ios-device", isIosDevice());
+}
 
 function setupPwaInstall() {
   const installBtn = $("installAppBtn");
@@ -3139,6 +3278,7 @@ window.addEventListener("beforeunload", () => {
   try { saveLocalData("beforeunload"); } catch {}
 });
 
+setupIosAppMode();
 setupPwaInstall();
 registerServiceWorker();
 await initFirebase();

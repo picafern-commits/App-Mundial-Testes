@@ -2488,3 +2488,235 @@ main{
     justify-content:space-between;
   }
 }
+
+
+/* v54 — iPhone: modo app verdadeira ao adicionar ao Ecrã Principal */
+html,
+body{
+  width:100%;
+  min-height:100%;
+  min-height:100dvh;
+  overscroll-behavior:none;
+  -webkit-text-size-adjust:100%;
+  touch-action:manipulation;
+}
+body{
+  position:relative;
+  overflow-x:hidden!important;
+  -webkit-tap-highlight-color:transparent;
+}
+input,
+select,
+textarea,
+button{
+  font-size:16px!important; /* evita zoom automático do iPhone ao focar inputs */
+}
+.ios-device body,
+.ios-device .app-shell,
+.ios-device .login-screen{
+  min-height:100svh;
+}
+.standalone-mode body{
+  background:#070b13;
+}
+.standalone-mode .app-shell{
+  padding-top:max(16px, env(safe-area-inset-top))!important;
+  padding-bottom:max(24px, env(safe-area-inset-bottom))!important;
+  padding-left:max(10px, env(safe-area-inset-left))!important;
+  padding-right:max(10px, env(safe-area-inset-right))!important;
+}
+.standalone-mode .topbar{
+  padding-top:6px;
+}
+.ios-install-hint{
+  margin-top:14px;
+  padding:11px 12px;
+  border:1px solid rgba(255,216,87,.35);
+  border-radius:12px;
+  color:var(--text);
+  background:rgba(255,216,87,.10);
+  font-size:13px;
+  line-height:1.35;
+}
+.ios-install-hint strong{
+  color:var(--gold);
+}
+@media(max-width:760px){
+  .ios-device .tabs{
+    position:sticky;
+    top:env(safe-area-inset-top);
+  }
+  .ios-device .modal{
+    padding:
+      max(12px, env(safe-area-inset-top))
+      10px
+      max(12px, env(safe-area-inset-bottom));
+  }
+  .ios-device .modal-card{
+    max-height:calc(100svh - 24px)!important;
+  }
+}
+
+
+/* v55 — Modal bonito para Ver Apostas */
+.bets-modal-card{
+  width:min(980px, calc(100vw - 28px))!important;
+}
+.bets-game-summary{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(120px,1fr));
+  gap:10px;
+  margin:12px 0 14px;
+}
+.bets-summary-card{
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px;
+  background:rgba(255,255,255,.04);
+}
+.bets-summary-card.main{
+  background:linear-gradient(135deg,rgba(255,212,90,.16),rgba(38,194,129,.08));
+}
+.bets-summary-card span{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:950;
+  text-transform:uppercase;
+}
+.bets-summary-card strong{
+  display:block;
+  margin-top:5px;
+  color:var(--gold);
+  font-size:24px;
+  line-height:1;
+}
+.bets-modal-body{
+  display:grid;
+  gap:8px;
+}
+.bets-list-head,
+.bet-user-row{
+  display:grid;
+  grid-template-columns:minmax(180px,1fr) 94px 150px 70px;
+  gap:10px;
+  align-items:center;
+}
+.bets-list-head{
+  padding:0 12px 7px;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:950;
+  text-transform:uppercase;
+}
+.bets-list{
+  display:grid;
+  gap:8px;
+  max-height:min(56vh,520px);
+  overflow:auto;
+  padding-right:3px;
+}
+.bet-user-row{
+  min-height:54px;
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:rgba(255,255,255,.035);
+}
+.bet-user-row.exact{
+  border-color:rgba(255,212,90,.45);
+  background:linear-gradient(135deg,rgba(255,212,90,.15),rgba(255,255,255,.035));
+}
+.bet-user-row.winner{
+  border-color:rgba(38,194,129,.38);
+  background:linear-gradient(135deg,rgba(38,194,129,.11),rgba(255,255,255,.03));
+}
+.bet-user-row.miss{
+  border-color:rgba(239,68,68,.28);
+}
+.bet-user-main{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+.bet-user-main strong{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.bet-position{
+  width:30px;
+  height:30px;
+  display:grid;
+  place-items:center;
+  flex:0 0 30px;
+  border-radius:999px;
+  color:var(--gold);
+  background:rgba(255,212,90,.12);
+  font-size:12px;
+  font-weight:950;
+}
+.bet-score-pill,
+.bet-type-pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:32px;
+  padding:6px 9px;
+  border-radius:999px;
+  font-weight:950;
+}
+.bet-score-pill{
+  color:var(--text);
+  background:rgba(255,255,255,.07);
+  font-size:16px;
+}
+.bet-type-pill{
+  color:var(--muted);
+  background:rgba(255,255,255,.055);
+  font-size:12px;
+  white-space:nowrap;
+}
+.bet-user-row.exact .bet-type-pill{
+  color:#07111d;
+  background:var(--gold);
+}
+.bet-user-row.winner .bet-type-pill{
+  color:#dcffef;
+  background:rgba(38,194,129,.25);
+}
+.bet-user-row.miss .bet-type-pill{
+  color:#ffc0c0;
+  background:rgba(239,68,68,.18);
+}
+.bet-user-row b{
+  color:var(--gold);
+  font-size:20px;
+  text-align:right;
+}
+@media(max-width:760px){
+  .bets-game-summary{
+    grid-template-columns:repeat(2,minmax(120px,1fr));
+  }
+  .bets-summary-card.main{
+    grid-column:1/-1;
+  }
+  .bets-list-head{
+    display:none;
+  }
+  .bet-user-row{
+    grid-template-columns:1fr auto;
+    gap:8px;
+  }
+  .bet-user-main{
+    grid-column:1/-1;
+  }
+  .bet-score-pill,
+  .bet-type-pill{
+    justify-content:flex-start;
+  }
+  .bet-user-row b{
+    align-self:center;
+  }
+}

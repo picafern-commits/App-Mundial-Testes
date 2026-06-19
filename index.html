@@ -2,8 +2,19 @@
 <html lang="pt">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Mundial Pontos 2026 · Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Mundial Pontos 2026 · Ver Apostas</title>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Mundial 2026" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="theme-color" content="#070b13" />
+  <meta name="msapplication-TileColor" content="#070b13" />
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+
 
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#070b13" />
@@ -11,7 +22,6 @@
   <meta name="application-name" content="Mundial Pontos 2026" />
   <meta name="msapplication-TileColor" content="#070b13" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -43,6 +53,9 @@
       </div>
 
       <p class="login-help">As contas novas ficam como User normal. O Admin pode alterar permissões depois.</p>
+      <div id="iosInstallHint" class="ios-install-hint hidden">
+        <strong>iPhone:</strong> abre no Safari, toca em Partilhar e escolhe “Adicionar ao Ecrã Principal”.
+      </div>
     </div>
   </section>
 
@@ -382,6 +395,22 @@
         <button id="clearModalResultBtn" class="secondary danger-soft" type="button">Limpar resultado</button>
         <button id="saveModalResultBtn" class="primary" type="button">Guardar resultado</button>
       </div>
+    </div>
+  </div>
+
+
+  <div id="betsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="betsModalTitle">
+    <div class="modal-card bets-modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="betsModalTitle">Apostas do jogo</h2>
+          <p id="betsModalSubtitle">Consulta as apostas dos users e os pontos atribuídos.</p>
+        </div>
+        <button id="closeBetsModalBtn" class="icon-button" type="button" aria-label="Fechar">×</button>
+      </div>
+
+      <div id="betsGameSummary" class="bets-game-summary"></div>
+      <div id="betsModalBody" class="bets-modal-body"></div>
     </div>
   </div>
 

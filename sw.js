@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v53";
+const CACHE_NAME = "mundial-pontos-2026-v55";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -7,7 +7,10 @@ const APP_SHELL = [
   "./config.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  "./icons/icon-512.png",
+  "./icons/apple-touch-icon.png",
+  "./icons/apple-touch-icon-167.png",
+  "./icons/apple-touch-icon-152.png"
 ];
 
 self.addEventListener("install", event => {
