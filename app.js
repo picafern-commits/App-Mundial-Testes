@@ -1109,11 +1109,21 @@ function setLoginStatus(message, type = "info") {
 function showLoginScreen() {
   $("loginScreen")?.classList.remove("hidden");
   $("appShell")?.classList.add("auth-hidden");
+  document.body.classList.remove("knockout-layout-active");
+  $("appShell")?.classList.remove("knockout-screen-active");
 }
 
 function showAppScreen() {
   $("loginScreen")?.classList.add("hidden");
   $("appShell")?.classList.remove("auth-hidden");
+  updateActiveAppSection();
+}
+
+function updateActiveAppSection() {
+  const activeTabId = document.querySelector(".tab-panel.active")?.id || "calendarTab";
+  const isKnockout = activeTabId === "knockoutTab";
+  document.body.classList.toggle("knockout-layout-active", isKnockout);
+  $("appShell")?.classList.toggle("knockout-screen-active", isKnockout);
 }
 
 function updateSessionBox() {
@@ -1675,6 +1685,7 @@ function openKnockoutPage() {
   document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
   document.querySelector('[data-tab="knockoutTab"]')?.classList.add("active");
   $("knockoutTab")?.classList.add("active");
+  updateActiveAppSection();
   renderKnockout();
 }
 
@@ -1696,7 +1707,8 @@ function renderKnockout() {
   const semiMatches = knockoutMatches().filter(match => match.round === "sf");
   const thirdPlaceTeams = semiMatches.map(knockoutLoser).filter(Boolean);
 
-  if (notice) {
+  if (notice) notice.innerHTML = "";
+  if (false && notice) {
     notice.innerHTML = appSettings.knockout?.adminUnlocked && !groupStageFinished()
       ? `<strong>Modo Admin ativo</strong><span>A Fase Final está desbloqueada para preparação, mesmo antes de todos os grupos acabarem.</span>`
       : `<strong>Fase Final ativa</strong><span>Tu defines a primeira ronda; depois os vencedores passam automaticamente até à final.</span>`;
@@ -1820,7 +1832,7 @@ function renderKnockoutMatch(match) {
   const hasScore = match.homeScore !== null && match.homeScore !== undefined && match.homeScore !== "" && match.awayScore !== null && match.awayScore !== undefined && match.awayScore !== "";
   const isDraw = hasScore && Number(match.homeScore) === Number(match.awayScore);
   const hasPens = match.homePenalties !== null && match.homePenalties !== undefined && match.homePenalties !== "" && match.awayPenalties !== null && match.awayPenalties !== undefined && match.awayPenalties !== "";
-  const lockedText = waiting ? "À espera" : winner ? "Vencedor" : isDraw ? "Faltam penáltis" : "Por decidir";
+  const lockedText = waiting ? "" : winner ? "Vencedor" : isDraw ? "Faltam penáltis" : "Por decidir";
 
   return `
     <article class="knockout-match ${winner ? "has-winner" : ""} ${waiting ? "waiting" : ""}">
@@ -2009,6 +2021,7 @@ function openKnockoutEditInAdmin(matchId) {
   document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
   document.querySelector('[data-tab="adminTab"]')?.classList.add("active");
   $("adminTab")?.classList.add("active");
+  updateActiveAppSection();
   renderKnockoutAdmin();
   setTimeout(() => {
     const row = document.querySelector(`[data-ko-admin="${CSS.escape(matchId)}"]`);
@@ -2018,7 +2031,7 @@ function openKnockoutEditInAdmin(matchId) {
   }, 80);
 }
 
-function renderAll() { renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); }
+function renderAll() { renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); updateActiveAppSection(); }
 
 function renderCalendarFilterState() {
   $("calendarMissingResultsBtn")?.classList.toggle("active-filter", calendarViewMode === "missing");
@@ -3241,6 +3254,7 @@ document.querySelectorAll(".tab").forEach(button => {
     document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
     button.classList.add("active");
     $(button.dataset.tab).classList.add("active");
+    updateActiveAppSection();
     if (button.dataset.tab === "knockoutTab") renderKnockout();
   });
 });

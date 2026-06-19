@@ -4033,3 +4033,71 @@ main,
 #knockoutBracket .bracket-center-final{
   margin-top:12px!important;
 }
+
+/* v59: scroll corrigido e cabecalhos da Fase Final uniformes */
+body:not(.knockout-layout-active){
+  height:auto!important;
+  min-height:100dvh!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+}
+
+body:not(.knockout-layout-active) .app-shell,
+body:not(.knockout-layout-active) main,
+body:not(.knockout-layout-active) .tab-panel{
+  height:auto!important;
+  min-height:0!important;
+  overflow-x:visible!important;
+  overflow-y:visible!important;
+}
+
+body.knockout-layout-active{
+  height:100dvh!important;
+  overflow:hidden!important;
+}
+
+body.knockout-layout-active .app-shell,
+.app-shell.knockout-screen-active{
+  height:100dvh!important;
+  min-height:100dvh!important;
+  overflow:hidden!important;
+}
+
+body.knockout-layout-active .topbar{
+  display:none!important;
+}
+
+body.knockout-layout-active #knockoutTab.active{
+  height:calc(100dvh - 104px)!important;
+  overflow:hidden!important;
+}
+
+body.knockout-layout-active #knockoutBracket.knockout-bracket{
+  height:100%!important;
+  overflow:hidden!important;
+}
+
+#knockoutLockNotice:empty{
+  display:none!important;
+}
+
+#knockoutBracket .bracket-photo-round h3{
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  min-height:28px!important;
+  height:28px!important;
+  padding:0 6px!important;
+  font-size:10px!important;
+  line-height:1!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+#knockoutBracket .bracket-side-right h3{
+  text-align:center!important;
+}
+
+#knockoutBracket .bracket-photo-grid-split .ko-status-line{
+  min-height:12px!important;
+}
