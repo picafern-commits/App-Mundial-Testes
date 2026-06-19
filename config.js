@@ -1,6 +1,7 @@
 window.MUNDIAL_CONFIG = {
-  appVersion: "52.0",
+  appVersion: "53.0",
   adminPin: "1234",
+  adminEmails: ["pica.fern@gmail.com"],
   firebase: {
     apiKey: "AIzaSyCOyW5rfwF8iZxcVN6jxR4VqZ6pNdNmFRA",
     authDomain: "app-mundial2026.firebaseapp.com",

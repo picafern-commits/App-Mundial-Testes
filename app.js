@@ -11,6 +11,10 @@ const PORTUGAL_TZ = "Europe/Lisbon";
 let db = null;
 let firebaseApi = null;
 let firebaseAuth = null;
+let firebaseAuthApi = null;
+let currentUser = null;
+let currentProfile = null;
+let permissionsCache = [];
 let storageMode = "local";
 let games = [];
 let bets = [];
@@ -517,8 +521,10 @@ async function initFirebase() {
     db = null;
     firebaseApi = null;
     firebaseAuth = null;
+    firebaseAuthApi = null;
     storageMode = "local";
     setFirebaseStatus("error", "Firebase: configuração em falta no config.js");
+    setLoginStatus("Firebase: configuração em falta no config.js", "error");
     return false;
   }
 
@@ -530,21 +536,23 @@ async function initFirebase() {
 
     const app = appModule.initializeApp(config);
     firebaseAuth = authModule.getAuth(app);
-    await withTimeout(authModule.signInAnonymously(firebaseAuth), 12000, "autenticar no Firebase");
-
+    firebaseAuthApi = authModule;
     db = firestoreModule.getFirestore(app);
     firebaseApi = firestoreModule;
     storageMode = "firebase";
 
     setFirebaseStatus("success", `Firebase: ligado ao projeto ${config.projectId}`);
+    setLoginStatus("Firebase ligado. Faz login.", "success");
     return true;
   } catch (error) {
     console.error("Firebase não ligou:", error);
     db = null;
     firebaseApi = null;
     firebaseAuth = null;
+    firebaseAuthApi = null;
     storageMode = "local";
     setFirebaseStatus("error", `Firebase: não ligou — ${error.message || "erro"}`);
+    setLoginStatus(`Firebase não ligou — ${error.message || "erro"}`, "error");
     return false;
   }
 }
@@ -1028,6 +1036,425 @@ function rescueLocalBetsIfNeeded() {
 }
 
 
+
+const DEFAULT_PERMISSIONS = {
+  calendar: true,
+  score: true,
+  knockout: true,
+  admin: false,
+  editResults: false,
+  importExcel: false,
+  editUsers: false,
+  editPoints: false,
+  editKnockout: false,
+  managePermissions: false
+};
+
+const ADMIN_PERMISSIONS = {
+  calendar: true,
+  score: true,
+  knockout: true,
+  admin: true,
+  editResults: true,
+  importExcel: true,
+  editUsers: true,
+  editPoints: true,
+  editKnockout: true,
+  managePermissions: true
+};
+
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
+function configAdminEmails() {
+  return (APP_CONFIG.adminEmails || []).map(normalizeEmail).filter(Boolean);
+}
+
+function isConfiguredAdmin(email) {
+  return configAdminEmails().includes(normalizeEmail(email));
+}
+
+function defaultProfileForUser(user) {
+  const email = normalizeEmail(user?.email);
+  const admin = isConfiguredAdmin(email);
+  return {
+    uid: user?.uid || "",
+    email,
+    role: admin ? "admin" : "user",
+    active: true,
+    permissions: admin ? { ...ADMIN_PERMISSIONS } : { ...DEFAULT_PERMISSIONS },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function hasPermission(permission) {
+  if (!currentProfile?.active) return false;
+  if (currentProfile?.role === "admin") return true;
+  return Boolean(currentProfile?.permissions?.[permission]);
+}
+
+function isAdminProfile() {
+  return hasPermission("admin") || currentProfile?.role === "admin";
+}
+
+function setLoginStatus(message, type = "info") {
+  const box = $("loginStatusBox");
+  if (!box) return;
+  box.className = `login-status ${type}`;
+  box.textContent = message;
+}
+
+function showLoginScreen() {
+  $("loginScreen")?.classList.remove("hidden");
+  $("appShell")?.classList.add("auth-hidden");
+}
+
+function showAppScreen() {
+  $("loginScreen")?.classList.add("hidden");
+  $("appShell")?.classList.remove("auth-hidden");
+}
+
+function updateSessionBox() {
+  const box = $("sessionBox");
+  const label = $("sessionUserLabel");
+  if (!box || !label) return;
+  if (!currentUser) {
+    box.classList.add("hidden");
+    return;
+  }
+  box.classList.remove("hidden");
+  const role = currentProfile?.role === "admin" ? "Admin" : "User";
+  label.textContent = `${currentUser.email || "Conta"} · ${role}`;
+}
+
+async function readUserProfile(user) {
+  if (!db || !firebaseApi || !user) return defaultProfileForUser(user);
+
+  const { doc, getDoc, setDoc } = firebaseApi;
+  const ref = doc(db, "users", normalizeEmail(user.email));
+  const fallback = defaultProfileForUser(user);
+
+  try {
+    const snap = await withTimeout(getDoc(ref), 12000, "ler perfil do utilizador");
+    if (!snap.exists()) {
+      await withTimeout(setDoc(ref, fallback, { merge: true }), 12000, "criar perfil do utilizador");
+      return fallback;
+    }
+
+    const data = snap.data() || {};
+    const configAdmin = isConfiguredAdmin(user.email);
+    const profile = {
+      ...fallback,
+      ...data,
+      uid: user.uid,
+      email: normalizeEmail(user.email),
+      role: configAdmin ? "admin" : (data.role || "user"),
+      active: data.active !== false,
+      permissions: {
+        ...(data.role === "admin" || configAdmin ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS),
+        ...(data.permissions || {})
+      }
+    };
+
+    if (configAdmin && data.role !== "admin") {
+      await setDoc(ref, { role: "admin", active: true, permissions: ADMIN_PERMISSIONS, updatedAt: new Date().toISOString() }, { merge: true });
+    }
+
+    return profile;
+  } catch (error) {
+    console.error("Erro ao ler perfil:", error);
+    return fallback;
+  }
+}
+
+async function loadPermissionsUsers() {
+  permissionsCache = [];
+  if (!db || !firebaseApi || !hasPermission("managePermissions")) return;
+
+  try {
+    const { collection, getDocs } = firebaseApi;
+    const snap = await withTimeout(getDocs(collection(db, "users")), 12000, "ler utilizadores");
+    permissionsCache = snap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
+      .sort((a, b) => normalizeEmail(a.email || a.id).localeCompare(normalizeEmail(b.email || b.id)));
+  } catch (error) {
+    console.error("Erro ao carregar permissões:", error);
+  }
+}
+
+function renderPermissionCheckbox(email, key, label, checked, disabled = false) {
+  return `
+    <label class="perm-check">
+      <input type="checkbox" data-perm-email="${escapeHtml(email)}" data-perm-key="${escapeHtml(key)}" ${checked ? "checked" : ""} ${disabled ? "disabled" : ""} />
+      ${escapeHtml(label)}
+    </label>`;
+}
+
+function renderPermissionsUsers() {
+  const list = $("permissionsUsersList");
+  if (!list) return;
+
+  if (!hasPermission("managePermissions")) {
+    list.innerHTML = `<div class="empty small-empty">Não tens permissão para gerir utilizadores.</div>`;
+    return;
+  }
+
+  if (!permissionsCache.length) {
+    list.innerHTML = `<div class="empty small-empty">Ainda não existem utilizadores registados.</div>`;
+    return;
+  }
+
+  const labels = {
+    calendar: "Calendário",
+    score: "Pontuação",
+    knockout: "Fase Final",
+    admin: "Admin",
+    editResults: "Editar resultados",
+    importExcel: "Importar Excel",
+    editUsers: "Users do jogo",
+    editPoints: "Sistema pontos",
+    editKnockout: "Editar Fase Final",
+    managePermissions: "Permissões"
+  };
+
+  list.innerHTML = permissionsCache.map(user => {
+    const email = normalizeEmail(user.email || user.id);
+    const role = user.role === "admin" ? "admin" : "user";
+    const isAdminUser = role === "admin";
+    const perms = { ...(isAdminUser ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS), ...(user.permissions || {}) };
+    const active = user.active !== false;
+
+    return `
+      <article class="permission-user-card" data-permission-card="${escapeHtml(email)}">
+        <div class="permission-user-head">
+          <div>
+            <strong>${escapeHtml(email)}</strong>
+            <span>${isAdminUser ? "Admin" : "User normal"} · ${active ? "Ativo" : "Bloqueado"}</span>
+          </div>
+          <div class="permission-user-actions">
+            <select data-role-email="${escapeHtml(email)}">
+              <option value="user" ${role === "user" ? "selected" : ""}>User normal</option>
+              <option value="admin" ${role === "admin" ? "selected" : ""}>Admin</option>
+            </select>
+            <label class="perm-active">
+              <input type="checkbox" data-active-email="${escapeHtml(email)}" ${active ? "checked" : ""} />
+              Ativo
+            </label>
+            <button class="primary small" type="button" data-save-permissions="${escapeHtml(email)}">Guardar</button>
+          </div>
+        </div>
+        <div class="permission-grid">
+          ${Object.entries(labels).map(([key, label]) => renderPermissionCheckbox(email, key, label, perms[key], isAdminUser)).join("")}
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+async function savePermissionUser(email) {
+  if (!db || !firebaseApi) return toast("Firebase não está ligado.");
+  if (!hasPermission("managePermissions")) return toast("Sem permissão para gerir utilizadores.");
+
+  const normalized = normalizeEmail(email);
+  if (!normalized) return toast("Email inválido.");
+
+  const card = document.querySelector(`[data-permission-card="${CSS.escape(normalized)}"]`);
+  const role = document.querySelector(`[data-role-email="${CSS.escape(normalized)}"]`)?.value || $("permissionRoleInput")?.value || "user";
+  const activeInput = document.querySelector(`[data-active-email="${CSS.escape(normalized)}"]`);
+  const active = activeInput ? activeInput.checked : true;
+  const isAdminUser = role === "admin";
+
+  const permissions = isAdminUser ? { ...ADMIN_PERMISSIONS } : { ...DEFAULT_PERMISSIONS };
+  if (card && !isAdminUser) {
+    card.querySelectorAll("[data-perm-key]").forEach(input => {
+      permissions[input.dataset.permKey] = input.checked;
+    });
+  }
+
+  const profile = {
+    email: normalized,
+    role,
+    active,
+    permissions,
+    updatedAt: new Date().toISOString()
+  };
+
+  const { doc, setDoc } = firebaseApi;
+  await withTimeout(setDoc(doc(db, "users", normalized), profile, { merge: true }), 12000, "guardar permissões");
+  toast("Permissões guardadas.");
+  await loadPermissionsUsers();
+  renderPermissionsUsers();
+
+  if (normalizeEmail(currentUser?.email) === normalized) {
+    currentProfile = await readUserProfile(currentUser);
+    applyPermissionsToUi();
+  }
+}
+
+async function addPermissionUser() {
+  const email = normalizeEmail($("permissionEmailInput")?.value);
+  if (!email) return toast("Escreve o email do utilizador.");
+  await savePermissionUser(email);
+  if ($("permissionEmailInput")) $("permissionEmailInput").value = "";
+}
+
+function permissionTabAllowed(tabId) {
+  if (tabId === "calendarTab") return hasPermission("calendar");
+  if (tabId === "scoreTab") return hasPermission("score");
+  if (tabId === "knockoutTab") return hasPermission("knockout");
+  if (tabId === "adminTab") return hasPermission("admin");
+  return true;
+}
+
+function switchToFirstAllowedTab() {
+  const allowed = [...document.querySelectorAll(".tab")].find(button => permissionTabAllowed(button.dataset.tab));
+  if (!allowed) return;
+  document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
+  allowed.classList.add("active");
+  $(allowed.dataset.tab)?.classList.add("active");
+}
+
+function applyPermissionsToUi() {
+  updateSessionBox();
+
+  document.querySelector('[data-tab="calendarTab"]')?.classList.toggle("hidden", !hasPermission("calendar"));
+  document.querySelector('[data-tab="scoreTab"]')?.classList.toggle("hidden", !hasPermission("score"));
+  document.querySelector('[data-tab="knockoutTab"]')?.classList.toggle("hidden", !hasPermission("knockout"));
+  document.querySelector('[data-tab="adminTab"]')?.classList.toggle("hidden", !hasPermission("admin"));
+
+  $("adminTab")?.classList.toggle("no-access", !hasPermission("admin"));
+
+  // Ações admin
+  document.querySelectorAll("[data-result-game]").forEach(btn => {
+    const inAdmin = btn.closest("#adminTab");
+    if (inAdmin && !hasPermission("editResults")) btn.classList.add("hidden");
+  });
+
+  $("openExcelModalBtn")?.classList.toggle("hidden", !hasPermission("importExcel"));
+  $("exportResultadosBtn")?.classList.toggle("hidden", !hasPermission("importExcel"));
+  $("addUserBtn")?.classList.toggle("hidden", !hasPermission("editUsers"));
+  $("savePointsSettingsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
+  $("saveExtraResultsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
+  $("saveKnockoutUnlockBtn")?.classList.toggle("hidden", !hasPermission("editKnockout"));
+
+  document.querySelectorAll("[data-ko-save], [data-ko-edit]").forEach(btn => {
+    btn.classList.toggle("hidden", !hasPermission("editKnockout"));
+  });
+
+  const permissionsCard = $("permissionsUsersList")?.closest(".admin-card");
+  permissionsCard?.classList.toggle("hidden", !hasPermission("managePermissions"));
+
+  const activePanel = document.querySelector(".tab-panel.active");
+  if (activePanel && !permissionTabAllowed(activePanel.id)) {
+    switchToFirstAllowedTab();
+  }
+
+  renderPermissionsUsers();
+}
+
+async function handleLogin() {
+  if (!firebaseAuthApi || !firebaseAuth) {
+    setLoginStatus("Firebase/Auth não está pronto.", "error");
+    return;
+  }
+
+  const email = $("loginEmailInput")?.value.trim();
+  const password = $("loginPasswordInput")?.value || "";
+  if (!email || !password) {
+    setLoginStatus("Preenche email e password.", "error");
+    return;
+  }
+
+  try {
+    setLoginStatus("A entrar...", "loading");
+    await firebaseAuthApi.signInWithEmailAndPassword(firebaseAuth, email, password);
+  } catch (error) {
+    console.error(error);
+    setLoginStatus(authFriendlyError(error), "error");
+  }
+}
+
+async function handleCreateAccount() {
+  if (!firebaseAuthApi || !firebaseAuth) {
+    setLoginStatus("Firebase/Auth não está pronto.", "error");
+    return;
+  }
+
+  const email = $("loginEmailInput")?.value.trim();
+  const password = $("loginPasswordInput")?.value || "";
+  if (!email || !password) {
+    setLoginStatus("Preenche email e password para criar conta.", "error");
+    return;
+  }
+
+  try {
+    setLoginStatus("A criar conta...", "loading");
+    await firebaseAuthApi.createUserWithEmailAndPassword(firebaseAuth, email, password);
+  } catch (error) {
+    console.error(error);
+    setLoginStatus(authFriendlyError(error), "error");
+  }
+}
+
+function authFriendlyError(error) {
+  const code = String(error?.code || error?.message || "");
+  if (code.includes("auth/invalid-credential") || code.includes("auth/wrong-password")) return "Email ou password incorretos.";
+  if (code.includes("auth/user-not-found")) return "Conta não encontrada.";
+  if (code.includes("auth/email-already-in-use")) return "Este email já tem conta. Usa Entrar.";
+  if (code.includes("auth/weak-password")) return "A password tem de ter pelo menos 6 caracteres.";
+  if (code.includes("auth/operation-not-allowed")) return "Ativa Email/Password no Firebase Authentication.";
+  return "Erro no login. Verifica o Firebase e tenta novamente.";
+}
+
+function setupAuthGate() {
+  if (!firebaseAuthApi || !firebaseAuth) {
+    showLoginScreen();
+    setLoginStatus("Firebase Auth não está configurado.", "error");
+    return;
+  }
+
+  firebaseAuthApi.onAuthStateChanged(firebaseAuth, async user => {
+    currentUser = user || null;
+
+    if (!user) {
+      currentProfile = null;
+      showLoginScreen();
+      updateSessionBox();
+      return;
+    }
+
+    try {
+      setLoginStatus("A carregar permissões...", "loading");
+      currentProfile = await readUserProfile(user);
+
+      if (!currentProfile.active) {
+        await firebaseAuthApi.signOut(firebaseAuth);
+        setLoginStatus("Conta bloqueada pelo Admin.", "error");
+        return;
+      }
+
+      showAppScreen();
+      updateSessionBox();
+      await loadPermissionsUsers();
+      await loadData();
+      applyPermissionsToUi();
+      setLoginStatus("Login efetuado.", "success");
+    } catch (error) {
+      console.error("Erro no arranque com login:", error);
+      setLoginStatus("Erro ao carregar permissões.", "error");
+      showLoginScreen();
+    }
+  });
+}
+
+async function logout() {
+  if (!firebaseAuthApi || !firebaseAuth) return;
+  await firebaseAuthApi.signOut(firebaseAuth);
+  toast("Sessão terminada.");
+}
+
 const KNOCKOUT_ROUNDS = [
   { key: "r32", label: "16 avos", count: 16, next: "r16" },
   { key: "r16", label: "Oitavos", count: 8, next: "qf" },
@@ -1356,6 +1783,8 @@ function renderKnockoutAdmin() {
 }
 
 async function saveKnockoutUnlock() {
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
+
   ensureKnockoutSettings();
   appSettings.knockout.adminUnlocked = Boolean($("adminKnockoutUnlockedInput")?.checked);
   await persistSettings();
@@ -1364,6 +1793,8 @@ async function saveKnockoutUnlock() {
 }
 
 async function saveKnockoutMatchFromAdmin(matchId) {
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
+
   ensureKnockoutSettings();
   const row = document.querySelector(`[data-ko-admin="${CSS.escape(matchId)}"]`);
   const match = knockoutMatchById(matchId);
@@ -1442,6 +1873,8 @@ async function saveKnockoutMatchFromAdmin(matchId) {
 }
 
 function openKnockoutEditInAdmin(matchId) {
+  if (!hasPermission("editKnockout")) { toast("Sem permissão para editar a Fase Final."); return; }
+
   if (!isAdmin) {
     toast("Entra no Admin para editar a Fase Final.");
     return;
@@ -1459,7 +1892,7 @@ function openKnockoutEditInAdmin(matchId) {
   }, 80);
 }
 
-function renderAll() { renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); }
+function renderAll() { renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); }
 
 function renderCalendarFilterState() {
   $("calendarMissingResultsBtn")?.classList.toggle("active-filter", calendarViewMode === "missing");
@@ -1615,8 +2048,8 @@ function renderGroups() {
 }
 
 function renderAdminState() {
-  $("adminLocked").classList.toggle("hidden", isAdmin);
-  $("adminUnlocked").classList.toggle("hidden", !isAdmin);
+  $("adminLocked").classList.toggle("hidden", isAdmin || isAdminProfile());
+  $("adminUnlocked").classList.toggle("hidden", !(isAdmin || isAdminProfile()));
   const status = storageMode === "firebase" ? "Firebase online" : "Modo local";
   $("storageStatus").textContent = `${status}. Importa as apostas do Excel Resultados e mete os resultados reais manualmente.`;
 }
@@ -1728,6 +2161,8 @@ function renderUserBetsEditor() {
 }
 
 async function saveEditedUserBets() {
+  if (!hasPermission("editUsers")) { toast("Sem permissão."); return; }
+
   const playerName = selectedEditUser;
   if (!playerName) {
     toast("Escolhe um utilizador.");
@@ -1833,6 +2268,8 @@ async function saveBet(gameId, homeGuess, awayGuess, playerName = "Manual") {
   toast("Aposta guardada.");
 }
 async function setResult(gameId, homeScore, awayScore) {
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
+
   if (homeScore === "" || awayScore === "") {
     toast("Preenche o resultado completo.");
     return false;
@@ -1867,6 +2304,8 @@ async function setResult(gameId, homeScore, awayScore) {
   return true;
 }
 async function clearResult(gameId) {
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
+
   const game = games.find(item => item.id === gameId);
   if (!game) return false;
 
@@ -2144,6 +2583,8 @@ function parsePontosWorkbookRows(rows) {
   return { results, importedPoints, errors };
 }
 async function previewExcelImport() {
+  if (!hasPermission("importExcel")) { toast("Sem permissão."); return; }
+
   const resultadosFile = $("resultadosExcelInput").files?.[0];
   const pontosFile = $("pontosExcelInput").files?.[0];
   if (!resultadosFile && !pontosFile) { setImportStatus("error", "Nenhum ficheiro selecionado", "Seleciona o Excel Resultados corrigido para importar.");
@@ -2184,6 +2625,8 @@ preview.innerHTML = `
   }
 }
 async function confirmExcelImport() {
+  if (!hasPermission("importExcel")) { toast("Sem permissão."); return; }
+
   if (!pendingExcelImport) return toast("Faz primeiro a pré-visualização.");
   const replace = $("replaceExcelBetsInput").checked;
   pendingExcelImport.results.forEach(result => {
@@ -2213,6 +2656,8 @@ async function confirmExcelImport() {
   toast("Excel importado. Classificação recalculada.");
 }
 async function savePointsSettings() {
+  if (!hasPermission("editPoints")) { toast("Sem permissão."); return; }
+
   appSettings.points = {
     exact: Number($("pointsExactInput").value) || 0,
     winner: Number($("pointsWinnerInput")?.value ?? appSettings.points.winner ?? 1) || 0,
@@ -2223,11 +2668,15 @@ async function savePointsSettings() {
   await persistSettings(); renderAll(); toast("Sistema de pontos atualizado.");
 }
 async function saveExtraResults() {
+  if (!hasPermission("editPoints")) { toast("Sem permissão."); return; }
+
   appSettings.extraResults = { mvp: $("finalMvpInput").value.trim(), topScorer: $("finalTopScorerInput").value.trim(), champion: $("finalChampionInput").value.trim() };
   await persistSettings(); renderAll(); toast("Resultados especiais guardados.");
 }
 
 async function addUser() {
+  if (!hasPermission("editUsers")) { toast("Sem permissão."); return; }
+
   const input = $("newUserNameInput");
   const name = input?.value.trim();
   if (!name) return toast("Escreve o nome do user.");
@@ -2241,6 +2690,8 @@ async function addUser() {
 }
 
 async function removeUser(name) {
+  if (!hasPermission("editUsers")) { toast("Sem permissão."); return; }
+
   if (!confirm(`Remover ${name} da lista de users? As apostas importadas não são apagadas.`)) return;
   appSettings.users = (appSettings.users || []).filter(user => user !== name);
   await persistSettings();
@@ -2433,6 +2884,8 @@ function updateResultPreview() {
 }
 
 function openResultModal(gameId) {
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return; }
+
   const game = games.find(item => item.id === gameId);
   if (!game) return;
 
@@ -2458,6 +2911,8 @@ function closeResultModal() {
 }
 
 async function saveResultFromModal() {
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
+
   const gameId = $("resultGameIdInput").value;
   const homeScore = $("modalHomeScoreInput").value;
   const awayScore = $("modalAwayScoreInput").value;
@@ -2485,6 +2940,8 @@ async function saveResultFromModal() {
 }
 
 async function clearResultFromModal() {
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
+
   const gameId = $("resultGameIdInput").value;
   if (!gameId) return;
 
@@ -2546,6 +3003,10 @@ document.addEventListener("click", event => {
 
 document.querySelectorAll(".tab").forEach(button => {
   button.addEventListener("click", () => {
+    if (!permissionTabAllowed(button.dataset.tab)) {
+      toast("Sem permissão para abrir esta página.");
+      return;
+    }
     if (button.dataset.tab === "knockoutTab" && !knockoutAvailable()) {
       toast("Fase Final bloqueada. O Admin pode ativar no painel Admin.");
       return;
@@ -2650,6 +3111,30 @@ function registerServiceWorker() {
   });
 }
 
+
+$("loginBtn")?.addEventListener("click", handleLogin);
+$("createAccountBtn")?.addEventListener("click", handleCreateAccount);
+$("logoutBtn")?.addEventListener("click", logout);
+$("loginPasswordInput")?.addEventListener("keydown", event => { if (event.key === "Enter") handleLogin(); });
+$("loginEmailInput")?.addEventListener("keydown", event => { if (event.key === "Enter") handleLogin(); });
+$("addPermissionUserBtn")?.addEventListener("click", addPermissionUser);
+document.addEventListener("click", event => {
+  const saveBtn = event.target.closest("[data-save-permissions]");
+  if (saveBtn) savePermissionUser(saveBtn.dataset.savePermissions);
+});
+document.addEventListener("change", event => {
+  const roleSelect = event.target.closest("[data-role-email]");
+  if (roleSelect) {
+    const email = roleSelect.dataset.roleEmail;
+    const card = document.querySelector(`[data-permission-card="${CSS.escape(email)}"]`);
+    const isAdminRole = roleSelect.value === "admin";
+    card?.querySelectorAll("[data-perm-key]").forEach(input => {
+      input.disabled = isAdminRole;
+      if (isAdminRole) input.checked = true;
+    });
+  }
+});
+
 window.addEventListener("beforeunload", () => {
   try { saveLocalData("beforeunload"); } catch {}
 });
@@ -2657,4 +3142,4 @@ window.addEventListener("beforeunload", () => {
 setupPwaInstall();
 registerServiceWorker();
 await initFirebase();
-await loadData();
+setupAuthGate();
