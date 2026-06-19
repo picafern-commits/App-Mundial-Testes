@@ -11,6 +11,10 @@ const PORTUGAL_TZ = "Europe/Lisbon";
 let db = null;
 let firebaseApi = null;
 let firebaseAuth = null;
+let firebaseAuthApi = null;
+let currentUser = null;
+let currentProfile = null;
+let permissionsCache = [];
 let storageMode = "local";
 let games = [];
 let bets = [];
@@ -192,6 +196,7 @@ function defaultSettings() {
     extraPredictions: {},
     importedPoints: {},
     users: [],
+    knockout: { adminUnlocked: false, matches: [] },
     lastImport: null
   };
 }
@@ -248,7 +253,11 @@ function mergeSettings(input = {}) {
     extraResults: { ...base.extraResults, ...(input.extraResults || {}) },
     extraPredictions: { ...(input.extraPredictions || {}) },
     importedPoints: { ...(input.importedPoints || {}) },
-    users: Array.isArray(input.users) ? input.users : [],
+    knockout: {
+      ...base.knockout,
+      ...(input.knockout || {}),
+      matches: Array.isArray(input.knockout?.matches) ? input.knockout.matches : []
+    },
     users: Array.isArray(input.users) ? input.users : []
   };
 }
@@ -512,8 +521,10 @@ async function initFirebase() {
     db = null;
     firebaseApi = null;
     firebaseAuth = null;
+    firebaseAuthApi = null;
     storageMode = "local";
     setFirebaseStatus("error", "Firebase: configuração em falta no config.js");
+    setLoginStatus("Firebase: configuração em falta no config.js", "error");
     return false;
   }
 
@@ -525,21 +536,23 @@ async function initFirebase() {
 
     const app = appModule.initializeApp(config);
     firebaseAuth = authModule.getAuth(app);
-    await withTimeout(authModule.signInAnonymously(firebaseAuth), 12000, "autenticar no Firebase");
-
+    firebaseAuthApi = authModule;
     db = firestoreModule.getFirestore(app);
     firebaseApi = firestoreModule;
     storageMode = "firebase";
 
     setFirebaseStatus("success", `Firebase: ligado ao projeto ${config.projectId}`);
+    setLoginStatus("Firebase ligado. Faz login.", "success");
     return true;
   } catch (error) {
     console.error("Firebase não ligou:", error);
     db = null;
     firebaseApi = null;
     firebaseAuth = null;
+    firebaseAuthApi = null;
     storageMode = "local";
     setFirebaseStatus("error", `Firebase: não ligou — ${error.message || "erro"}`);
+    setLoginStatus(`Firebase não ligou — ${error.message || "erro"}`, "error");
     return false;
   }
 }
@@ -598,6 +611,7 @@ async function loadData() {
     games = normalizeGames(local.games);
     bets = normalizeBets(local.bets);
     appSettings = mergeSettings(local.settings || local.appSettings);
+    ensureKnockoutSettings();
     renderAll();
     return;
   }
@@ -638,6 +652,7 @@ async function loadData() {
 
     bets = normalizeBets(remoteBets.length ? remoteBets : localBets);
     appSettings = mergeSettings(mainSettingsDoc ? mainSettingsDoc.data() : localSettings);
+    ensureKnockoutSettings();
 
     saveLocalData("firebase carregado estável");
     setFirebaseStatus("success", `Firebase: ligado · ${bets.length} apostas carregadas`);
@@ -653,6 +668,7 @@ async function loadData() {
     games = normalizeGames(local.games);
     bets = normalizeBets(local.bets);
     appSettings = mergeSettings(local.settings || local.appSettings);
+    ensureKnockoutSettings();
     storageMode = "local";
     setFirebaseStatus("error", `Firebase: erro ao carregar — ${error.message || "ver consola"}`);
     renderAll();
@@ -720,22 +736,32 @@ async function persistSettings() {
 }
 
 function betsForGame(gameId) { return bets.filter(bet => bet.gameId === gameId); }
+
+function isExactBet(bet, game) {
+  if (!bet || !game || !hasResult(game)) return false;
+  return Number(bet.homeGuess) === Number(game.homeScore) &&
+    Number(bet.awayGuess) === Number(game.awayScore);
+}
+
+function isOutcomeBet(bet, game) {
+  if (!bet || !game || !hasResult(game)) return false;
+  return outcome(bet.homeGuess, bet.awayGuess) === outcome(game.homeScore, game.awayScore);
+}
+
 function pointsForBet(bet, game) {
   if (!bet || !game || !hasResult(game)) return 0;
 
-  const exactPoints = Number(appSettings.points.exact) || 0;
-  const winnerPoints = Number(appSettings.points.winner) || 0;
+  const exactPoints = Number(appSettings?.points?.exact) || 3;
+  const winnerPoints = Number(appSettings?.points?.winner) || 1;
 
-  const isExact =
-    Number(bet.homeGuess) === Number(game.homeScore) &&
-    Number(bet.awayGuess) === Number(game.awayScore);
+  // Regra 1: resultado exato certo recebe 3 pontos.
+  // Regra 2: se acertar o resultado exato, não acumula o ponto do vencedor/empate.
+  if (isExactBet(bet, game)) return exactPoints;
 
-  if (isExact) return exactPoints;
+  // Regra 3: se não acertou o resultado, mas acertou vencedor/empate, recebe 1 ponto.
+  if (isOutcomeBet(bet, game)) return winnerPoints;
 
-  const guessedOutcome = outcome(bet.homeGuess, bet.awayGuess);
-  const realOutcome = outcome(game.homeScore, game.awayScore);
-
-  return guessedOutcome === realOutcome ? winnerPoints : 0;
+  return 0;
 }
 function extraPointsForPlayer(playerName) {
   const predictions = appSettings.extraPredictions?.[playerName] || {};
@@ -757,29 +783,63 @@ function allPlayers() {
 }
 function playerStats(playerName) {
   const playerBets = bets.filter(bet => bet.playerName === playerName);
-  const stats = { playerName, points: 0, gamePoints: 0, extraPoints: 0, importedPoints: appSettings.importedPoints?.[playerName] ?? null, totalBets: playerBets.length, settled: 0, exact: 0, winner: 0, misses: 0, mvp: 0, topScorer: 0, champion: 0 };
+  const stats = {
+    playerName,
+    points: 0,
+    gamePoints: 0,
+    extraPoints: 0,
+    importedPoints: appSettings.importedPoints?.[playerName] ?? null,
+    totalBets: playerBets.length,
+    settled: 0,
+    exact: 0,
+    winner: 0,
+    misses: 0,
+    mvp: 0,
+    topScorer: 0,
+    champion: 0
+  };
+
   playerBets.forEach(bet => {
     const game = games.find(item => item.id === bet.gameId);
     if (!game || !hasResult(game)) return;
+
     const points = pointsForBet(bet, game);
     stats.gamePoints += points;
     stats.settled += 1;
-    if (points === Number(appSettings.points.exact)) stats.exact += 1;
-    else if (points === Number(appSettings.points.winner)) stats.winner += 1;
-    else stats.misses += 1;
+
+    if (isExactBet(bet, game)) {
+      stats.exact += 1;
+    } else if (isOutcomeBet(bet, game)) {
+      stats.winner += 1;
+    } else {
+      stats.misses += 1;
+    }
   });
+
   const extras = extraPointsForPlayer(playerName);
-  stats.mvp = extras.mvp; stats.topScorer = extras.topScorer; stats.champion = extras.champion;
+  stats.mvp = extras.mvp;
+  stats.topScorer = extras.topScorer;
+  stats.champion = extras.champion;
   stats.extraPoints = extras.total;
-  const calculatedTotal = stats.gamePoints + stats.extraPoints;
-  stats.calculatedTotal = calculatedTotal;
-  stats.points = stats.importedPoints === null ? calculatedTotal : Number(stats.importedPoints);
+
+  // Total mostrado na página Pontuação: sempre calculado pela app.
+  // Não usa pontos importados do Excel.
+  stats.points = stats.gamePoints + stats.extraPoints;
+  stats.calculatedTotal = stats.points;
   stats.accuracy = stats.settled ? Math.round((stats.exact / stats.settled) * 100) : 0;
-  stats.diffExcel = stats.importedPoints === null ? null : calculatedTotal - Number(stats.importedPoints);
+  stats.diffExcel = stats.importedPoints === null ? null : stats.points - Number(stats.importedPoints);
+
   return stats;
 }
 function leaderboard() {
-  return allPlayers().map(playerStats).sort((a, b) => b.points - a.points || b.exact - a.exact || a.playerName.localeCompare(b.playerName));
+  return allPlayers()
+    .map(playerStats)
+    .sort((a, b) =>
+      b.points - a.points ||
+      b.exact - a.exact ||
+      b.winner - a.winner ||
+      a.playerName.localeCompare(b.playerName, "pt")
+    );
 }
 
 function filteredGames() {
@@ -975,7 +1035,998 @@ function rescueLocalBetsIfNeeded() {
   }
 }
 
-function renderAll() { renderAdminState(); renderCalendar(); renderScore(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderCalendarFilterState(); }
+
+
+const DEFAULT_PERMISSIONS = {
+  calendar: true,
+  score: true,
+  knockout: true,
+  admin: false,
+  editResults: false,
+  importExcel: false,
+  editUsers: false,
+  editPoints: false,
+  editKnockout: false,
+  managePermissions: false
+};
+
+const ADMIN_PERMISSIONS = {
+  calendar: true,
+  score: true,
+  knockout: true,
+  admin: true,
+  editResults: true,
+  importExcel: true,
+  editUsers: true,
+  editPoints: true,
+  editKnockout: true,
+  managePermissions: true
+};
+
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
+function configAdminEmails() {
+  return (APP_CONFIG.adminEmails || []).map(normalizeEmail).filter(Boolean);
+}
+
+function isConfiguredAdmin(email) {
+  return configAdminEmails().includes(normalizeEmail(email));
+}
+
+function defaultProfileForUser(user) {
+  const email = normalizeEmail(user?.email);
+  const admin = isConfiguredAdmin(email);
+  return {
+    uid: user?.uid || "",
+    email,
+    role: admin ? "admin" : "user",
+    active: true,
+    permissions: admin ? { ...ADMIN_PERMISSIONS } : { ...DEFAULT_PERMISSIONS },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function hasPermission(permission) {
+  if (!currentProfile?.active) return false;
+  if (currentProfile?.role === "admin") return true;
+  return Boolean(currentProfile?.permissions?.[permission]);
+}
+
+function isAdminProfile() {
+  return hasPermission("admin") || currentProfile?.role === "admin";
+}
+
+function setLoginStatus(message, type = "info") {
+  const box = $("loginStatusBox");
+  if (!box) return;
+  box.className = `login-status ${type}`;
+  box.textContent = message;
+}
+
+function showLoginScreen() {
+  $("loginScreen")?.classList.remove("hidden");
+  $("appShell")?.classList.add("auth-hidden");
+}
+
+function showAppScreen() {
+  $("loginScreen")?.classList.add("hidden");
+  $("appShell")?.classList.remove("auth-hidden");
+}
+
+function updateSessionBox() {
+  const box = $("sessionBox");
+  const label = $("sessionUserLabel");
+  if (!box || !label) return;
+  if (!currentUser) {
+    box.classList.add("hidden");
+    return;
+  }
+  box.classList.remove("hidden");
+  const role = currentProfile?.role === "admin" ? "Admin" : "User";
+  label.textContent = `${currentUser.email || "Conta"} · ${role}`;
+}
+
+async function readUserProfile(user) {
+  if (!db || !firebaseApi || !user) return defaultProfileForUser(user);
+
+  const { doc, getDoc, setDoc } = firebaseApi;
+  const ref = doc(db, "users", normalizeEmail(user.email));
+  const fallback = defaultProfileForUser(user);
+
+  try {
+    const snap = await withTimeout(getDoc(ref), 12000, "ler perfil do utilizador");
+    if (!snap.exists()) {
+      await withTimeout(setDoc(ref, fallback, { merge: true }), 12000, "criar perfil do utilizador");
+      return fallback;
+    }
+
+    const data = snap.data() || {};
+    const configAdmin = isConfiguredAdmin(user.email);
+    const profile = {
+      ...fallback,
+      ...data,
+      uid: user.uid,
+      email: normalizeEmail(user.email),
+      role: configAdmin ? "admin" : (data.role || "user"),
+      active: data.active !== false,
+      permissions: {
+        ...(data.role === "admin" || configAdmin ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS),
+        ...(data.permissions || {})
+      }
+    };
+
+    if (configAdmin && data.role !== "admin") {
+      await setDoc(ref, { role: "admin", active: true, permissions: ADMIN_PERMISSIONS, updatedAt: new Date().toISOString() }, { merge: true });
+    }
+
+    return profile;
+  } catch (error) {
+    console.error("Erro ao ler perfil:", error);
+    return fallback;
+  }
+}
+
+async function loadPermissionsUsers() {
+  permissionsCache = [];
+  if (!db || !firebaseApi || !hasPermission("managePermissions")) return;
+
+  try {
+    const { collection, getDocs } = firebaseApi;
+    const snap = await withTimeout(getDocs(collection(db, "users")), 12000, "ler utilizadores");
+    permissionsCache = snap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
+      .sort((a, b) => normalizeEmail(a.email || a.id).localeCompare(normalizeEmail(b.email || b.id)));
+  } catch (error) {
+    console.error("Erro ao carregar permissões:", error);
+  }
+}
+
+function renderPermissionCheckbox(email, key, label, checked, disabled = false) {
+  return `
+    <label class="perm-check">
+      <input type="checkbox" data-perm-email="${escapeHtml(email)}" data-perm-key="${escapeHtml(key)}" ${checked ? "checked" : ""} ${disabled ? "disabled" : ""} />
+      ${escapeHtml(label)}
+    </label>`;
+}
+
+function renderPermissionsUsers() {
+  const list = $("permissionsUsersList");
+  if (!list) return;
+
+  if (!hasPermission("managePermissions")) {
+    list.innerHTML = `<div class="empty small-empty">Não tens permissão para gerir utilizadores.</div>`;
+    return;
+  }
+
+  if (!permissionsCache.length) {
+    list.innerHTML = `<div class="empty small-empty">Ainda não existem utilizadores registados.</div>`;
+    return;
+  }
+
+  const labels = {
+    calendar: "Calendário",
+    score: "Pontuação",
+    knockout: "Fase Final",
+    admin: "Admin",
+    editResults: "Editar resultados",
+    importExcel: "Importar Excel",
+    editUsers: "Users do jogo",
+    editPoints: "Sistema pontos",
+    editKnockout: "Editar Fase Final",
+    managePermissions: "Permissões"
+  };
+
+  list.innerHTML = permissionsCache.map(user => {
+    const email = normalizeEmail(user.email || user.id);
+    const role = user.role === "admin" ? "admin" : "user";
+    const isAdminUser = role === "admin";
+    const perms = { ...(isAdminUser ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS), ...(user.permissions || {}) };
+    const active = user.active !== false;
+
+    return `
+      <article class="permission-user-card" data-permission-card="${escapeHtml(email)}">
+        <div class="permission-user-head">
+          <div>
+            <strong>${escapeHtml(email)}</strong>
+            <span>${isAdminUser ? "Admin" : "User normal"} · ${active ? "Ativo" : "Bloqueado"}</span>
+          </div>
+          <div class="permission-user-actions">
+            <select data-role-email="${escapeHtml(email)}">
+              <option value="user" ${role === "user" ? "selected" : ""}>User normal</option>
+              <option value="admin" ${role === "admin" ? "selected" : ""}>Admin</option>
+            </select>
+            <label class="perm-active">
+              <input type="checkbox" data-active-email="${escapeHtml(email)}" ${active ? "checked" : ""} />
+              Ativo
+            </label>
+            <button class="primary small" type="button" data-save-permissions="${escapeHtml(email)}">Guardar</button>
+          </div>
+        </div>
+        <div class="permission-grid">
+          ${Object.entries(labels).map(([key, label]) => renderPermissionCheckbox(email, key, label, perms[key], isAdminUser)).join("")}
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+async function savePermissionUser(email) {
+  if (!db || !firebaseApi) return toast("Firebase não está ligado.");
+  if (!hasPermission("managePermissions")) return toast("Sem permissão para gerir utilizadores.");
+
+  const normalized = normalizeEmail(email);
+  if (!normalized) return toast("Email inválido.");
+
+  const card = document.querySelector(`[data-permission-card="${CSS.escape(normalized)}"]`);
+  const role = document.querySelector(`[data-role-email="${CSS.escape(normalized)}"]`)?.value || $("permissionRoleInput")?.value || "user";
+  const activeInput = document.querySelector(`[data-active-email="${CSS.escape(normalized)}"]`);
+  const active = activeInput ? activeInput.checked : true;
+  const isAdminUser = role === "admin";
+
+  const permissions = isAdminUser ? { ...ADMIN_PERMISSIONS } : { ...DEFAULT_PERMISSIONS };
+  if (card && !isAdminUser) {
+    card.querySelectorAll("[data-perm-key]").forEach(input => {
+      permissions[input.dataset.permKey] = input.checked;
+    });
+  }
+
+  const profile = {
+    email: normalized,
+    role,
+    active,
+    permissions,
+    updatedAt: new Date().toISOString()
+  };
+
+  const { doc, setDoc } = firebaseApi;
+  await withTimeout(setDoc(doc(db, "users", normalized), profile, { merge: true }), 12000, "guardar permissões");
+  toast("Permissões guardadas.");
+  await loadPermissionsUsers();
+  renderPermissionsUsers();
+
+  if (normalizeEmail(currentUser?.email) === normalized) {
+    currentProfile = await readUserProfile(currentUser);
+    applyPermissionsToUi();
+  }
+}
+
+async function addPermissionUser() {
+  const email = normalizeEmail($("permissionEmailInput")?.value);
+  if (!email) return toast("Escreve o email do utilizador.");
+  await savePermissionUser(email);
+  if ($("permissionEmailInput")) $("permissionEmailInput").value = "";
+}
+
+function permissionTabAllowed(tabId) {
+  if (tabId === "calendarTab") return hasPermission("calendar");
+  if (tabId === "scoreTab") return hasPermission("score");
+  if (tabId === "knockoutTab") return hasPermission("knockout");
+  if (tabId === "adminTab") return hasPermission("admin");
+  return true;
+}
+
+function switchToFirstAllowedTab() {
+  const allowed = [...document.querySelectorAll(".tab")].find(button => permissionTabAllowed(button.dataset.tab));
+  if (!allowed) return;
+  document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
+  allowed.classList.add("active");
+  $(allowed.dataset.tab)?.classList.add("active");
+}
+
+function applyPermissionsToUi() {
+  updateSessionBox();
+
+  document.querySelector('[data-tab="calendarTab"]')?.classList.toggle("hidden", !hasPermission("calendar"));
+  document.querySelector('[data-tab="scoreTab"]')?.classList.toggle("hidden", !hasPermission("score"));
+  document.querySelector('[data-tab="knockoutTab"]')?.classList.toggle("hidden", !hasPermission("knockout"));
+  document.querySelector('[data-tab="adminTab"]')?.classList.toggle("hidden", !hasPermission("admin"));
+
+  $("adminTab")?.classList.toggle("no-access", !hasPermission("admin"));
+
+  // Ações admin
+  document.querySelectorAll("[data-result-game]").forEach(btn => {
+    const inAdmin = btn.closest("#adminTab");
+    if (inAdmin && !hasPermission("editResults")) btn.classList.add("hidden");
+  });
+
+  $("openExcelModalBtn")?.classList.toggle("hidden", !hasPermission("importExcel"));
+  $("exportResultadosBtn")?.classList.toggle("hidden", !hasPermission("importExcel"));
+  $("addUserBtn")?.classList.toggle("hidden", !hasPermission("editUsers"));
+  $("savePointsSettingsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
+  $("saveExtraResultsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
+  $("saveKnockoutUnlockBtn")?.classList.toggle("hidden", !hasPermission("editKnockout"));
+
+  document.querySelectorAll("[data-ko-save], [data-ko-edit]").forEach(btn => {
+    btn.classList.toggle("hidden", !hasPermission("editKnockout"));
+  });
+
+  const permissionsCard = $("permissionsUsersList")?.closest(".admin-card");
+  permissionsCard?.classList.toggle("hidden", !hasPermission("managePermissions"));
+
+  const activePanel = document.querySelector(".tab-panel.active");
+  if (activePanel && !permissionTabAllowed(activePanel.id)) {
+    switchToFirstAllowedTab();
+  }
+
+  renderPermissionsUsers();
+}
+
+
+const REMEMBER_EMAIL_KEY = "mundial_pontos_2026_remember_email_v56";
+
+function setupRememberedAccount() {
+  const emailInput = $("loginEmailInput");
+  const rememberInput = $("rememberEmailInput");
+  if (!emailInput) return;
+
+  try {
+    const savedEmail = localStorage.getItem(REMEMBER_EMAIL_KEY) || "";
+    if (savedEmail && !emailInput.value) {
+      emailInput.value = savedEmail;
+    }
+    if (rememberInput) {
+      rememberInput.checked = true;
+    }
+  } catch (error) {
+    console.warn("Não foi possível ler email memorizado:", error);
+  }
+}
+
+function saveRememberedAccount(email) {
+  const rememberInput = $("rememberEmailInput");
+  const shouldRemember = rememberInput ? rememberInput.checked : true;
+  const normalized = normalizeEmail(email);
+
+  try {
+    if (shouldRemember && normalized) {
+      localStorage.setItem(REMEMBER_EMAIL_KEY, normalized);
+    } else {
+      localStorage.removeItem(REMEMBER_EMAIL_KEY);
+    }
+  } catch (error) {
+    console.warn("Não foi possível guardar email memorizado:", error);
+  }
+}
+
+async function handleLogin() {
+  if (!firebaseAuthApi || !firebaseAuth) {
+    setLoginStatus("Firebase/Auth não está pronto.", "error");
+    return;
+  }
+
+  const email = $("loginEmailInput")?.value.trim();
+  const password = $("loginPasswordInput")?.value || "";
+  if (!email || !password) {
+    setLoginStatus("Preenche email e password.", "error");
+    return;
+  }
+
+  try {
+    setLoginStatus("A entrar...", "loading");
+    saveRememberedAccount(email);
+    await firebaseAuthApi.signInWithEmailAndPassword(firebaseAuth, email, password);
+  } catch (error) {
+    console.error(error);
+    setLoginStatus(authFriendlyError(error), "error");
+  }
+}
+
+async function handleCreateAccount() {
+  if (!firebaseAuthApi || !firebaseAuth) {
+    setLoginStatus("Firebase/Auth não está pronto.", "error");
+    return;
+  }
+
+  const email = $("loginEmailInput")?.value.trim();
+  const password = $("loginPasswordInput")?.value || "";
+  if (!email || !password) {
+    setLoginStatus("Preenche email e password para criar conta.", "error");
+    return;
+  }
+
+  try {
+    setLoginStatus("A criar conta...", "loading");
+    saveRememberedAccount(email);
+    await firebaseAuthApi.createUserWithEmailAndPassword(firebaseAuth, email, password);
+  } catch (error) {
+    console.error(error);
+    setLoginStatus(authFriendlyError(error), "error");
+  }
+}
+
+function authFriendlyError(error) {
+  const code = String(error?.code || error?.message || "");
+  if (code.includes("auth/invalid-credential") || code.includes("auth/wrong-password")) return "Email ou password incorretos.";
+  if (code.includes("auth/user-not-found")) return "Conta não encontrada.";
+  if (code.includes("auth/email-already-in-use")) return "Este email já tem conta. Usa Entrar.";
+  if (code.includes("auth/weak-password")) return "A password tem de ter pelo menos 6 caracteres.";
+  if (code.includes("auth/operation-not-allowed")) return "Ativa Email/Password no Firebase Authentication.";
+  return "Erro no login. Verifica o Firebase e tenta novamente.";
+}
+
+function setupAuthGate() {
+  if (!firebaseAuthApi || !firebaseAuth) {
+    showLoginScreen();
+    setLoginStatus("Firebase Auth não está configurado.", "error");
+    return;
+  }
+
+  firebaseAuthApi.onAuthStateChanged(firebaseAuth, async user => {
+    currentUser = user || null;
+
+    if (user?.email) saveRememberedAccount(user.email);
+
+    if (!user) {
+      currentProfile = null;
+      showLoginScreen();
+      updateSessionBox();
+      return;
+    }
+
+    try {
+      setLoginStatus("A carregar permissões...", "loading");
+      currentProfile = await readUserProfile(user);
+
+      if (!currentProfile.active) {
+        await firebaseAuthApi.signOut(firebaseAuth);
+        setLoginStatus("Conta bloqueada pelo Admin.", "error");
+        return;
+      }
+
+      showAppScreen();
+      updateSessionBox();
+      await loadPermissionsUsers();
+      await loadData();
+      applyPermissionsToUi();
+      setLoginStatus("Login efetuado.", "success");
+    } catch (error) {
+      console.error("Erro no arranque com login:", error);
+      setLoginStatus("Erro ao carregar permissões.", "error");
+      showLoginScreen();
+    }
+  });
+}
+
+async function logout() {
+  if (!firebaseAuthApi || !firebaseAuth) return;
+  await firebaseAuthApi.signOut(firebaseAuth);
+  toast("Sessão terminada.");
+}
+
+const KNOCKOUT_ROUNDS = [
+  { key: "r32", label: "16 avos", count: 16, next: "r16" },
+  { key: "r16", label: "Oitavos", count: 8, next: "qf" },
+  { key: "qf", label: "Quartos", count: 4, next: "sf" },
+  { key: "sf", label: "Meias-finais", count: 2, next: "final" },
+  { key: "final", label: "Final", count: 1, next: "" }
+];
+
+
+function isManualKnockoutRound(match) {
+  return match?.round === KNOCKOUT_ROUNDS[0].key;
+}
+
+function knockoutTeamOptions() {
+  return [...new Set(MATCH_ROWS.flatMap(row => [row[1], row[2]]))].sort((a, b) => a.localeCompare(b, "pt"));
+}
+
+function defaultKnockoutMatches() {
+  const matches = [];
+  KNOCKOUT_ROUNDS.forEach(round => {
+    for (let index = 1; index <= round.count; index += 1) {
+      const nextIndex = round.next ? Math.ceil(index / 2) : null;
+      matches.push({
+        id: `ko_${round.key}_${String(index).padStart(2, "0")}`,
+        round: round.key,
+        roundLabel: round.label,
+        index,
+        homeTeam: "",
+        awayTeam: "",
+        homeScore: null,
+        awayScore: null,
+        homePenalties: null,
+        awayPenalties: null,
+        nextMatchId: round.next ? `ko_${round.next}_${String(nextIndex).padStart(2, "0")}` : "",
+        nextSlot: round.next ? (index % 2 === 1 ? "homeTeam" : "awayTeam") : "",
+        updatedAt: ""
+      });
+    }
+  });
+  return matches;
+}
+
+function ensureKnockoutSettings() {
+  const current = appSettings.knockout || {};
+  const defaults = defaultKnockoutMatches();
+  const existingMatches = Array.isArray(current.matches) ? current.matches : [];
+  const existing = new Map(existingMatches.map(match => [match.id, match]));
+
+  appSettings.knockout = {
+    adminUnlocked: Boolean(current.adminUnlocked),
+    matches: defaults.map(match => {
+      const saved = existing.get(match.id) || {};
+      return {
+        ...match,
+        ...saved,
+        homePenalties: saved.homePenalties ?? null,
+        awayPenalties: saved.awayPenalties ?? null
+      };
+    })
+  };
+
+  propagateKnockoutWinners(false);
+}
+
+function knockoutMatches() {
+  if (!appSettings.knockout || !Array.isArray(appSettings.knockout.matches) || !appSettings.knockout.matches.length) {
+    appSettings.knockout = {
+      adminUnlocked: Boolean(appSettings.knockout?.adminUnlocked),
+      matches: defaultKnockoutMatches()
+    };
+  }
+  return appSettings.knockout.matches;
+}
+
+function knockoutMatchById(id) {
+  return (appSettings.knockout?.matches || []).find(match => match.id === id);
+}
+
+function groupStageFinished() {
+  return games.length > 0 && games.every(hasResult);
+}
+
+function knockoutAvailable() {
+  return groupStageFinished() || Boolean(appSettings.knockout?.adminUnlocked);
+}
+
+function knockoutWinner(match) {
+  if (!match || !match.homeTeam || !match.awayTeam) return "";
+  if (match.homeScore === null || match.homeScore === undefined || match.homeScore === "" || match.awayScore === null || match.awayScore === undefined || match.awayScore === "") return "";
+
+  const home = Number(match.homeScore);
+  const away = Number(match.awayScore);
+  if (!Number.isFinite(home) || !Number.isFinite(away)) return "";
+
+  if (home > away) return match.homeTeam;
+  if (away > home) return match.awayTeam;
+
+  const homePen = match.homePenalties;
+  const awayPen = match.awayPenalties;
+  if (homePen === null || homePen === undefined || homePen === "" || awayPen === null || awayPen === undefined || awayPen === "") return "";
+
+  const hp = Number(homePen);
+  const ap = Number(awayPen);
+  if (!Number.isFinite(hp) || !Number.isFinite(ap) || hp === ap) return "";
+
+  return hp > ap ? match.homeTeam : match.awayTeam;
+}
+
+function clearAutoKnockoutSlots() {
+  const matches = appSettings.knockout?.matches || [];
+  matches.forEach(match => {
+    if (!isManualKnockoutRound(match)) {
+      match.homeTeam = "";
+      match.awayTeam = "";
+    }
+  });
+}
+
+function propagateKnockoutWinners(shouldSave = true) {
+  if (!appSettings.knockout || !Array.isArray(appSettings.knockout.matches)) return;
+
+  const matches = appSettings.knockout.matches;
+  const previousTeams = new Map(matches.map(match => [match.id, `${match.homeTeam || ""}|${match.awayTeam || ""}`]));
+
+  clearAutoKnockoutSlots();
+
+  KNOCKOUT_ROUNDS.forEach(round => {
+    matches
+      .filter(match => match.round === round.key)
+      .forEach(match => {
+        const winner = knockoutWinner(match);
+        if (!winner || !match.nextMatchId || !match.nextSlot) return;
+        const next = matches.find(item => item.id === match.nextMatchId);
+        if (next) next[match.nextSlot] = winner;
+      });
+  });
+
+  matches.forEach(match => {
+    if (isManualKnockoutRound(match)) return;
+    const oldTeams = previousTeams.get(match.id) || "|";
+    const newTeams = `${match.homeTeam || ""}|${match.awayTeam || ""}`;
+    if (oldTeams !== newTeams) {
+      match.homeScore = null;
+      match.awayScore = null;
+      match.homePenalties = null;
+      match.awayPenalties = null;
+    }
+  });
+
+  if (shouldSave) {
+    saveLocalData("fase final propagada");
+    persistSettings();
+  }
+}
+
+function knockoutEntryButtonHtml() {
+  const available = knockoutAvailable();
+  const missing = games.filter(game => !hasResult(game)).length;
+  const text = available ? "Abrir Fase Final" : `Fase Final bloqueada · faltam ${missing} resultado(s)`;
+  return `
+    <div class="knockout-entry-card ${available ? "available" : "locked"}">
+      <div>
+        <strong>Fase Final</strong>
+        <span>${available ? "Eliminatórias disponíveis." : "Só abre quando todos os jogos dos grupos tiverem resultado. O Admin pode ativar para trabalhar."}</span>
+      </div>
+      <button id="openKnockoutFromCalendarBtn" class="${available ? "primary" : "secondary"}" type="button" ${available ? "" : "disabled"}>${escapeHtml(text)}</button>
+    </div>`;
+}
+
+function openKnockoutPage() {
+  if (!knockoutAvailable()) {
+    toast("Fase Final bloqueada. O Admin pode ativar no painel Admin.");
+    return;
+  }
+
+  document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
+  document.querySelector('[data-tab="knockoutTab"]')?.classList.add("active");
+  $("knockoutTab")?.classList.add("active");
+  renderKnockout();
+}
+
+function renderKnockout() {
+  ensureKnockoutSettings();
+  const notice = $("knockoutLockNotice");
+  const container = $("knockoutBracket");
+  if (!container) return;
+
+  if (!knockoutAvailable()) {
+    const missing = games.filter(game => !hasResult(game)).length;
+    if (notice) notice.innerHTML = `<strong>Fase Final bloqueada</strong><span>Faltam ${missing} resultado(s) da fase de grupos. O Admin pode ativar esta página para trabalhar.</span>`;
+    container.innerHTML = "";
+    return;
+  }
+
+  const finalMatch = knockoutMatches().find(match => match.round === "final");
+  const champion = knockoutWinner(finalMatch);
+  const semiMatches = knockoutMatches().filter(match => match.round === "sf");
+  const thirdPlaceTeams = semiMatches.map(knockoutLoser).filter(Boolean);
+
+  if (notice) {
+    notice.innerHTML = appSettings.knockout?.adminUnlocked && !groupStageFinished()
+      ? `<strong>Modo Admin ativo</strong><span>A Fase Final está desbloqueada para preparação, mesmo antes de todos os grupos acabarem.</span>`
+      : `<strong>Fase Final ativa</strong><span>Tu defines a primeira ronda; depois os vencedores passam automaticamente até à final.</span>`;
+  }
+
+  container.innerHTML = `
+    <div class="bracket-photo-shell">
+      <div class="bracket-title-row">
+        <span>Esquerda</span>
+        <strong>Fase Final Mundial 2026</strong>
+        <span>Direita</span>
+      </div>
+
+      <div class="bracket-photo-grid">
+        ${KNOCKOUT_ROUNDS.map((round, roundIndex) => {
+          const matches = knockoutMatches().filter(match => match.round === round.key);
+          return `
+            <section class="bracket-photo-round round-${round.key}" style="--round-index:${roundIndex}">
+              <h3>${escapeHtml(round.label)}</h3>
+              <div class="bracket-photo-matches">
+                ${matches.map(match => renderKnockoutMatch(match)).join("")}
+              </div>
+            </section>`;
+        }).join("")}
+
+        <section class="bracket-champion-card ${champion ? "has-champion" : ""}">
+          <span>Campeão</span>
+          <strong>${escapeHtml(champion || "Por decidir")}</strong>
+        </section>
+      </div>
+    </div>`;
+
+  container.innerHTML = renderKnockoutPhotoLayout(finalMatch, champion, thirdPlaceTeams);
+}
+
+function renderKnockoutPhotoLayout(finalMatch, champion, thirdPlaceTeams) {
+  const roundColumns = buildKnockoutPhotoColumns();
+  return `
+    <div class="bracket-photo-shell">
+      <div class="bracket-title-row">
+        <span>Copa do Mundo FIFA 2026</span>
+        <strong>Fases finais</strong>
+        <span>Mundial Pontos 2026</span>
+      </div>
+
+      <div class="bracket-photo-grid bracket-photo-grid-split">
+        ${roundColumns.left.map(renderKnockoutPhotoColumn).join("")}
+        ${renderKnockoutCenter(finalMatch, champion, thirdPlaceTeams)}
+        ${roundColumns.right.map(renderKnockoutPhotoColumn).join("")}
+      </div>
+    </div>`;
+}
+
+function knockoutLoser(match) {
+  const winner = knockoutWinner(match);
+  if (!winner || !match?.homeTeam || !match?.awayTeam) return "";
+  return winner === match.homeTeam ? match.awayTeam : match.homeTeam;
+}
+
+function buildKnockoutPhotoColumns() {
+  const byRound = key => knockoutMatches().filter(match => match.round === key);
+  const labels = {
+    r32: "Segunda fase",
+    r16: "Oitavas de final",
+    qf: "Quartas de final",
+    sf: "Semifinal"
+  };
+  const split = key => {
+    const list = byRound(key);
+    const half = Math.ceil(list.length / 2);
+    return [list.slice(0, half), list.slice(half)];
+  };
+  const [r32Left, r32Right] = split("r32");
+  const [r16Left, r16Right] = split("r16");
+  const [qfLeft, qfRight] = split("qf");
+  const [sfLeft, sfRight] = split("sf");
+
+  return {
+    left: [
+      { key: "r32", side: "left", label: labels.r32, matches: r32Left },
+      { key: "r16", side: "left", label: labels.r16, matches: r16Left },
+      { key: "qf", side: "left", label: labels.qf, matches: qfLeft },
+      { key: "sf", side: "left", label: labels.sf, matches: sfLeft }
+    ],
+    right: [
+      { key: "sf", side: "right", label: labels.sf, matches: sfRight },
+      { key: "qf", side: "right", label: labels.qf, matches: qfRight },
+      { key: "r16", side: "right", label: labels.r16, matches: r16Right },
+      { key: "r32", side: "right", label: labels.r32, matches: r32Right }
+    ]
+  };
+}
+
+function renderKnockoutPhotoColumn(column) {
+  return `
+    <section class="bracket-photo-round round-${column.key} bracket-side-${column.side}">
+      <h3>${escapeHtml(column.label)}</h3>
+      <div class="bracket-photo-matches">
+        ${column.matches.map(match => renderKnockoutMatch(match)).join("")}
+      </div>
+    </section>`;
+}
+
+function renderKnockoutCenter(finalMatch, champion, thirdPlaceTeams) {
+  const thirdHome = thirdPlaceTeams[0] || "Perdedor semifinal 1";
+  const thirdAway = thirdPlaceTeams[1] || "Perdedor semifinal 2";
+  return `
+    <section class="bracket-center-column">
+      <div class="bracket-final-badge ${champion ? "has-champion" : ""}">
+        <span>FINAL</span>
+        <strong>${escapeHtml(champion || "Campeao")}</strong>
+      </div>
+      <div class="bracket-center-final">
+        ${finalMatch ? renderKnockoutMatch(finalMatch) : ""}
+      </div>
+      <article class="third-place-card">
+        <div class="knockout-match-title">3.º Lugar</div>
+        <div class="ko-team"><span>${escapeHtml(thirdHome)}</span><b></b></div>
+        <div class="ko-team"><span>${escapeHtml(thirdAway)}</span><b></b></div>
+      </article>
+      <small class="bracket-note">Vencedores avançam automaticamente</small>
+    </section>`;
+}
+
+function renderKnockoutMatch(match) {
+  const winner = knockoutWinner(match);
+  const editable = isAdmin && knockoutAvailable();
+  const waiting = !match.homeTeam || !match.awayTeam;
+  const hasScore = match.homeScore !== null && match.homeScore !== undefined && match.homeScore !== "" && match.awayScore !== null && match.awayScore !== undefined && match.awayScore !== "";
+  const isDraw = hasScore && Number(match.homeScore) === Number(match.awayScore);
+  const hasPens = match.homePenalties !== null && match.homePenalties !== undefined && match.homePenalties !== "" && match.awayPenalties !== null && match.awayPenalties !== undefined && match.awayPenalties !== "";
+  const lockedText = waiting ? "À espera" : winner ? "Vencedor" : isDraw ? "Faltam penáltis" : "Por decidir";
+
+  return `
+    <article class="knockout-match ${winner ? "has-winner" : ""} ${waiting ? "waiting" : ""}">
+      <div class="knockout-match-title">${escapeHtml(match.roundLabel)} ${match.index}</div>
+
+      <div class="ko-team ${winner === match.homeTeam ? "winner" : ""}">
+        <span>${escapeHtml(match.homeTeam || "A definir")}</span>
+        <b>${match.homeScore ?? ""}</b>
+      </div>
+
+      <div class="ko-team ${winner === match.awayTeam ? "winner" : ""}">
+        <span>${escapeHtml(match.awayTeam || "A definir")}</span>
+        <b>${match.awayScore ?? ""}</b>
+      </div>
+
+      ${(isDraw || hasPens) ? `
+        <div class="ko-penalties-line">
+          <span>Penáltis</span>
+          <strong>${hasPens ? `${match.homePenalties}-${match.awayPenalties}` : "por preencher"}</strong>
+        </div>
+      ` : ""}
+
+      <div class="ko-status-line">
+        <small>${escapeHtml(lockedText)}</small>
+        ${editable ? `<button class="secondary small" type="button" data-ko-edit="${escapeHtml(match.id)}">Editar</button>` : ""}
+      </div>
+    </article>`;
+}
+
+function renderKnockoutAdmin() {
+  ensureKnockoutSettings();
+
+  const toggle = $("adminKnockoutUnlockedInput");
+  if (toggle) toggle.checked = Boolean(appSettings.knockout?.adminUnlocked);
+
+  const panel = $("knockoutAdminPanel");
+  if (!panel) return;
+
+  const teams = knockoutTeamOptions();
+  const teamOptions = team => `<option value="">A definir</option>${teams.map(item => `<option value="${escapeHtml(item)}" ${item === team ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}`;
+
+  panel.innerHTML = `
+    <div class="ko-admin-note">
+      <strong>Regra da Fase Final:</strong> só defines manualmente os jogos dos <strong>16 avos</strong>.
+      As rondas seguintes são automáticas. Se o jogo acabar empatado, preenche os <strong>penáltis</strong> para definir quem passa.
+    </div>
+    <div class="ko-admin-list">
+      ${knockoutMatches().map(match => {
+        const manualRound = isManualKnockoutRound(match);
+        const homeControl = manualRound
+          ? `<select class="ko-home-team">${teamOptions(match.homeTeam)}</select>`
+          : `<input class="ko-readonly-team" type="text" value="${escapeHtml(match.homeTeam || "A definir automaticamente")}" disabled />`;
+        const awayControl = manualRound
+          ? `<select class="ko-away-team">${teamOptions(match.awayTeam)}</select>`
+          : `<input class="ko-readonly-team" type="text" value="${escapeHtml(match.awayTeam || "A definir automaticamente")}" disabled />`;
+
+        const canScore = Boolean(match.homeTeam && match.awayTeam);
+        return `
+          <div class="ko-admin-row ko-admin-row-penalties ${manualRound ? "manual-round" : "auto-round"}" data-ko-admin="${escapeHtml(match.id)}">
+            <strong>${escapeHtml(match.roundLabel)} ${match.index}</strong>
+            ${homeControl}
+            <span>vs</span>
+            ${awayControl}
+
+            <label class="ko-score-label">Resultado
+              <span class="ko-score-pair">
+                <input class="ko-home-score" type="number" min="0" inputmode="numeric" value="${match.homeScore ?? ""}" placeholder="0" ${canScore ? "" : "disabled"} />
+                <em>-</em>
+                <input class="ko-away-score" type="number" min="0" inputmode="numeric" value="${match.awayScore ?? ""}" placeholder="0" ${canScore ? "" : "disabled"} />
+              </span>
+            </label>
+
+            <label class="ko-score-label ko-penalty-label">Penáltis
+              <span class="ko-score-pair">
+                <input class="ko-home-penalties" type="number" min="0" inputmode="numeric" value="${match.homePenalties ?? ""}" placeholder="0" ${canScore ? "" : "disabled"} />
+                <em>-</em>
+                <input class="ko-away-penalties" type="number" min="0" inputmode="numeric" value="${match.awayPenalties ?? ""}" placeholder="0" ${canScore ? "" : "disabled"} />
+              </span>
+            </label>
+
+            <button class="primary small" type="button" data-ko-save="${escapeHtml(match.id)}">${manualRound ? "Guardar" : "Guardar resultado"}</button>
+          </div>
+        `;
+      }).join("")}
+    </div>`;
+}
+
+async function saveKnockoutUnlock() {
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
+
+  ensureKnockoutSettings();
+  appSettings.knockout.adminUnlocked = Boolean($("adminKnockoutUnlockedInput")?.checked);
+  await persistSettings();
+  renderAll();
+  toast(appSettings.knockout.adminUnlocked ? "Fase Final desbloqueada para Admin." : "Fase Final volta a bloquear até acabarem os grupos.");
+}
+
+async function saveKnockoutMatchFromAdmin(matchId) {
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
+
+  ensureKnockoutSettings();
+  const row = document.querySelector(`[data-ko-admin="${CSS.escape(matchId)}"]`);
+  const match = knockoutMatchById(matchId);
+  if (!row || !match) return;
+
+  const manualRound = isManualKnockoutRound(match);
+
+  if (manualRound) {
+    match.homeTeam = row.querySelector(".ko-home-team")?.value || "";
+    match.awayTeam = row.querySelector(".ko-away-team")?.value || "";
+  }
+
+  if (!match.homeTeam || !match.awayTeam) {
+    match.homeScore = null;
+    match.awayScore = null;
+    match.homePenalties = null;
+    match.awayPenalties = null;
+    saveLocalData("fase final equipas incompletas");
+    await persistSettings();
+    renderAll();
+    toast("Define as duas equipas deste jogo.");
+    return;
+  }
+
+  const homeScore = row.querySelector(".ko-home-score")?.value ?? "";
+  const awayScore = row.querySelector(".ko-away-score")?.value ?? "";
+  const homePenalties = row.querySelector(".ko-home-penalties")?.value ?? "";
+  const awayPenalties = row.querySelector(".ko-away-penalties")?.value ?? "";
+
+  match.homeScore = homeScore === "" ? null : Number(homeScore);
+  match.awayScore = awayScore === "" ? null : Number(awayScore);
+
+  const hasFullScore = match.homeScore !== null && match.awayScore !== null;
+  const isDraw = hasFullScore && Number(match.homeScore) === Number(match.awayScore);
+
+  if (isDraw) {
+    if (homePenalties === "" || awayPenalties === "") {
+      toast("Jogo empatado. Preenche o resultado dos penáltis.");
+      return;
+    }
+
+    match.homePenalties = Number(homePenalties);
+    match.awayPenalties = Number(awayPenalties);
+
+    if (Number(match.homePenalties) === Number(match.awayPenalties)) {
+      toast("Os penáltis não podem ficar empatados.");
+      return;
+    }
+  } else {
+    match.homePenalties = homePenalties === "" ? null : Number(homePenalties);
+    match.awayPenalties = awayPenalties === "" ? null : Number(awayPenalties);
+
+    if ((homePenalties === "") !== (awayPenalties === "")) {
+      toast("Preenche os dois campos dos penáltis ou deixa os dois vazios.");
+      return;
+    }
+
+    if (homePenalties !== "" && Number(match.homePenalties) === Number(match.awayPenalties)) {
+      toast("Se preencheres penáltis, eles não podem ficar empatados.");
+      return;
+    }
+  }
+
+  match.updatedAt = new Date().toISOString();
+
+  propagateKnockoutWinners(false);
+  saveLocalData("fase final jogo guardado com penaltis");
+  await persistSettings();
+  renderAll();
+
+  if (manualRound) {
+    toast("Jogo da primeira ronda guardado. Vencedor avança automaticamente.");
+  } else {
+    toast("Resultado guardado. Vencedor avançou automaticamente.");
+  }
+}
+
+function openKnockoutEditInAdmin(matchId) {
+  if (!hasPermission("editKnockout")) { toast("Sem permissão para editar a Fase Final."); return; }
+
+  if (!isAdmin) {
+    toast("Entra no Admin para editar a Fase Final.");
+    return;
+  }
+  document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
+  document.querySelector('[data-tab="adminTab"]')?.classList.add("active");
+  $("adminTab")?.classList.add("active");
+  renderKnockoutAdmin();
+  setTimeout(() => {
+    const row = document.querySelector(`[data-ko-admin="${CSS.escape(matchId)}"]`);
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+    row?.classList.add("pulse-row");
+    setTimeout(() => row?.classList.remove("pulse-row"), 1500);
+  }, 80);
+}
+
+function renderAll() { renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); }
 
 function renderCalendarFilterState() {
   $("calendarMissingResultsBtn")?.classList.toggle("active-filter", calendarViewMode === "missing");
@@ -986,10 +2037,10 @@ function renderCalendar() {
   const container = $("gamesList");
   const groups = groupByDate(filteredGames());
   const days = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  if (!days.length) { container.innerHTML = `<div class="empty">Não há jogos para mostrar neste filtro.</div>`; return; }
+  if (!days.length) { container.innerHTML = `<div class="empty">Não há jogos para mostrar neste filtro.</div>${knockoutEntryButtonHtml()}`; return; }
   container.innerHTML = days.map(([, dayGames]) => `
     <section class="day-block"><h3>${escapeHtml(dateHeader(dayGames[0].matchDate))}</h3><div class="match-list">${dayGames.map(renderMatchRow).join("")}</div></section>
-  `).join("");
+  `).join("") + knockoutEntryButtonHtml();
 }
 function renderMatchRow(game) {
   const status = statusOf(game);
@@ -1013,15 +2064,92 @@ function renderMatchRow(game) {
       </div>
     </article>`;
 }
+
+function betResultLabel(bet, game) {
+  if (!game || !hasResult(game)) return "Por jogar";
+  if (!bet) return "Sem aposta";
+  if (isExactBet(bet, game)) return "Resultado exato";
+  if (isOutcomeBet(bet, game)) {
+    return outcome(game.homeScore, game.awayScore) === "draw" ? "Empate certo" : "Vencedor certo";
+  }
+  return "Falhou";
+}
+
+function betResultClass(bet, game) {
+  if (!game || !hasResult(game)) return "pending";
+  if (!bet) return "missing";
+  if (isExactBet(bet, game)) return "exact";
+  if (isOutcomeBet(bet, game)) return "winner";
+  return "miss";
+}
+
+function playerGameRows(playerName) {
+  const playerId = playerIdFromName(playerName);
+  return games.map(game => {
+    const bet = bets.find(item => item.playerId === playerId && item.gameId === game.id) || null;
+    return {
+      game,
+      bet,
+      points: bet ? pointsForBet(bet, game) : 0,
+      label: betResultLabel(bet, game),
+      className: betResultClass(bet, game)
+    };
+  });
+}
+
 function renderScore() {
   const rows = leaderboard();
-  if (!rows.length) { $("scoreSummary").innerHTML = `<div class="empty">Importa o Excel de Resultados para criar a classificação.</div>`; return; }
-  $("scoreSummary").innerHTML = `
-    <div class="leaderboard-table simple-score-table">
-      <div class="leaderboard-row head"><span>#</span><span>Jogador</span><span>Total</span></div>
-      ${rows.map((row, index) => `
-        <div class="leaderboard-row"><span>${index + 1}</span><strong>${escapeHtml(row.playerName)}</strong><b class="total-highlight">${row.points}</b></div>
-      `).join("")}
+  const target = $("scoreSummary");
+  if (!target) return;
+
+  if (!rows.length) {
+    target.innerHTML = `<div class="empty">Importa o Excel de Resultados para criar a classificação.</div>`;
+    return;
+  }
+
+  target.innerHTML = `
+    <div class="score-detail-list">
+      ${rows.map((row, index) => {
+        const gameRows = playerGameRows(row.playerName);
+        const settled = gameRows.filter(item => hasResult(item.game)).length;
+        const withBets = gameRows.filter(item => item.bet).length;
+
+        return `
+          <details class="player-score-card">
+            <summary>
+              <div class="player-rank">${index + 1}</div>
+              <div class="player-score-main">
+                <strong>${escapeHtml(row.playerName)}</strong>
+                <span>${row.exact} exatos · ${row.winner} vencedor/empate · ${settled} jogos com resultado · ${withBets} apostas</span>
+              </div>
+              <div class="player-total">${row.points} pts</div>
+              <div class="player-arrow">⌄</div>
+            </summary>
+
+            <div class="player-games-table">
+              <div class="player-game-row head">
+                <span>Jogo</span>
+                <span>Aposta</span>
+                <span>Resultado</span>
+                <span>Tipo</span>
+                <span>Pontos</span>
+              </div>
+              ${gameRows.map(({ game, bet, points, label, className }) => `
+                <div class="player-game-row ${className}">
+                  <span>
+                    <b>${escapeHtml(game.homeTeam)} - ${escapeHtml(game.awayTeam)}</b>
+                    <small>${escapeHtml(game.group)} · ${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}</small>
+                  </span>
+                  <span>${bet ? `${bet.homeGuess}-${bet.awayGuess}` : "-"}</span>
+                  <span>${hasResult(game) ? `${game.homeScore}-${game.awayScore}` : "-"}</span>
+                  <span><em>${escapeHtml(label)}</em></span>
+                  <strong>${points}</strong>
+                </div>
+              `).join("")}
+            </div>
+          </details>
+        `;
+      }).join("")}
     </div>`;
 }
 
@@ -1054,8 +2182,8 @@ function renderGroups() {
 }
 
 function renderAdminState() {
-  $("adminLocked").classList.toggle("hidden", isAdmin);
-  $("adminUnlocked").classList.toggle("hidden", !isAdmin);
+  $("adminLocked").classList.toggle("hidden", isAdmin || isAdminProfile());
+  $("adminUnlocked").classList.toggle("hidden", !(isAdmin || isAdminProfile()));
   const status = storageMode === "firebase" ? "Firebase online" : "Modo local";
   $("storageStatus").textContent = `${status}. Importa as apostas do Excel Resultados e mete os resultados reais manualmente.`;
 }
@@ -1167,6 +2295,8 @@ function renderUserBetsEditor() {
 }
 
 async function saveEditedUserBets() {
+  if (!hasPermission("editUsers")) { toast("Sem permissão."); return; }
+
   const playerName = selectedEditUser;
   if (!playerName) {
     toast("Escolhe um utilizador.");
@@ -1272,6 +2402,8 @@ async function saveBet(gameId, homeGuess, awayGuess, playerName = "Manual") {
   toast("Aposta guardada.");
 }
 async function setResult(gameId, homeScore, awayScore) {
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
+
   if (homeScore === "" || awayScore === "") {
     toast("Preenche o resultado completo.");
     return false;
@@ -1306,6 +2438,8 @@ async function setResult(gameId, homeScore, awayScore) {
   return true;
 }
 async function clearResult(gameId) {
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
+
   const game = games.find(item => item.id === gameId);
   if (!game) return false;
 
@@ -1583,6 +2717,8 @@ function parsePontosWorkbookRows(rows) {
   return { results, importedPoints, errors };
 }
 async function previewExcelImport() {
+  if (!hasPermission("importExcel")) { toast("Sem permissão."); return; }
+
   const resultadosFile = $("resultadosExcelInput").files?.[0];
   const pontosFile = $("pontosExcelInput").files?.[0];
   if (!resultadosFile && !pontosFile) { setImportStatus("error", "Nenhum ficheiro selecionado", "Seleciona o Excel Resultados corrigido para importar.");
@@ -1623,6 +2759,8 @@ preview.innerHTML = `
   }
 }
 async function confirmExcelImport() {
+  if (!hasPermission("importExcel")) { toast("Sem permissão."); return; }
+
   if (!pendingExcelImport) return toast("Faz primeiro a pré-visualização.");
   const replace = $("replaceExcelBetsInput").checked;
   pendingExcelImport.results.forEach(result => {
@@ -1652,6 +2790,8 @@ async function confirmExcelImport() {
   toast("Excel importado. Classificação recalculada.");
 }
 async function savePointsSettings() {
+  if (!hasPermission("editPoints")) { toast("Sem permissão."); return; }
+
   appSettings.points = {
     exact: Number($("pointsExactInput").value) || 0,
     winner: Number($("pointsWinnerInput")?.value ?? appSettings.points.winner ?? 1) || 0,
@@ -1662,11 +2802,15 @@ async function savePointsSettings() {
   await persistSettings(); renderAll(); toast("Sistema de pontos atualizado.");
 }
 async function saveExtraResults() {
+  if (!hasPermission("editPoints")) { toast("Sem permissão."); return; }
+
   appSettings.extraResults = { mvp: $("finalMvpInput").value.trim(), topScorer: $("finalTopScorerInput").value.trim(), champion: $("finalChampionInput").value.trim() };
   await persistSettings(); renderAll(); toast("Resultados especiais guardados.");
 }
 
 async function addUser() {
+  if (!hasPermission("editUsers")) { toast("Sem permissão."); return; }
+
   const input = $("newUserNameInput");
   const name = input?.value.trim();
   if (!name) return toast("Escreve o nome do user.");
@@ -1680,6 +2824,8 @@ async function addUser() {
 }
 
 async function removeUser(name) {
+  if (!hasPermission("editUsers")) { toast("Sem permissão."); return; }
+
   if (!confirm(`Remover ${name} da lista de users? As apostas importadas não são apagadas.`)) return;
   appSettings.users = (appSettings.users || []).filter(user => user !== name);
   await persistSettings();
@@ -1837,11 +2983,111 @@ function exportPontosExcel() {
   toast("Excel Pontos exportado.");
 }
 
+
+function gameBetTypeLabel(bet, game) {
+  if (!game || !hasResult(game)) return "Por jogar";
+  if (!bet) return "Sem aposta";
+  if (typeof isExactBet === "function" && isExactBet(bet, game)) return "Resultado exato";
+  if (typeof isOutcomeBet === "function" && isOutcomeBet(bet, game)) {
+    return outcome(game.homeScore, game.awayScore) === "draw" ? "Empate certo" : "Vencedor certo";
+  }
+  return "Falhou";
+}
+
+function gameBetTypeClass(bet, game) {
+  if (!game || !hasResult(game)) return "pending";
+  if (!bet) return "missing";
+  if (typeof isExactBet === "function" && isExactBet(bet, game)) return "exact";
+  if (typeof isOutcomeBet === "function" && isOutcomeBet(bet, game)) return "winner";
+  return "miss";
+}
+
+function closeBetsModal() {
+  $("betsModal")?.classList.add("hidden");
+}
+
 function showGameBets(gameId) {
   const game = games.find(item => item.id === gameId);
   if (!game) return;
-  const rows = betsForGame(gameId).sort((a, b) => a.playerName.localeCompare(b.playerName)).map(bet => `${bet.playerName}: ${bet.homeGuess}-${bet.awayGuess}${hasResult(game) ? ` · ${pointsForBet(bet, game)} pts` : ""}`);
-  alert(`${game.homeTeam} vs ${game.awayTeam}\n\n${rows.length ? rows.join("\n") : "Sem apostas para este jogo."}`);
+
+  const modal = $("betsModal");
+  const title = $("betsModalTitle");
+  const subtitle = $("betsModalSubtitle");
+  const summary = $("betsGameSummary");
+  const body = $("betsModalBody");
+
+  if (!modal || !title || !summary || !body) {
+    const rows = betsForGame(gameId).sort((a, b) => a.playerName.localeCompare(b.playerName)).map(bet => `${bet.playerName}: ${bet.homeGuess}-${bet.awayGuess}${hasResult(game) ? ` · ${pointsForBet(bet, game)} pts` : ""}`);
+    alert(`${game.homeTeam} vs ${game.awayTeam}\n\n${rows.length ? rows.join("\n") : "Sem apostas para este jogo."}`);
+    return;
+  }
+
+  const rows = betsForGame(gameId).sort((a, b) =>
+    pointsForBet(b, game) - pointsForBet(a, game) ||
+    a.playerName.localeCompare(b.playerName, "pt")
+  );
+
+  const exactCount = rows.filter(bet => typeof isExactBet === "function" && isExactBet(bet, game)).length;
+  const winnerCount = rows.filter(bet => !(typeof isExactBet === "function" && isExactBet(bet, game)) && typeof isOutcomeBet === "function" && isOutcomeBet(bet, game)).length;
+  const totalPoints = rows.reduce((sum, bet) => sum + pointsForBet(bet, game), 0);
+
+  title.textContent = `${game.homeTeam} - ${game.awayTeam}`;
+  subtitle.textContent = `${game.group} · ${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}`;
+
+  summary.innerHTML = `
+    <div class="bets-summary-card main">
+      <span>Resultado</span>
+      <strong>${hasResult(game) ? `${game.homeScore}-${game.awayScore}` : "Por colocar"}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Apostas</span>
+      <strong>${rows.length}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Exatos</span>
+      <strong>${hasResult(game) ? exactCount : "-"}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Vencedor/empate</span>
+      <strong>${hasResult(game) ? winnerCount : "-"}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Pontos</span>
+      <strong>${hasResult(game) ? totalPoints : "-"}</strong>
+    </div>
+  `;
+
+  if (!rows.length) {
+    body.innerHTML = `<div class="empty">Ainda não existem apostas importadas para este jogo.</div>`;
+  } else {
+    body.innerHTML = `
+      <div class="bets-list-head">
+        <span>Jogador</span>
+        <span>Aposta</span>
+        <span>Tipo</span>
+        <span>Pontos</span>
+      </div>
+      <div class="bets-list">
+        ${rows.map((bet, index) => {
+          const points = pointsForBet(bet, game);
+          const typeLabel = gameBetTypeLabel(bet, game);
+          const typeClass = gameBetTypeClass(bet, game);
+          return `
+            <article class="bet-user-row ${typeClass}">
+              <div class="bet-user-main" data-label="Jogador">
+                <span class="bet-position">${index + 1}</span>
+                <strong title="${escapeHtml(bet.playerName)}">${escapeHtml(bet.playerName)}</strong>
+              </div>
+              <div class="bet-score-pill" data-label="Aposta">${bet.homeGuess}-${bet.awayGuess}</div>
+              <div class="bet-type-pill" data-label="Tipo">${escapeHtml(typeLabel)}</div>
+              <b data-label="Pontos">${hasResult(game) ? points : "-"}</b>
+            </article>
+          `;
+        }).join("")}
+      </div>`;
+  }
+
+  modal.classList.remove("hidden");
 }
 
 
@@ -1852,9 +3098,11 @@ function resultImpactPreview(game, homeScore, awayScore) {
   }
 
   const tempGame = { ...game, homeScore: Number(homeScore), awayScore: Number(awayScore) };
-  const exact = gameBets.filter(bet => pointsForBet(bet, tempGame) > 0).length;
+  const exact = gameBets.filter(bet => isExactBet(bet, tempGame)).length;
+  const winner = gameBets.filter(bet => !isExactBet(bet, tempGame) && isOutcomeBet(bet, tempGame)).length;
   const totalPoints = gameBets.reduce((sum, bet) => sum + pointsForBet(bet, tempGame), 0);
-  return `${gameBets.length} apostas · ${exact} resultados exatos · ${totalPoints} pontos atribuídos`;
+
+  return `${gameBets.length} apostas · ${exact} resultados exatos · ${winner} vencedor/empate · ${totalPoints} pontos atribuídos`;
 }
 
 function updateResultPreview() {
@@ -1870,6 +3118,8 @@ function updateResultPreview() {
 }
 
 function openResultModal(gameId) {
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return; }
+
   const game = games.find(item => item.id === gameId);
   if (!game) return;
 
@@ -1895,6 +3145,8 @@ function closeResultModal() {
 }
 
 async function saveResultFromModal() {
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
+
   const gameId = $("resultGameIdInput").value;
   const homeScore = $("modalHomeScoreInput").value;
   const awayScore = $("modalAwayScoreInput").value;
@@ -1922,6 +3174,8 @@ async function saveResultFromModal() {
 }
 
 async function clearResultFromModal() {
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
+
   const gameId = $("resultGameIdInput").value;
   if (!gameId) return;
 
@@ -1951,6 +3205,24 @@ window.clearResultFromUI = id => clearResult(id);
 
 
 document.addEventListener("click", event => {
+  const knockoutOpenButton = event.target.closest("#openKnockoutFromCalendarBtn");
+  if (knockoutOpenButton) {
+    openKnockoutPage();
+    return;
+  }
+
+  const koEditButton = event.target.closest("[data-ko-edit]");
+  if (koEditButton) {
+    openKnockoutEditInAdmin(koEditButton.dataset.koEdit);
+    return;
+  }
+
+  const koSaveButton = event.target.closest("[data-ko-save]");
+  if (koSaveButton) {
+    saveKnockoutMatchFromAdmin(koSaveButton.dataset.koSave);
+    return;
+  }
+
   const resultButton = event.target.closest("[data-result-game]");
   if (resultButton) {
     openResultModal(resultButton.dataset.resultGame);
@@ -1965,10 +3237,19 @@ document.addEventListener("click", event => {
 
 document.querySelectorAll(".tab").forEach(button => {
   button.addEventListener("click", () => {
+    if (!permissionTabAllowed(button.dataset.tab)) {
+      toast("Sem permissão para abrir esta página.");
+      return;
+    }
+    if (button.dataset.tab === "knockoutTab" && !knockoutAvailable()) {
+      toast("Fase Final bloqueada. O Admin pode ativar no painel Admin.");
+      return;
+    }
     document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
     document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
     button.classList.add("active");
     $(button.dataset.tab).classList.add("active");
+    if (button.dataset.tab === "knockoutTab") renderKnockout();
   });
 });
 $("unlockAdminBtn").addEventListener("click", () => {
@@ -2000,7 +3281,13 @@ $("confirmExcelImportBtn")?.addEventListener("click", confirmExcelImport);
 $("savePointsSettingsBtn")?.addEventListener("click", savePointsSettings);
 $("saveExtraResultsBtn")?.addEventListener("click", saveExtraResults);
 $("exportPontosBtn")?.addEventListener("click", exportPontosExcel);
+$("saveKnockoutUnlockBtn")?.addEventListener("click", saveKnockoutUnlock);
 
+
+
+$("closeBetsModalBtn")?.addEventListener("click", closeBetsModal);
+$("betsModal")?.addEventListener("click", event => { if (event.target.id === "betsModal") closeBetsModal(); });
+document.addEventListener("keydown", event => { if (event.key === "Escape" && !$("betsModal")?.classList.contains("hidden")) closeBetsModal(); });
 
 $("closeResultModalBtn")?.addEventListener("click", closeResultModal);
 $("saveModalResultBtn")?.addEventListener("click", saveResultFromModal);
@@ -2023,9 +3310,111 @@ document.addEventListener("click", event => {
   if (clearBtn) clearUserGameRow(clearBtn);
 });
 
+
+let deferredInstallPrompt = null;
+
+
+function isIosDevice() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function isStandaloneMode() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function setupIosAppMode() {
+  const hint = $("iosInstallHint");
+  if (hint && isIosDevice() && !isStandaloneMode()) {
+    hint.classList.remove("hidden");
+  }
+
+  // Evita zoom por duplo toque no iPhone.
+  let lastTouchEnd = 0;
+  document.addEventListener("touchend", event => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 320) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
+
+  // Evita gestos de zoom em iOS quando suportado.
+  ["gesturestart", "gesturechange", "gestureend"].forEach(name => {
+    document.addEventListener(name, event => event.preventDefault(), { passive: false });
+  });
+
+  document.documentElement.classList.toggle("standalone-mode", isStandaloneMode());
+  document.documentElement.classList.toggle("ios-device", isIosDevice());
+}
+
+function setupPwaInstall() {
+  const installBtn = $("installAppBtn");
+  if (!installBtn) return;
+
+  window.addEventListener("beforeinstallprompt", event => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    installBtn.classList.remove("hidden");
+  });
+
+  installBtn.addEventListener("click", async () => {
+    if (!deferredInstallPrompt) {
+      toast("No Edge: menu ⋯ > Apps > Instalar este site como aplicação.");
+      return;
+    }
+
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    installBtn.classList.add("hidden");
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    installBtn.classList.add("hidden");
+    toast("App instalada.");
+  });
+}
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .catch(error => console.warn("Service worker não registado:", error));
+  });
+}
+
+
+$("loginBtn")?.addEventListener("click", handleLogin);
+$("createAccountBtn")?.addEventListener("click", handleCreateAccount);
+$("logoutBtn")?.addEventListener("click", logout);
+$("loginPasswordInput")?.addEventListener("keydown", event => { if (event.key === "Enter") handleLogin(); });
+$("loginEmailInput")?.addEventListener("keydown", event => { if (event.key === "Enter") handleLogin(); });
+$("addPermissionUserBtn")?.addEventListener("click", addPermissionUser);
+document.addEventListener("click", event => {
+  const saveBtn = event.target.closest("[data-save-permissions]");
+  if (saveBtn) savePermissionUser(saveBtn.dataset.savePermissions);
+});
+document.addEventListener("change", event => {
+  const roleSelect = event.target.closest("[data-role-email]");
+  if (roleSelect) {
+    const email = roleSelect.dataset.roleEmail;
+    const card = document.querySelector(`[data-permission-card="${CSS.escape(email)}"]`);
+    const isAdminRole = roleSelect.value === "admin";
+    card?.querySelectorAll("[data-perm-key]").forEach(input => {
+      input.disabled = isAdminRole;
+      if (isAdminRole) input.checked = true;
+    });
+  }
+});
+
 window.addEventListener("beforeunload", () => {
   try { saveLocalData("beforeunload"); } catch {}
 });
 
+setupRememberedAccount();
+setupIosAppMode();
+setupPwaInstall();
+registerServiceWorker();
 await initFirebase();
-await loadData();
+setupAuthGate();
