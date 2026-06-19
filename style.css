@@ -4394,19 +4394,3 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
 .ko-admin-row input:disabled{
   opacity:.58;
 }
-
-
-/* v60 — Login permissões fix */
-.login-status.success{
-  color:#83ffbf;
-  border-color:rgba(69,255,156,.35);
-  background:rgba(69,255,156,.08);
-}
-
-
-/* v61 — Login/arranque robusto */
-.login-status.success{
-  color:#83ffbf;
-  border-color:rgba(69,255,156,.35);
-  background:rgba(69,255,156,.08);
-}
