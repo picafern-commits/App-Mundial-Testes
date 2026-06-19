@@ -2,89 +2,27 @@
 <html lang="pt">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Mundial Pontos 2026 · Fase Final Real</title>
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="Mundial 2026" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="format-detection" content="telephone=no" />
-  <meta name="theme-color" content="#070b13" />
-  <meta name="msapplication-TileColor" content="#070b13" />
-  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
-  <link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png" />
-  <link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png" />
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-
-
-  <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#070b13" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="application-name" content="Mundial Pontos 2026" />
-  <meta name="msapplication-TileColor" content="#070b13" />
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mundial Pontos 2026 · Fase Final Cards</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
-  <section id="loginScreen" class="login-screen">
-    <div class="login-card">
-      <div class="login-brand">
-        <span>🏆</span>
-        <div>
-          <p class="eyebrow">Mundial Pontos 2026</p>
-          <h1>Entrar na app</h1>
-        </div>
-      </div>
-
-      <div id="loginStatusBox" class="login-status">Usa o teu email e password para entrar.</div>
-
-      <div class="login-form">
-        <label>Email
-          <input id="loginEmailInput" type="email" autocomplete="email" placeholder="email@exemplo.com" />
-        </label>
-        <label>Password
-          <input id="loginPasswordInput" type="password" autocomplete="current-password" placeholder="Password" />
-        </label>
-        <label class="remember-account-row">
-          <input id="rememberEmailInput" type="checkbox" checked />
-          Memorizar este email neste dispositivo
-        </label>
-      </div>
-
-      <div class="login-actions">
-        <button id="loginBtn" class="primary" type="button">Entrar</button>
-        <button id="createAccountBtn" class="secondary" type="button">Criar conta</button>
-      </div>
-
-      <p class="login-help">As contas novas ficam como User normal. O Admin pode alterar permissões depois.</p>
-      <div id="iosInstallHint" class="ios-install-hint hidden">
-        <strong>iPhone:</strong> abre no Safari, toca em Partilhar e escolhe “Adicionar ao Ecrã Principal”.
-      </div>
-    </div>
-  </section>
-
-  <div id="appShell" class="app-shell auth-hidden">
+  <div class="app-shell">
     <header class="topbar">
       <div>
         <p class="eyebrow">Calendário da Fase de Grupos</p>
         <h1>Mundial Pontos 2026</h1>
       </div>
-      <div id="sessionBox" class="session-box hidden">
-        <span id="sessionUserLabel">Sem login</span>
-        <button id="logoutBtn" class="secondary small" type="button">Sair</button>
-      </div>
       <div class="copy-actions" aria-label="Copiar para WhatsApp">
         <button id="calendarMissingResultsBtn" class="primary" type="button">Por colocar resultado</button>
             <button id="calendarAllGamesBtn" class="secondary" type="button">Todos os jogos</button>
         <button id="copyScoreBtn" class="secondary" type="button">Copiar pontuação</button>
-        <button id="installAppBtn" class="secondary install-btn hidden" type="button">Instalar app</button>
       </div>
     </header>
 
     <nav class="tabs" aria-label="Navegação principal">
       <button class="tab active" type="button" data-tab="calendarTab">Calendário</button>
       <button class="tab" type="button" data-tab="scoreTab">Pontuação</button>
-      <button class="tab" type="button" data-tab="knockoutTab">Fase Final</button>
       <button class="tab" type="button" data-tab="adminTab">Admin</button>
     </nav>
 
@@ -104,21 +42,10 @@
         <div class="section-head">
           <div>
             <h2>Pontuação</h2>
-            <p>Classificação com total e detalhe dos jogos de cada jogador.</p>
+            <p>Classificação simples com o total de pontos de cada user.</p>
           </div>
         </div>
         <div id="scoreSummary" class="score-summary leaderboard"></div>
-      </section>
-
-      <section id="knockoutTab" class="tab-panel">
-        <div class="section-head">
-          <div>
-            <h2>Fase Final</h2>
-            <p>Define manualmente a primeira ronda; nos jogos empatados, preenche também os penáltis.</p>
-          </div>
-        </div>
-        <div id="knockoutLockNotice" class="knockout-lock-notice"></div>
-        <div id="knockoutBracket" class="knockout-bracket"></div>
       </section>
 
       <section id="adminTab" class="tab-panel">
@@ -133,51 +60,6 @@
 
         <div id="adminUnlocked" class="hidden admin-stack admin-accordion">
           <div id="firebaseStatusBox" class="firebase-status-box">Firebase: a iniciar ligação...</div>
-
-          <details class="admin-card admin-collapse" open>
-            <summary>
-              <div>
-                <h2>Permissões de utilizadores</h2>
-                <p>Define quem é Admin ou User normal e que páginas/ações cada conta pode usar.</p>
-              </div>
-              <span class="collapse-icon">⌄</span>
-            </summary>
-
-            <div class="permissions-tools">
-              <div class="permission-add-grid">
-                <label>Email do utilizador
-                  <input id="permissionEmailInput" type="email" placeholder="email@exemplo.com" />
-                </label>
-                <label>Tipo
-                  <select id="permissionRoleInput">
-                    <option value="user">User normal</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </label>
-                <button id="addPermissionUserBtn" class="primary" type="button">Guardar utilizador</button>
-              </div>
-              <div id="permissionsUsersList" class="permissions-users-list"></div>
-            </div>
-          </details>
-
-
-          <details class="admin-card admin-collapse">
-            <summary>
-              <div>
-                <h2>Fase Final</h2>
-                <p>Define manualmente os jogos da primeira ronda. As rondas seguintes são preenchidas automaticamente pelos vencedores.</p>
-              </div>
-              <span class="collapse-icon">⌄</span>
-            </summary>
-            <div class="knockout-admin-tools">
-              <label class="check-row">
-                <input id="adminKnockoutUnlockedInput" type="checkbox" />
-                Ativar Fase Final no Calendário antes de todos os jogos terem resultado
-              </label>
-              <button id="saveKnockoutUnlockBtn" class="primary" type="button">Guardar bloqueio</button>
-            </div>
-            <div id="knockoutAdminPanel" class="knockout-admin-panel"></div>
-          </details>
 
           <details class="admin-card admin-collapse" open>
             <summary>
@@ -399,22 +281,6 @@
         <button id="clearModalResultBtn" class="secondary danger-soft" type="button">Limpar resultado</button>
         <button id="saveModalResultBtn" class="primary" type="button">Guardar resultado</button>
       </div>
-    </div>
-  </div>
-
-
-  <div id="betsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="betsModalTitle">
-    <div class="modal-card bets-modal-card">
-      <div class="modal-head">
-        <div>
-          <h2 id="betsModalTitle">Apostas do jogo</h2>
-          <p id="betsModalSubtitle">Consulta as apostas dos users e os pontos atribuídos.</p>
-        </div>
-        <button id="closeBetsModalBtn" class="icon-button" type="button" aria-label="Fechar">×</button>
-      </div>
-
-      <div id="betsGameSummary" class="bets-game-summary"></div>
-      <div id="betsModalBody" class="bets-modal-body"></div>
     </div>
   </div>
 
