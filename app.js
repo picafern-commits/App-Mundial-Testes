@@ -245,7 +245,7 @@ function timePortugal(value) {
 }
 function statusOf(game) {
   if (hasResult(game)) return { text: "Jogado", className: "played" };
-  if (parsePortugalDate(game.matchDate).getTime() <= Date.now()) return { text: "Fechado", className: "closed" };
+  if (parsePortugalDate(game.matchDate).getTime() <= Date.now()) return { text: "A Decorrer", className: "live" };
   return { text: "Por jogar", className: "open" };
 }
 function isLocked(game) { return statusOf(game).className !== "open"; }
@@ -1179,14 +1179,17 @@ function isConfiguredAdmin(email) {
 function defaultProfileForUser(user) {
   const email = normalizeEmail(user?.email);
   const admin = isConfiguredAdmin(email);
+  const now = new Date().toISOString();
+
   return {
     uid: user?.uid || "",
     email,
+    name: displayNameFromEmail(email),
     role: admin ? "admin" : "user",
     active: true,
     permissions: admin ? { ...ADMIN_PERMISSIONS } : { ...DEFAULT_PERMISSIONS },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdAt: now,
+    updatedAt: now
   };
 }
 
@@ -1232,13 +1235,19 @@ function updateSessionBox() {
   const box = $("sessionBox");
   const label = $("sessionUserLabel");
   if (!box || !label) return;
+
   if (!currentUser) {
     box.classList.add("hidden");
     return;
   }
+
   box.classList.remove("hidden");
+
   const role = currentProfile?.role === "admin" ? "Admin" : "User";
-  label.textContent = `${currentUser.email || "Conta"} · ${role}`;
+  const visibleName = String(currentProfile?.name || "").trim() || displayNameFromEmail(currentUser.email) || currentUser.email || "Conta";
+
+  label.textContent = `${visibleName} · ${role}`;
+  label.title = currentUser.email || visibleName;
 }
 
 async function readUserProfile(user) {
@@ -1262,6 +1271,7 @@ async function readUserProfile(user) {
       ...data,
       uid: user.uid,
       email: normalizeEmail(user.email),
+      name: String(data.name || fallback.name || "").trim(),
       role: configAdmin ? "admin" : (data.role || "user"),
       active: data.active !== false,
       permissions: {
@@ -1332,6 +1342,7 @@ function renderPermissionsUsers() {
 
   list.innerHTML = permissionsCache.map(user => {
     const email = normalizeEmail(user.email || user.id);
+    const visibleName = String(user.name || "").trim() || displayNameFromEmail(email);
     const role = user.role === "admin" ? "admin" : "user";
     const isAdminUser = role === "admin";
     const perms = { ...(isAdminUser ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS), ...(user.permissions || {}) };
@@ -1341,10 +1352,14 @@ function renderPermissionsUsers() {
       <article class="permission-user-card" data-permission-card="${escapeHtml(email)}">
         <div class="permission-user-head">
           <div>
-            <strong>${escapeHtml(email)}</strong>
-            <span>${isAdminUser ? "Admin" : "User normal"} · ${active ? "Ativo" : "Bloqueado"}</span>
+            <strong>${escapeHtml(visibleName)}</strong>
+            <span>${escapeHtml(email)} · ${isAdminUser ? "Admin" : "User normal"} · ${active ? "Ativo" : "Bloqueado"}</span>
           </div>
           <div class="permission-user-actions">
+            <label class="permission-name-label">
+              Nome visível
+              <input class="permission-name-input" type="text" data-name-email="${escapeHtml(email)}" value="${escapeHtml(visibleName)}" placeholder="Nome visível" />
+            </label>
             <select data-role-email="${escapeHtml(email)}">
               <option value="user" ${role === "user" ? "selected" : ""}>User normal</option>
               <option value="admin" ${role === "admin" ? "selected" : ""}>Admin</option>
@@ -1372,10 +1387,15 @@ async function savePermissionUser(email) {
   if (!normalized) return toast("Email inválido.");
 
   const card = document.querySelector(`[data-permission-card="${CSS.escape(normalized)}"]`);
+  const existingProfile = permissionsCache.find(user => normalizeEmail(user.email || user.id) === normalized) || {};
+
   const role = document.querySelector(`[data-role-email="${CSS.escape(normalized)}"]`)?.value || $("permissionRoleInput")?.value || "user";
   const activeInput = document.querySelector(`[data-active-email="${CSS.escape(normalized)}"]`);
   const active = activeInput ? activeInput.checked : true;
   const isAdminUser = role === "admin";
+
+  const nameInput = document.querySelector(`[data-name-email="${CSS.escape(normalized)}"]`) || $("permissionNameInput");
+  const visibleName = String(nameInput?.value || existingProfile.name || displayNameFromEmail(normalized)).trim() || displayNameFromEmail(normalized);
 
   const permissions = isAdminUser ? { ...ADMIN_PERMISSIONS } : { ...DEFAULT_PERMISSIONS };
   if (card && !isAdminUser) {
@@ -1385,30 +1405,57 @@ async function savePermissionUser(email) {
   }
 
   const profile = {
+    ...existingProfile,
+    uid: existingProfile.uid || "",
     email: normalized,
+    name: visibleName,
     role,
     active,
     permissions,
     updatedAt: new Date().toISOString()
   };
 
+  if (!profile.createdAt) profile.createdAt = new Date().toISOString();
+
   const { doc, setDoc } = firebaseApi;
-  await withTimeout(setDoc(doc(db, "users", normalized), profile, { merge: true }), 12000, "guardar permissões");
-  toast("Permissões guardadas.");
+  await withTimeout(setDoc(doc(db, "users", normalized), profile, { merge: true }), 12000, "guardar utilizador");
+
+  if (profile.uid) {
+    try {
+      await setDoc(doc(db, PRESENCE_COLLECTION, profile.uid), {
+        uid: profile.uid,
+        email: normalized,
+        name: visibleName,
+        role,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (presenceError) {
+      console.warn("Nome guardado no user, mas não atualizado na presença:", presenceError);
+    }
+  }
+
+  toast("Utilizador guardado.");
   await loadPermissionsUsers();
   renderPermissionsUsers();
 
   if (normalizeEmail(currentUser?.email) === normalized) {
     currentProfile = await readUserProfile(currentUser);
+    updateSessionBox();
     applyPermissionsToUi();
+    updateMyPresence(false).catch(error => console.warn("Atualizar presença após nome falhou:", error));
   }
+
+  loadOnlineUsers().catch(error => console.warn("Atualizar lista online após nome falhou:", error));
 }
 
 async function addPermissionUser() {
   const email = normalizeEmail($("permissionEmailInput")?.value);
   if (!email) return toast("Escreve o email do utilizador.");
+
   await savePermissionUser(email);
+
   if ($("permissionEmailInput")) $("permissionEmailInput").value = "";
+  if ($("permissionNameInput")) $("permissionNameInput").value = "";
 }
 
 function permissionTabAllowed(tabId) {
@@ -1686,8 +1733,28 @@ async function loadOnlineUsers() {
     const { collection, getDocs } = firebaseApi;
     const snap = await withTimeout(getDocs(collection(db, PRESENCE_COLLECTION)), 10000, "ler utilizadores online");
 
+    const profileNames = new Map();
+    try {
+      const usersSnap = await withTimeout(getDocs(collection(db, "users")), 10000, "ler nomes dos utilizadores");
+      usersSnap.docs.forEach(docSnap => {
+        const data = docSnap.data() || {};
+        const email = normalizeEmail(data.email || docSnap.id);
+        if (email && data.name) profileNames.set(email, String(data.name).trim());
+      });
+    } catch (profileError) {
+      console.warn("Nomes dos utilizadores não carregaram para o painel online:", profileError);
+    }
+
     onlineUsersCache = snap.docs
-      .map(docSnap => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
+      .map(docSnap => {
+        const data = { id: docSnap.id, ...(docSnap.data() || {}) };
+        const email = normalizeEmail(data.email || data.id);
+        return {
+          ...data,
+          email,
+          name: profileNames.get(email) || data.name || displayNameFromEmail(email)
+        };
+      })
       .sort((a, b) => {
         const ao = isOnlinePresence(a) ? 0 : 1;
         const bo = isOnlinePresence(b) ? 0 : 1;
