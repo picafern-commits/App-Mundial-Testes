@@ -1182,42 +1182,67 @@ function renderKnockout() {
     return;
   }
 
+  const finalMatch = knockoutMatches().find(match => match.round === "final");
+  const champion = knockoutWinner(finalMatch);
+
   if (notice) {
     notice.innerHTML = appSettings.knockout?.adminUnlocked && !groupStageFinished()
       ? `<strong>Modo Admin ativo</strong><span>A Fase Final está desbloqueada para preparação, mesmo antes de todos os grupos acabarem.</span>`
       : `<strong>Fase Final ativa</strong><span>Os vencedores passam automaticamente para a próxima ronda.</span>`;
   }
 
-  container.innerHTML = KNOCKOUT_ROUNDS.map(round => {
-    const matches = knockoutMatches().filter(match => match.round === round.key);
-    return `
-      <section class="knockout-round">
-        <h3>${escapeHtml(round.label)}</h3>
-        <div class="knockout-round-matches">
-          ${matches.map(renderKnockoutMatch).join("")}
-        </div>
-      </section>`;
-  }).join("");
+  container.innerHTML = `
+    <div class="bracket-photo-shell">
+      <div class="bracket-title-row">
+        <span>Esquerda</span>
+        <strong>Fase Final Mundial 2026</strong>
+        <span>Direita</span>
+      </div>
+
+      <div class="bracket-photo-grid">
+        ${KNOCKOUT_ROUNDS.map((round, roundIndex) => {
+          const matches = knockoutMatches().filter(match => match.round === round.key);
+          return `
+            <section class="bracket-photo-round round-${round.key}" style="--round-index:${roundIndex}">
+              <h3>${escapeHtml(round.label)}</h3>
+              <div class="bracket-photo-matches">
+                ${matches.map(match => renderKnockoutMatch(match)).join("")}
+              </div>
+            </section>`;
+        }).join("")}
+
+        <section class="bracket-champion-card ${champion ? "has-champion" : ""}">
+          <span>Campeão</span>
+          <strong>${escapeHtml(champion || "Por decidir")}</strong>
+        </section>
+      </div>
+    </div>`;
 }
 
 function renderKnockoutMatch(match) {
   const winner = knockoutWinner(match);
   const editable = isAdmin && knockoutAvailable();
-  const lockedText = !match.homeTeam || !match.awayTeam ? "À espera de equipas" : winner ? `Vencedor: ${winner}` : "Por decidir";
+  const waiting = !match.homeTeam || !match.awayTeam;
+  const lockedText = waiting ? "À espera" : winner ? "Vencedor" : "Por decidir";
 
   return `
-    <article class="knockout-match ${winner ? "has-winner" : ""}">
+    <article class="knockout-match ${winner ? "has-winner" : ""} ${waiting ? "waiting" : ""}">
       <div class="knockout-match-title">${escapeHtml(match.roundLabel)} ${match.index}</div>
+
       <div class="ko-team ${winner === match.homeTeam ? "winner" : ""}">
         <span>${escapeHtml(match.homeTeam || "A definir")}</span>
         <b>${match.homeScore ?? ""}</b>
       </div>
+
       <div class="ko-team ${winner === match.awayTeam ? "winner" : ""}">
         <span>${escapeHtml(match.awayTeam || "A definir")}</span>
         <b>${match.awayScore ?? ""}</b>
       </div>
-      <small>${escapeHtml(lockedText)}</small>
-      ${editable ? `<button class="secondary small" type="button" data-ko-edit="${escapeHtml(match.id)}">Editar</button>` : ""}
+
+      <div class="ko-status-line">
+        <small>${escapeHtml(lockedText)}</small>
+        ${editable ? `<button class="secondary small" type="button" data-ko-edit="${escapeHtml(match.id)}">Editar</button>` : ""}
+      </div>
     </article>`;
 }
 

@@ -1,5 +1,5 @@
 window.MUNDIAL_CONFIG = {
-  appVersion: "46.0",
+  appVersion: "47.0",
   adminPin: "1234",
   firebase: {
     apiKey: "AIzaSyCOyW5rfwF8iZxcVN6jxR4VqZ6pNdNmFRA",
