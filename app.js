@@ -15,6 +15,9 @@ let firebaseAuthApi = null;
 let currentUser = null;
 let currentProfile = null;
 let permissionsCache = [];
+let onlineUsersCache = [];
+let presenceIntervalId = null;
+let onlineUsersIntervalId = null;
 let storageMode = "local";
 let games = [];
 let bets = [];
@@ -755,7 +758,8 @@ function setupRealtimeSync() {
     };
 
     if (!currentProfile.active) {
-      await firebaseAuthApi.signOut(firebaseAuth);
+      await updateMyPresence(true);
+  await firebaseAuthApi.signOut(firebaseAuth);
       return;
     }
 
@@ -1555,6 +1559,183 @@ function authFriendlyError(error) {
   return "Erro no login. Verifica o Firebase e tenta novamente.";
 }
 
+
+const PRESENCE_COLLECTION = "presence";
+const ONLINE_WINDOW_MS = 2 * 60 * 1000;
+const PRESENCE_UPDATE_MS = 30 * 1000;
+const ONLINE_USERS_REFRESH_MS = 30 * 1000;
+
+function displayNameFromEmail(email) {
+  const value = String(email || "").trim();
+  if (!value) return "User";
+  const local = value.split("@")[0] || value;
+  return local
+    .replace(/[._-]+/g, " ")
+    .replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function deviceLabel() {
+  const ua = navigator.userAgent || "";
+  if (/iphone|ipad|ipod/i.test(ua)) return "iPhone";
+  if (/android/i.test(ua)) return "Android";
+  if (/windows/i.test(ua)) return "PC";
+  if (/macintosh|mac os/i.test(ua)) return "Mac";
+  return "Web";
+}
+
+function safePresenceId(email) {
+  return normalizeEmail(email).replace(/[.#$/[\]]/g, "_");
+}
+
+function timeAgoLabel(timestamp) {
+  if (!timestamp) return "sem registo";
+
+  let date = null;
+  if (typeof timestamp?.toDate === "function") {
+    date = timestamp.toDate();
+  } else if (timestamp instanceof Date) {
+    date = timestamp;
+  } else if (typeof timestamp === "number") {
+    date = new Date(timestamp);
+  } else if (typeof timestamp === "string") {
+    date = new Date(timestamp);
+  }
+
+  if (!date || Number.isNaN(date.getTime())) return "sem registo";
+
+  const diff = Math.max(0, Date.now() - date.getTime());
+  if (diff < 15000) return "agora";
+  if (diff < 60000) return `há ${Math.floor(diff / 1000)}s`;
+  if (diff < 3600000) return `há ${Math.floor(diff / 60000)} min`;
+  if (diff < 86400000) return `há ${Math.floor(diff / 3600000)} h`;
+  return `há ${Math.floor(diff / 86400000)} d`;
+}
+
+function isOnlinePresence(user) {
+  const ts = user?.lastActiveAt;
+  let time = 0;
+  if (typeof ts?.toDate === "function") time = ts.toDate().getTime();
+  else if (ts instanceof Date) time = ts.getTime();
+  else if (typeof ts === "number") time = ts;
+  else if (typeof ts === "string") time = new Date(ts).getTime();
+
+  return Number.isFinite(time) && Date.now() - time <= ONLINE_WINDOW_MS;
+}
+
+async function updateMyPresence(forceOffline = false) {
+  if (!db || !firebaseApi || !currentUser?.email) return;
+
+  const email = normalizeEmail(currentUser.email);
+  const id = safePresenceId(email);
+  const nowIso = new Date().toISOString();
+
+  const data = {
+    email,
+    name: currentProfile?.name || displayNameFromEmail(email),
+    role: currentProfile?.role || "user",
+    online: !forceOffline,
+    device: deviceLabel(),
+    lastActiveAt: nowIso,
+    updatedAt: nowIso
+  };
+
+  try {
+    const { doc, setDoc } = firebaseApi;
+    await setDoc(doc(db, PRESENCE_COLLECTION, id), data, { merge: true });
+  } catch (error) {
+    console.warn("Presença não atualizada:", error);
+  }
+}
+
+function stopPresenceTracking() {
+  if (presenceIntervalId) {
+    clearInterval(presenceIntervalId);
+    presenceIntervalId = null;
+  }
+}
+
+function startPresenceTracking() {
+  stopPresenceTracking();
+  updateMyPresence(false);
+  presenceIntervalId = setInterval(() => updateMyPresence(false), PRESENCE_UPDATE_MS);
+}
+
+function stopOnlineUsersRefresh() {
+  if (onlineUsersIntervalId) {
+    clearInterval(onlineUsersIntervalId);
+    onlineUsersIntervalId = null;
+  }
+}
+
+function startOnlineUsersRefresh() {
+  stopOnlineUsersRefresh();
+  loadOnlineUsers();
+  onlineUsersIntervalId = setInterval(loadOnlineUsers, ONLINE_USERS_REFRESH_MS);
+}
+
+async function loadOnlineUsers() {
+  if (!db || !firebaseApi || !currentUser) return;
+
+  try {
+    const { collection, getDocs } = firebaseApi;
+    const snap = await getDocs(collection(db, PRESENCE_COLLECTION));
+    onlineUsersCache = snap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
+      .sort((a, b) => {
+        const ao = isOnlinePresence(a) ? 0 : 1;
+        const bo = isOnlinePresence(b) ? 0 : 1;
+        if (ao !== bo) return ao - bo;
+        return String(a.email || "").localeCompare(String(b.email || ""), "pt");
+      });
+    renderOnlineUsers();
+  } catch (error) {
+    console.warn("Erro ao carregar users online:", error);
+    renderOnlineUsersError();
+  }
+}
+
+function renderOnlineUsersError() {
+  const list = $("onlineUsersList");
+  if (list) list.innerHTML = `<div class="empty small-empty">Não foi possível carregar os utilizadores online.</div>`;
+}
+
+function renderOnlineUsers() {
+  const list = $("onlineUsersList");
+  const badge = $("onlineUsersBadge");
+  if (!list) return;
+
+  const onlineCount = onlineUsersCache.filter(isOnlinePresence).length;
+  if (badge) badge.textContent = `${onlineCount} online`;
+
+  if (!onlineUsersCache.length) {
+    list.innerHTML = `<div class="empty small-empty">Ainda não existem utilizadores registados online.</div>`;
+    return;
+  }
+
+  list.innerHTML = `
+    <div class="online-users-table">
+      <div class="online-users-row online-users-head">
+        <span>User</span>
+        <span>Estado</span>
+        <span>Última atividade</span>
+      </div>
+      ${onlineUsersCache.map(user => {
+        const online = isOnlinePresence(user);
+        const email = normalizeEmail(user.email || user.id);
+        const name = user.name || displayNameFromEmail(email);
+        return `
+          <div class="online-users-row ${online ? "is-online" : "is-offline"}">
+            <span class="online-user-name">
+              <strong>${escapeHtml(name)}</strong>
+              <small>${escapeHtml(user.device || "")}</small>
+            </span>
+            <span class="online-state">${online ? "Online 🟢" : "Offline ⚪"}</span>
+            <span class="online-last">${escapeHtml(timeAgoLabel(user.lastActiveAt))}</span>
+          </div>
+        `;
+      }).join("")}
+    </div>`;
+}
+
 function setupAuthGate() {
   if (!firebaseAuthApi || !firebaseAuth) {
     showLoginScreen();
@@ -1579,7 +1760,8 @@ function setupAuthGate() {
       currentProfile = await readUserProfile(user);
 
       if (!currentProfile.active) {
-        await firebaseAuthApi.signOut(firebaseAuth);
+        await updateMyPresence(true);
+  await firebaseAuthApi.signOut(firebaseAuth);
         setLoginStatus("Conta bloqueada pelo Admin.", "error");
         return;
       }
@@ -1588,6 +1770,8 @@ function setupAuthGate() {
       updateSessionBox();
       await loadPermissionsUsers();
       await loadData();
+      startPresenceTracking();
+      startOnlineUsersRefresh();
       applyPermissionsToUi();
       setLoginStatus("Login efetuado.", "success");
     } catch (error) {
@@ -1600,6 +1784,7 @@ function setupAuthGate() {
 
 async function logout() {
   if (!firebaseAuthApi || !firebaseAuth) return;
+  await updateMyPresence(true);
   await firebaseAuthApi.signOut(firebaseAuth);
   toast("Sessão terminada.");
 }
@@ -3746,3 +3931,13 @@ setupPageWheelScroll();
 registerServiceWorker();
 await initFirebase();
 setupAuthGate();
+
+
+// beforeunload_presence_v60
+window.addEventListener("beforeunload", () => {
+  try {
+    updateMyPresence(true);
+  } catch (error) {
+    console.warn("Não foi possível marcar offline:", error);
+  }
+});
