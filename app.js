@@ -1036,6 +1036,11 @@ const KNOCKOUT_ROUNDS = [
   { key: "final", label: "Final", count: 1, next: "" }
 ];
 
+
+function isManualKnockoutRound(match) {
+  return match?.round === KNOCKOUT_ROUNDS[0].key;
+}
+
 function knockoutTeamOptions() {
   return [...new Set(MATCH_ROWS.flatMap(row => [row[1], row[2]]))].sort((a, b) => a.localeCompare(b, "pt"));
 }
@@ -1054,6 +1059,8 @@ function defaultKnockoutMatches() {
         awayTeam: "",
         homeScore: null,
         awayScore: null,
+        homePenalties: null,
+        awayPenalties: null,
         nextMatchId: round.next ? `ko_${round.next}_${String(nextIndex).padStart(2, "0")}` : "",
         nextSlot: round.next ? (index % 2 === 1 ? "homeTeam" : "awayTeam") : "",
         updatedAt: ""
@@ -1071,7 +1078,15 @@ function ensureKnockoutSettings() {
 
   appSettings.knockout = {
     adminUnlocked: Boolean(current.adminUnlocked),
-    matches: defaults.map(match => ({ ...match, ...(existing.get(match.id) || {}) }))
+    matches: defaults.map(match => {
+      const saved = existing.get(match.id) || {};
+      return {
+        ...match,
+        ...saved,
+        homePenalties: saved.homePenalties ?? null,
+        awayPenalties: saved.awayPenalties ?? null
+      };
+    })
   };
 
   propagateKnockoutWinners(false);
@@ -1102,17 +1117,29 @@ function knockoutAvailable() {
 function knockoutWinner(match) {
   if (!match || !match.homeTeam || !match.awayTeam) return "";
   if (match.homeScore === null || match.homeScore === undefined || match.homeScore === "" || match.awayScore === null || match.awayScore === undefined || match.awayScore === "") return "";
+
   const home = Number(match.homeScore);
   const away = Number(match.awayScore);
-  if (!Number.isFinite(home) || !Number.isFinite(away) || home === away) return "";
-  return home > away ? match.homeTeam : match.awayTeam;
+  if (!Number.isFinite(home) || !Number.isFinite(away)) return "";
+
+  if (home > away) return match.homeTeam;
+  if (away > home) return match.awayTeam;
+
+  const homePen = match.homePenalties;
+  const awayPen = match.awayPenalties;
+  if (homePen === null || homePen === undefined || homePen === "" || awayPen === null || awayPen === undefined || awayPen === "") return "";
+
+  const hp = Number(homePen);
+  const ap = Number(awayPen);
+  if (!Number.isFinite(hp) || !Number.isFinite(ap) || hp === ap) return "";
+
+  return hp > ap ? match.homeTeam : match.awayTeam;
 }
 
 function clearAutoKnockoutSlots() {
   const matches = appSettings.knockout?.matches || [];
-  const firstRound = KNOCKOUT_ROUNDS[0].key;
   matches.forEach(match => {
-    if (match.round !== firstRound) {
+    if (!isManualKnockoutRound(match)) {
       match.homeTeam = "";
       match.awayTeam = "";
     }
@@ -1122,8 +1149,10 @@ function clearAutoKnockoutSlots() {
 function propagateKnockoutWinners(shouldSave = true) {
   if (!appSettings.knockout || !Array.isArray(appSettings.knockout.matches)) return;
 
-  clearAutoKnockoutSlots();
   const matches = appSettings.knockout.matches;
+  const previousTeams = new Map(matches.map(match => [match.id, `${match.homeTeam || ""}|${match.awayTeam || ""}`]));
+
+  clearAutoKnockoutSlots();
 
   KNOCKOUT_ROUNDS.forEach(round => {
     matches
@@ -1134,6 +1163,18 @@ function propagateKnockoutWinners(shouldSave = true) {
         const next = matches.find(item => item.id === match.nextMatchId);
         if (next) next[match.nextSlot] = winner;
       });
+  });
+
+  matches.forEach(match => {
+    if (isManualKnockoutRound(match)) return;
+    const oldTeams = previousTeams.get(match.id) || "|";
+    const newTeams = `${match.homeTeam || ""}|${match.awayTeam || ""}`;
+    if (oldTeams !== newTeams) {
+      match.homeScore = null;
+      match.awayScore = null;
+      match.homePenalties = null;
+      match.awayPenalties = null;
+    }
   });
 
   if (shouldSave) {
@@ -1188,7 +1229,7 @@ function renderKnockout() {
   if (notice) {
     notice.innerHTML = appSettings.knockout?.adminUnlocked && !groupStageFinished()
       ? `<strong>Modo Admin ativo</strong><span>A Fase Final está desbloqueada para preparação, mesmo antes de todos os grupos acabarem.</span>`
-      : `<strong>Fase Final ativa</strong><span>Os vencedores passam automaticamente para a próxima ronda.</span>`;
+      : `<strong>Fase Final ativa</strong><span>Tu defines a primeira ronda; depois os vencedores passam automaticamente até à final.</span>`;
   }
 
   container.innerHTML = `
@@ -1223,7 +1264,10 @@ function renderKnockoutMatch(match) {
   const winner = knockoutWinner(match);
   const editable = isAdmin && knockoutAvailable();
   const waiting = !match.homeTeam || !match.awayTeam;
-  const lockedText = waiting ? "À espera" : winner ? "Vencedor" : "Por decidir";
+  const hasScore = match.homeScore !== null && match.homeScore !== undefined && match.homeScore !== "" && match.awayScore !== null && match.awayScore !== undefined && match.awayScore !== "";
+  const isDraw = hasScore && Number(match.homeScore) === Number(match.awayScore);
+  const hasPens = match.homePenalties !== null && match.homePenalties !== undefined && match.homePenalties !== "" && match.awayPenalties !== null && match.awayPenalties !== undefined && match.awayPenalties !== "";
+  const lockedText = waiting ? "À espera" : winner ? "Vencedor" : isDraw ? "Faltam penáltis" : "Por decidir";
 
   return `
     <article class="knockout-match ${winner ? "has-winner" : ""} ${waiting ? "waiting" : ""}">
@@ -1238,6 +1282,13 @@ function renderKnockoutMatch(match) {
         <span>${escapeHtml(match.awayTeam || "A definir")}</span>
         <b>${match.awayScore ?? ""}</b>
       </div>
+
+      ${(isDraw || hasPens) ? `
+        <div class="ko-penalties-line">
+          <span>Penáltis</span>
+          <strong>${hasPens ? `${match.homePenalties}-${match.awayPenalties}` : "por preencher"}</strong>
+        </div>
+      ` : ""}
 
       <div class="ko-status-line">
         <small>${escapeHtml(lockedText)}</small>
@@ -1259,20 +1310,48 @@ function renderKnockoutAdmin() {
   const teamOptions = team => `<option value="">A definir</option>${teams.map(item => `<option value="${escapeHtml(item)}" ${item === team ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}`;
 
   panel.innerHTML = `
-    <div class="ko-admin-note">Para começar, escolhe as equipas dos jogos dos <strong>16 avos</strong>. Depois mete os resultados. O vencedor passa automaticamente.</div>
+    <div class="ko-admin-note">
+      <strong>Regra da Fase Final:</strong> só defines manualmente os jogos dos <strong>16 avos</strong>.
+      As rondas seguintes são automáticas. Se o jogo acabar empatado, preenche os <strong>penáltis</strong> para definir quem passa.
+    </div>
     <div class="ko-admin-list">
-      ${knockoutMatches().map(match => `
-        <div class="ko-admin-row" data-ko-admin="${escapeHtml(match.id)}">
-          <strong>${escapeHtml(match.roundLabel)} ${match.index}</strong>
-          <select class="ko-home-team">${teamOptions(match.homeTeam)}</select>
-          <span>vs</span>
-          <select class="ko-away-team">${teamOptions(match.awayTeam)}</select>
-          <input class="ko-home-score" type="number" min="0" inputmode="numeric" value="${match.homeScore ?? ""}" placeholder="0" />
-          <span>-</span>
-          <input class="ko-away-score" type="number" min="0" inputmode="numeric" value="${match.awayScore ?? ""}" placeholder="0" />
-          <button class="primary small" type="button" data-ko-save="${escapeHtml(match.id)}">Guardar</button>
-        </div>
-      `).join("")}
+      ${knockoutMatches().map(match => {
+        const manualRound = isManualKnockoutRound(match);
+        const homeControl = manualRound
+          ? `<select class="ko-home-team">${teamOptions(match.homeTeam)}</select>`
+          : `<input class="ko-readonly-team" type="text" value="${escapeHtml(match.homeTeam || "A definir automaticamente")}" disabled />`;
+        const awayControl = manualRound
+          ? `<select class="ko-away-team">${teamOptions(match.awayTeam)}</select>`
+          : `<input class="ko-readonly-team" type="text" value="${escapeHtml(match.awayTeam || "A definir automaticamente")}" disabled />`;
+
+        const canScore = Boolean(match.homeTeam && match.awayTeam);
+        return `
+          <div class="ko-admin-row ko-admin-row-penalties ${manualRound ? "manual-round" : "auto-round"}" data-ko-admin="${escapeHtml(match.id)}">
+            <strong>${escapeHtml(match.roundLabel)} ${match.index}</strong>
+            ${homeControl}
+            <span>vs</span>
+            ${awayControl}
+
+            <label class="ko-score-label">Resultado
+              <span class="ko-score-pair">
+                <input class="ko-home-score" type="number" min="0" inputmode="numeric" value="${match.homeScore ?? ""}" placeholder="0" ${canScore ? "" : "disabled"} />
+                <em>-</em>
+                <input class="ko-away-score" type="number" min="0" inputmode="numeric" value="${match.awayScore ?? ""}" placeholder="0" ${canScore ? "" : "disabled"} />
+              </span>
+            </label>
+
+            <label class="ko-score-label ko-penalty-label">Penáltis
+              <span class="ko-score-pair">
+                <input class="ko-home-penalties" type="number" min="0" inputmode="numeric" value="${match.homePenalties ?? ""}" placeholder="0" ${canScore ? "" : "disabled"} />
+                <em>-</em>
+                <input class="ko-away-penalties" type="number" min="0" inputmode="numeric" value="${match.awayPenalties ?? ""}" placeholder="0" ${canScore ? "" : "disabled"} />
+              </span>
+            </label>
+
+            <button class="primary small" type="button" data-ko-save="${escapeHtml(match.id)}">${manualRound ? "Guardar" : "Guardar resultado"}</button>
+          </div>
+        `;
+      }).join("")}
     </div>`;
 }
 
@@ -1290,25 +1369,76 @@ async function saveKnockoutMatchFromAdmin(matchId) {
   const match = knockoutMatchById(matchId);
   if (!row || !match) return;
 
-  match.homeTeam = row.querySelector(".ko-home-team")?.value || "";
-  match.awayTeam = row.querySelector(".ko-away-team")?.value || "";
+  const manualRound = isManualKnockoutRound(match);
 
-  const homeScore = row.querySelector(".ko-home-score")?.value ?? "";
-  const awayScore = row.querySelector(".ko-away-score")?.value ?? "";
-  match.homeScore = homeScore === "" ? null : Number(homeScore);
-  match.awayScore = awayScore === "" ? null : Number(awayScore);
-  match.updatedAt = new Date().toISOString();
+  if (manualRound) {
+    match.homeTeam = row.querySelector(".ko-home-team")?.value || "";
+    match.awayTeam = row.querySelector(".ko-away-team")?.value || "";
+  }
 
-  if (match.homeScore !== null && match.awayScore !== null && Number(match.homeScore) === Number(match.awayScore)) {
-    toast("Na fase final não pode ficar empate. Mete o resultado final/desempate.");
+  if (!match.homeTeam || !match.awayTeam) {
+    match.homeScore = null;
+    match.awayScore = null;
+    match.homePenalties = null;
+    match.awayPenalties = null;
+    saveLocalData("fase final equipas incompletas");
+    await persistSettings();
+    renderAll();
+    toast("Define as duas equipas deste jogo.");
     return;
   }
 
+  const homeScore = row.querySelector(".ko-home-score")?.value ?? "";
+  const awayScore = row.querySelector(".ko-away-score")?.value ?? "";
+  const homePenalties = row.querySelector(".ko-home-penalties")?.value ?? "";
+  const awayPenalties = row.querySelector(".ko-away-penalties")?.value ?? "";
+
+  match.homeScore = homeScore === "" ? null : Number(homeScore);
+  match.awayScore = awayScore === "" ? null : Number(awayScore);
+
+  const hasFullScore = match.homeScore !== null && match.awayScore !== null;
+  const isDraw = hasFullScore && Number(match.homeScore) === Number(match.awayScore);
+
+  if (isDraw) {
+    if (homePenalties === "" || awayPenalties === "") {
+      toast("Jogo empatado. Preenche o resultado dos penáltis.");
+      return;
+    }
+
+    match.homePenalties = Number(homePenalties);
+    match.awayPenalties = Number(awayPenalties);
+
+    if (Number(match.homePenalties) === Number(match.awayPenalties)) {
+      toast("Os penáltis não podem ficar empatados.");
+      return;
+    }
+  } else {
+    match.homePenalties = homePenalties === "" ? null : Number(homePenalties);
+    match.awayPenalties = awayPenalties === "" ? null : Number(awayPenalties);
+
+    if ((homePenalties === "") !== (awayPenalties === "")) {
+      toast("Preenche os dois campos dos penáltis ou deixa os dois vazios.");
+      return;
+    }
+
+    if (homePenalties !== "" && Number(match.homePenalties) === Number(match.awayPenalties)) {
+      toast("Se preencheres penáltis, eles não podem ficar empatados.");
+      return;
+    }
+  }
+
+  match.updatedAt = new Date().toISOString();
+
   propagateKnockoutWinners(false);
-  saveLocalData("fase final jogo guardado");
+  saveLocalData("fase final jogo guardado com penaltis");
   await persistSettings();
   renderAll();
-  toast("Jogo da Fase Final guardado.");
+
+  if (manualRound) {
+    toast("Jogo da primeira ronda guardado. Vencedor avança automaticamente.");
+  } else {
+    toast("Resultado guardado. Vencedor avançou automaticamente.");
+  }
 }
 
 function openKnockoutEditInAdmin(matchId) {
