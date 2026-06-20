@@ -6285,30 +6285,45 @@ body.chat-mobile-page-open{
 }
 
 
-/* v83 — desbloqueio real do chat mobile */
-html.chat-mobile-page-open,
-body.chat-mobile-page-open{
-  width:100%!important;
-  height:100%!important;
-  overflow:hidden!important;
-  overscroll-behavior:none!important;
-  background:#070b13!important;
+/* v85 — Safari mobile chat fix */
+#chatPanel.chat-panel.hidden{
+  display:none!important;
+  pointer-events:none!important;
+}
+
+@media(min-width:761px){
+  #chatPanel.chat-panel:not(.hidden){
+    position:fixed!important;
+    right:18px!important;
+    bottom:18px!important;
+    left:auto!important;
+    top:auto!important;
+    width:min(420px, calc(100vw - 24px))!important;
+    height:min(640px, calc(100dvh - 36px))!important;
+    max-height:calc(100dvh - 36px)!important;
+    border-radius:22px!important;
+    z-index:9998!important;
+  }
+
+  body.chat-window-open{
+    overflow:auto!important;
+    position:static!important;
+  }
 }
 
 @media(max-width:760px){
-  body.chat-mobile-page-open #chatPanel.chat-panel,
-  body.chat-fullscreen-open #chatPanel.chat-panel,
-  #chatPanel.chat-panel:not(.hidden){
+  body.chat-mobile-page-open,
+  html.chat-mobile-page-open{
+    overflow:hidden!important;
+    width:100%!important;
+    height:100%!important;
+    background:#070b13!important;
+  }
+
+  body.chat-mobile-page-open #chatPanel.chat-panel:not(.hidden){
     position:fixed!important;
     inset:0!important;
-    left:0!important;
-    right:0!important;
-    top:0!important;
-    bottom:0!important;
     width:100vw!important;
-    height:100vh!important;
-    min-height:100vh!important;
-    max-height:100vh!important;
     height:100dvh!important;
     min-height:100dvh!important;
     max-height:100dvh!important;
@@ -6322,63 +6337,31 @@ body.chat-mobile-page-open{
     background:#070b13!important;
   }
 
-  #chatPanel.chat-panel.hidden{
-    display:none!important;
-    pointer-events:none!important;
-  }
-
-  #chatPanel .chat-header{
-    flex:0 0 auto!important;
-    position:relative!important;
-    z-index:3!important;
-    padding-top:calc(10px + env(safe-area-inset-top))!important;
-  }
-
-  #chatPanel .chat-room-switch,
-  #chatPanel .chat-search-wrap,
-  #chatPanel .chat-pinned-box,
-  #chatPanel .chat-typing-box,
-  #chatPanel .chat-reply-preview,
-  #chatPanel .chat-form{
-    flex:0 0 auto!important;
-  }
-
-  #chatPanel .chat-messages{
+  body.chat-mobile-page-open #chatPanel .chat-messages{
     flex:1 1 auto!important;
     min-height:0!important;
-    height:auto!important;
-    max-height:none!important;
     overflow-y:auto!important;
     -webkit-overflow-scrolling:touch!important;
-    touch-action:pan-y!important;
-    background:#070b13!important;
   }
 
-  #chatPanel .chat-form{
+  body.chat-mobile-page-open #chatPanel .chat-form{
+    flex:0 0 auto!important;
     margin-top:auto!important;
     padding-bottom:calc(10px + env(safe-area-inset-bottom))!important;
-    background:#070b13!important;
-    position:relative!important;
-    z-index:3!important;
   }
 
   #chatCloseBtn.chat-close-btn{
-    z-index:2147483100!important;
     pointer-events:auto!important;
     touch-action:manipulation!important;
     cursor:pointer!important;
-  }
-
-  #chatActionMenu.chat-action-menu{
-    z-index:2147483200!important;
+    z-index:2147483100!important;
   }
 }
 
+/* fallback especial Safari iOS */
 @supports(-webkit-touch-callout:none){
   @media(max-width:760px){
-    body.chat-mobile-page-open #chatPanel.chat-panel,
-    body.chat-fullscreen-open #chatPanel.chat-panel,
-    #chatPanel.chat-panel:not(.hidden){
+    body.chat-mobile-page-open #chatPanel.chat-panel:not(.hidden){
       height:-webkit-fill-available!important;
       min-height:-webkit-fill-available!important;
       max-height:-webkit-fill-available!important;
