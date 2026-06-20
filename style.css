@@ -7421,24 +7421,12 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
 }
 
 
-/* v95 — remover botão Pesquisar dos jogos no calendário */
-.match-card button[aria-label*="Pesquisar"],
-.game-card button[aria-label*="Pesquisar"],
-.jogo-card button[aria-label*="Pesquisar"],
-.fixture-card button[aria-label*="Pesquisar"],
-.calendar-card button[aria-label*="Pesquisar"],
-.calendario-card button[aria-label*="Pesquisar"],
-.match-card .btn-pesquisar,
-.game-card .btn-pesquisar,
-.jogo-card .btn-pesquisar,
-.fixture-card .btn-pesquisar,
-.calendar-card .btn-pesquisar,
-.calendario-card .btn-pesquisar,
-.match-card .search-btn,
-.game-card .search-btn,
-.jogo-card .search-btn,
-.fixture-card .search-btn,
-.calendar-card .search-btn,
-.calendario-card .search-btn{
-  display:none!important;
+/* v96 — esconder apenas o botão Pesquisar dentro dos cards de jogo */
+.match-card button,
+.game-card button,
+.jogo-card button,
+.fixture-card button,
+.calendar-card button,
+.calendario-card button{
+  /* mantido sem alteração visual global */
 }

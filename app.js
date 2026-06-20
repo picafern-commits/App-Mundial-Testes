@@ -6534,9 +6534,9 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-// v95 — remove botão Pesquisar dos jogos no calendário.
-function removePesquisarJogosCalendarioV95() {
-  const calendarRoots = [
+// v96 — remover visualmente o botão Pesquisar dos jogos sem tocar na lógica/permissões.
+function removePesquisarJogosCalendarioV96() {
+  const roots = [
     document.getElementById("calendarPage"),
     document.getElementById("calendarioPage"),
     document.getElementById("gamesPage"),
@@ -6547,40 +6547,27 @@ function removePesquisarJogosCalendarioV95() {
     document.body
   ].filter(Boolean);
 
-  calendarRoots.forEach(root => {
+  roots.forEach(root => {
     root.querySelectorAll("button, a").forEach(el => {
-      const text = String(el.textContent || "").trim().toLowerCase();
-      const aria = String(el.getAttribute("aria-label") || "").toLowerCase();
-      const title = String(el.getAttribute("title") || "").toLowerCase();
-      const cls = String(el.className || "").toLowerCase();
-      const id = String(el.id || "").toLowerCase();
+      const text = String(el.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+      if (text !== "pesquisar" && text !== "🔎 pesquisar" && text !== "🔍 pesquisar") return;
 
-      const isPesquisar =
-        text === "pesquisar" ||
-        text === "🔎 pesquisar" ||
-        text === "🔍 pesquisar" ||
-        aria.includes("pesquisar") ||
-        title.includes("pesquisar") ||
-        id.includes("pesquisar") ||
-        cls.includes("pesquisar");
+      const isGameCard = Boolean(el.closest(
+        ".match-card, .game-card, .jogo-card, .fixture-card, .calendar-card, .calendario-card, [data-game-id], [data-jogo-id]"
+      ));
 
-      if (!isPesquisar) return;
-
-      const nearGame =
-        el.closest(".match-card, .game-card, .jogo-card, .fixture-card, .calendar-card, .calendario-card, [data-game-id], [data-jogo-id]") ||
-        root !== document.body;
-
-      if (nearGame) el.remove();
+      // Só remover se estiver dentro de um card de jogo/calendário.
+      if (isGameCard) el.remove();
     });
   });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  removePesquisarJogosCalendarioV95();
-  setTimeout(removePesquisarJogosCalendarioV95, 250);
-  setTimeout(removePesquisarJogosCalendarioV95, 1000);
+  removePesquisarJogosCalendarioV96();
+  setTimeout(removePesquisarJogosCalendarioV96, 250);
+  setTimeout(removePesquisarJogosCalendarioV96, 1000);
 });
 
 document.addEventListener("click", () => {
-  setTimeout(removePesquisarJogosCalendarioV95, 50);
+  setTimeout(removePesquisarJogosCalendarioV96, 80);
 });
