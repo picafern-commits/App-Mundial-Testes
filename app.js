@@ -2376,7 +2376,11 @@ function chatMessageMatchesSearch(message) {
 
 function chatImageMarkup(message) {
   if (!message.imageData) return "";
-  return `<img class="chat-image" src="${escapeHtml(message.imageData)}" alt="Imagem enviada no chat" loading="lazy" data-chat-image="1" onclick="return window.openChatImageViewerFromElement(this,event)" />`;
+  const src = escapeHtml(message.imageData);
+  return `
+    <button type="button" class="chat-image-button" data-chat-image-src="${src}" aria-label="Abrir imagem do chat">
+      <img class="chat-image" src="${src}" alt="Imagem enviada no chat" loading="lazy" />
+    </button>`;
 }
 
 function chatReactionsMarkup(message) {
@@ -2724,7 +2728,6 @@ function renderChatMessages() {
   }).join("");
 
   setupChatMessageActions();
-  setupChatImageViewer();
   setupChatCloseButtonSafe();
 
   if (stick || !chatOpenedOnce) scrollChatToBottom();
@@ -2827,83 +2830,6 @@ function setupChatCloseButtonSafe() {
   closeBtn.addEventListener("click", event => window.closeChatPanelNow(event));
   closeBtn.addEventListener("pointerup", event => window.closeChatPanelNow(event));
   closeBtn.addEventListener("touchend", event => window.closeChatPanelNow(event), { passive: false });
-}
-
-
-function openChatImageViewer(src) {
-  const viewer = $("chatImageViewer");
-  const image = $("chatImageViewerImg");
-  if (!viewer || !image || !src) return;
-
-  image.src = src;
-  viewer.classList.remove("hidden");
-  document.body.classList.add("chat-image-viewer-open");
-}
-
-function closeChatImageViewer() {
-  const viewer = $("chatImageViewer");
-  const image = $("chatImageViewerImg");
-  if (!viewer || !image) return;
-
-  viewer.classList.add("hidden");
-  image.removeAttribute("src");
-  document.body.classList.remove("chat-image-viewer-open");
-}
-
-function setupChatImageViewer() {
-  const messages = $("chatMessages");
-  const viewer = $("chatImageViewer");
-  const closeBtn = $("chatImageViewerClose");
-
-  if (messages && messages.dataset.imageViewerBound !== "1") {
-    messages.dataset.imageViewerBound = "1";
-
-    messages.addEventListener("click", event => {
-      const img = event.target.closest?.(".chat-image, [data-chat-image]");
-      if (!img) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      openChatImageViewer(img.currentSrc || img.src);
-    });
-
-    messages.addEventListener("touchend", event => {
-      const img = event.target.closest?.(".chat-image, [data-chat-image]");
-      if (!img) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      openChatImageViewer(img.currentSrc || img.src);
-    }, { passive: false });
-  }
-
-  if (closeBtn && closeBtn.dataset.bound !== "1") {
-    closeBtn.dataset.bound = "1";
-    closeBtn.addEventListener("click", event => {
-      event.preventDefault();
-      event.stopPropagation();
-      closeChatImageViewer();
-    });
-    closeBtn.addEventListener("touchend", event => {
-      event.preventDefault();
-      event.stopPropagation();
-      closeChatImageViewer();
-    }, { passive: false });
-  }
-
-  if (viewer && viewer.dataset.bound !== "1") {
-    viewer.dataset.bound = "1";
-    viewer.addEventListener("click", event => {
-      if (event.target === viewer) closeChatImageViewer();
-    });
-  }
-
-  if (!window.__chatImageViewerEscBound) {
-    window.__chatImageViewerEscBound = true;
-    document.addEventListener("keydown", event => {
-      if (event.key === "Escape") closeChatImageViewer();
-    });
-  }
 }
 
 function setupChatUi() {
@@ -5396,17 +5322,18 @@ setupOnlineUsersCloseControls();
 setupSearchResultsAdminButton();
 
 
-// v85 — Safari/iPhone mobile chat fix.
-// Não abre automaticamente, fecha com X, limpa #chat e desbloqueia scroll.
-(function setupSafariMobileChatFixV85(){
-  if (window.__safariMobileChatFixV85) return;
-  window.__safariMobileChatFixV85 = true;
 
-  function isMobileSafariChat() {
+
+// v89 — Chat mobile limpo: sem capturas globais agressivas.
+(function setupChatMobileCleanV89(){
+  if (window.__chatMobileCleanV89) return;
+  window.__chatMobileCleanV89 = true;
+
+  function isMobileChat() {
     return window.matchMedia?.("(max-width: 760px)")?.matches || window.innerWidth <= 760;
   }
 
-  function clearChatClasses() {
+  function clearChatState() {
     document.body.classList.remove("chat-fullscreen-open", "chat-mobile-page-open", "chat-window-open");
     document.documentElement.classList.remove("chat-mobile-page-open");
     document.body.style.overflow = "";
@@ -5415,72 +5342,59 @@ setupSearchResultsAdminButton();
     document.body.style.height = "";
   }
 
-  function showChatPanel() {
-    const panel = document.getElementById("chatPanel");
-    if (!panel) return false;
-
-    panel.classList.remove("hidden");
-
-    const mobile = isMobileSafariChat();
+  function applyChatOpenState() {
+    const mobile = isMobileChat();
     document.body.classList.toggle("chat-mobile-page-open", mobile);
     document.body.classList.toggle("chat-fullscreen-open", mobile);
     document.body.classList.toggle("chat-window-open", !mobile);
     document.documentElement.classList.toggle("chat-mobile-page-open", mobile);
-
-    return true;
   }
 
-  window.closeChatPanelSafari = function closeChatPanelSafari(event) {
-    try {
-      if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-
-      const panel = document.getElementById("chatPanel");
-      if (panel) panel.classList.add("hidden");
-
-      clearChatClasses();
-
-      try { if (typeof closeChatActionMenu === "function") closeChatActionMenu(); } catch {}
-      try { if (typeof clearChatReply === "function") clearChatReply(); } catch {}
-      try { if (typeof updateChatTyping === "function") updateChatTyping(false); } catch {}
-      try { document.getElementById("chatInput")?.blur(); } catch {}
-
-      if (window.location.hash === "#chat") {
-        try {
-          history.replaceState(null, "", window.location.pathname + window.location.search);
-        } catch {
-          window.location.hash = "";
-        }
-      }
-
-      try {
-        chatLastSeenAt = Date.now();
-        localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
-        updateChatUnreadBadge();
-      } catch {}
-    } catch (error) {
-      console.warn("Falhou fechar chat Safari:", error);
-      clearChatClasses();
+  window.closeChatMobileClean = function closeChatMobileClean(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
     }
+
+    const panel = document.getElementById("chatPanel");
+    if (panel) panel.classList.add("hidden");
+
+    clearChatState();
+
+    try { if (typeof closeChatActionMenu === "function") closeChatActionMenu(); } catch {}
+    try { if (typeof clearChatReply === "function") clearChatReply(); } catch {}
+    try { if (typeof updateChatTyping === "function") updateChatTyping(false); } catch {}
+    try { document.getElementById("chatInput")?.blur(); } catch {}
+
+    if (window.location.hash === "#chat") {
+      try { history.replaceState(null, "", window.location.pathname + window.location.search); } catch {}
+    }
+
+    try {
+      chatLastSeenAt = Date.now();
+      localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
+      updateChatUnreadBadge();
+    } catch {}
 
     return false;
   };
 
-  window.closeChatPanelNow = window.closeChatPanelSafari;
-  window.closeChatPanel = function closeChatPanelV85() {
-    return window.closeChatPanelSafari();
+  window.closeChatPanelNow = window.closeChatMobileClean;
+  window.closeChatPanel = function closeChatPanelClean() {
+    return window.closeChatMobileClean();
   };
 
-  window.openChatPanel = function openChatPanelV85() {
-    const opened = showChatPanel();
-    if (!opened) {
-      clearChatClasses();
+  window.openChatPanel = function openChatPanelClean() {
+    const panel = document.getElementById("chatPanel");
+    if (!panel) {
+      clearChatState();
       return;
     }
 
-    if (isMobileSafariChat() && window.location.hash !== "#chat") {
+    panel.classList.remove("hidden");
+    applyChatOpenState();
+
+    if (isMobileChat() && window.location.hash !== "#chat") {
       try { history.pushState({ chatOpen: true }, "", "#chat"); } catch {}
     }
 
@@ -5495,120 +5409,136 @@ setupSearchResultsAdminButton();
 
     setTimeout(() => {
       try { scrollChatToBottom(); } catch {}
-      try { document.getElementById("chatInput")?.focus(); } catch {}
-    }, 60);
+    }, 50);
   };
 
-  function bindButtons() {
-    const closeBtn = document.getElementById("chatCloseBtn");
-    if (closeBtn && closeBtn.dataset.v85CloseBound !== "1") {
-      closeBtn.dataset.v85CloseBound = "1";
-      closeBtn.setAttribute("onclick", "return window.closeChatPanelSafari(event)");
-      ["click", "touchend", "pointerup"].forEach(name => {
-        closeBtn.addEventListener(name, event => window.closeChatPanelSafari(event), { passive: false });
-      });
+  window.openChatImageClean = function openChatImageClean(src, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
     }
 
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (!viewer || !img || !src) return false;
+
+    img.src = src;
+    viewer.classList.remove("hidden");
+    document.body.classList.add("chat-image-viewer-open");
+    return false;
+  };
+
+  window.closeChatImageClean = function closeChatImageClean(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (viewer) viewer.classList.add("hidden");
+    if (img) img.removeAttribute("src");
+    document.body.classList.remove("chat-image-viewer-open");
+    return false;
+  };
+
+  function bindCleanChat() {
     const openBtn = document.getElementById("chatOpenBtn");
-    if (openBtn && openBtn.dataset.v85OpenBound !== "1") {
-      openBtn.dataset.v85OpenBound = "1";
+    const closeBtn = document.getElementById("chatCloseBtn");
+    const messages = document.getElementById("chatMessages");
+    const imageClose = document.getElementById("chatImageViewerClose");
+    const imageViewer = document.getElementById("chatImageViewer");
+
+    if (openBtn && openBtn.dataset.v89Open !== "1") {
+      openBtn.dataset.v89Open = "1";
       openBtn.addEventListener("click", event => {
         event.preventDefault();
         event.stopPropagation();
         window.openChatPanel();
       });
     }
-  }
 
-  // No arranque, nunca deixar chat aberto sozinho.
-  function forceInitialClosedIfNeeded() {
-    const panel = document.getElementById("chatPanel");
-    if (!panel) return;
-
-    if (window.location.hash === "#chat") {
-      try {
-        history.replaceState(null, "", window.location.pathname + window.location.search);
-      } catch {}
+    if (closeBtn && closeBtn.dataset.v89Close !== "1") {
+      closeBtn.dataset.v89Close = "1";
+      closeBtn.setAttribute("onclick", "return window.closeChatMobileClean(event)");
+      ["click", "touchend"].forEach(name => {
+        closeBtn.addEventListener(name, event => window.closeChatMobileClean(event), { passive: false });
+      });
     }
 
-    panel.classList.add("hidden");
-    clearChatClasses();
+    if (messages && messages.dataset.v89Messages !== "1") {
+      messages.dataset.v89Messages = "1";
+
+      // Tocar na imagem: abre imagem. Não interfere com texto.
+      messages.addEventListener("click", event => {
+        const imageButton = event.target.closest?.(".chat-image-button,[data-chat-image-src]");
+        if (imageButton) {
+          const src = imageButton.dataset.chatImageSrc || imageButton.querySelector?.("img")?.src || "";
+          window.openChatImageClean(src, event);
+          return;
+        }
+
+        // No mobile, tocar na mensagem abre ações, para não depender de long press do Safari.
+        if (isMobileChat()) {
+          const row = event.target.closest?.(".chat-message-row[data-chat-message]");
+          if (!row) return;
+          if (event.target.closest?.("button,input,textarea,select,a")) return;
+          const id = row.dataset.chatMessage;
+          if (id && typeof openChatActionMenu === "function") openChatActionMenu(id, event);
+        }
+      });
+
+      // Long press continua disponível, mas sem capturar imagens.
+      let pressTimer = null;
+      messages.addEventListener("touchstart", event => {
+        if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+        const row = event.target.closest?.(".chat-message-row[data-chat-message]");
+        if (!row) return;
+        pressTimer = setTimeout(() => {
+          if (typeof openChatActionMenu === "function") openChatActionMenu(row.dataset.chatMessage, event);
+        }, 520);
+      }, { passive: true });
+
+      ["touchend", "touchmove", "touchcancel"].forEach(name => {
+        messages.addEventListener(name, () => {
+          if (pressTimer) clearTimeout(pressTimer);
+          pressTimer = null;
+        }, { passive: true });
+      });
+    }
+
+    if (imageClose && imageClose.dataset.v89Close !== "1") {
+      imageClose.dataset.v89Close = "1";
+      imageClose.addEventListener("click", event => window.closeChatImageClean(event));
+      imageClose.addEventListener("touchend", event => window.closeChatImageClean(event), { passive: false });
+    }
+
+    if (imageViewer && imageViewer.dataset.v89Viewer !== "1") {
+      imageViewer.dataset.v89Viewer = "1";
+      imageViewer.addEventListener("click", event => {
+        if (event.target === imageViewer) window.closeChatImageClean(event);
+      });
+    }
   }
 
-  bindButtons();
+  bindCleanChat();
   document.addEventListener("DOMContentLoaded", () => {
-    bindButtons();
-    forceInitialClosedIfNeeded();
+    bindCleanChat();
+
+    const panel = document.getElementById("chatPanel");
+    if (panel) panel.classList.add("hidden");
+    clearChatState();
+
+    if (window.location.hash === "#chat") {
+      try { history.replaceState(null, "", window.location.pathname + window.location.search); } catch {}
+    }
   });
-  setTimeout(() => {
-    bindButtons();
-    forceInitialClosedIfNeeded();
-  }, 300);
+  setTimeout(bindCleanChat, 400);
 
   window.addEventListener("popstate", () => {
     const panel = document.getElementById("chatPanel");
     if (panel && !panel.classList.contains("hidden") && window.location.hash !== "#chat") {
-      window.closeChatPanelSafari();
+      window.closeChatMobileClean();
     }
-  });
-
-  window.addEventListener("pageshow", () => {
-    bindButtons();
-    const panel = document.getElementById("chatPanel");
-    if (panel?.classList.contains("hidden")) clearChatClasses();
   });
 })();
-
-
-// v88 — abrir imagem no iPhone/Safari sem depender do click normal.
-window.openChatImageViewerFromElement = function openChatImageViewerFromElement(element, event) {
-  try {
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
-    }
-
-    if (typeof chatLongPressTimer !== "undefined" && chatLongPressTimer) {
-      clearTimeout(chatLongPressTimer);
-      chatLongPressTimer = null;
-    }
-
-    const src = element?.currentSrc || element?.src || element?.getAttribute?.("src") || "";
-    if (src && typeof openChatImageViewer === "function") openChatImageViewer(src);
-  } catch (error) {
-    console.warn("Falhou abrir imagem do chat:", error);
-  }
-
-  return false;
-};
-
-function setupChatImageViewerIphoneFix() {
-  if (window.__chatImageViewerIphoneFixBound) return;
-  window.__chatImageViewerIphoneFixBound = true;
-
-  const openFromEvent = event => {
-    const img = event.target.closest?.(".chat-image, [data-chat-image]");
-    if (!img) return;
-
-    window.openChatImageViewerFromElement(img, event);
-  };
-
-  // Captura antes do long press da mensagem.
-  document.addEventListener("touchend", openFromEvent, { capture: true, passive: false });
-  document.addEventListener("pointerup", openFromEvent, { capture: true, passive: false });
-  document.addEventListener("click", openFromEvent, { capture: true, passive: false });
-
-  document.addEventListener("pointerdown", event => {
-    const img = event.target.closest?.(".chat-image, [data-chat-image]");
-    if (!img) return;
-
-    if (typeof chatLongPressTimer !== "undefined" && chatLongPressTimer) {
-      clearTimeout(chatLongPressTimer);
-      chatLongPressTimer = null;
-    }
-  }, { capture: true, passive: true });
-}
-
-setupChatImageViewerIphoneFix();
-document.addEventListener("DOMContentLoaded", setupChatImageViewerIphoneFix);
