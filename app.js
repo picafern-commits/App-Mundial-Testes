@@ -6532,3 +6532,55 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(removeTop3PontuacaoV94, 300);
   setTimeout(removeTop3PontuacaoV94, 1000);
 });
+
+
+// v95 — remove botão Pesquisar dos jogos no calendário.
+function removePesquisarJogosCalendarioV95() {
+  const calendarRoots = [
+    document.getElementById("calendarPage"),
+    document.getElementById("calendarioPage"),
+    document.getElementById("gamesPage"),
+    document.getElementById("jogosPage"),
+    document.querySelector("[data-page='calendar']"),
+    document.querySelector("[data-page='calendario']"),
+    document.querySelector("[data-page='jogos']"),
+    document.body
+  ].filter(Boolean);
+
+  calendarRoots.forEach(root => {
+    root.querySelectorAll("button, a").forEach(el => {
+      const text = String(el.textContent || "").trim().toLowerCase();
+      const aria = String(el.getAttribute("aria-label") || "").toLowerCase();
+      const title = String(el.getAttribute("title") || "").toLowerCase();
+      const cls = String(el.className || "").toLowerCase();
+      const id = String(el.id || "").toLowerCase();
+
+      const isPesquisar =
+        text === "pesquisar" ||
+        text === "🔎 pesquisar" ||
+        text === "🔍 pesquisar" ||
+        aria.includes("pesquisar") ||
+        title.includes("pesquisar") ||
+        id.includes("pesquisar") ||
+        cls.includes("pesquisar");
+
+      if (!isPesquisar) return;
+
+      const nearGame =
+        el.closest(".match-card, .game-card, .jogo-card, .fixture-card, .calendar-card, .calendario-card, [data-game-id], [data-jogo-id]") ||
+        root !== document.body;
+
+      if (nearGame) el.remove();
+    });
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  removePesquisarJogosCalendarioV95();
+  setTimeout(removePesquisarJogosCalendarioV95, 250);
+  setTimeout(removePesquisarJogosCalendarioV95, 1000);
+});
+
+document.addEventListener("click", () => {
+  setTimeout(removePesquisarJogosCalendarioV95, 50);
+});
