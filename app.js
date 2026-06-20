@@ -1864,7 +1864,7 @@ function stopOnlineFeaturesSafe() {
 
 
 const CHAT_COLLECTION = "chatMessages";
-const CHAT_LIMIT = 500;
+const CHAT_LIMIT = 150;
 
 function chatUserName() {
   return String(currentProfile?.name || "").trim() || displayNameFromEmail(currentUser?.email || "") || currentUser?.email || "User";
@@ -6006,8 +6006,10 @@ setupSearchResultsAdminButton();
   function openMenuForRow(row, point) {
     const id = row?.dataset?.chatMessage || "";
     if (!id || typeof openChatActionMenu !== "function") return;
+    if (pressTimer) clearTimeout(pressTimer);
+    pressTimer = null;
     pressOpened = true;
-    suppressNextClickUntil = Date.now() + 900;
+    suppressNextClickUntil = Date.now() + 1500;
     openChatActionMenu(id, {
       clientX: point.x,
       clientY: point.y,
@@ -6066,6 +6068,12 @@ setupSearchResultsAdminButton();
 
     const finishTouch = event => {
       if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+      if (Date.now() < suppressNextClickUntil) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        clearPress();
+        return;
+      }
       const hadPress = Boolean(pressTimer || pressStart || pressOpened);
       const opened = pressOpened;
       clearPress();
@@ -6121,4 +6129,93 @@ setupSearchResultsAdminButton();
   bindV96();
   document.addEventListener("DOMContentLoaded", bindV96);
   setTimeout(bindV96, 350);
+})();
+
+
+// v99 - abertura do chat mais rapida e sem bloquear no primeiro toque.
+(function setupChatOpenFastV99(){
+  if (window.__chatOpenFastV99) return;
+  window.__chatOpenFastV99 = true;
+
+  function isMobileV99() {
+    return window.matchMedia?.("(max-width: 760px)")?.matches || window.innerWidth <= 760;
+  }
+
+  function applyOpenClasses(open) {
+    const mobile = isMobileV99();
+    document.body.classList.toggle("chat-mobile-page-open", Boolean(open && mobile));
+    document.body.classList.toggle("chat-fullscreen-open", Boolean(open && mobile));
+    document.body.classList.toggle("chat-window-open", Boolean(open && !mobile));
+    document.documentElement.classList.toggle("chat-mobile-page-open", Boolean(open && mobile));
+  }
+
+  window.openChatPanel = function openChatPanelFastV99(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    }
+
+    const panel = document.getElementById("chatPanel");
+    const messages = document.getElementById("chatMessages");
+    if (!panel) return false;
+
+    panel.classList.remove("hidden");
+    panel.style.pointerEvents = "auto";
+    applyOpenClasses(true);
+
+    if (isMobileV99() && window.location.hash !== "#chat") {
+      try { history.pushState({ chatOpen: true }, "", "#chat"); } catch {}
+    }
+
+    try { if (typeof setupChatUi === "function") setupChatUi(); } catch {}
+    try { if (typeof renderChatTabs === "function") renderChatTabs(); } catch {}
+    try { if (typeof closeChatActionMenu === "function") closeChatActionMenu(); } catch {}
+
+    try {
+      chatOpenedOnce = true;
+      chatLastSeenAt = Date.now();
+      localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
+    } catch {}
+
+    if (messages && (!Array.isArray(chatMessagesCache) || !chatMessagesCache.length)) {
+      messages.innerHTML = `<div class="empty small-empty">A carregar chat...</div>`;
+    }
+
+    try { if (typeof startChatListenerSafe === "function") startChatListenerSafe(); } catch {}
+    try { if (typeof startPinnedChatListenerSafe === "function") startPinnedChatListenerSafe(); } catch {}
+    try { if (typeof startChatTypingListenerSafe === "function") startChatTypingListenerSafe(); } catch {}
+    try { if (typeof updateChatUnreadBadge === "function") updateChatUnreadBadge(); } catch {}
+    try { if (typeof chatNotifyNewMessages === "function") chatNotifyNewMessages(); } catch {}
+    try { if (typeof renderChatPinnedMessage === "function") renderChatPinnedMessage(); } catch {}
+
+    setTimeout(() => {
+      try { if (typeof scrollChatToBottom === "function") scrollChatToBottom(); } catch {}
+      if (!isMobileV99()) {
+        try { document.getElementById("chatInput")?.focus(); } catch {}
+      }
+    }, 40);
+
+    setTimeout(() => {
+      try {
+        if ((!Array.isArray(chatMessagesCache) || !chatMessagesCache.length) && typeof loadChatMessagesOnce === "function") {
+          loadChatMessagesOnce();
+        }
+      } catch {}
+    }, 450);
+
+    return false;
+  };
+
+  function bindV99() {
+    const openBtn = document.getElementById("chatOpenBtn");
+    if (!openBtn || openBtn.dataset.v99Open === "1") return;
+    openBtn.dataset.v99Open = "1";
+    openBtn.addEventListener("click", event => window.openChatPanel(event), { capture: true });
+    openBtn.addEventListener("touchend", event => window.openChatPanel(event), { capture: true, passive: false });
+  }
+
+  bindV99();
+  document.addEventListener("DOMContentLoaded", bindV99);
+  setTimeout(bindV99, 350);
 })();
