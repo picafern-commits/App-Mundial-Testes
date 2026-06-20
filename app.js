@@ -2143,27 +2143,32 @@ async function unpinChatMessage() {
 
 async function deleteChatMessage(messageId) {
   const message = chatMessagesCache.find(item => item.id === messageId);
-  if (!message) return toast("Mensagem não encontrada.");
-  if (!canDeleteChatMessage(message)) return toast("Só podes apagar as tuas mensagens.");
-  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase não está ligado.");
+  if (!message) return toast("Mensagem nao encontrada.");
+  if (!canDeleteChatMessage(message)) return toast("So podes apagar as tuas mensagens.");
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase nao esta ligado.");
 
-  const ok = confirm("Apagar esta mensagem?");
-  if (!ok) return;
+  const beforeDelete = [...chatMessagesCache];
+  chatMessagesCache = chatMessagesCache.filter(item => item.id !== messageId);
+  renderChatMessages();
+  toast("A apagar mensagem...");
 
   try {
     const { doc, deleteDoc } = firebaseApi;
     if (typeof deleteDoc !== "function") {
-      toast("Esta versão do Firebase não permite apagar mensagens.");
+      chatMessagesCache = beforeDelete;
+      renderChatMessages();
+      toast("Esta versao do Firebase nao permite apagar mensagens.");
       return;
     }
-    await deleteDoc(doc(db, chatCollectionRef(message.room || chatCurrentRoom), messageId));
+    await withTimeout(deleteDoc(doc(db, chatCollectionRef(message.room || chatCurrentRoom), messageId)), 8000, "apagar mensagem");
     toast("Mensagem apagada.");
   } catch (error) {
     console.error("Falhou apagar mensagem:", error);
-    toast("Não consegui apagar a mensagem.");
+    chatMessagesCache = beforeDelete;
+    renderChatMessages();
+    toast("Nao consegui apagar a mensagem.");
   }
 }
-
 
 function closeChatActionMenu() {
   const menu = $("chatActionMenu");
@@ -6218,4 +6223,46 @@ setupSearchResultsAdminButton();
   bindV99();
   document.addEventListener("DOMContentLoaded", bindV99);
   setTimeout(bindV99, 350);
+})();
+
+
+// v100 - botoes do menu de chat respondem no mobile sem bloquear.
+(function setupChatActionButtonsV100(){
+  if (window.__chatActionButtonsV100) return;
+  window.__chatActionButtonsV100 = true;
+
+  function handleAction(event, action) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    }
+
+    const id = chatActionMessageId;
+    closeChatActionMenu();
+    if (!id) return false;
+
+    if (action === "reply") setChatReply(id);
+    if (action === "pin") pinChatMessage(id);
+    if (action === "delete") deleteChatMessage(id);
+    return false;
+  }
+
+  function bindButton(button, action) {
+    if (!button || button.dataset.v100Bound === "1") return;
+    button.dataset.v100Bound = "1";
+    ["click", "pointerup", "touchend"].forEach(name => {
+      button.addEventListener(name, event => handleAction(event, action), { capture: true, passive: false });
+    });
+  }
+
+  function bindV100() {
+    bindButton(document.getElementById("chatActionReplyBtn"), "reply");
+    bindButton(document.getElementById("chatActionPinBtn"), "pin");
+    bindButton(document.getElementById("chatActionDeleteBtn"), "delete");
+  }
+
+  bindV100();
+  document.addEventListener("DOMContentLoaded", bindV100);
+  setTimeout(bindV100, 350);
 })();
