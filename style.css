@@ -6644,3 +6644,83 @@ body.chat-image-viewer-open > #chatImageViewer.hidden{
     visibility:hidden!important;
   }
 }
+
+
+/* v93 — mostrar mesmo a foto no visualizador, por cima do chat */
+.chat-image-button{
+  display:block!important;
+  border:0!important;
+  padding:0!important;
+  margin:6px 0 0!important;
+  background:transparent!important;
+  cursor:zoom-in!important;
+  touch-action:manipulation!important;
+  pointer-events:auto!important;
+}
+
+.chat-image-button .chat-image{
+  display:block!important;
+  max-width:min(260px, 100%)!important;
+  max-height:260px!important;
+  object-fit:cover!important;
+  border-radius:12px!important;
+  pointer-events:none!important;
+}
+
+#chatImageViewer.chat-image-viewer{
+  position:fixed!important;
+  inset:0!important;
+  z-index:2147483646!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:rgba(0,0,0,.96)!important;
+  backdrop-filter:blur(8px)!important;
+  pointer-events:auto!important;
+}
+
+#chatImageViewer.chat-image-viewer:not(.hidden){
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+#chatImageViewerImg{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  max-width:96vw!important;
+  max-height:86dvh!important;
+  width:auto!important;
+  height:auto!important;
+  object-fit:contain!important;
+  border-radius:12px!important;
+  z-index:2147483646!important;
+  background:transparent!important;
+}
+
+#chatImageViewerClose.chat-image-viewer-close{
+  z-index:2147483647!important;
+  pointer-events:auto!important;
+}
+
+@media(max-width:760px){
+  body.chat-mobile-page-open > #chatImageViewer.chat-image-viewer:not(.hidden),
+  body.chat-fullscreen-open > #chatImageViewer.chat-image-viewer:not(.hidden),
+  body.chat-image-viewer-open > #chatImageViewer.chat-image-viewer:not(.hidden){
+    display:flex!important;
+    visibility:visible!important;
+    opacity:1!important;
+    pointer-events:auto!important;
+    z-index:2147483646!important;
+  }
+
+  body.chat-mobile-page-open > #chatImageViewer #chatImageViewerImg,
+  body.chat-fullscreen-open > #chatImageViewer #chatImageViewerImg,
+  body.chat-image-viewer-open > #chatImageViewer #chatImageViewerImg{
+    display:block!important;
+    visibility:visible!important;
+    opacity:1!important;
+    max-width:96vw!important;
+    max-height:82dvh!important;
+  }
+}

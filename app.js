@@ -2378,7 +2378,7 @@ function chatImageMarkup(message) {
   if (!message.imageData) return "";
   const src = escapeHtml(message.imageData);
   return `
-    <button type="button" class="chat-image-button" data-chat-image-src="${src}" aria-label="Abrir imagem do chat">
+    <button type="button" class="chat-image-button" aria-label="Abrir imagem do chat">
       <img class="chat-image" src="${src}" alt="Imagem enviada no chat" loading="lazy" />
     </button>`;
 }
@@ -5759,4 +5759,143 @@ setupSearchResultsAdminButton();
   bindV92();
   document.addEventListener("DOMContentLoaded", bindV92);
   setTimeout(bindV92, 350);
+})();
+
+
+// v93 — visualizador usa SEMPRE o src real do <img>, seguro no iPhone/Safari.
+(function setupChatImageSrcRealV93(){
+  if (window.__chatImageSrcRealV93) return;
+  window.__chatImageSrcRealV93 = true;
+
+  function getRealImageSrcFromButton(button) {
+    const img = button?.querySelector?.("img.chat-image, img");
+    return img?.currentSrc || img?.src || img?.getAttribute?.("src") || "";
+  }
+
+  window.openChatImageSrcRealV93 = function openChatImageSrcRealV93(src, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (!viewer || !img || !src) return false;
+
+    viewer.classList.remove("hidden");
+    viewer.style.display = "flex";
+    viewer.style.visibility = "visible";
+    viewer.style.opacity = "1";
+    viewer.style.pointerEvents = "auto";
+    viewer.style.zIndex = "2147483646";
+
+    img.style.display = "block";
+    img.style.visibility = "visible";
+    img.style.opacity = "1";
+    img.style.maxWidth = "96vw";
+    img.style.maxHeight = "86dvh";
+    img.style.objectFit = "contain";
+    img.style.zIndex = "2147483646";
+
+    img.onload = () => {
+      img.style.display = "block";
+      img.style.visibility = "visible";
+      img.style.opacity = "1";
+    };
+
+    img.onerror = () => {
+      console.warn("Imagem do chat não carregou no viewer.");
+    };
+
+    img.src = src;
+
+    document.body.classList.add("chat-image-viewer-open");
+    document.documentElement.classList.add("chat-image-viewer-open");
+
+    return false;
+  };
+
+  window.closeChatImageSrcRealV93 = function closeChatImageSrcRealV93(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+
+    if (viewer) {
+      viewer.classList.add("hidden");
+      viewer.style.display = "";
+      viewer.style.visibility = "";
+      viewer.style.opacity = "";
+      viewer.style.pointerEvents = "";
+    }
+
+    if (img) {
+      img.removeAttribute("src");
+      img.onload = null;
+      img.onerror = null;
+    }
+
+    document.body.classList.remove("chat-image-viewer-open");
+    document.documentElement.classList.remove("chat-image-viewer-open");
+
+    return false;
+  };
+
+  window.openChatImageAboveChatV92 = window.openChatImageSrcRealV93;
+  window.openChatImageAboveV91 = window.openChatImageSrcRealV93;
+  window.openChatImageClean = window.openChatImageSrcRealV93;
+  window.openChatImageViewerV90 = window.openChatImageSrcRealV93;
+
+  window.closeChatImageAboveChatV92 = window.closeChatImageSrcRealV93;
+  window.closeChatImageAboveV91 = window.closeChatImageSrcRealV93;
+  window.closeChatImageClean = window.closeChatImageSrcRealV93;
+  window.closeChatImageViewerV90 = window.closeChatImageSrcRealV93;
+
+  function bindV93() {
+    const messages = document.getElementById("chatMessages");
+    const viewer = document.getElementById("chatImageViewer");
+    const closeBtn = document.getElementById("chatImageViewerClose");
+
+    if (messages && messages.dataset.v93ImageBound !== "1") {
+      messages.dataset.v93ImageBound = "1";
+
+      const openFromEvent = event => {
+        const button = event.target.closest?.(".chat-image-button");
+        if (!button) return;
+
+        const src = getRealImageSrcFromButton(button);
+        if (!src) return;
+
+        return window.openChatImageSrcRealV93(src, event);
+      };
+
+      messages.addEventListener("click", openFromEvent, { capture: true });
+      messages.addEventListener("touchend", openFromEvent, { capture: true, passive: false });
+    }
+
+    if (closeBtn && closeBtn.dataset.v93Bound !== "1") {
+      closeBtn.dataset.v93Bound = "1";
+      closeBtn.addEventListener("click", event => window.closeChatImageSrcRealV93(event));
+      closeBtn.addEventListener("touchend", event => window.closeChatImageSrcRealV93(event), { passive: false });
+    }
+
+    if (viewer && viewer.dataset.v93Bound !== "1") {
+      viewer.dataset.v93Bound = "1";
+      viewer.addEventListener("click", event => {
+        if (event.target === viewer) window.closeChatImageSrcRealV93(event);
+      });
+      viewer.addEventListener("touchend", event => {
+        if (event.target === viewer) window.closeChatImageSrcRealV93(event);
+      }, { passive: false });
+    }
+  }
+
+  bindV93();
+  document.addEventListener("DOMContentLoaded", bindV93);
+  setTimeout(bindV93, 350);
 })();
