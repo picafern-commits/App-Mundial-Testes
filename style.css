@@ -6501,3 +6501,81 @@ body.chat-mobile-page-open{
   font-weight:900!important;
   z-index:2147483500!important;
 }
+
+
+/* v91 — imagem por cima do chat + menu por toque */
+.chat-image-button{
+  display:block!important;
+  border:0!important;
+  padding:0!important;
+  margin:6px 0 0!important;
+  background:transparent!important;
+  max-width:100%!important;
+  cursor:zoom-in!important;
+  touch-action:manipulation!important;
+  pointer-events:auto!important;
+  -webkit-tap-highlight-color:rgba(255,255,255,.16)!important;
+}
+
+.chat-image-button .chat-image{
+  display:block!important;
+  max-width:min(260px, 100%)!important;
+  max-height:260px!important;
+  object-fit:cover!important;
+  border-radius:12px!important;
+  pointer-events:none!important;
+}
+
+.chat-message-row[data-chat-message],
+.chat-bubble[data-chat-message]{
+  cursor:pointer!important;
+  pointer-events:auto!important;
+}
+
+.chat-image-viewer{
+  position:fixed!important;
+  inset:0!important;
+  z-index:2147483600!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:18px!important;
+  background:rgba(0,0,0,.94)!important;
+  backdrop-filter:blur(8px)!important;
+  pointer-events:auto!important;
+}
+
+.chat-image-viewer.hidden{
+  display:none!important;
+  pointer-events:none!important;
+}
+
+.chat-image-viewer img{
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:contain!important;
+  border-radius:14px!important;
+}
+
+.chat-image-viewer-close{
+  position:fixed!important;
+  top:calc(12px + env(safe-area-inset-top))!important;
+  right:calc(12px + env(safe-area-inset-right))!important;
+  width:48px!important;
+  height:48px!important;
+  border-radius:16px!important;
+  border:1px solid rgba(255,255,255,.18)!important;
+  background:rgba(255,255,255,.12)!important;
+  color:#fff!important;
+  font-size:32px!important;
+  font-weight:900!important;
+  z-index:2147483700!important;
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+}
+
+/* menu de ações também por cima de tudo */
+#chatActionMenu.chat-action-menu{
+  z-index:2147483550!important;
+  pointer-events:auto!important;
+}

@@ -5542,3 +5542,124 @@ setupSearchResultsAdminButton();
     }
   });
 })();
+
+
+// v91 — fixes sobre base v89: menu por toque e imagem acima do chat.
+(function setupChatMenuImageV91(){
+  if (window.__chatMenuImageV91) return;
+  window.__chatMenuImageV91 = true;
+
+  function isMobileV91() {
+    return window.matchMedia?.("(max-width: 760px)")?.matches || window.innerWidth <= 760;
+  }
+
+  function getMessageIdFromTarget(target) {
+    return target?.closest?.(".chat-message-row[data-chat-message], .chat-bubble[data-chat-message]")?.dataset?.chatMessage || "";
+  }
+
+  window.openChatImageAboveV91 = function openChatImageAboveV91(src, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (!viewer || !img || !src) return false;
+
+    img.src = src;
+    viewer.classList.remove("hidden");
+    viewer.style.zIndex = "2147483600";
+    document.body.classList.add("chat-image-viewer-open");
+    return false;
+  };
+
+  window.closeChatImageAboveV91 = function closeChatImageAboveV91(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (viewer) viewer.classList.add("hidden");
+    if (img) img.removeAttribute("src");
+    document.body.classList.remove("chat-image-viewer-open");
+    return false;
+  };
+
+  function openMessageMenuV91(id, event) {
+    if (!id || typeof openChatActionMenu !== "function") return false;
+
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    openChatActionMenu(id, event || { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2, target: document.body });
+    return false;
+  }
+
+  function bindV91() {
+    const messages = document.getElementById("chatMessages");
+    const viewer = document.getElementById("chatImageViewer");
+    const viewerClose = document.getElementById("chatImageViewerClose");
+
+    if (messages && messages.dataset.v91Bound !== "1") {
+      messages.dataset.v91Bound = "1";
+
+      // Click normal: imagem abre; mensagem abre menu no mobile.
+      messages.addEventListener("click", event => {
+        const imageButton = event.target.closest?.(".chat-image-button,[data-chat-image-src]");
+        if (imageButton) {
+          const src = imageButton.dataset.chatImageSrc || imageButton.querySelector?.("img")?.src || "";
+          return window.openChatImageAboveV91(src, event);
+        }
+
+        if (!isMobileV91()) return;
+        if (event.target.closest?.("button,input,textarea,select,a")) return;
+
+        const id = getMessageIdFromTarget(event.target);
+        if (id) return openMessageMenuV91(id, event);
+      });
+
+      // iPhone/Safari às vezes falha click em elementos dentro de scroll: usar touchend só no container.
+      messages.addEventListener("touchend", event => {
+        const imageButton = event.target.closest?.(".chat-image-button,[data-chat-image-src]");
+        if (imageButton) {
+          const src = imageButton.dataset.chatImageSrc || imageButton.querySelector?.("img")?.src || "";
+          return window.openChatImageAboveV91(src, event);
+        }
+
+        if (!isMobileV91()) return;
+        if (event.target.closest?.("button,input,textarea,select,a")) return;
+
+        const id = getMessageIdFromTarget(event.target);
+        if (id) return openMessageMenuV91(id, event);
+      }, { passive: false });
+
+      // PC continua com botão direito.
+      messages.addEventListener("contextmenu", event => {
+        const id = getMessageIdFromTarget(event.target);
+        if (id) return openMessageMenuV91(id, event);
+      });
+    }
+
+    if (viewerClose && viewerClose.dataset.v91Bound !== "1") {
+      viewerClose.dataset.v91Bound = "1";
+      viewerClose.addEventListener("click", event => window.closeChatImageAboveV91(event));
+      viewerClose.addEventListener("touchend", event => window.closeChatImageAboveV91(event), { passive: false });
+    }
+
+    if (viewer && viewer.dataset.v91Bound !== "1") {
+      viewer.dataset.v91Bound = "1";
+      viewer.addEventListener("click", event => {
+        if (event.target === viewer) window.closeChatImageAboveV91(event);
+      });
+    }
+  }
+
+  bindV91();
+  document.addEventListener("DOMContentLoaded", bindV91);
+  setTimeout(bindV91, 350);
+})();
