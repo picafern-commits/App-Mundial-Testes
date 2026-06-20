@@ -7753,6 +7753,187 @@ body.chat-mobile-page-open{
     padding:7px 8px!important;
   }
 }
+
+/* v109 - galeria, favoritas, rascunhos e notificacoes */
+#chatPanel .chat-header{
+  grid-template-columns:44px minmax(0,1fr) auto auto auto 42px!important;
+}
+
+#chatPanel .chat-header-mini-btn{
+  min-width:52px!important;
+  height:32px!important;
+  border:0!important;
+  border-radius:999px!important;
+  background:#111b21!important;
+  color:#aebac1!important;
+  padding:0 8px!important;
+  font-size:10px!important;
+  font-weight:1000!important;
+}
+
+#chatPanel .chat-header-mini-btn.is-on{
+  background:#00a884!important;
+  color:#06130f!important;
+}
+
+#chatPanel .chat-star-indicator{
+  color:#ffd45a!important;
+  font-size:11px!important;
+  margin:0!important;
+}
+
+#chatActionMenu #chatActionStarBtn{
+  background:#111b21!important;
+}
+
+#chatGalleryModalV109.chat-gallery-modal{
+  position:fixed!important;
+  inset:0!important;
+  z-index:2147483300!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:18px!important;
+  background:rgba(0,0,0,.62)!important;
+  backdrop-filter:blur(10px)!important;
+}
+
+#chatGalleryModalV109.chat-gallery-modal.hidden{
+  display:none!important;
+}
+
+#chatGalleryModalV109 .chat-gallery-card{
+  width:min(860px, 100%)!important;
+  max-height:min(760px, calc(100dvh - 36px))!important;
+  display:grid!important;
+  grid-template-rows:auto 1fr!important;
+  overflow:hidden!important;
+  border-radius:18px!important;
+  background:#0b141a!important;
+  border:1px solid rgba(255,255,255,.12)!important;
+  box-shadow:0 28px 90px rgba(0,0,0,.58)!important;
+}
+
+#chatGalleryModalV109 .chat-gallery-head{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  padding:14px 16px!important;
+  background:#202c33!important;
+  border-bottom:1px solid rgba(255,255,255,.08)!important;
+}
+
+#chatGalleryModalV109 .chat-gallery-head strong{
+  display:block!important;
+  color:#e9edef!important;
+  font-size:16px!important;
+  font-weight:1000!important;
+}
+
+#chatGalleryModalV109 .chat-gallery-head span{
+  display:block!important;
+  color:#aebac1!important;
+  font-size:12px!important;
+  margin-top:2px!important;
+}
+
+#chatGalleryModalV109 .chat-gallery-head button{
+  width:38px!important;
+  height:38px!important;
+  border:0!important;
+  border-radius:999px!important;
+  background:#111b21!important;
+  color:#aebac1!important;
+  font-size:18px!important;
+  font-weight:1000!important;
+}
+
+#chatGalleryModalV109 .chat-gallery-body{
+  min-height:0!important;
+  overflow:auto!important;
+  display:grid!important;
+  grid-template-columns:repeat(auto-fill, minmax(150px, 1fr))!important;
+  gap:10px!important;
+  padding:12px!important;
+  background:#0b141a!important;
+}
+
+#chatGalleryModalV109 .chat-gallery-item{
+  min-width:0!important;
+  border:0!important;
+  border-radius:12px!important;
+  background:#202c33!important;
+  color:#e9edef!important;
+  overflow:hidden!important;
+}
+
+#chatGalleryModalV109 button.chat-gallery-item{
+  padding:0!important;
+  text-align:left!important;
+}
+
+#chatGalleryModalV109 .chat-gallery-item.image img{
+  width:100%!important;
+  aspect-ratio:1!important;
+  display:block!important;
+  object-fit:cover!important;
+}
+
+#chatGalleryModalV109 .chat-gallery-item.image span,
+#chatGalleryModalV109 .chat-gallery-item.audio span{
+  display:block!important;
+  color:#aebac1!important;
+  font-size:11px!important;
+  font-weight:800!important;
+  padding:8px!important;
+}
+
+#chatGalleryModalV109 .chat-gallery-item.audio{
+  display:grid!important;
+  gap:8px!important;
+  padding:10px!important;
+}
+
+#chatGalleryModalV109 .chat-gallery-item.audio strong{
+  display:block!important;
+  font-size:13px!important;
+  color:#e9edef!important;
+}
+
+#chatGalleryModalV109 .chat-gallery-item.audio audio{
+  width:100%!important;
+}
+
+@media(max-width:760px){
+  #chatPanel .chat-header{
+    grid-template-columns:42px minmax(0,1fr) auto auto auto 40px!important;
+    gap:6px!important;
+  }
+
+  #chatPanel .chat-header-mini-btn,
+  #chatPanel .chat-mute-btn{
+    min-width:42px!important;
+    max-width:48px!important;
+    padding:0 6px!important;
+    font-size:9px!important;
+  }
+
+  #chatGalleryModalV109.chat-gallery-modal{
+    padding:0!important;
+  }
+
+  #chatGalleryModalV109 .chat-gallery-card{
+    width:100vw!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    border-radius:0!important;
+    border:0!important;
+  }
+
+  #chatGalleryModalV109 .chat-gallery-body{
+    grid-template-columns:repeat(2, minmax(0, 1fr))!important;
+  }
+}
 #calendarPlayedGamesBtn{
   display:inline-flex!important;
   align-items:center!important;

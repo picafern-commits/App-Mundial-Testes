@@ -7929,3 +7929,365 @@ window.openChatPanel = function openChatPanelV108(event) {
 setupChatV108Bindings();
 document.addEventListener("DOMContentLoaded", setupChatV108Bindings);
 setTimeout(setupChatV108Bindings, 500);
+
+
+// v109 - galeria, favoritos, rascunhos, online no chat e notificacoes da app.
+let chatNotificationsEnabledV109 = localStorage.getItem("mundial_chat_notifications_v109") === "1";
+
+function chatDraftKeyV109(room = chatCurrentRoom) {
+  return `mundial_chat_draft_v109_${room}_${currentUser?.uid || normalizeEmail(currentUser?.email || "anon")}`;
+}
+
+function chatMediaMessagesV109() {
+  return chatMessagesCache
+    .filter(message => !message.deleted && !message.deletedAt)
+    .filter(message => message.imageData || message.audioData)
+    .slice()
+    .sort((a, b) => chatTimestampMs(chatMessageDateValue(b)) - chatTimestampMs(chatMessageDateValue(a)));
+}
+
+function isChatMessageStarredV109(message) {
+  return Boolean(currentUser?.uid && message?.starredBy?.[currentUser.uid]);
+}
+
+function chatOnlineUsersV109() {
+  return (onlineUsersCache || []).filter(isOnlinePresence);
+}
+
+function chatOnlineLabelV109() {
+  const online = chatOnlineUsersV109();
+  const count = chatParticipantsCount();
+  if (!online.length) return `${count} participantes`;
+  const names = online.slice(0, 2).map(user => user.name || displayNameFromEmail(user.email || "")).filter(Boolean);
+  if (!names.length) return `${online.length} online - ${count} participantes`;
+  return `${names.join(", ")}${online.length > 2 ? ` e mais ${online.length - 2}` : ""} online - ${count} participantes`;
+}
+
+function ensureChatGalleryModalV109() {
+  if ($("chatGalleryModalV109")) return;
+  const modal = document.createElement("div");
+  modal.id = "chatGalleryModalV109";
+  modal.className = "chat-gallery-modal hidden";
+  modal.innerHTML = `
+    <div class="chat-gallery-card">
+      <div class="chat-gallery-head">
+        <div>
+          <strong>Galeria do chat</strong>
+          <span id="chatGalleryCountV109">0 ficheiros</span>
+        </div>
+        <button id="chatGalleryCloseV109" type="button" aria-label="Fechar galeria">x</button>
+      </div>
+      <div id="chatGalleryBodyV109" class="chat-gallery-body"></div>
+    </div>`;
+  document.body.appendChild(modal);
+  $("chatGalleryCloseV109")?.addEventListener("click", closeChatGalleryV109);
+  modal.addEventListener("click", event => {
+    if (event.target === modal) closeChatGalleryV109();
+  });
+}
+
+function renderChatGalleryV109() {
+  ensureChatGalleryModalV109();
+  const body = $("chatGalleryBodyV109");
+  const count = $("chatGalleryCountV109");
+  if (!body) return;
+  const media = chatMediaMessagesV109();
+  if (count) count.textContent = `${media.length} ficheiro(s)`;
+  if (!media.length) {
+    body.innerHTML = `<div class="empty small-empty">Ainda nao ha imagens, GIFs ou audios neste chat.</div>`;
+    return;
+  }
+  body.innerHTML = media.map(message => {
+    const name = message.name || displayNameFromEmail(message.email || "") || "User";
+    const time = `${chatDateLabel(chatMessageDateValue(message))} ${chatTimeLabel(chatMessageDateValue(message))}`.trim();
+    if (message.imageData) {
+      return `
+        <button class="chat-gallery-item image" type="button" data-chat-gallery-image="${escapeHtml(message.imageData)}">
+          <img src="${escapeHtml(message.imageData)}" alt="Imagem do chat" loading="lazy" />
+          <span>${escapeHtml(name)} - ${escapeHtml(time)}</span>
+        </button>`;
+    }
+    return `
+      <div class="chat-gallery-item audio">
+        <div>
+          <strong>${escapeHtml(name)}</strong>
+          <span>${escapeHtml(time)}</span>
+        </div>
+        <audio controls preload="metadata" src="${escapeHtml(message.audioData)}"></audio>
+      </div>`;
+  }).join("");
+
+  body.querySelectorAll("[data-chat-gallery-image]").forEach(button => {
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      const src = button.dataset.chatGalleryImage || "";
+      if (typeof window.openChatImageSrcRealV93 === "function") window.openChatImageSrcRealV93(src, event);
+      else if (typeof window.openChatImageClean === "function") window.openChatImageClean(src, event);
+    });
+  });
+}
+
+function openChatGalleryV109(event) {
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  ensureChatGalleryModalV109();
+  renderChatGalleryV109();
+  $("chatGalleryModalV109")?.classList.remove("hidden");
+}
+
+function closeChatGalleryV109(event) {
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  $("chatGalleryModalV109")?.classList.add("hidden");
+}
+
+function saveChatDraftV109() {
+  const input = $("chatInput");
+  if (!input || chatEditingMessageIdV107) return;
+  try {
+    localStorage.setItem(chatDraftKeyV109(), input.value || "");
+  } catch {}
+}
+
+function restoreChatDraftV109() {
+  const input = $("chatInput");
+  if (!input || chatEditingMessageIdV107) return;
+  try {
+    const draft = localStorage.getItem(chatDraftKeyV109()) || "";
+    if (draft && !input.value) input.value = draft;
+  } catch {}
+}
+
+function clearChatDraftV109() {
+  try {
+    localStorage.removeItem(chatDraftKeyV109());
+  } catch {}
+}
+
+function requestChatNotificationsV109(event) {
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  if (!("Notification" in window)) {
+    toast("Este browser nao suporta notificacoes.");
+    return;
+  }
+  if (Notification.permission === "granted") {
+    chatNotificationsEnabledV109 = !chatNotificationsEnabledV109;
+    localStorage.setItem("mundial_chat_notifications_v109", chatNotificationsEnabledV109 ? "1" : "0");
+    updateChatNotificationButtonV109();
+    toast(chatNotificationsEnabledV109 ? "Notificacoes ligadas." : "Notificacoes desligadas.");
+    return;
+  }
+  Notification.requestPermission().then(permission => {
+    chatNotificationsEnabledV109 = permission === "granted";
+    localStorage.setItem("mundial_chat_notifications_v109", chatNotificationsEnabledV109 ? "1" : "0");
+    updateChatNotificationButtonV109();
+    toast(chatNotificationsEnabledV109 ? "Notificacoes ligadas." : "Notificacoes nao autorizadas.");
+  }).catch(() => toast("Nao consegui pedir permissao de notificacoes."));
+}
+
+function updateChatNotificationButtonV109() {
+  const button = $("chatNotifyBtnV109");
+  if (!button) return;
+  const granted = "Notification" in window && Notification.permission === "granted";
+  button.textContent = chatNotificationsEnabledV109 && granted ? "Notif on" : "Notif";
+  button.classList.toggle("is-on", chatNotificationsEnabledV109 && granted);
+}
+
+function showAppNotificationV109(message) {
+  if (!chatNotificationsEnabledV109) return;
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  if (!message || message.uid === currentUser?.uid || isSystemChatMessage(message)) return;
+  const panelOpen = isChatPanelOpenV107();
+  if (panelOpen && document.visibilityState === "visible") return;
+  const title = message.name || displayNameFromEmail(message.email || "") || "Nova mensagem";
+  const body = chatMessagePlainTextV108(message).slice(0, 120) || "Nova mensagem no chat";
+  try {
+    const notification = new Notification(title, {
+      body,
+      tag: `mundial-chat-${message.id || Date.now()}`,
+      icon: "icons/icon-192.png",
+      badge: "icons/icon-192.png",
+      silent: chatSoundMutedV108
+    });
+    notification.onclick = () => {
+      window.focus?.();
+      window.openChatPanel?.();
+      notification.close();
+    };
+    setTimeout(() => notification.close(), 6500);
+  } catch (error) {
+    console.warn("Notificacao da app falhou:", error);
+  }
+}
+
+async function toggleChatStarV109(messageId) {
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  if (!message || !currentUser) return;
+  if (message.deleted || message.deletedAt || isSystemChatMessage(message)) return;
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase nao esta ligado.");
+  const next = { ...(message.starredBy || {}) };
+  if (next[currentUser.uid]) delete next[currentUser.uid];
+  else next[currentUser.uid] = Date.now();
+  chatMessagesCache = chatMessagesCache.map(item => item.id === messageId ? { ...item, starredBy: next } : item);
+  renderChatMessages();
+  try {
+    const { doc, updateDoc } = firebaseApi;
+    await updateDoc(doc(db, chatCollectionRef(message.room || chatCurrentRoom), messageId), { starredBy: next });
+    toast(next[currentUser.uid] ? "Mensagem marcada com estrela." : "Estrela removida.");
+  } catch (error) {
+    console.error("Falhou guardar estrela:", error);
+    toast("Nao consegui guardar a estrela.");
+  }
+}
+
+const chatMatchesFilterBeforeV109 = chatMatchesFilterV108;
+chatMatchesFilterV108 = function chatMatchesFilterV109(message) {
+  if (chatSearchFilterV108 === "favorites") return isChatMessageStarredV109(message);
+  return chatMatchesFilterBeforeV109(message);
+};
+
+const chatMessageMetaMarkupBeforeV109 = chatMessageMetaMarkup;
+chatMessageMetaMarkup = function chatMessageMetaMarkupV109(message, mine) {
+  const base = chatMessageMetaMarkupBeforeV109(message, mine);
+  if (!isChatMessageStarredV109(message)) return base;
+  return base.replace(/\s*<\/span>\s*$/, `<span class="chat-star-indicator">★</span></span>`);
+};
+
+const renderChatTabsBeforeV109 = renderChatTabs;
+renderChatTabs = function renderChatTabsV109() {
+  renderChatTabsBeforeV109();
+  const subtitle = $("chatSubtitle");
+  if (subtitle && chatCurrentRoom !== "admin") subtitle.textContent = chatOnlineLabelV109();
+  if (subtitle && chatCurrentRoom === "admin") subtitle.textContent = `Chat Admin - ${chatOnlineUsersV109().length} online`;
+};
+
+const renderChatMessagesBeforeV109 = renderChatMessages;
+renderChatMessages = function renderChatMessagesV109() {
+  renderChatMessagesBeforeV109();
+  renderChatGalleryV109();
+  updateChatNotificationButtonV109();
+};
+
+const sendChatMessageBeforeV109 = sendChatMessage;
+sendChatMessage = async function sendChatMessageV109(...args) {
+  const result = await sendChatMessageBeforeV109(...args);
+  clearChatDraftV109();
+  return result;
+};
+
+const setChatRoomBeforeV109 = setChatRoom;
+setChatRoom = function setChatRoomV109(room) {
+  saveChatDraftV109();
+  setChatRoomBeforeV109(room);
+  setTimeout(restoreChatDraftV109, 50);
+};
+
+const playChatNotificationBeforeV109 = playChatNotification;
+playChatNotification = function playChatNotificationV109(message) {
+  showAppNotificationV109(message);
+  return playChatNotificationBeforeV109(message);
+};
+
+function ensureChatHeaderButtonsV109() {
+  const header = document.querySelector("#chatPanel .chat-header");
+  const close = $("chatCloseBtn");
+  if (!header) return;
+  if (!$("chatGalleryBtnV109")) {
+    const gallery = document.createElement("button");
+    gallery.id = "chatGalleryBtnV109";
+    gallery.className = "chat-header-mini-btn";
+    gallery.type = "button";
+    gallery.textContent = "Media";
+    gallery.addEventListener("click", openChatGalleryV109);
+    header.insertBefore(gallery, close || null);
+  }
+  if (!$("chatNotifyBtnV109")) {
+    const notify = document.createElement("button");
+    notify.id = "chatNotifyBtnV109";
+    notify.className = "chat-header-mini-btn";
+    notify.type = "button";
+    notify.textContent = "Notif";
+    notify.addEventListener("click", requestChatNotificationsV109);
+    header.insertBefore(notify, close || null);
+  }
+  updateChatNotificationButtonV109();
+}
+
+function ensureChatFavoritesFilterV109() {
+  const filters = $("chatSearchFilters");
+  if (!filters || filters.querySelector('[data-chat-filter="favorites"]')) return;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset.chatFilter = "favorites";
+  button.textContent = "Favoritas";
+  filters.appendChild(button);
+}
+
+function ensureChatActionStarV109() {
+  const menu = $("chatActionMenu");
+  const pin = $("chatActionPinBtn");
+  if (!menu || $("chatActionStarBtn")) return;
+  const button = document.createElement("button");
+  button.id = "chatActionStarBtn";
+  button.type = "button";
+  button.textContent = "Estrela";
+  menu.insertBefore(button, pin || null);
+  button.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const id = chatActionMessageId;
+    closeChatActionMenu();
+    if (id) toggleChatStarV109(id);
+  }, { capture: true });
+}
+
+function setupChatV109Bindings() {
+  if (window.__chatV109Bound) return;
+  window.__chatV109Bound = true;
+  ensureChatGalleryModalV109();
+  ensureChatHeaderButtonsV109();
+  ensureChatFavoritesFilterV109();
+  ensureChatActionStarV109();
+
+  $("chatInput")?.addEventListener("input", saveChatDraftV109);
+  $("chatInput")?.addEventListener("blur", saveChatDraftV109);
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && !$("chatGalleryModalV109")?.classList.contains("hidden")) closeChatGalleryV109(event);
+  });
+}
+
+const openChatActionMenuBeforeV109 = openChatActionMenu;
+openChatActionMenu = function openChatActionMenuV109(messageId, anchorEvent) {
+  openChatActionMenuBeforeV109(messageId, anchorEvent);
+  ensureChatActionStarV109();
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  const star = $("chatActionStarBtn");
+  if (star) {
+    const hidden = !message || isSystemChatMessage(message) || message.deleted || message.deletedAt;
+    star.classList.toggle("hidden", hidden);
+    star.textContent = isChatMessageStarredV109(message) ? "Sem estrela" : "Estrela";
+  }
+};
+
+const openChatPanelBeforeV109 = window.openChatPanel;
+window.openChatPanel = function openChatPanelV109(event) {
+  const result = typeof openChatPanelBeforeV109 === "function" ? openChatPanelBeforeV109(event) : false;
+  setupChatV109Bindings();
+  ensureChatHeaderButtonsV109();
+  ensureChatFavoritesFilterV109();
+  restoreChatDraftV109();
+  updateChatNotificationButtonV109();
+  return result;
+};
+
+const renderOnlineUsersBeforeV109 = renderOnlineUsers;
+renderOnlineUsers = function renderOnlineUsersV109() {
+  renderOnlineUsersBeforeV109();
+  renderChatTabs();
+};
+
+setupChatV109Bindings();
+document.addEventListener("DOMContentLoaded", setupChatV109Bindings);
+setTimeout(setupChatV109Bindings, 500);
