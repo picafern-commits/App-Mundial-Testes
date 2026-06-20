@@ -27,151 +27,168 @@ let pendingExcelImport = null;
 let fullSyncTimer = null;
 let realtimeUnsubscribers = [];
 let realtimeRenderTimer = null;
+let onlineUsersCache = [];
+let chatMessagesCache = [];
+let chatPinnedMessage = null;
+let chatPinnedUnsubscribe = null;
+let chatLongPressTimer = null;
+let chatActionMessageId = null;
+let chatCurrentRoom = localStorage.getItem('mundial_chat_room') || 'general';
+let chatReplyTo = null;
+let chatTypingUnsubscribe = null;
+let chatTypingTimer = null;
+let chatSearchTerm = '';
+let chatLastNotifiedId = localStorage.getItem('mundial_chat_last_notified_id') || '';
+let chatUnsubscribe = null;
+let chatOpenedOnce = false;
+let chatLastSeenAt = Number(localStorage.getItem('mundial_chat_last_seen_at') || '0');
+let presenceIntervalId = null;
+let onlineUsersIntervalId = null;
 
 const MATCH_ROWS = [
-  ["Grupo A", "MÃ©xico", "Ãfrica do Sul", "2026-06-11T20:00"],
-  ["Grupo A", "Coreia do Sul", "ChÃ©quia", "2026-06-12T03:00"],
-  ["Grupo B", "CanadÃ¡", "BÃ³snia", "2026-06-12T20:00"],
+  ["Grupo A", "México", "África do Sul", "2026-06-11T20:00"],
+  ["Grupo A", "Coreia do Sul", "Chéquia", "2026-06-12T03:00"],
+  ["Grupo B", "Canadá", "Bósnia", "2026-06-12T20:00"],
   ["Grupo D", "Estados Unidos", "Paraguai", "2026-06-13T02:00"],
-  ["Grupo B", "Qatar", "SuÃ­Ã§a", "2026-06-13T20:00"],
+  ["Grupo B", "Qatar", "Suíça", "2026-06-13T20:00"],
   ["Grupo C", "Brasil", "Marrocos", "2026-06-13T23:00"],
-  ["Grupo C", "Haiti", "EscÃ³cia", "2026-06-14T02:00"],
-  ["Grupo D", "AustrÃ¡lia", "Turquia", "2026-06-14T05:00"],
-  ["Grupo E", "Alemanha", "CuraÃ§ao", "2026-06-14T18:00"],
-  ["Grupo F", "PaÃ­ses Baixos", "JapÃ£o", "2026-06-14T21:00"],
+  ["Grupo C", "Haiti", "Escócia", "2026-06-14T02:00"],
+  ["Grupo D", "Austrália", "Turquia", "2026-06-14T05:00"],
+  ["Grupo E", "Alemanha", "Curaçao", "2026-06-14T18:00"],
+  ["Grupo F", "Países Baixos", "Japão", "2026-06-14T21:00"],
   ["Grupo E", "Costa do Marfim", "Equador", "2026-06-15T00:00"],
-  ["Grupo F", "SuÃ©cia", "TunÃ­sia", "2026-06-15T03:00"],
+  ["Grupo F", "Suécia", "Tunísia", "2026-06-15T03:00"],
   ["Grupo H", "Espanha", "Cabo Verde", "2026-06-15T17:00"],
-  ["Grupo G", "BÃ©lgica", "Egito", "2026-06-15T20:00"],
-  ["Grupo H", "ArÃ¡bia Saudita", "Uruguai", "2026-06-15T23:00"],
-  ["Grupo G", "IrÃ£o", "Nova ZelÃ¢ndia", "2026-06-16T02:00"],
-  ["Grupo I", "FranÃ§a", "Senegal", "2026-06-16T20:00"],
+  ["Grupo G", "Bélgica", "Egito", "2026-06-15T20:00"],
+  ["Grupo H", "Arábia Saudita", "Uruguai", "2026-06-15T23:00"],
+  ["Grupo G", "Irão", "Nova Zelândia", "2026-06-16T02:00"],
+  ["Grupo I", "França", "Senegal", "2026-06-16T20:00"],
   ["Grupo I", "Iraque", "Noruega", "2026-06-16T23:00"],
-  ["Grupo J", "Argentina", "ArgÃ©lia", "2026-06-17T02:00"],
-  ["Grupo J", "Ãustria", "JordÃ¢nia", "2026-06-17T05:00"],
+  ["Grupo J", "Argentina", "Argélia", "2026-06-17T02:00"],
+  ["Grupo J", "Áustria", "Jordânia", "2026-06-17T05:00"],
   ["Grupo K", "Portugal", "RD Congo", "2026-06-17T18:00"],
-  ["Grupo L", "Inglaterra", "CroÃ¡cia", "2026-06-17T21:00"],
-  ["Grupo L", "Gana", "PanamÃ¡", "2026-06-18T00:00"],
-  ["Grupo K", "UzbequistÃ£o", "ColÃ´mbia", "2026-06-18T03:00"],
-  ["Grupo A", "ChÃ©quia", "Ãfrica do Sul", "2026-06-18T17:00"],
-  ["Grupo B", "SuÃ­Ã§a", "BÃ³snia", "2026-06-18T20:00"],
-  ["Grupo B", "CanadÃ¡", "Qatar", "2026-06-18T23:00"],
-  ["Grupo A", "MÃ©xico", "Coreia do Sul", "2026-06-19T02:00"],
-  ["Grupo D", "Estados Unidos", "AustrÃ¡lia", "2026-06-19T20:00"],
-  ["Grupo C", "EscÃ³cia", "Marrocos", "2026-06-19T23:00"],
+  ["Grupo L", "Inglaterra", "Croácia", "2026-06-17T21:00"],
+  ["Grupo L", "Gana", "Panamá", "2026-06-18T00:00"],
+  ["Grupo K", "Uzbequistão", "Colômbia", "2026-06-18T03:00"],
+  ["Grupo A", "Chéquia", "África do Sul", "2026-06-18T17:00"],
+  ["Grupo B", "Suíça", "Bósnia", "2026-06-18T20:00"],
+  ["Grupo B", "Canadá", "Qatar", "2026-06-18T23:00"],
+  ["Grupo A", "México", "Coreia do Sul", "2026-06-19T02:00"],
+  ["Grupo D", "Estados Unidos", "Austrália", "2026-06-19T20:00"],
+  ["Grupo C", "Escócia", "Marrocos", "2026-06-19T23:00"],
   ["Grupo C", "Brasil", "Haiti", "2026-06-20T01:30"],
   ["Grupo D", "Turquia", "Paraguai", "2026-06-20T04:00"],
-  ["Grupo F", "PaÃ­ses Baixos", "SuÃ©cia", "2026-06-20T18:00"],
+  ["Grupo F", "Países Baixos", "Suécia", "2026-06-20T18:00"],
   ["Grupo E", "Alemanha", "Costa do Marfim", "2026-06-20T21:00"],
-  ["Grupo E", "Equador", "CuraÃ§ao", "2026-06-21T01:00"],
-  ["Grupo F", "TunÃ­sia", "JapÃ£o", "2026-06-21T05:00"],
-  ["Grupo H", "Espanha", "ArÃ¡bia Saudita", "2026-06-21T17:00"],
-  ["Grupo G", "BÃ©lgica", "IrÃ£o", "2026-06-21T20:00"],
+  ["Grupo E", "Equador", "Curaçao", "2026-06-21T01:00"],
+  ["Grupo F", "Tunísia", "Japão", "2026-06-21T05:00"],
+  ["Grupo H", "Espanha", "Arábia Saudita", "2026-06-21T17:00"],
+  ["Grupo G", "Bélgica", "Irão", "2026-06-21T20:00"],
   ["Grupo H", "Uruguai", "Cabo Verde", "2026-06-21T23:00"],
-  ["Grupo G", "Nova ZelÃ¢ndia", "Egito", "2026-06-22T02:00"],
-  ["Grupo J", "Argentina", "Ãustria", "2026-06-22T18:00"],
-  ["Grupo I", "FranÃ§a", "Iraque", "2026-06-22T22:00"],
+  ["Grupo G", "Nova Zelândia", "Egito", "2026-06-22T02:00"],
+  ["Grupo J", "Argentina", "Áustria", "2026-06-22T18:00"],
+  ["Grupo I", "França", "Iraque", "2026-06-22T22:00"],
   ["Grupo I", "Noruega", "Senegal", "2026-06-23T01:00"],
-  ["Grupo J", "JordÃ¢nia", "ArgÃ©lia", "2026-06-23T04:00"],
-  ["Grupo K", "Portugal", "UzbequistÃ£o", "2026-06-23T18:00"],
+  ["Grupo J", "Jordânia", "Argélia", "2026-06-23T04:00"],
+  ["Grupo K", "Portugal", "Uzbequistão", "2026-06-23T18:00"],
   ["Grupo L", "Inglaterra", "Gana", "2026-06-23T21:00"],
-  ["Grupo L", "PanamÃ¡", "CroÃ¡cia", "2026-06-24T00:00"],
-  ["Grupo K", "ColÃ´mbia", "RD Congo", "2026-06-24T03:00"],
-  ["Grupo B", "SuÃ­Ã§a", "CanadÃ¡", "2026-06-24T20:00"],
-  ["Grupo B", "BÃ³snia", "Qatar", "2026-06-24T20:00"],
-  ["Grupo C", "EscÃ³cia", "Brasil", "2026-06-24T23:00"],
+  ["Grupo L", "Panamá", "Croácia", "2026-06-24T00:00"],
+  ["Grupo K", "Colômbia", "RD Congo", "2026-06-24T03:00"],
+  ["Grupo B", "Suíça", "Canadá", "2026-06-24T20:00"],
+  ["Grupo B", "Bósnia", "Qatar", "2026-06-24T20:00"],
+  ["Grupo C", "Escócia", "Brasil", "2026-06-24T23:00"],
   ["Grupo C", "Marrocos", "Haiti", "2026-06-24T23:00"],
-  ["Grupo A", "Ãfrica do Sul", "Coreia do Sul", "2026-06-25T02:00"],
-  ["Grupo A", "ChÃ©quia", "MÃ©xico", "2026-06-25T02:00"],
-  ["Grupo E", "CuraÃ§ao", "Costa do Marfim", "2026-06-25T21:00"],
+  ["Grupo A", "África do Sul", "Coreia do Sul", "2026-06-25T02:00"],
+  ["Grupo A", "Chéquia", "México", "2026-06-25T02:00"],
+  ["Grupo E", "Curaçao", "Costa do Marfim", "2026-06-25T21:00"],
   ["Grupo E", "Equador", "Alemanha", "2026-06-25T21:00"],
-  ["Grupo F", "TunÃ­sia", "PaÃ­ses Baixos", "2026-06-26T00:00"],
-  ["Grupo F", "JapÃ£o", "SuÃ©cia", "2026-06-26T00:00"],
+  ["Grupo F", "Tunísia", "Países Baixos", "2026-06-26T00:00"],
+  ["Grupo F", "Japão", "Suécia", "2026-06-26T00:00"],
   ["Grupo D", "Turquia", "Estados Unidos", "2026-06-26T03:00"],
-  ["Grupo D", "Paraguai", "AustrÃ¡lia", "2026-06-26T03:00"],
-  ["Grupo I", "Noruega", "FranÃ§a", "2026-06-26T20:00"],
+  ["Grupo D", "Paraguai", "Austrália", "2026-06-26T03:00"],
+  ["Grupo I", "Noruega", "França", "2026-06-26T20:00"],
   ["Grupo I", "Senegal", "Iraque", "2026-06-26T20:00"],
-  ["Grupo H", "Cabo Verde", "ArÃ¡bia Saudita", "2026-06-27T01:00"],
+  ["Grupo H", "Cabo Verde", "Arábia Saudita", "2026-06-27T01:00"],
   ["Grupo H", "Uruguai", "Espanha", "2026-06-27T01:00"],
-  ["Grupo G", "Nova ZelÃ¢ndia", "BÃ©lgica", "2026-06-27T04:00"],
-  ["Grupo G", "Egito", "IrÃ£o", "2026-06-27T04:00"],
-  ["Grupo L", "PanamÃ¡", "Inglaterra", "2026-06-27T22:00"],
-  ["Grupo L", "CroÃ¡cia", "Gana", "2026-06-27T22:00"],
-  ["Grupo K", "ColÃ´mbia", "Portugal", "2026-06-28T00:30"],
-  ["Grupo K", "RD Congo", "UzbequistÃ£o", "2026-06-28T00:30"],
-  ["Grupo J", "ArgÃ©lia", "Ãustria", "2026-06-28T03:00"],
-  ["Grupo J", "JordÃ¢nia", "Argentina", "2026-06-28T03:00"]
+  ["Grupo G", "Nova Zelândia", "Bélgica", "2026-06-27T04:00"],
+  ["Grupo G", "Egito", "Irão", "2026-06-27T04:00"],
+  ["Grupo L", "Panamá", "Inglaterra", "2026-06-27T22:00"],
+  ["Grupo L", "Croácia", "Gana", "2026-06-27T22:00"],
+  ["Grupo K", "Colômbia", "Portugal", "2026-06-28T00:30"],
+  ["Grupo K", "RD Congo", "Uzbequistão", "2026-06-28T00:30"],
+  ["Grupo J", "Argélia", "Áustria", "2026-06-28T03:00"],
+  ["Grupo J", "Jordânia", "Argentina", "2026-06-28T03:00"]
 ];
 
 const FLAGS = {
-  "Portugal": "ðŸ‡µðŸ‡¹",
-  "Ãfrica do Sul": "ðŸ‡¿ðŸ‡¦",
-  "MÃ©xico": "ðŸ‡²ðŸ‡½",
-  "Coreia do Sul": "ðŸ‡°ðŸ‡·",
-  "ChÃ©quia": "ðŸ‡¨ðŸ‡¿",
-  "CanadÃ¡": "ðŸ‡¨ðŸ‡¦",
-  "BÃ³snia": "ðŸ‡§ðŸ‡¦",
-  "Estados Unidos": "ðŸ‡ºðŸ‡¸",
-  "Paraguai": "ðŸ‡µðŸ‡¾",
-  "Qatar": "ðŸ‡¶ðŸ‡¦",
-  "SuÃ­Ã§a": "ðŸ‡¨ðŸ‡­",
-  "Brasil": "ðŸ‡§ðŸ‡·",
-  "Marrocos": "ðŸ‡²ðŸ‡¦",
-  "Haiti": "ðŸ‡­ðŸ‡¹",
-  "EscÃ³cia": "ðŸ´",
-  "AustrÃ¡lia": "ðŸ‡¦ðŸ‡º",
-  "Turquia": "ðŸ‡¹ðŸ‡·",
-  "Alemanha": "ðŸ‡©ðŸ‡ª",
-  "CuraÃ§ao": "ðŸ‡¨ðŸ‡¼",
-  "PaÃ­ses Baixos": "ðŸ‡³ðŸ‡±",
-  "JapÃ£o": "ðŸ‡¯ðŸ‡µ",
-  "Costa do Marfim": "ðŸ‡¨ðŸ‡®",
-  "Equador": "ðŸ‡ªðŸ‡¨",
-  "SuÃ©cia": "ðŸ‡¸ðŸ‡ª",
-  "TunÃ­sia": "ðŸ‡¹ðŸ‡³",
-  "Espanha": "ðŸ‡ªðŸ‡¸",
-  "Cabo Verde": "ðŸ‡¨ðŸ‡»",
-  "BÃ©lgica": "ðŸ‡§ðŸ‡ª",
-  "Egito": "ðŸ‡ªðŸ‡¬",
-  "ArÃ¡bia Saudita": "ðŸ‡¸ðŸ‡¦",
-  "Uruguai": "ðŸ‡ºðŸ‡¾",
-  "IrÃ£o": "ðŸ‡®ðŸ‡·",
-  "Nova ZelÃ¢ndia": "ðŸ‡³ðŸ‡¿",
-  "FranÃ§a": "ðŸ‡«ðŸ‡·",
-  "Senegal": "ðŸ‡¸ðŸ‡³",
-  "Iraque": "ðŸ‡®ðŸ‡¶",
-  "Noruega": "ðŸ‡³ðŸ‡´",
-  "Argentina": "ðŸ‡¦ðŸ‡·",
-  "ArgÃ©lia": "ðŸ‡©ðŸ‡¿",
-  "Ãustria": "ðŸ‡¦ðŸ‡¹",
-  "JordÃ¢nia": "ðŸ‡¯ðŸ‡´",
-  "RD Congo": "ðŸ‡¨ðŸ‡©",
-  "Inglaterra": "ðŸ´",
-  "CroÃ¡cia": "ðŸ‡­ðŸ‡·",
-  "Gana": "ðŸ‡¬ðŸ‡­",
-  "PanamÃ¡": "ðŸ‡µðŸ‡¦",
-  "UzbequistÃ£o": "ðŸ‡ºðŸ‡¿",
-  "ColÃ´mbia": "ðŸ‡¨ðŸ‡´"
+  "Portugal": "🇵🇹",
+  "África do Sul": "🇿🇦",
+  "México": "🇲🇽",
+  "Coreia do Sul": "🇰🇷",
+  "Chéquia": "🇨🇿",
+  "Canadá": "🇨🇦",
+  "Bósnia": "🇧🇦",
+  "Estados Unidos": "🇺🇸",
+  "Paraguai": "🇵🇾",
+  "Qatar": "🇶🇦",
+  "Suíça": "🇨🇭",
+  "Brasil": "🇧🇷",
+  "Marrocos": "🇲🇦",
+  "Haiti": "🇭🇹",
+  "Escócia": "🏴",
+  "Austrália": "🇦🇺",
+  "Turquia": "🇹🇷",
+  "Alemanha": "🇩🇪",
+  "Curaçao": "🇨🇼",
+  "Países Baixos": "🇳🇱",
+  "Japão": "🇯🇵",
+  "Costa do Marfim": "🇨🇮",
+  "Equador": "🇪🇨",
+  "Suécia": "🇸🇪",
+  "Tunísia": "🇹🇳",
+  "Espanha": "🇪🇸",
+  "Cabo Verde": "🇨🇻",
+  "Bélgica": "🇧🇪",
+  "Egito": "🇪🇬",
+  "Arábia Saudita": "🇸🇦",
+  "Uruguai": "🇺🇾",
+  "Irão": "🇮🇷",
+  "Nova Zelândia": "🇳🇿",
+  "França": "🇫🇷",
+  "Senegal": "🇸🇳",
+  "Iraque": "🇮🇶",
+  "Noruega": "🇳🇴",
+  "Argentina": "🇦🇷",
+  "Argélia": "🇩🇿",
+  "Áustria": "🇦🇹",
+  "Jordânia": "🇯🇴",
+  "RD Congo": "🇨🇩",
+  "Inglaterra": "🏴",
+  "Croácia": "🇭🇷",
+  "Gana": "🇬🇭",
+  "Panamá": "🇵🇦",
+  "Uzbequistão": "🇺🇿",
+  "Colômbia": "🇨🇴"
 };
 
 const TEAM_ALIASES = {
-  "mexico": "MÃ©xico", "africa do sul": "Ãfrica do Sul", "Ã¡frica do sul": "Ãfrica do Sul",
-  "coreia do sul": "Coreia do Sul", "republica checa": "ChÃ©quia", "rep checa": "ChÃ©quia", "czechia": "ChÃ©quia", "czech republic": "ChÃ©quia", "repÃºblica checa": "ChÃ©quia", "chequia": "ChÃ©quia", "chÃ©quia": "ChÃ©quia",
-  "canada": "CanadÃ¡", "bosnia": "BÃ³snia", "bosnia e herzegovina": "BÃ³snia", "bÃ³snia e herzegovina": "BÃ³snia", "bÃ³snia": "BÃ³snia", "bosnia-herzegovina": "BÃ³snia", "bÃ³snia-herzegovina": "BÃ³snia",
-  "qatar": "Qatar", "suica": "SuÃ­Ã§a", "suiÃ§a": "SuÃ­Ã§a", "suÃ­Ã§a": "SuÃ­Ã§a", "brasil": "Brasil", "marrocos": "Marrocos",
-  "haiti": "Haiti", "escocia": "EscÃ³cia", "escÃ³cia": "EscÃ³cia", "australia": "AustrÃ¡lia", "austrÃ¡lia": "AustrÃ¡lia",
-  "turquia": "Turquia", "alemanha": "Alemanha", "curacao": "CuraÃ§ao", "curaÃ§ao": "CuraÃ§ao",
-  "paises baixos": "PaÃ­ses Baixos", "holanda": "PaÃ­ses Baixos", "netherlands": "PaÃ­ses Baixos", "paÃ­ses baixos": "PaÃ­ses Baixos", "japao": "JapÃ£o", "japÃ£o": "JapÃ£o",
-  "costa do marfim": "Costa do Marfim", "equador": "Equador", "suecia": "SuÃ©cia", "suÃ©cia": "SuÃ©cia",
-  "tunisia": "TunÃ­sia", "tunÃ­sia": "TunÃ­sia", "espanha": "Espanha", "cabo verde": "Cabo Verde",
-  "belgica": "BÃ©lgica", "bÃ©lgica": "BÃ©lgica", "egito": "Egito", "arabia saudita": "ArÃ¡bia Saudita", "arÃ¡bia saudita": "ArÃ¡bia Saudita",
-  "uruguai": "Uruguai", "irao": "IrÃ£o", "irÃ£o": "IrÃ£o", "nova zelandia": "Nova ZelÃ¢ndia", "nova zelÃ¢ndia": "Nova ZelÃ¢ndia",
-  "franca": "FranÃ§a", "franÃ§a": "FranÃ§a", "senegal": "Senegal", "iraque": "Iraque", "noruega": "Noruega",
-  "argentina": "Argentina", "argelia": "ArgÃ©lia", "argÃ©lia": "ArgÃ©lia", "austria": "Ãustria", "Ã¡ustria": "Ãustria",
-  "jordania": "JordÃ¢nia", "jordÃ¢nia": "JordÃ¢nia", "rd congo": "RD Congo", "r d congo": "RD Congo", "dr congo": "RD Congo", "congo dr": "RD Congo", "r.d. congo": "RD Congo", "r d. congo": "RD Congo", "rd. congo": "RD Congo", "r.d congo": "RD Congo", "rdcongo": "RD Congo", "rdc": "RD Congo", "congo rd": "RD Congo", "d r congo": "RD Congo", "d.r. congo": "RD Congo", "democratic republic of congo": "RD Congo",
-  "republica democratica do congo": "RD Congo", "rep democratica do congo": "RD Congo", "repÃºblica democrÃ¡tica do congo": "RD Congo", "inglaterra": "Inglaterra", "croacia": "CroÃ¡cia", "croÃ¡cia": "CroÃ¡cia",
-  "gana": "Gana", "panama": "PanamÃ¡", "panamÃ¡": "PanamÃ¡", "uzbequistao": "UzbequistÃ£o", "uzbequistÃ£o": "UzbequistÃ£o", "uzbekistan": "UzbequistÃ£o",
-  "colombia": "ColÃ´mbia", "colÃ´mbia": "ColÃ´mbia", "columbia": "ColÃ´mbia"
+  "mexico": "México", "africa do sul": "África do Sul", "áfrica do sul": "África do Sul",
+  "coreia do sul": "Coreia do Sul", "republica checa": "Chéquia", "rep checa": "Chéquia", "czechia": "Chéquia", "czech republic": "Chéquia", "república checa": "Chéquia", "chequia": "Chéquia", "chéquia": "Chéquia",
+  "canada": "Canadá", "bosnia": "Bósnia", "bosnia e herzegovina": "Bósnia", "bósnia e herzegovina": "Bósnia", "bósnia": "Bósnia", "bosnia-herzegovina": "Bósnia", "bósnia-herzegovina": "Bósnia",
+  "qatar": "Qatar", "suica": "Suíça", "suiça": "Suíça", "suíça": "Suíça", "brasil": "Brasil", "marrocos": "Marrocos",
+  "haiti": "Haiti", "escocia": "Escócia", "escócia": "Escócia", "australia": "Austrália", "austrália": "Austrália",
+  "turquia": "Turquia", "alemanha": "Alemanha", "curacao": "Curaçao", "curaçao": "Curaçao",
+  "paises baixos": "Países Baixos", "holanda": "Países Baixos", "netherlands": "Países Baixos", "países baixos": "Países Baixos", "japao": "Japão", "japão": "Japão",
+  "costa do marfim": "Costa do Marfim", "equador": "Equador", "suecia": "Suécia", "suécia": "Suécia",
+  "tunisia": "Tunísia", "tunísia": "Tunísia", "espanha": "Espanha", "cabo verde": "Cabo Verde",
+  "belgica": "Bélgica", "bélgica": "Bélgica", "egito": "Egito", "arabia saudita": "Arábia Saudita", "arábia saudita": "Arábia Saudita",
+  "uruguai": "Uruguai", "irao": "Irão", "irão": "Irão", "nova zelandia": "Nova Zelândia", "nova zelândia": "Nova Zelândia",
+  "franca": "França", "frança": "França", "senegal": "Senegal", "iraque": "Iraque", "noruega": "Noruega",
+  "argentina": "Argentina", "argelia": "Argélia", "argélia": "Argélia", "austria": "Áustria", "áustria": "Áustria",
+  "jordania": "Jordânia", "jordânia": "Jordânia", "rd congo": "RD Congo", "r d congo": "RD Congo", "dr congo": "RD Congo", "congo dr": "RD Congo", "r.d. congo": "RD Congo", "r d. congo": "RD Congo", "rd. congo": "RD Congo", "r.d congo": "RD Congo", "rdcongo": "RD Congo", "rdc": "RD Congo", "congo rd": "RD Congo", "d r congo": "RD Congo", "d.r. congo": "RD Congo", "democratic republic of congo": "RD Congo",
+  "republica democratica do congo": "RD Congo", "rep democratica do congo": "RD Congo", "república democrática do congo": "RD Congo", "inglaterra": "Inglaterra", "croacia": "Croácia", "croácia": "Croácia",
+  "gana": "Gana", "panama": "Panamá", "panamá": "Panamá", "uzbequistao": "Uzbequistão", "uzbequistão": "Uzbequistão", "uzbekistan": "Uzbequistão",
+  "colombia": "Colômbia", "colômbia": "Colômbia", "columbia": "Colômbia"
 };
 
 const SEED_GAMES = MATCH_ROWS.map(([group, homeTeam, awayTeam, matchDate], index) => ({
@@ -184,7 +201,7 @@ const SEED_GAMES = MATCH_ROWS.map(([group, homeTeam, awayTeam, matchDate], index
 const $ = id => document.getElementById(id);
 const clone = value => JSON.parse(JSON.stringify(value));
 const hasResult = game => game.homeScore !== null && game.homeScore !== undefined && game.awayScore !== null && game.awayScore !== undefined;
-const flag = team => FLAGS[team] || "ðŸ³ï¸";
+const flag = team => FLAGS[team] || "🏳ï¸";
 const outcome = (home, away) => Number(home) > Number(away) ? "home" : Number(home) < Number(away) ? "away" : "draw";
 const normalizeKey = value => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const normalizeComparable = value => normalizeKey(value);
@@ -242,7 +259,7 @@ function timePortugal(value) {
 }
 function statusOf(game) {
   if (hasResult(game)) return { text: "Jogado", className: "played" };
-  if (parsePortugalDate(game.matchDate).getTime() <= Date.now()) return { text: "Fechado", className: "closed" };
+  if (parsePortugalDate(game.matchDate).getTime() <= Date.now()) return { text: "A Decorrer", className: "live" };
   return { text: "Por jogar", className: "open" };
 }
 function isLocked(game) { return statusOf(game).className !== "open"; }
@@ -300,7 +317,7 @@ function saveLocalData(reason = "") {
 
 
 
-function withTimeout(promise, ms = 12000, label = "operaÃ§Ã£o") {
+function withTimeout(promise, ms = 12000, label = "operação") {
   let timer;
   const timeout = new Promise((_, reject) => {
     timer = setTimeout(() => reject(new Error(`${label} demorou demasiado tempo`)), ms);
@@ -525,8 +542,8 @@ async function initFirebase() {
     firebaseAuth = null;
     firebaseAuthApi = null;
     storageMode = "local";
-    setFirebaseStatus("error", "Firebase: configuraÃ§Ã£o em falta no config.js");
-    setLoginStatus("Firebase: configuraÃ§Ã£o em falta no config.js", "error");
+    setFirebaseStatus("error", "Firebase: configuração em falta no config.js");
+    setLoginStatus("Firebase: configuração em falta no config.js", "error");
     return false;
   }
 
@@ -547,14 +564,14 @@ async function initFirebase() {
     setLoginStatus("Firebase ligado. Faz login.", "success");
     return true;
   } catch (error) {
-    console.error("Firebase nÃ£o ligou:", error);
+    console.error("Firebase não ligou:", error);
     db = null;
     firebaseApi = null;
     firebaseAuth = null;
     firebaseAuthApi = null;
     storageMode = "local";
-    setFirebaseStatus("error", `Firebase: nÃ£o ligou â€” ${error.message || "erro"}`);
-    setLoginStatus(`Firebase nÃ£o ligou â€” ${error.message || "erro"}`, "error");
+    setFirebaseStatus("error", `Firebase: não ligou — ${error.message || "erro"}`);
+    setLoginStatus(`Firebase não ligou — ${error.message || "erro"}`, "error");
     return false;
   }
 }
@@ -580,27 +597,27 @@ function applyLocalSnapshotIfBetter(context = "") {
       }
     }
   } catch (error) {
-    console.warn("NÃ£o foi possÃ­vel comparar dados locais.", error);
+    console.warn("Não foi possível comparar dados locais.", error);
   }
 }
 
 
 async function safeGetCollection(name) {
-  if (!db || !firebaseApi) return { docs: [], ok: false, error: "Firebase nÃ£o iniciado" };
+  if (!db || !firebaseApi) return { docs: [], ok: false, error: "Firebase não iniciado" };
 
   try {
     const { collection, getDocs } = firebaseApi;
     const snap = await withTimeout(getDocs(collection(db, name)), 12000, `ler ${name}`);
     return { docs: snap.docs, empty: snap.empty, ok: true, error: "" };
   } catch (error) {
-    console.error(`Erro ao ler coleÃ§Ã£o ${name}:`, error);
+    console.error(`Erro ao ler coleção ${name}:`, error);
     return { docs: [], empty: true, ok: false, error: error.message || String(error) };
   }
 }
 
 function shortFirebaseError(error) {
   const text = String(error || "");
-  if (text.includes("Missing or insufficient permissions")) return "sem permissÃµes nas regras";
+  if (text.includes("Missing or insufficient permissions")) return "sem permissões nas regras";
   if (text.includes("Failed to fetch")) return "falha de rede/CORS";
   if (text.includes("demorou demasiado")) return "tempo esgotado";
   return text.slice(0, 90) || "erro desconhecido";
@@ -630,7 +647,7 @@ async function loadData() {
     const betsSnap = localBets.length
       ? { docs: [], skipped: true }
       : await withTimeout(getDocs(collection(db, "bets")), 12000, "ler apostas");
-    const settingsSnap = await withTimeout(getDocs(collection(db, "settings")), 12000, "ler configuraÃ§Ãµes");
+    const settingsSnap = await withTimeout(getDocs(collection(db, "settings")), 12000, "ler configurações");
 
     const remoteGames = gamesSnap.docs.map(item => ({ id: item.id, ...item.data() }));
     const remoteBets = betsSnap.docs.map(item => ({ id: item.id, ...item.data() }));
@@ -648,7 +665,7 @@ async function loadData() {
       games = localGames.length ? localGames : clone(SEED_GAMES);
       setTimeout(() => {
         Promise.all(games.map(game => setDoc(doc(db, "games", game.id), game, { merge: true })))
-          .catch(error => console.warn("NÃ£o conseguiu criar jogos no Firebase", error));
+          .catch(error => console.warn("Não conseguiu criar jogos no Firebase", error));
       }, 200);
     }
 
@@ -656,8 +673,8 @@ async function loadData() {
     appSettings = mergeSettings(mainSettingsDoc ? mainSettingsDoc.data() : localSettings);
     ensureKnockoutSettings();
 
-    saveLocalData("firebase carregado estÃ¡vel");
-    setFirebaseStatus("success", `Firebase: ligado Â· ${bets.length} apostas carregadas`);
+    saveLocalData("firebase carregado estável");
+    setFirebaseStatus("success", `Firebase: ligado · ${bets.length} apostas carregadas`);
     renderAll();
 
     if (!betsSnap.skipped && !remoteBets.length && localBets.length && pendingBetIds().length) {
@@ -673,7 +690,7 @@ async function loadData() {
     appSettings = mergeSettings(local.settings || local.appSettings);
     ensureKnockoutSettings();
     storageMode = "local";
-    setFirebaseStatus("error", `Firebase: erro ao carregar â€” ${error.message || "ver consola"}`);
+    setFirebaseStatus("error", `Firebase: erro ao carregar — ${error.message || "ver consola"}`);
     renderAll();
   }
 }
@@ -733,8 +750,8 @@ function setupRealtimeSync() {
   realtimeUnsubscribers.push(onSnapshot(doc(db, "settings", "main"), snap => {
     if (!snap.exists() || hasSettingsPending()) return;
     appSettings = mergeSettings(snap.data() || {});
-    queueRealtimeRender("firebase realtime configuracoes");
-  }, error => console.warn("Realtime configuracoes falhou:", error)));
+    queueRealtimeRender("firebase realtime configurações");
+  }, error => console.warn("Realtime configurações falhou:", error)));
 
   realtimeUnsubscribers.push(onSnapshot(doc(db, "users", normalizeEmail(currentUser.email)), async snap => {
     if (!snap.exists()) return;
@@ -755,7 +772,8 @@ function setupRealtimeSync() {
     };
 
     if (!currentProfile.active) {
-      await firebaseAuthApi.signOut(firebaseAuth);
+      await updateMyPresence(true);
+  await firebaseAuthApi.signOut(firebaseAuth);
       return;
     }
 
@@ -798,7 +816,7 @@ async function persistAllGames() {
    * quando o Firestore esta lento, offline ou sem permissoes.
    */
   games.forEach(game => {
-    if (hasResult(game) && !game.updatedAt) stampGame(game, "migraÃ§Ã£o resultado existente");
+    if (hasResult(game) && !game.updatedAt) stampGame(game, "migração resultado existente");
   });
   games.forEach(game => markGamePending(game.id));
   scheduleFullSync("guardar jogos", 300);
@@ -828,8 +846,8 @@ async function persistAllBets(importedBets, replaceImported = true) {
 
 async function persistSettings() {
   markSettingsPending();
-  saveLocalData("guardar configuracoes local");
-  scheduleFullSync("guardar configuracoes", 300);
+  saveLocalData("guardar configurações local");
+  scheduleFullSync("guardar configurações", 300);
 }
 
 function betsForGame(gameId) { return bets.filter(bet => bet.gameId === gameId); }
@@ -852,10 +870,10 @@ function pointsForBet(bet, game) {
   const winnerPoints = Number(appSettings?.points?.winner) || 1;
 
   // Regra 1: resultado exato certo recebe 3 pontos.
-  // Regra 2: se acertar o resultado exato, nÃ£o acumula o ponto do vencedor/empate.
+  // Regra 2: se acertar o resultado exato, não acumula o ponto do vencedor/empate.
   if (isExactBet(bet, game)) return exactPoints;
 
-  // Regra 3: se nÃ£o acertou o resultado, mas acertou vencedor/empate, recebe 1 ponto.
+  // Regra 3: se não acertou o resultado, mas acertou vencedor/empate, recebe 1 ponto.
   if (isOutcomeBet(bet, game)) return winnerPoints;
 
   return 0;
@@ -919,8 +937,8 @@ function playerStats(playerName) {
   stats.champion = extras.champion;
   stats.extraPoints = extras.total;
 
-  // Total mostrado na pÃ¡gina PontuaÃ§Ã£o: sempre calculado pela app.
-  // NÃ£o usa pontos importados do Excel.
+  // Total mostrado na página Pontuação: sempre calculado pela app.
+  // Não usa pontos importados do Excel.
   stats.points = stats.gamePoints + stats.extraPoints;
   stats.calculatedTotal = stats.points;
   stats.accuracy = stats.settled ? Math.round((stats.exact / stats.settled) * 100) : 0;
@@ -966,8 +984,8 @@ async function saveGameFastToFirebase(game, options = {}) {
   saveLocalData("saveGameFast local");
 
   if (!db || !firebaseApi || storageMode !== "firebase") {
-    setFirebaseStatus("error", "Firebase: nÃ£o estÃ¡ ligado â€” resultado ficou sÃ³ local");
-    throw new Error("Firebase nÃ£o estÃ¡ ligado");
+    setFirebaseStatus("error", "Firebase: não está ligado — resultado ficou só local");
+    throw new Error("Firebase não está ligado");
   }
 
   const { doc, setDoc, serverTimestamp } = firebaseApi;
@@ -1022,7 +1040,7 @@ async function saveBetsFastToFirebase(reason = "bets") {
   const ids = pendingBetIds();
   const betsToSave = ids.length ? bets.filter(bet => ids.includes(bet.id)) : bets;
 
-  // Lotes pequenos para nÃ£o deixar a app presa.
+  // Lotes pequenos para não deixar a app presa.
   const chunks = [];
   for (let i = 0; i < betsToSave.length; i += 250) chunks.push(betsToSave.slice(i, i + 250));
 
@@ -1128,7 +1146,7 @@ function rescueLocalBetsIfNeeded() {
       appSettings = mergeSettings(local.settings || local.appSettings);
     }
   } catch (error) {
-    console.warn("NÃ£o foi possÃ­vel recuperar apostas locais.", error);
+    console.warn("Não foi possível recuperar apostas locais.", error);
   }
 }
 
@@ -1175,14 +1193,17 @@ function isConfiguredAdmin(email) {
 function defaultProfileForUser(user) {
   const email = normalizeEmail(user?.email);
   const admin = isConfiguredAdmin(email);
+  const now = new Date().toISOString();
+
   return {
     uid: user?.uid || "",
     email,
+    name: displayNameFromEmail(email),
     role: admin ? "admin" : "user",
     active: true,
     permissions: admin ? { ...ADMIN_PERMISSIONS } : { ...DEFAULT_PERMISSIONS },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdAt: now,
+    updatedAt: now
   };
 }
 
@@ -1228,13 +1249,19 @@ function updateSessionBox() {
   const box = $("sessionBox");
   const label = $("sessionUserLabel");
   if (!box || !label) return;
+
   if (!currentUser) {
     box.classList.add("hidden");
     return;
   }
+
   box.classList.remove("hidden");
+
   const role = currentProfile?.role === "admin" ? "Admin" : "User";
-  label.textContent = `${currentUser.email || "Conta"} Â· ${role}`;
+  const visibleName = String(currentProfile?.name || "").trim() || displayNameFromEmail(currentUser.email) || currentUser.email || "Conta";
+
+  label.textContent = `${visibleName} · ${role}`;
+  label.title = currentUser.email || visibleName;
 }
 
 async function readUserProfile(user) {
@@ -1258,6 +1285,7 @@ async function readUserProfile(user) {
       ...data,
       uid: user.uid,
       email: normalizeEmail(user.email),
+      name: String(data.name || fallback.name || "").trim(),
       role: configAdmin ? "admin" : (data.role || "user"),
       active: data.active !== false,
       permissions: {
@@ -1287,7 +1315,7 @@ async function loadPermissionsUsers() {
     permissionsCache = snap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
       .sort((a, b) => normalizeEmail(a.email || a.id).localeCompare(normalizeEmail(b.email || b.id)));
   } catch (error) {
-    console.error("Erro ao carregar permissÃµes:", error);
+    console.error("Erro ao carregar permissões:", error);
   }
 }
 
@@ -1304,18 +1332,18 @@ function renderPermissionsUsers() {
   if (!list) return;
 
   if (!hasPermission("managePermissions")) {
-    list.innerHTML = `<div class="empty small-empty">NÃ£o tens permissÃ£o para gerir utilizadores.</div>`;
+    list.innerHTML = `<div class="empty small-empty">Não tens permissão para gerir utilizadores.</div>`;
     return;
   }
 
   if (!permissionsCache.length) {
-    list.innerHTML = `<div class="empty small-empty">Ainda nÃ£o existem utilizadores registados.</div>`;
+    list.innerHTML = `<div class="empty small-empty">Ainda não existem utilizadores registados.</div>`;
     return;
   }
 
   const labels = {
-    calendar: "CalendÃ¡rio",
-    score: "PontuaÃ§Ã£o",
+    calendar: "Calendário",
+    score: "Pontuação",
     knockout: "Fase Final",
     admin: "Admin",
     editResults: "Editar resultados",
@@ -1323,11 +1351,12 @@ function renderPermissionsUsers() {
     editUsers: "Users do jogo",
     editPoints: "Sistema pontos",
     editKnockout: "Editar Fase Final",
-    managePermissions: "PermissÃµes"
+    managePermissions: "Permissões"
   };
 
   list.innerHTML = permissionsCache.map(user => {
     const email = normalizeEmail(user.email || user.id);
+    const visibleName = String(user.name || "").trim() || displayNameFromEmail(email);
     const role = user.role === "admin" ? "admin" : "user";
     const isAdminUser = role === "admin";
     const perms = { ...(isAdminUser ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS), ...(user.permissions || {}) };
@@ -1337,10 +1366,14 @@ function renderPermissionsUsers() {
       <article class="permission-user-card" data-permission-card="${escapeHtml(email)}">
         <div class="permission-user-head">
           <div>
-            <strong>${escapeHtml(email)}</strong>
-            <span>${isAdminUser ? "Admin" : "User normal"} Â· ${active ? "Ativo" : "Bloqueado"}</span>
+            <strong>${escapeHtml(visibleName)}</strong>
+            <span>${escapeHtml(email)} · ${isAdminUser ? "Admin" : "User normal"} · ${active ? "Ativo" : "Bloqueado"}</span>
           </div>
           <div class="permission-user-actions">
+            <label class="permission-name-label">
+              Nome visível
+              <input class="permission-name-input" type="text" data-name-email="${escapeHtml(email)}" value="${escapeHtml(visibleName)}" placeholder="Nome visível" />
+            </label>
             <select data-role-email="${escapeHtml(email)}">
               <option value="user" ${role === "user" ? "selected" : ""}>User normal</option>
               <option value="admin" ${role === "admin" ? "selected" : ""}>Admin</option>
@@ -1361,17 +1394,22 @@ function renderPermissionsUsers() {
 }
 
 async function savePermissionUser(email) {
-  if (!db || !firebaseApi) return toast("Firebase nÃ£o estÃ¡ ligado.");
-  if (!hasPermission("managePermissions")) return toast("Sem permissÃ£o para gerir utilizadores.");
+  if (!db || !firebaseApi) return toast("Firebase não está ligado.");
+  if (!hasPermission("managePermissions")) return toast("Sem permissão para gerir utilizadores.");
 
   const normalized = normalizeEmail(email);
-  if (!normalized) return toast("Email invÃ¡lido.");
+  if (!normalized) return toast("Email inválido.");
 
   const card = document.querySelector(`[data-permission-card="${CSS.escape(normalized)}"]`);
+  const existingProfile = permissionsCache.find(user => normalizeEmail(user.email || user.id) === normalized) || {};
+
   const role = document.querySelector(`[data-role-email="${CSS.escape(normalized)}"]`)?.value || $("permissionRoleInput")?.value || "user";
   const activeInput = document.querySelector(`[data-active-email="${CSS.escape(normalized)}"]`);
   const active = activeInput ? activeInput.checked : true;
   const isAdminUser = role === "admin";
+
+  const nameInput = document.querySelector(`[data-name-email="${CSS.escape(normalized)}"]`) || $("permissionNameInput");
+  const visibleName = String(nameInput?.value || existingProfile.name || displayNameFromEmail(normalized)).trim() || displayNameFromEmail(normalized);
 
   const permissions = isAdminUser ? { ...ADMIN_PERMISSIONS } : { ...DEFAULT_PERMISSIONS };
   if (card && !isAdminUser) {
@@ -1381,30 +1419,57 @@ async function savePermissionUser(email) {
   }
 
   const profile = {
+    ...existingProfile,
+    uid: existingProfile.uid || "",
     email: normalized,
+    name: visibleName,
     role,
     active,
     permissions,
     updatedAt: new Date().toISOString()
   };
 
+  if (!profile.createdAt) profile.createdAt = new Date().toISOString();
+
   const { doc, setDoc } = firebaseApi;
-  await withTimeout(setDoc(doc(db, "users", normalized), profile, { merge: true }), 12000, "guardar permissÃµes");
-  toast("PermissÃµes guardadas.");
+  await withTimeout(setDoc(doc(db, "users", normalized), profile, { merge: true }), 12000, "guardar utilizador");
+
+  if (profile.uid) {
+    try {
+      await setDoc(doc(db, PRESENCE_COLLECTION, profile.uid), {
+        uid: profile.uid,
+        email: normalized,
+        name: visibleName,
+        role,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (presenceError) {
+      console.warn("Nome guardado no user, mas não atualizado na presença:", presenceError);
+    }
+  }
+
+  toast("Utilizador guardado.");
   await loadPermissionsUsers();
   renderPermissionsUsers();
 
   if (normalizeEmail(currentUser?.email) === normalized) {
     currentProfile = await readUserProfile(currentUser);
+    updateSessionBox();
     applyPermissionsToUi();
+    updateMyPresence(false).catch(error => console.warn("Atualizar presença após nome falhou:", error));
   }
+
+  loadOnlineUsers().catch(error => console.warn("Atualizar lista online após nome falhou:", error));
 }
 
 async function addPermissionUser() {
   const email = normalizeEmail($("permissionEmailInput")?.value);
   if (!email) return toast("Escreve o email do utilizador.");
+
   await savePermissionUser(email);
+
   if ($("permissionEmailInput")) $("permissionEmailInput").value = "";
+  if ($("permissionNameInput")) $("permissionNameInput").value = "";
 }
 
 function permissionTabAllowed(tabId) {
@@ -1434,7 +1499,7 @@ function applyPermissionsToUi() {
 
   $("adminTab")?.classList.toggle("no-access", !hasPermission("admin"));
 
-  // AÃ§Ãµes admin
+  // Ações admin
   document.querySelectorAll("[data-result-game]").forEach(btn => {
     const inAdmin = btn.closest("#adminTab");
     if (inAdmin && !hasPermission("editResults")) btn.classList.add("hidden");
@@ -1446,6 +1511,8 @@ function applyPermissionsToUi() {
   $("savePointsSettingsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
   $("saveExtraResultsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
   $("saveKnockoutUnlockBtn")?.classList.toggle("hidden", !hasPermission("editKnockout"));
+    $("searchAllResultsBtn")?.classList.toggle("hidden", !hasPermission("editResults"));
+    document.querySelectorAll(".search-game-result-btn").forEach(btn => btn.classList.toggle("hidden", !hasPermission("editResults")));
 
   document.querySelectorAll("[data-ko-save], [data-ko-edit]").forEach(btn => {
     btn.classList.toggle("hidden", !hasPermission("editKnockout"));
@@ -1479,7 +1546,7 @@ function setupRememberedAccount() {
       rememberInput.checked = true;
     }
   } catch (error) {
-    console.warn("NÃ£o foi possÃ­vel ler email memorizado:", error);
+    console.warn("Não foi possível ler email memorizado:", error);
   }
 }
 
@@ -1495,13 +1562,13 @@ function saveRememberedAccount(email) {
       localStorage.removeItem(REMEMBER_EMAIL_KEY);
     }
   } catch (error) {
-    console.warn("NÃ£o foi possÃ­vel guardar email memorizado:", error);
+    console.warn("Não foi possível guardar email memorizado:", error);
   }
 }
 
 async function handleLogin() {
   if (!firebaseAuthApi || !firebaseAuth) {
-    setLoginStatus("Firebase/Auth nÃ£o estÃ¡ pronto.", "error");
+    setLoginStatus("Firebase/Auth não está pronto.", "error");
     return;
   }
 
@@ -1524,7 +1591,7 @@ async function handleLogin() {
 
 async function handleCreateAccount() {
   if (!firebaseAuthApi || !firebaseAuth) {
-    setLoginStatus("Firebase/Auth nÃ£o estÃ¡ pronto.", "error");
+    setLoginStatus("Firebase/Auth não está pronto.", "error");
     return;
   }
 
@@ -1548,17 +1615,1439 @@ async function handleCreateAccount() {
 function authFriendlyError(error) {
   const code = String(error?.code || error?.message || "");
   if (code.includes("auth/invalid-credential") || code.includes("auth/wrong-password")) return "Email ou password incorretos.";
-  if (code.includes("auth/user-not-found")) return "Conta nÃ£o encontrada.";
-  if (code.includes("auth/email-already-in-use")) return "Este email jÃ¡ tem conta. Usa Entrar.";
+  if (code.includes("auth/user-not-found")) return "Conta não encontrada.";
+  if (code.includes("auth/email-already-in-use")) return "Este email já tem conta. Usa Entrar.";
   if (code.includes("auth/weak-password")) return "A password tem de ter pelo menos 6 caracteres.";
   if (code.includes("auth/operation-not-allowed")) return "Ativa Email/Password no Firebase Authentication.";
   return "Erro no login. Verifica o Firebase e tenta novamente.";
 }
 
+
+const PRESENCE_COLLECTION = "presence";
+const ONLINE_WINDOW_MS = 2 * 60 * 1000;
+const PRESENCE_UPDATE_MS = 30 * 1000;
+const ONLINE_USERS_REFRESH_MS = 30 * 1000;
+
+function displayNameFromEmail(email) {
+  const value = String(email || "").trim();
+  if (!value) return "User";
+  const local = value.split("@")[0] || value;
+  return local
+    .replace(/[._-]+/g, " ")
+    .replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function deviceLabel() {
+  const ua = navigator.userAgent || "";
+  if (/iphone|ipad|ipod/i.test(ua)) return "iPhone";
+  if (/android/i.test(ua)) return "Android";
+  if (/windows/i.test(ua)) return "PC";
+  if (/macintosh|mac os/i.test(ua)) return "Mac";
+  return "Web";
+}
+
+function presenceUserId() {
+  return currentUser?.uid || "";
+}
+
+function presenceTimestampMs(value) {
+  if (!value) return 0;
+  if (typeof value?.toDate === "function") return value.toDate().getTime();
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return new Date(value).getTime();
+  return 0;
+}
+
+function timeAgoLabel(timestamp) {
+  const time = presenceTimestampMs(timestamp);
+  if (!Number.isFinite(time) || !time) return "sem registo";
+
+  const diff = Math.max(0, Date.now() - time);
+  if (diff < 15000) return "agora";
+  if (diff < 60000) return `há ${Math.floor(diff / 1000)}s`;
+  if (diff < 3600000) return `há ${Math.floor(diff / 60000)} min`;
+  if (diff < 86400000) return `há ${Math.floor(diff / 3600000)} h`;
+  return `há ${Math.floor(diff / 86400000)} d`;
+}
+
+function isOnlinePresence(user) {
+  const time = presenceTimestampMs(user?.lastActiveAt);
+  return Number.isFinite(time) && time > 0 && Date.now() - time <= ONLINE_WINDOW_MS;
+}
+
+async function updateMyPresence(forceOffline = false) {
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser?.email || !presenceUserId()) return false;
+
+  try {
+    const { doc, setDoc } = firebaseApi;
+    const nowIso = new Date().toISOString();
+
+    await setDoc(doc(db, PRESENCE_COLLECTION, presenceUserId()), {
+      uid: presenceUserId(),
+      email: normalizeEmail(currentUser.email),
+      name: currentProfile?.name || displayNameFromEmail(currentUser.email),
+      role: currentProfile?.role || "user",
+      online: !forceOffline,
+      device: deviceLabel(),
+      lastActiveAt: nowIso,
+      updatedAt: nowIso
+    }, { merge: true });
+
+    return true;
+  } catch (error) {
+    console.warn("Presença online não atualizada:", error);
+    return false;
+  }
+}
+
+function stopPresenceTracking() {
+  if (presenceIntervalId) {
+    clearInterval(presenceIntervalId);
+    presenceIntervalId = null;
+  }
+}
+
+function startPresenceTracking() {
+  stopPresenceTracking();
+
+  updateMyPresence(false).catch(error => console.warn("Presença inicial falhou:", error));
+
+  presenceIntervalId = setInterval(() => {
+    updateMyPresence(false).catch(error => console.warn("Presença periódica falhou:", error));
+  }, PRESENCE_UPDATE_MS);
+}
+
+function stopOnlineUsersRefresh() {
+  if (onlineUsersIntervalId) {
+    clearInterval(onlineUsersIntervalId);
+    onlineUsersIntervalId = null;
+  }
+}
+
+function startOnlineUsersRefresh() {
+  stopOnlineUsersRefresh();
+
+  loadOnlineUsers().catch(error => console.warn("Users online inicial falhou:", error));
+
+  onlineUsersIntervalId = setInterval(() => {
+    loadOnlineUsers().catch(error => console.warn("Users online periódico falhou:", error));
+  }, ONLINE_USERS_REFRESH_MS);
+}
+
+async function loadOnlineUsers() {
+  const list = $("onlineUsersList");
+  const badge = $("onlineUsersBadge");
+
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) {
+    if (badge) badge.textContent = "offline";
+    if (list) list.innerHTML = `${onlineUsersPopupHeader()}<div class="empty small-empty">Firebase ainda não está ligado.</div>`;
+    return;
+  }
+
+  try {
+    const { collection, getDocs } = firebaseApi;
+    const snap = await withTimeout(getDocs(collection(db, PRESENCE_COLLECTION)), 10000, "ler utilizadores online");
+
+    const profileNames = new Map();
+    try {
+      const usersSnap = await withTimeout(getDocs(collection(db, "users")), 10000, "ler nomes dos utilizadores");
+      usersSnap.docs.forEach(docSnap => {
+        const data = docSnap.data() || {};
+        const email = normalizeEmail(data.email || docSnap.id);
+        if (email && data.name) profileNames.set(email, String(data.name).trim());
+      });
+    } catch (profileError) {
+      console.warn("Nomes dos utilizadores não carregaram para o painel online:", profileError);
+    }
+
+    onlineUsersCache = snap.docs
+      .map(docSnap => {
+        const data = { id: docSnap.id, ...(docSnap.data() || {}) };
+        const email = normalizeEmail(data.email || data.id);
+        return {
+          ...data,
+          email,
+          name: profileNames.get(email) || data.name || displayNameFromEmail(email)
+        };
+      })
+      .sort((a, b) => {
+        const ao = isOnlinePresence(a) ? 0 : 1;
+        const bo = isOnlinePresence(b) ? 0 : 1;
+        if (ao !== bo) return ao - bo;
+
+        const at = presenceTimestampMs(a.lastActiveAt);
+        const bt = presenceTimestampMs(b.lastActiveAt);
+        if (bt !== at) return bt - at;
+
+        return String(a.email || "").localeCompare(String(b.email || ""), "pt");
+      });
+
+    renderOnlineUsers();
+  } catch (error) {
+    console.warn("Erro ao carregar utilizadores online:", error);
+    if (badge) badge.textContent = "sem acesso";
+    if (list) {
+      list.innerHTML = `${onlineUsersPopupHeader()}
+        <div class="empty small-empty">
+          Não foi possível carregar os utilizadores online. Confirma as regras da coleção presence no Firebase.
+        </div>`;
+    }
+  }
+}
+
+
+function onlineUsersPopupHeader() {
+  return `
+    <div class="online-users-popup-head">
+      <strong>Utilizadores online</strong>
+      <button id="closeOnlineUsersBtn" class="online-users-close" type="button" aria-label="Fechar utilizadores online" onclick="return window.closeOnlineUsersPanelNow(event)">×</button>
+    </div>`;
+}
+
+function renderOnlineUsers() {
+  const list = $("onlineUsersList");
+  const badge = $("onlineUsersBadge");
+  if (!list) return;
+
+  const onlineCount = onlineUsersCache.filter(isOnlinePresence).length;
+  if (badge) badge.textContent = `${onlineCount} online`;
+
+  if (!onlineUsersCache.length) {
+    list.innerHTML = `${onlineUsersPopupHeader()}<div class="empty small-empty">Ainda não existem utilizadores com presença registada.</div>`;
+    return;
+  }
+
+  list.innerHTML = `${onlineUsersPopupHeader()}
+    <div class="online-users-table">
+      <div class="online-users-row online-users-head">
+        <span>User</span>
+        <span>Estado</span>
+        <span>Última atividade</span>
+      </div>
+      ${onlineUsersCache.map(user => {
+        const online = isOnlinePresence(user);
+        const email = normalizeEmail(user.email || user.id);
+        const name = user.name || displayNameFromEmail(email);
+        return `
+          <div class="online-users-row ${online ? "is-online" : "is-offline"}">
+            <span class="online-user-name">
+              <strong>${escapeHtml(name)}</strong>
+              <small>${escapeHtml(user.device || "")}</small>
+            </span>
+            <span class="online-state">${online ? "Online 🟢" : "Offline ⚪"}</span>
+            <span class="online-last">${escapeHtml(timeAgoLabel(user.lastActiveAt))}</span>
+          </div>
+        `;
+      }).join("")}
+    </div>`;
+}
+
+function startOnlineFeaturesSafe() {
+  try {
+    startPresenceTracking();
+    startOnlineUsersRefresh();
+  } catch (error) {
+    console.warn("Funcionalidade users online não iniciou:", error);
+  }
+}
+
+function stopOnlineFeaturesSafe() {
+  try {
+    updateMyPresence(true).catch(error => console.warn("Marcar offline falhou:", error));
+    stopPresenceTracking();
+    stopOnlineUsersRefresh();
+  } catch (error) {
+    console.warn("Funcionalidade users online não parou:", error);
+  }
+}
+
+
+const CHAT_COLLECTION = "chatMessages";
+const CHAT_LIMIT = 150;
+
+function chatUserName() {
+  return String(currentProfile?.name || "").trim() || displayNameFromEmail(currentUser?.email || "") || currentUser?.email || "User";
+}
+
+function chatTimestampMs(value) {
+  if (!value) return 0;
+  if (typeof value?.toDate === "function") return value.toDate().getTime();
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return new Date(value).getTime();
+  return 0;
+}
+
+function chatTimeLabel(value) {
+  const time = chatTimestampMs(value);
+  if (!Number.isFinite(time) || !time) return "";
+  return new Date(time).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+}
+
+function chatDateKey(value) {
+  const time = chatTimestampMs(value);
+  if (!Number.isFinite(time) || !time) return "";
+  const date = new Date(time);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function chatDateLabel(value) {
+  const time = chatTimestampMs(value);
+  if (!Number.isFinite(time) || !time) return "";
+  const messageDate = new Date(time);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (chatDateKey(messageDate) === chatDateKey(today)) return "Hoje";
+  if (chatDateKey(messageDate) === chatDateKey(yesterday)) return "Ontem";
+  return messageDate.toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function chatMessageDateValue(message) {
+  return message?.createdAt || message?.createdAtLocal || message?.createdAtMillis || 0;
+}
+
+function chatParticipantsCount() {
+  const names = new Set();
+  (appSettings.users || []).forEach(name => {
+    const clean = String(name || "").trim();
+    if (clean) names.add(clean.toLowerCase());
+  });
+  (permissionsCache || []).forEach(profile => {
+    if (profile?.active === false) return;
+    const clean = String(profile?.name || profile?.email || profile?.id || "").trim();
+    if (clean) names.add(clean.toLowerCase());
+  });
+  if (currentProfile?.active !== false) {
+    const clean = String(currentProfile?.name || currentProfile?.email || currentUser?.email || "").trim();
+    if (clean) names.add(clean.toLowerCase());
+  }
+  return names.size || 18;
+}
+
+
+function isMobileChatPageMode() {
+  return window.matchMedia?.("(max-width: 760px)")?.matches || window.innerWidth <= 760;
+}
+
+function setChatMobilePageState(open) {
+  document.body.classList.toggle("chat-mobile-page-open", Boolean(open && isMobileChatPageMode()));
+  document.body.classList.toggle("chat-window-open", Boolean(open && !isMobileChatPageMode()));
+}
+
+function pushChatMobileHistory() {
+  if (!isMobileChatPageMode()) return;
+  if (window.location.hash === "#chat") return;
+
+  try {
+    history.pushState({ chatOpen: true }, "", "#chat");
+  } catch {}
+}
+
+function closeChatFromHistorySafe() {
+  const panel = $("chatPanel");
+  if (!panel || panel.classList.contains("hidden")) return;
+  window.closeChatPanelNow();
+}
+
+if (!window.__chatMobilePagePopBound) {
+  window.__chatMobilePagePopBound = true;
+  window.addEventListener("popstate", () => {
+    if (window.location.hash !== "#chat") closeChatFromHistorySafe();
+  });
+}
+
+function openChatPanel() {
+  const panel = $("chatPanel");
+  const input = $("chatInput");
+  if (!panel) { document.body.classList.remove("chat-fullscreen-open");
+    setChatMobilePageState(false);
+    setChatMobilePageState(false); return; }
+  panel.classList.remove("hidden");
+  setChatMobilePageState(true);
+  pushChatMobileHistory();
+  document.body.classList.add("chat-fullscreen-open");
+  renderChatTabs();
+  chatOpenedOnce = true;
+  chatLastSeenAt = Date.now();
+  localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
+  updateChatUnreadBadge();
+  chatNotifyNewMessages();
+  renderChatPinnedMessage();
+  setTimeout(() => { scrollChatToBottom(); input?.focus(); }, 50);
+}
+
+
+window.closeChatPanelNow = function closeChatPanelNow(event) {
+  try {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const panel = document.getElementById("chatPanel");
+    if (panel) panel.classList.add("hidden");
+
+    document.body.classList.remove("chat-fullscreen-open");
+
+    if (typeof closeChatActionMenu === "function") closeChatActionMenu();
+    if (typeof clearChatReply === "function") clearChatReply();
+    if (typeof updateChatTyping === "function") updateChatTyping(false);
+
+    const input = document.getElementById("chatInput");
+    if (input) input.blur();
+
+    if (window.location.hash === "#chat") {
+      try {
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+      } catch {}
+    }
+  } catch (error) {
+    console.warn("Falhou fechar chat:", error);
+    document.body.classList.remove("chat-fullscreen-open");
+  }
+
+  return false;
+};
+
+function closeChatPanel() {
+  window.closeChatPanelNow();
+  chatLastSeenAt = Date.now();
+  localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
+  updateChatUnreadBadge();
+}
+
+function scrollChatToBottom() {
+  const box = $("chatMessages");
+  if (box) box.scrollTop = box.scrollHeight;
+}
+
+function updateChatUnreadBadge() {
+  const badge = $("chatUnreadBadge");
+  if (!badge) return;
+  const panelOpen = !$("chatPanel")?.classList.contains("hidden");
+  const unread = chatMessagesCache.filter(message => {
+    if (message.uid === currentUser?.uid) return false;
+    return chatTimestampMs(message.createdAt || message.createdAtLocal) > chatLastSeenAt;
+  }).length;
+  if (panelOpen || unread <= 0) {
+    badge.classList.add("hidden");
+    badge.textContent = "0";
+  } else {
+    badge.classList.remove("hidden");
+    badge.textContent = String(Math.min(99, unread));
+  }
+  chatNotifyNewMessages();
+}
+
+
+const CHAT_SETTINGS_COLLECTION = "chatSettings";
+
+function isChatAdmin() {
+  return hasPermission("editResults") || currentProfile?.role === "admin";
+}
+
+function canDeleteChatMessage(message) {
+  return Boolean(currentUser && (message?.uid === currentUser.uid || isChatAdmin()));
+}
+
+function chatNotifyNewMessages() {
+  const panelOpen = !$("chatPanel")?.classList.contains("hidden");
+  const unread = chatMessagesCache.filter(message => {
+    if (message.uid === currentUser?.uid) return false;
+    return chatTimestampMs(message.createdAt || message.createdAtLocal) > chatLastSeenAt;
+  }).length;
+
+  const button = $("chatOpenBtn");
+  if (!button) return;
+
+  button.classList.toggle("has-chat-unread", !panelOpen && unread > 0);
+  button.title = unread > 0 ? `${unread} mensagem(ns) nova(s)` : "Chat";
+}
+
+function renderChatPinnedMessage() {
+  const box = $("chatPinnedBox");
+  if (!box) return;
+
+  if (!chatPinnedMessage?.text) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+
+  box.classList.remove("hidden");
+  box.innerHTML = `
+    <div class="chat-pinned-content">
+      <div>
+        <span>📌 Mensagem fixada</span>
+        <strong>${escapeHtml(chatPinnedMessage.name || "Admin")}</strong>
+        <p>${escapeHtml(chatPinnedMessage.text || "")}</p>
+      </div>
+      ${isChatAdmin() ? `<button id="chatUnpinBtn" class="chat-pin-action" type="button">Remover</button>` : ""}
+    </div>
+  `;
+
+  const unpin = $("chatUnpinBtn");
+  if (unpin && unpin.dataset.bound !== "1") {
+    unpin.dataset.bound = "1";
+    unpin.addEventListener("click", () => unpinChatMessage());
+  }
+}
+
+async function pinChatMessage(messageId) {
+  if (!isChatAdmin()) return toast("Só o Admin pode fixar mensagens.");
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  if (!message) return toast("Mensagem não encontrada.");
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase não está ligado.");
+
+  try {
+    const { doc, setDoc, serverTimestamp } = firebaseApi;
+    await setDoc(doc(db, CHAT_SETTINGS_COLLECTION, `pinned_${chatCurrentRoom}`), {
+      messageId,
+      text: String(message.text || ""),
+      uid: message.uid || "",
+      email: message.email || "",
+      name: message.name || displayNameFromEmail(message.email || ""),
+      pinnedBy: currentUser?.uid || "",
+      pinnedByEmail: normalizeEmail(currentUser?.email),
+      pinnedAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString(),
+      pinnedAtLocal: new Date().toISOString()
+    }, { merge: true });
+    toast("Mensagem fixada.");
+  } catch (error) {
+    console.error("Falhou fixar mensagem:", error);
+    toast("Não consegui fixar a mensagem.");
+  }
+}
+
+async function unpinChatMessage() {
+  if (!isChatAdmin()) return toast("Só o Admin pode remover a mensagem fixada.");
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase não está ligado.");
+
+  try {
+    const { doc, deleteDoc, setDoc } = firebaseApi;
+    if (typeof deleteDoc === "function") {
+      await deleteDoc(doc(db, CHAT_SETTINGS_COLLECTION, `pinned_${chatCurrentRoom}`));
+    } else {
+      await setDoc(doc(db, CHAT_SETTINGS_COLLECTION, `pinned_${chatCurrentRoom}`), { text: "", removedAt: new Date().toISOString() }, { merge: true });
+    }
+    chatPinnedMessage = null;
+    renderChatPinnedMessage();
+    toast("Mensagem fixada removida.");
+  } catch (error) {
+    console.error("Falhou remover fixada:", error);
+    toast("Não consegui remover a mensagem fixada.");
+  }
+}
+
+async function deleteChatMessage(messageId) {
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  if (!message) return toast("Mensagem nao encontrada.");
+  if (!canDeleteChatMessage(message)) return toast("So podes apagar as tuas mensagens.");
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase nao esta ligado.");
+
+  const beforeDelete = [...chatMessagesCache];
+  const collectionName = chatCollectionRef(message.room || chatCurrentRoom);
+  chatMessagesCache = chatMessagesCache.filter(item => item.id !== messageId);
+  renderChatMessages();
+  toast("Mensagem apagada.");
+
+  try {
+    const { doc, deleteDoc, updateDoc, serverTimestamp } = firebaseApi;
+    const ref = doc(db, collectionName, messageId);
+
+    if (typeof deleteDoc === "function") {
+      try {
+        await withTimeout(deleteDoc(ref), 4500, "apagar mensagem");
+        return;
+      } catch (deleteError) {
+        console.warn("Delete fisico do chat falhou, vou marcar como apagada:", deleteError);
+      }
+    }
+
+    if (typeof updateDoc === "function") {
+      await withTimeout(updateDoc(ref, {
+        deleted: true,
+        deletedAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString(),
+        deletedAtLocal: new Date().toISOString(),
+        deletedBy: currentUser?.uid || "",
+        text: "",
+        imageData: "",
+        replyTo: "",
+        replyName: "",
+        replyText: "",
+        reactions: {}
+      }), 4500, "marcar mensagem apagada");
+      return;
+    }
+
+    throw new Error("Firebase sem deleteDoc/updateDoc");
+  } catch (error) {
+    console.error("Falhou apagar mensagem:", error);
+    chatMessagesCache = beforeDelete;
+    renderChatMessages();
+    toast("Nao consegui apagar a mensagem. Confirma as regras Firebase.");
+  }
+}
+
+function closeChatActionMenu() {
+  const menu = $("chatActionMenu");
+  if (!menu) return;
+  menu.classList.add("hidden");
+  chatActionMessageId = null;
+  document.querySelectorAll(".chat-message-row.is-selected").forEach(row => row.classList.remove("is-selected"));
+}
+
+function openChatActionMenu(messageId, anchorEvent) {
+  const menu = $("chatActionMenu");
+  const pinBtn = $("chatActionPinBtn");
+  const deleteBtn = $("chatActionDeleteBtn");
+  const replyBtn = $("chatActionReplyBtn");
+  const reactionBar = $("chatReactionBar");
+  const message = chatMessagesCache.find(item => item.id === messageId);
+
+  if (!menu || !message) return;
+
+  const system = isSystemChatMessage(message);
+  const canPin = isChatAdmin() && !system;
+  const canDelete = canDeleteChatMessage(message);
+  const canReply = !system;
+  const canReact = !system;
+
+  if (!canPin && !canDelete && !canReply && !canReact) return;
+
+  chatActionMessageId = messageId;
+
+  document.querySelectorAll(".chat-message-row.is-selected").forEach(row => row.classList.remove("is-selected"));
+  document.querySelector(`[data-chat-message="${CSS.escape(messageId)}"]`)?.closest(".chat-message-row")?.classList.add("is-selected");
+
+  if (pinBtn) pinBtn.classList.toggle("hidden", !canPin);
+  if (deleteBtn) deleteBtn.classList.toggle("hidden", !canDelete);
+  if (replyBtn) replyBtn.classList.toggle("hidden", !canReply);
+  if (reactionBar) reactionBar.classList.toggle("hidden", !canReact);
+
+  const panel = $("chatPanel");
+  const panelRect = panel?.getBoundingClientRect();
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+  let x = anchorEvent?.clientX || 0;
+  let y = anchorEvent?.clientY || 0;
+
+  if ((!x || !y) && anchorEvent?.target) {
+    const rect = anchorEvent.target.getBoundingClientRect();
+    x = rect.left + rect.width / 2;
+    y = rect.top + rect.height / 2;
+  }
+
+  menu.classList.remove("hidden");
+  const menuRect = menu.getBoundingClientRect();
+  const width = menuRect.width || 260;
+  const height = menuRect.height || 90;
+
+  let left = Math.min(Math.max(10, x - width / 2), viewportWidth - width - 10);
+  let top = Math.min(Math.max(10, y - height - 12), viewportHeight - height - 10);
+
+  if (panelRect) {
+    left = Math.min(Math.max(panelRect.left + 10, left), panelRect.right - width - 10);
+    top = Math.min(Math.max(panelRect.top + 10, top), panelRect.bottom - height - 10);
+  }
+
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+}
+
+function fireChatLongPress(messageId, event) {
+  if (!messageId) return;
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  if (navigator.vibrate) {
+    try { navigator.vibrate(15); } catch {}
+  }
+  openChatActionMenu(messageId, event);
+}
+
+function setupChatMessageActions() {
+  const box = $("chatMessages");
+  const pinBtn = $("chatActionPinBtn");
+  const deleteBtn = $("chatActionDeleteBtn");
+  const replyBtn = $("chatActionReplyBtn");
+  const reactionBar = $("chatReactionBar");
+
+  if (!box || box.dataset.actionsBound === "1") return;
+
+  box.dataset.actionsBound = "1";
+
+  const clearTimer = () => {
+    if (chatLongPressTimer) {
+      clearTimeout(chatLongPressTimer);
+      chatLongPressTimer = null;
+    }
+  };
+
+  const messageIdFromEvent = event => event.target.closest?.("[data-chat-message]")?.dataset.chatMessage || "";
+
+  box.addEventListener("pointerdown", event => {
+    if (event.pointerType && event.pointerType !== "touch" && event.pointerType !== "pen") return;
+    if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+    const messageId = messageIdFromEvent(event);
+    if (!messageId) return;
+    clearTimer();
+    chatLongPressTimer = setTimeout(() => fireChatLongPress(messageId, event), 520);
+  });
+
+  box.addEventListener("pointerup", clearTimer);
+  box.addEventListener("pointerleave", clearTimer);
+  box.addEventListener("pointercancel", clearTimer);
+  box.addEventListener("scroll", clearTimer, { passive: true });
+
+  box.addEventListener("contextmenu", event => {
+    const messageId = messageIdFromEvent(event);
+    if (!messageId) return;
+    event.preventDefault();
+    openChatActionMenu(messageId, event);
+  });
+
+  replyBtn?.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const id = chatActionMessageId;
+    closeChatActionMenu();
+    if (id) setChatReply(id);
+  });
+
+  pinBtn?.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const id = chatActionMessageId;
+    closeChatActionMenu();
+    if (id) pinChatMessage(id);
+  });
+
+  deleteBtn?.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const id = chatActionMessageId;
+    closeChatActionMenu();
+    if (id) deleteChatMessage(id);
+  });
+
+  reactionBar?.addEventListener("click", event => {
+    const btn = event.target.closest?.("[data-chat-reaction]");
+    if (!btn) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const id = chatActionMessageId;
+    const emoji = btn.dataset.chatReaction;
+    closeChatActionMenu();
+    if (id && emoji) reactToChatMessage(id, emoji);
+  });
+
+  document.addEventListener("click", event => {
+    const activeMenu = $("chatActionMenu");
+    if (!activeMenu || activeMenu.classList.contains("hidden")) return;
+    if (activeMenu.contains(event.target)) return;
+    if (event.target.closest?.("[data-chat-message]")) return;
+    closeChatActionMenu();
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeChatActionMenu();
+  });
+}
+
+async function loadPinnedChatOnce() {
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) return;
+
+  try {
+    const { doc, getDoc } = firebaseApi;
+    const snap = await withTimeout(getDoc(doc(db, CHAT_SETTINGS_COLLECTION, `pinned_${chatCurrentRoom}`)), 10000, "ler mensagem fixada");
+    chatPinnedMessage = snap.exists() ? (snap.data() || null) : null;
+    renderChatPinnedMessage();
+  } catch (error) {
+    console.warn("Mensagem fixada não carregou:", error);
+  }
+}
+
+function startPinnedChatListenerSafe() {
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) return;
+  if (chatPinnedUnsubscribe) return;
+
+  try {
+    const { doc, onSnapshot } = firebaseApi;
+    if (typeof onSnapshot !== "function") {
+      loadPinnedChatOnce();
+      return;
+    }
+
+    chatPinnedUnsubscribe = onSnapshot(doc(db, CHAT_SETTINGS_COLLECTION, `pinned_${chatCurrentRoom}`), snap => {
+      chatPinnedMessage = snap.exists() ? (snap.data() || null) : null;
+      renderChatPinnedMessage();
+    }, error => {
+      console.warn("Listener da mensagem fixada falhou:", error);
+      chatPinnedUnsubscribe = null;
+      loadPinnedChatOnce();
+    });
+  } catch (error) {
+    console.warn("Listener da mensagem fixada não iniciou:", error);
+    loadPinnedChatOnce();
+  }
+}
+
+function stopPinnedChatListenerSafe() {
+  try {
+    if (typeof chatPinnedUnsubscribe === "function") chatPinnedUnsubscribe();
+  } catch (error) {
+    console.warn("Erro a parar mensagem fixada:", error);
+  }
+  chatPinnedUnsubscribe = null;
+}
+
+
+function chatRoomLabel(room = chatCurrentRoom) {
+  return room === "admin" ? "Chat Admin" : "Chat Geral";
+}
+
+function canUseChatRoom(room = chatCurrentRoom) {
+  return room !== "admin" || isChatAdmin();
+}
+
+function chatCollectionRef(room = chatCurrentRoom) {
+  return room === "admin" ? "chatAdminMessages" : CHAT_COLLECTION;
+}
+
+function chatTypingDocId(room = chatCurrentRoom) {
+  return `${room}_${currentUser?.uid || "anon"}`;
+}
+
+function chatSystemName() {
+  return "Sistema Mundial";
+}
+
+function isSystemChatMessage(message) {
+  return message?.type === "system";
+}
+
+function chatMessageMatchesSearch(message) {
+  if (message?.deleted || message?.deletedAt) return false;
+  const term = chatSearchTerm.trim().toLowerCase();
+  if (!term) return true;
+  return [
+    message.text,
+    message.name,
+    message.email,
+    message.replyName,
+    message.replyText
+  ].some(value => String(value || "").toLowerCase().includes(term));
+}
+
+function chatImageMarkup(message) {
+  if (!message.imageData) return "";
+  const src = escapeHtml(message.imageData);
+  return `
+    <button type="button" class="chat-image-button" data-chat-image-src="${src}" aria-label="Abrir imagem do chat">
+      <img class="chat-image" src="${src}" alt="Imagem enviada no chat" loading="lazy" />
+    </button>`;
+}
+
+function chatReactionsMarkup(message) {
+  const reactions = message.reactions || {};
+  const groups = {};
+  Object.values(reactions).forEach(emoji => {
+    if (!emoji) return;
+    groups[emoji] = (groups[emoji] || 0) + 1;
+  });
+  const entries = Object.entries(groups);
+  if (!entries.length) return "";
+  return `<div class="chat-reactions">${entries.map(([emoji, count]) => `<span>${escapeHtml(emoji)}${count > 1 ? ` ${count}` : ""}</span>`).join("")}</div>`;
+}
+
+function chatReplyMarkup(message) {
+  if (!message.replyTo && !message.replyText) return "";
+  return `
+    <div class="chat-reply-card">
+      <strong>${escapeHtml(message.replyName || "Mensagem")}</strong>
+      <p>${escapeHtml(message.replyText || "")}</p>
+    </div>`;
+}
+
+function chatMessageMetaMarkup(message, mine) {
+  const time = chatTimeLabel(chatMessageDateValue(message));
+  const status = message.failed ? "erro" : (message.pending ? "a enviar" : (mine ? "✓✓" : ""));
+  const statusClass = message.failed ? " failed" : (message.pending ? " pending" : "");
+  return `
+    <span class="chat-message-meta${statusClass}">
+      <span>${escapeHtml(time)}</span>
+      ${status ? `<span class="chat-message-status">${escapeHtml(status)}</span>` : ""}
+    </span>`;
+}
+
+function setChatReply(messageId) {
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  if (!message) return;
+  chatReplyTo = {
+    id: message.id,
+    name: message.name || displayNameFromEmail(message.email || "") || chatSystemName(),
+    text: String(message.text || (message.imageData ? "Imagem" : "")).slice(0, 120)
+  };
+  renderChatReplyPreview();
+  $("chatInput")?.focus();
+}
+
+function clearChatReply() {
+  chatReplyTo = null;
+  renderChatReplyPreview();
+}
+
+function renderChatReplyPreview() {
+  const box = $("chatReplyPreview");
+  if (!box) return;
+  if (!chatReplyTo) {
+    box.classList.add("hidden");
+    $("chatReplyName") && ($("chatReplyName").textContent = "");
+    $("chatReplyText") && ($("chatReplyText").textContent = "");
+    return;
+  }
+  box.classList.remove("hidden");
+  $("chatReplyName") && ($("chatReplyName").textContent = chatReplyTo.name || "");
+  $("chatReplyText") && ($("chatReplyText").textContent = chatReplyTo.text || "");
+}
+
+async function reactToChatMessage(messageId, emoji) {
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  if (!message || !currentUser) return;
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase não está ligado.");
+
+  try {
+    const { doc, updateDoc } = firebaseApi;
+    if (typeof updateDoc !== "function") return toast("Esta versão do Firebase não permite reações.");
+    const next = { ...(message.reactions || {}) };
+    if (next[currentUser.uid] === emoji) delete next[currentUser.uid];
+    else next[currentUser.uid] = emoji;
+    await updateDoc(doc(db, chatCollectionRef(message.room || chatCurrentRoom), messageId), { reactions: next });
+  } catch (error) {
+    console.error("Falhou reação:", error);
+    toast("Não consegui guardar a reação.");
+  }
+}
+
+function setChatRoom(room) {
+  if (room === "admin" && !isChatAdmin()) {
+    toast("Só Admin pode usar o chat Admin.");
+    room = "general";
+  }
+  if (chatCurrentRoom === room) return;
+  chatCurrentRoom = room;
+  localStorage.setItem("mundial_chat_room", chatCurrentRoom);
+  chatMessagesCache = [];
+  clearChatReply();
+  closeChatActionMenu();
+  stopChatListenerSafe();
+  startChatListenerSafe();
+  stopPinnedChatListenerSafe();
+  startPinnedChatListenerSafe();
+  stopChatTypingListenerSafe();
+  startChatTypingListenerSafe();
+  renderChatTabs();
+  renderChatMessages();
+}
+
+function renderChatTabs() {
+  $("chatGeneralTab")?.classList.toggle("active", chatCurrentRoom === "general");
+  $("chatAdminTab")?.classList.toggle("active", chatCurrentRoom === "admin");
+  $("chatAdminTab")?.classList.toggle("hidden", !isChatAdmin());
+  const subtitle = $("chatSubtitle");
+  if (subtitle) {
+    subtitle.textContent = chatCurrentRoom === "admin"
+      ? "Conversa privada dos admins"
+      : `Grupo geral - ${chatParticipantsCount()} participantes`;
+  }
+}
+
+async function sendSystemChatMessage(text, room = "general") {
+  if (!db || !firebaseApi || storageMode !== "firebase") return;
+  if (room === "admin" && !isChatAdmin()) return;
+  try {
+    const { collection, addDoc, serverTimestamp } = firebaseApi;
+    await addDoc(collection(db, chatCollectionRef(room)), {
+      uid: "system",
+      email: "",
+      name: chatSystemName(),
+      text: String(text || "").slice(0, 500),
+      type: "system",
+      room,
+      createdAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString(),
+      createdAtLocal: new Date().toISOString()
+    });
+  } catch (error) {
+    console.warn("Mensagem automática não enviada:", error);
+  }
+}
+
+function playChatNotification(message) {
+  if (!message || message.uid === currentUser?.uid || isSystemChatMessage(message)) return;
+  if (message.id === chatLastNotifiedId) return;
+  chatLastNotifiedId = message.id;
+  localStorage.setItem("mundial_chat_last_notified_id", message.id || "");
+
+  if (navigator.vibrate) {
+    try { navigator.vibrate(25); } catch {}
+  }
+
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 660;
+    gain.gain.value = 0.035;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    setTimeout(() => {
+      osc.stop();
+      audioCtx.close?.();
+    }, 90);
+  } catch {}
+}
+
+function renderTypingBox(names = []) {
+  const box = $("chatTypingBox");
+  if (!box) return;
+  const clean = names.filter(Boolean).slice(0, 3);
+  if (!clean.length) {
+    box.classList.add("hidden");
+    box.textContent = "";
+    return;
+  }
+  box.classList.remove("hidden");
+  box.textContent = clean.length === 1 ? `${clean[0]} está a escrever...` : `${clean.join(", ")} estão a escrever...`;
+}
+
+async function updateChatTyping(isTyping) {
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) return;
+  try {
+    const { doc, setDoc } = firebaseApi;
+    await setDoc(doc(db, "chatTyping", chatTypingDocId()), {
+      uid: currentUser.uid,
+      email: normalizeEmail(currentUser.email),
+      name: chatUserName(),
+      room: chatCurrentRoom,
+      typing: Boolean(isTyping),
+      updatedAt: Date.now()
+    }, { merge: true });
+  } catch (error) {
+    console.warn("Typing não atualizado:", error);
+  }
+}
+
+function startChatTypingListenerSafe() {
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) return;
+  if (chatTypingUnsubscribe) return;
+  try {
+    const { collection, query, onSnapshot } = firebaseApi;
+    if (typeof onSnapshot !== "function") return;
+    const q = query(collection(db, "chatTyping"));
+    chatTypingUnsubscribe = onSnapshot(q, snap => {
+      const now = Date.now();
+      const names = snap.docs
+        .map(docSnap => docSnap.data() || {})
+        .filter(item => item.room === chatCurrentRoom && item.typing && item.uid !== currentUser.uid && now - Number(item.updatedAt || 0) < 5000)
+        .map(item => item.name || displayNameFromEmail(item.email || ""));
+      renderTypingBox(names);
+    }, error => {
+      console.warn("Typing listener falhou:", error);
+      chatTypingUnsubscribe = null;
+    });
+  } catch (error) {
+    console.warn("Typing listener não iniciou:", error);
+  }
+}
+
+function stopChatTypingListenerSafe() {
+  try {
+    if (typeof chatTypingUnsubscribe === "function") chatTypingUnsubscribe();
+  } catch {}
+  chatTypingUnsubscribe = null;
+  renderTypingBox([]);
+}
+
+
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Falha a ler imagem"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImageElement(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Falha a carregar imagem"));
+    img.src = src;
+  });
+}
+
+async function compressChatImage(file) {
+  const originalDataUrl = await readFileAsDataURL(file);
+  const img = await loadImageElement(originalDataUrl);
+
+  let width = img.naturalWidth || img.width || 0;
+  let height = img.naturalHeight || img.height || 0;
+
+  if (!width || !height) return originalDataUrl;
+
+  const maxSide = 1600;
+  const scale = Math.min(1, maxSide / Math.max(width, height));
+  width = Math.max(1, Math.round(width * scale));
+  height = Math.max(1, Math.round(height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d", { alpha: false });
+  if (!ctx) return originalDataUrl;
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(img, 0, 0, width, height);
+
+  const maxLength = 650000; // margem segura para Firestore
+  let quality = 0.88;
+  let result = canvas.toDataURL("image/jpeg", quality);
+
+  while (result.length > maxLength && quality > 0.45) {
+    quality -= 0.08;
+    result = canvas.toDataURL("image/jpeg", quality);
+  }
+
+  while (result.length > maxLength && width > 700 && height > 700) {
+    width = Math.round(width * 0.85);
+    height = Math.round(height * 0.85);
+    canvas.width = width;
+    canvas.height = height;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(img, 0, 0, width, height);
+    quality = Math.max(0.62, quality);
+    result = canvas.toDataURL("image/jpeg", quality);
+  }
+
+  if (result.length > maxLength) {
+    throw new Error("Imagem demasiado grande para o chat");
+  }
+
+  return result;
+}
+
+async function sendChatImage(file) {
+  if (!file) return;
+  if (!file.type?.startsWith("image/")) return toast("Escolhe uma imagem.");
+  if (file.size > 8 * 1024 * 1024) return toast("Imagem demasiado grande. Usa uma imagem até 8 MB.");
+
+  try {
+    toast("A preparar imagem...");
+    const data = await compressChatImage(file);
+    await sendChatMessage("", data);
+  } catch (error) {
+    console.error("Falhou enviar imagem do chat:", error);
+    toast("Não consegui enviar a imagem.");
+  }
+}
+
+function renderChatMessages() {
+  const box = $("chatMessages");
+  if (!box) return;
+  renderChatTabs();
+
+  if (!currentUser) {
+    box.innerHTML = `<div class="empty small-empty">Faz login para usar o chat.</div>`;
+    return;
+  }
+
+  const visibleMessages = chatMessagesCache.filter(chatMessageMatchesSearch);
+
+  if (!visibleMessages.length) {
+    box.innerHTML = `<div class="empty small-empty">${chatSearchTerm ? "Nenhuma mensagem encontrada." : "Ainda não há mensagens. Escreve a primeira 🙂"}</div>`;
+    updateChatUnreadBadge();
+    chatNotifyNewMessages();
+    renderChatPinnedMessage();
+    return;
+  }
+
+  const stick = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
+
+  let lastDateKey = "";
+
+  box.innerHTML = visibleMessages.map(message => {
+    const mine = message.uid === currentUser?.uid;
+    const system = isSystemChatMessage(message);
+    const name = message.name || displayNameFromEmail(message.email || "");
+    const dateValue = chatMessageDateValue(message);
+    const currentDateKey = chatDateKey(dateValue);
+    const dateSeparator = currentDateKey && currentDateKey !== lastDateKey
+      ? `<div class="chat-date-separator"><span>${escapeHtml(chatDateLabel(dateValue))}</span></div>`
+      : "";
+    if (currentDateKey) lastDateKey = currentDateKey;
+
+    if (system) {
+      return `${dateSeparator}
+        <div class="chat-message-row system" data-chat-message="${escapeHtml(message.id)}">
+          <div class="chat-bubble system-bubble" data-chat-message="${escapeHtml(message.id)}">
+            <p>${escapeHtml(String(message.text || ""))}</p>
+            ${chatMessageMetaMarkup(message, false)}
+          </div>
+        </div>`;
+    }
+
+    return `${dateSeparator}
+      <div class="chat-message-row ${mine ? "mine" : "theirs"} ${message.pending ? "is-pending" : ""} ${message.failed ? "is-failed" : ""}" data-chat-message="${escapeHtml(message.id)}">
+        <div class="chat-bubble" data-chat-message="${escapeHtml(message.id)}">
+          ${mine ? "" : `<strong>${escapeHtml(name)}</strong>`}
+          ${chatReplyMarkup(message)}
+          ${message.text ? `<p>${escapeHtml(String(message.text || ""))}</p>` : ""}
+          ${chatImageMarkup(message)}
+          ${chatMessageMetaMarkup(message, mine)}
+          ${chatReactionsMarkup(message)}
+        </div>
+      </div>`;
+  }).join("");
+
+  setupChatMessageActions();
+  setupChatCloseButtonSafe();
+
+  if (stick || !chatOpenedOnce) scrollChatToBottom();
+  updateChatUnreadBadge();
+  chatNotifyNewMessages();
+  renderChatPinnedMessage();
+}
+
+async function loadChatMessagesOnce() {
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) return;
+  if (!canUseChatRoom()) return;
+
+  try {
+    const { collection, getDocs, query, orderBy, limit, limitToLast } = firebaseApi;
+    const limiter = typeof limitToLast === "function" ? limitToLast : limit;
+    const q = query(collection(db, chatCollectionRef()), orderBy("createdAt", "asc"), limiter(CHAT_LIMIT));
+    const snap = await withTimeout(getDocs(q), 10000, "ler chat");
+    chatMessagesCache = snap.docs.map(docSnap => ({ id: docSnap.id, room: chatCurrentRoom, ...(docSnap.data() || {}) }));
+    renderChatMessages();
+  } catch (error) {
+    console.warn("Chat não carregou:", error);
+    const box = $("chatMessages");
+    if (box) box.innerHTML = `<div class="empty small-empty">Não foi possível carregar o chat. Confirma as regras Firebase.</div>`;
+  }
+}
+
+function startChatListenerSafe() {
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) return;
+  if (!canUseChatRoom()) return;
+  if (chatUnsubscribe) return;
+
+  try {
+    const { collection, query, orderBy, limit, limitToLast, onSnapshot } = firebaseApi;
+    if (typeof onSnapshot !== "function") {
+      loadChatMessagesOnce();
+      return;
+    }
+
+    const limiter = typeof limitToLast === "function" ? limitToLast : limit;
+    const q = query(collection(db, chatCollectionRef()), orderBy("createdAt", "asc"), limiter(CHAT_LIMIT));
+    chatUnsubscribe = onSnapshot(q, snap => {
+      const previousLast = chatMessagesCache.at?.(-1)?.id || "";
+      chatMessagesCache = snap.docs.map(docSnap => ({ id: docSnap.id, room: chatCurrentRoom, ...(docSnap.data() || {}) }));
+      renderChatMessages();
+      const latest = chatMessagesCache.at?.(-1);
+      const panelOpen = !$("chatPanel")?.classList.contains("hidden");
+      if (latest && latest.id !== previousLast && !panelOpen) playChatNotification(latest);
+    }, error => {
+      console.warn("Chat em tempo real falhou:", error);
+      chatUnsubscribe = null;
+      loadChatMessagesOnce();
+    });
+  } catch (error) {
+    console.warn("Listener do chat não iniciou:", error);
+    loadChatMessagesOnce();
+  }
+}
+
+function stopChatListenerSafe() {
+  try { if (typeof chatUnsubscribe === "function") chatUnsubscribe(); } catch (error) { console.warn("Erro a parar chat:", error); }
+  chatUnsubscribe = null;
+}
+
+async function sendChatMessage(text, imageData = "") {
+  const clean = String(text || "").trim();
+  const image = String(imageData || "");
+  if (!clean && !image) return;
+  if (!currentUser) return toast("Faz login para escrever no chat.");
+  if (!canUseChatRoom()) return toast("Nao tens acesso a este chat.");
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase nao esta ligado.");
+
+  const now = Date.now();
+  const optimisticId = `local_${now}_${Math.random().toString(36).slice(2)}`;
+  const baseMessage = {
+    uid: currentUser.uid,
+    email: normalizeEmail(currentUser.email),
+    name: chatUserName(),
+    text: clean.slice(0, 500),
+    imageData: image,
+    replyTo: chatReplyTo?.id || "",
+    replyName: chatReplyTo?.name || "",
+    replyText: chatReplyTo?.text || "",
+    reactions: {},
+    room: chatCurrentRoom,
+    createdAtLocal: new Date(now).toISOString(),
+    createdAtMillis: now
+  };
+
+  chatMessagesCache = [...chatMessagesCache, { id: optimisticId, pending: true, ...baseMessage }].slice(-CHAT_LIMIT);
+  clearChatReply();
+  renderChatMessages();
+  setTimeout(scrollChatToBottom, 20);
+
+  try {
+    const { collection, addDoc, serverTimestamp } = firebaseApi;
+    await addDoc(collection(db, chatCollectionRef()), {
+      ...baseMessage,
+      createdAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString()
+    });
+    chatMessagesCache = chatMessagesCache.filter(message => message.id !== optimisticId);
+    renderChatMessages();
+    updateChatTyping(false);
+  } catch (error) {
+    console.error("Falhou enviar mensagem:", error);
+    chatMessagesCache = chatMessagesCache.map(message => (
+      message.id === optimisticId ? { ...message, pending: false, failed: true } : message
+    ));
+    renderChatMessages();
+    toast("Nao consegui enviar a mensagem.");
+  }
+}
+
+function setupChatCloseButtonSafe() {
+  const closeBtn = $("chatCloseBtn");
+  if (!closeBtn || closeBtn.dataset.closeFixBound === "1") return;
+
+  closeBtn.dataset.closeFixBound = "1";
+  closeBtn.addEventListener("click", event => window.closeChatPanelNow(event));
+  closeBtn.addEventListener("pointerup", event => window.closeChatPanelNow(event));
+  closeBtn.addEventListener("touchend", event => window.closeChatPanelNow(event), { passive: false });
+}
+
+function setupChatUi() {
+  const openBtn = $("chatOpenBtn");
+  const closeBtn = $("chatCloseBtn");
+  const form = $("chatForm");
+  const input = $("chatInput");
+  const imageBtn = $("chatImageBtn");
+  const imageInput = $("chatImageInput");
+  const replyCancel = $("chatReplyCancelBtn");
+  const searchInput = $("chatSearchInput");
+  const generalTab = $("chatGeneralTab");
+  const adminTab = $("chatAdminTab");
+
+  setupChatMessageActions();
+  renderChatTabs();
+
+  if (openBtn && openBtn.dataset.bound !== "1") {
+    openBtn.dataset.bound = "1";
+    openBtn.addEventListener("click", () => openChatPanel());
+  }
+
+  if (closeBtn && closeBtn.dataset.bound !== "1") {
+    closeBtn.dataset.bound = "1";
+    closeBtn.addEventListener("click", () => closeChatPanel());
+  }
+
+  if (generalTab && generalTab.dataset.bound !== "1") {
+    generalTab.dataset.bound = "1";
+    generalTab.addEventListener("click", () => setChatRoom("general"));
+  }
+
+  if (adminTab && adminTab.dataset.bound !== "1") {
+    adminTab.dataset.bound = "1";
+    adminTab.addEventListener("click", () => setChatRoom("admin"));
+  }
+
+  if (replyCancel && replyCancel.dataset.bound !== "1") {
+    replyCancel.dataset.bound = "1";
+    replyCancel.addEventListener("click", clearChatReply);
+  }
+
+  if (searchInput && searchInput.dataset.bound !== "1") {
+    searchInput.dataset.bound = "1";
+    searchInput.addEventListener("input", () => {
+      chatSearchTerm = searchInput.value || "";
+      renderChatMessages();
+    });
+  }
+
+  if (imageBtn && imageBtn.dataset.bound !== "1") {
+    imageBtn.dataset.bound = "1";
+    imageBtn.addEventListener("click", () => imageInput?.click());
+  }
+
+  if (imageInput && imageInput.dataset.bound !== "1") {
+    imageInput.dataset.bound = "1";
+    imageInput.addEventListener("change", async () => {
+      const file = imageInput.files?.[0];
+      imageInput.value = "";
+      await sendChatImage(file);
+    });
+  }
+
+  if (input && input.dataset.typingBound !== "1") {
+    input.dataset.typingBound = "1";
+    input.addEventListener("input", () => {
+      updateChatTyping(true);
+      if (chatTypingTimer) clearTimeout(chatTypingTimer);
+      chatTypingTimer = setTimeout(() => updateChatTyping(false), 2500);
+    });
+  }
+
+  if (form && form.dataset.bound !== "1") {
+    form.dataset.bound = "1";
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const text = input?.value || "";
+      if (input) input.value = "";
+      await sendChatMessage(text);
+      setTimeout(scrollChatToBottom, 80);
+    });
+  }
+}
+
+function startChatSafe() {
+  try {
+    setupChatUi();
+    startChatListenerSafe();
+    startPinnedChatListenerSafe();
+    startChatTypingListenerSafe();
+  } catch (error) {
+    console.warn("Chat não iniciou:", error);
+  }
+}
+
+function stopChatSafe() {
+  closeChatPanel();
+  stopChatListenerSafe();
+  stopPinnedChatListenerSafe();
+  stopChatTypingListenerSafe();
+}
+
 function setupAuthGate() {
   if (!firebaseAuthApi || !firebaseAuth) {
     showLoginScreen();
-    setLoginStatus("Firebase Auth nÃ£o estÃ¡ configurado.", "error");
+    setLoginStatus("Firebase Auth não está configurado.", "error");
     return;
   }
 
@@ -1569,13 +3058,15 @@ function setupAuthGate() {
 
     if (!user) {
       currentProfile = null;
+      stopOnlineFeaturesSafe();
+      stopChatSafe();
       showLoginScreen();
       updateSessionBox();
       return;
     }
 
     try {
-      setLoginStatus("A carregar permissÃµes...", "loading");
+      setLoginStatus("A carregar permissões...", "loading");
       currentProfile = await readUserProfile(user);
 
       if (!currentProfile.active) {
@@ -1590,9 +3081,11 @@ function setupAuthGate() {
       await loadData();
       applyPermissionsToUi();
       setLoginStatus("Login efetuado.", "success");
+      startChatSafe();
+      startOnlineFeaturesSafe();
     } catch (error) {
       console.error("Erro no arranque com login:", error);
-      setLoginStatus("Erro ao carregar permissÃµes.", "error");
+      setLoginStatus("Erro ao carregar permissões.", "error");
       showLoginScreen();
     }
   });
@@ -1601,7 +3094,7 @@ function setupAuthGate() {
 async function logout() {
   if (!firebaseAuthApi || !firebaseAuth) return;
   await firebaseAuthApi.signOut(firebaseAuth);
-  toast("SessÃ£o terminada.");
+  toast("Sessão terminada.");
 }
 
 const KNOCKOUT_ROUNDS = [
@@ -1614,17 +3107,17 @@ const KNOCKOUT_ROUNDS = [
 
 const KNOCKOUT_LAYOUT_KEYS = [
   ["r32_left", "Segunda fase esquerda"],
-  ["r16_left", "Oitavas esquerda"],
-  ["r16_left_pair_1", "Oitavas esquerda 1-2"],
-  ["r16_left_pair_2", "Oitavas esquerda 3-4"],
-  ["qf_left", "Quartas esquerda"],
-  ["sf_left", "Semifinal esquerda"],
+  ["r16_left", "Oitavos esquerda"],
+  ["r16_left_pair_1", "Oitavos esquerda 1-2"],
+  ["r16_left_pair_2", "Oitavos esquerda 3-4"],
+  ["qf_left", "Quartos esquerda"],
+  ["sf_left", "Meia-final esquerda"],
   ["center", "Final"],
-  ["sf_right", "Semifinal direita"],
-  ["qf_right", "Quartas direita"],
-  ["r16_right", "Oitavas direita"],
-  ["r16_right_pair_1", "Oitavas direita 5-6"],
-  ["r16_right_pair_2", "Oitavas direita 7-8"],
+  ["sf_right", "Meia-final direita"],
+  ["qf_right", "Quartos direita"],
+  ["r16_right", "Oitavos direita"],
+  ["r16_right_pair_1", "Oitavos direita 5-6"],
+  ["r16_right_pair_2", "Oitavos direita 7-8"],
   ["r32_right", "Segunda fase direita"]
 ];
 
@@ -1717,6 +3210,40 @@ function knockoutAvailable() {
   return groupStageFinished() || Boolean(appSettings.knockout?.adminUnlocked);
 }
 
+
+function isFirstKnockoutRound(match) {
+  return match?.round === "r32";
+}
+
+function resetAutoKnockoutTeams() {
+  if (!appSettings.knockout || !Array.isArray(appSettings.knockout.matches)) return;
+
+  appSettings.knockout.matches.forEach(match => {
+    if (!isFirstKnockoutRound(match)) {
+      match.homeTeam = "";
+      match.awayTeam = "";
+    }
+  });
+}
+
+function clearInvalidAutoKnockoutScores(previousTeams) {
+  if (!appSettings.knockout || !Array.isArray(appSettings.knockout.matches)) return;
+
+  appSettings.knockout.matches.forEach(match => {
+    if (isFirstKnockoutRound(match)) return;
+
+    const oldTeams = previousTeams.get(match.id) || "|";
+    const newTeams = `${match.homeTeam || ""}|${match.awayTeam || ""}`;
+
+    if (oldTeams !== newTeams) {
+      match.homeScore = null;
+      match.awayScore = null;
+      match.homePenalties = null;
+      match.awayPenalties = null;
+    }
+  });
+}
+
 function knockoutWinner(match) {
   if (!match || !match.homeTeam || !match.awayTeam) return "";
   if (match.homeScore === null || match.homeScore === undefined || match.homeScore === "" || match.awayScore === null || match.awayScore === undefined || match.awayScore === "") return "";
@@ -1728,15 +3255,17 @@ function knockoutWinner(match) {
   if (home > away) return match.homeTeam;
   if (away > home) return match.awayTeam;
 
-  const homePen = match.homePenalties;
-  const awayPen = match.awayPenalties;
-  if (homePen === null || homePen === undefined || homePen === "" || awayPen === null || awayPen === undefined || awayPen === "") return "";
+  const hp = match.homePenalties;
+  const ap = match.awayPenalties;
 
-  const hp = Number(homePen);
-  const ap = Number(awayPen);
-  if (!Number.isFinite(hp) || !Number.isFinite(ap) || hp === ap) return "";
+  if (hp === null || hp === undefined || hp === "" || ap === null || ap === undefined || ap === "") return "";
 
-  return hp > ap ? match.homeTeam : match.awayTeam;
+  const homePens = Number(hp);
+  const awayPens = Number(ap);
+
+  if (!Number.isFinite(homePens) || !Number.isFinite(awayPens) || homePens === awayPens) return "";
+
+  return homePens > awayPens ? match.homeTeam : match.awayTeam;
 }
 
 function clearAutoKnockoutSlots() {
@@ -1755,46 +3284,36 @@ function propagateKnockoutWinners(shouldSave = true) {
   const matches = appSettings.knockout.matches;
   const previousTeams = new Map(matches.map(match => [match.id, `${match.homeTeam || ""}|${match.awayTeam || ""}`]));
 
-  clearAutoKnockoutSlots();
-
-  KNOCKOUT_ROUNDS.forEach(round => {
-    matches
-      .filter(match => match.round === round.key)
-      .forEach(match => {
-        const winner = knockoutWinner(match);
-        if (!winner || !match.nextMatchId || !match.nextSlot) return;
-        const next = matches.find(item => item.id === match.nextMatchId);
-        if (next) next[match.nextSlot] = winner;
-      });
-  });
+  resetAutoKnockoutTeams();
 
   matches.forEach(match => {
-    if (isManualKnockoutRound(match)) return;
-    const oldTeams = previousTeams.get(match.id) || "|";
-    const newTeams = `${match.homeTeam || ""}|${match.awayTeam || ""}`;
-    if (oldTeams !== newTeams) {
-      match.homeScore = null;
-      match.awayScore = null;
-      match.homePenalties = null;
-      match.awayPenalties = null;
-    }
+    const winner = knockoutWinner(match);
+    if (!winner || !match.nextMatchId || !match.nextSlot) return;
+
+    const next = matches.find(item => item.id === match.nextMatchId);
+    if (!next) return;
+
+    next[match.nextSlot] = winner;
   });
 
+  clearInvalidAutoKnockoutScores(previousTeams);
+
   if (shouldSave) {
-    saveLocalData("fase final propagada");
-    persistSettings();
+    markSettingsPending();
+    saveLocalData("fase final propagada automaticamente");
+    scheduleFullSync("fase final propagada", 300);
   }
 }
 
 function knockoutEntryButtonHtml() {
   const available = knockoutAvailable();
   const missing = games.filter(game => !hasResult(game)).length;
-  const text = available ? "Abrir Fase Final" : `Fase Final bloqueada Â· faltam ${missing} resultado(s)`;
+  const text = available ? "Abrir Fase Final" : `Fase Final bloqueada · faltam ${missing} resultado(s)`;
   return `
     <div class="knockout-entry-card ${available ? "available" : "locked"}">
       <div>
         <strong>Fase Final</strong>
-        <span>${available ? "EliminatÃ³rias disponÃ­veis." : "SÃ³ abre quando todos os jogos dos grupos tiverem resultado. O Admin pode ativar para trabalhar."}</span>
+        <span>${available ? "Eliminatórias disponíveis." : "Só abre quando todos os jogos dos grupos tiverem resultado. O Admin pode ativar para trabalhar."}</span>
       </div>
       <button id="openKnockoutFromCalendarBtn" class="${available ? "primary" : "secondary"}" type="button" ${available ? "" : "disabled"}>${escapeHtml(text)}</button>
     </div>`;
@@ -1814,6 +3333,101 @@ function openKnockoutPage() {
   renderKnockout();
 }
 
+
+function toggleKnockoutLayoutControlsFromTop() {
+  const candidates = [
+    $("knockoutLayoutPanel"),
+    $("knockoutLayoutControls"),
+    $("knockoutAdjustPanel"),
+    document.querySelector(".knockout-layout-panel"),
+    document.querySelector(".ko-layout-panel"),
+    document.querySelector(".knockout-adjust-panel"),
+    document.querySelector("[data-knockout-layout-panel]")
+  ].filter(Boolean);
+
+  if (!candidates.length) {
+    const adminTabButton = document.querySelector('[data-tab="adminTab"]');
+    if (adminTabButton) {
+      toast("Os ajustes dos cards estão no Admin.");
+      adminTabButton.click();
+      setTimeout(() => {
+        document.querySelector("#knockoutAdminPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 150);
+    } else {
+      toast("Painel de ajustes não encontrado.");
+    }
+    return;
+  }
+
+  candidates.forEach(panel => {
+    panel.classList.toggle("hidden");
+    panel.classList.toggle("force-open");
+    if (!panel.classList.contains("hidden")) {
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+}
+
+
+
+window.closeOnlineUsersPanelNow = function closeOnlineUsersPanelNow(event) {
+  try {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const panel = document.getElementById("onlineUsersPanel");
+    if (panel) {
+      panel.open = false;
+      panel.removeAttribute("open");
+    }
+  } catch (error) {
+    console.warn("Falhou fechar Users Online:", error);
+  }
+
+  return false;
+};
+
+function closeOnlineUsersPanel() {
+  window.closeOnlineUsersPanelNow();
+}
+
+function setupOnlineUsersCloseControls() {
+  if (!window.__onlineUsersOutsideCloseBound) {
+    window.__onlineUsersOutsideCloseBound = true;
+
+    document.addEventListener("click", event => {
+      const closeButton = event.target.closest?.("#closeOnlineUsersBtn, .online-users-close");
+      if (closeButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeOnlineUsersPanel();
+        return;
+      }
+
+      const activePanel = $("onlineUsersPanel");
+      if (!activePanel || !activePanel.open) return;
+      if (activePanel.contains(event.target)) return;
+      activePanel.open = false;
+    }, false);
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") closeOnlineUsersPanel();
+    });
+  }
+}
+
+function setupKnockoutAdjustTopButton() {
+  const button = $("openKnockoutLayoutBtn");
+  if (!button || button.dataset.bound === "1") return;
+
+  button.dataset.bound = "1";
+  button.addEventListener("click", () => {
+    toggleKnockoutLayoutControlsFromTop();
+  });
+}
+
 function renderKnockout() {
   ensureKnockoutSettings();
   const notice = $("knockoutLockNotice");
@@ -1822,7 +3436,7 @@ function renderKnockout() {
 
   if (!knockoutAvailable()) {
     const missing = games.filter(game => !hasResult(game)).length;
-    if (notice) notice.innerHTML = `<strong>Fase Final bloqueada</strong><span>Faltam ${missing} resultado(s) da fase de grupos. O Admin pode ativar esta pÃ¡gina para trabalhar.</span>`;
+    if (notice) notice.innerHTML = `<strong>Fase Final bloqueada</strong><span>Faltam ${missing} resultado(s) da fase de grupos. O Admin pode ativar esta página para trabalhar.</span>`;
     container.innerHTML = "";
     return;
   }
@@ -1835,8 +3449,8 @@ function renderKnockout() {
   if (notice) notice.innerHTML = "";
   if (false && notice) {
     notice.innerHTML = appSettings.knockout?.adminUnlocked && !groupStageFinished()
-      ? `<strong>Modo Admin ativo</strong><span>A Fase Final estÃ¡ desbloqueada para preparaÃ§Ã£o, mesmo antes de todos os grupos acabarem.</span>`
-      : `<strong>Fase Final ativa</strong><span>Tu defines a primeira ronda; depois os vencedores passam automaticamente atÃ© Ã  final.</span>`;
+      ? `<strong>Modo Admin ativo</strong><span>A Fase Final está desbloqueada para preparação, mesmo antes de todos os grupos acabarem.</span>`
+      : `<strong>Fase Final ativa</strong><span>Tu defines a primeira ronda; depois os vencedores passam automaticamente até à final.</span>`;
   }
 
   container.innerHTML = `
@@ -1860,13 +3474,15 @@ function renderKnockout() {
         }).join("")}
 
         <section class="bracket-champion-card ${champion ? "has-champion" : ""}">
-          <span>CampeÃ£o</span>
+          <span>Campeão</span>
           <strong>${escapeHtml(champion || "Por decidir")}</strong>
         </section>
       </div>
     </div>`;
 
   container.innerHTML = renderKnockoutPhotoLayout(finalMatch, champion, thirdPlaceTeams);
+  applyKnockoutLayoutFromSettings();
+  requestAnimationFrame(applyKnockoutLayoutFromSettings);
 }
 
 function renderKnockoutPhotoLayout(finalMatch, champion, thirdPlaceTeams) {
@@ -1905,9 +3521,9 @@ function buildKnockoutPhotoColumns() {
   const byRound = key => knockoutMatches().filter(match => match.round === key);
   const labels = {
     r32: "Segunda fase",
-    r16: "Oitavas de final",
-    qf: "Quartas de final",
-    sf: "Semifinal"
+    r16: "Oitavos de final",
+    qf: "Quartos de final",
+    sf: "Meia-final"
   };
   const split = key => {
     const list = byRound(key);
@@ -1956,7 +3572,7 @@ function renderKnockoutCenter(finalMatch, champion, thirdPlaceTeams) {
     <section class="bracket-center-column" data-ko-layout="center" style="--ko-column-offset:${knockoutLayoutValue("center")}px">
       <div class="bracket-final-badge ${champion ? "has-champion" : ""}">
         <span>FINAL</span>
-        <strong>${escapeHtml(champion || "Campeao")}</strong>
+        <strong>${escapeHtml(champion || "Campeão")}</strong>
       </div>
       <div class="bracket-center-final">
         ${finalMatch ? renderKnockoutMatch(finalMatch) : ""}
@@ -1971,7 +3587,7 @@ function renderKnockoutMatch(match, layoutKey = "") {
   const hasScore = match.homeScore !== null && match.homeScore !== undefined && match.homeScore !== "" && match.awayScore !== null && match.awayScore !== undefined && match.awayScore !== "";
   const isDraw = hasScore && Number(match.homeScore) === Number(match.awayScore);
   const hasPens = match.homePenalties !== null && match.homePenalties !== undefined && match.homePenalties !== "" && match.awayPenalties !== null && match.awayPenalties !== undefined && match.awayPenalties !== "";
-  const lockedText = waiting ? "" : winner ? "Vencedor" : isDraw ? "Faltam penÃ¡ltis" : "Por decidir";
+  const lockedText = waiting ? "" : winner ? "Vencedor" : isDraw ? "Faltam penáltis" : "Por decidir";
 
   return `
     <article class="knockout-match ${winner ? "has-winner" : ""} ${waiting ? "waiting" : ""}" ${layoutKey ? `data-ko-layout="${escapeHtml(layoutKey)}" style="--ko-match-offset:${knockoutLayoutValue(layoutKey)}px"` : ""}>
@@ -1989,7 +3605,7 @@ function renderKnockoutMatch(match, layoutKey = "") {
 
       ${(isDraw || hasPens) ? `
         <div class="ko-penalties-line">
-          <span>PenÃ¡ltis</span>
+          <span>Penáltis</span>
           <strong>${hasPens ? `${match.homePenalties}-${match.awayPenalties}` : "por preencher"}</strong>
         </div>
       ` : ""}
@@ -2006,12 +3622,12 @@ function renderKnockoutLayoutControls() {
     <div class="ko-layout-editor">
       <div class="ko-layout-head">
         <div>
-          <strong>PosiÃ§Ã£o dos cards</strong>
+          <strong>Posição dos cards</strong>
           <span>Ajusta para cima/baixo cada coluna da Fase Final.</span>
         </div>
         <div class="ko-layout-actions">
           <button class="secondary small" type="button" data-ko-layout-reset>Repor</button>
-          <button class="primary small" type="button" data-ko-layout-save>Guardar posiÃ§Ãµes</button>
+          <button class="primary small" type="button" data-ko-layout-save>Guardar posições</button>
         </div>
       </div>
       <div class="ko-layout-grid">
@@ -2043,23 +3659,24 @@ function renderKnockoutAdmin() {
 
   panel.innerHTML = `
     <div class="ko-admin-note">
-      <strong>Regra da Fase Final:</strong> sÃ³ defines manualmente os jogos dos <strong>16 avos</strong>.
-      As rondas seguintes sÃ£o automÃ¡ticas. Se o jogo acabar empatado, preenche os <strong>penÃ¡ltis</strong> para definir quem passa.
+      <strong>Regra da Fase Final:</strong> define manualmente as equipas dos <strong>16 avos</strong>.
+      Depois, os vencedores passam automaticamente para os oitavos, quartos, meias, final e campeão.
     </div>
-    ${renderKnockoutLayoutControls()}
     <div class="ko-admin-list">
       ${knockoutMatches().map(match => {
-        const manualRound = isManualKnockoutRound(match);
-        const homeControl = manualRound
+        const firstRound = isFirstKnockoutRound(match);
+        const canScore = Boolean(match.homeTeam && match.awayTeam);
+
+        const homeControl = firstRound
           ? `<select class="ko-home-team">${teamOptions(match.homeTeam)}</select>`
           : `<input class="ko-readonly-team" type="text" value="${escapeHtml(match.homeTeam || "A definir automaticamente")}" disabled />`;
-        const awayControl = manualRound
+
+        const awayControl = firstRound
           ? `<select class="ko-away-team">${teamOptions(match.awayTeam)}</select>`
           : `<input class="ko-readonly-team" type="text" value="${escapeHtml(match.awayTeam || "A definir automaticamente")}" disabled />`;
 
-        const canScore = Boolean(match.homeTeam && match.awayTeam);
         return `
-          <div class="ko-admin-row ko-admin-row-penalties ${manualRound ? "manual-round" : "auto-round"}" data-ko-admin="${escapeHtml(match.id)}">
+          <div class="ko-admin-row ko-admin-row-penalties ${firstRound ? "manual-round" : "auto-round"}" data-ko-admin="${escapeHtml(match.id)}">
             <strong>${escapeHtml(match.roundLabel)} ${match.index}</strong>
             ${homeControl}
             <span>vs</span>
@@ -2073,7 +3690,7 @@ function renderKnockoutAdmin() {
               </span>
             </label>
 
-            <label class="ko-score-label ko-penalty-label">PenÃ¡ltis
+            <label class="ko-score-label ko-penalty-label">Penáltis
               <span class="ko-score-pair">
                 <input class="ko-home-penalties" type="number" min="0" inputmode="numeric" value="${match.homePenalties ?? ""}" placeholder="0" ${canScore ? "" : "disabled"} />
                 <em>-</em>
@@ -2081,7 +3698,7 @@ function renderKnockoutAdmin() {
               </span>
             </label>
 
-            <button class="primary small" type="button" data-ko-save="${escapeHtml(match.id)}">${manualRound ? "Guardar" : "Guardar resultado"}</button>
+            <button class="primary small" type="button" data-ko-save="${escapeHtml(match.id)}">${firstRound ? "Guardar 16 avos" : "Guardar resultado"}</button>
           </div>
         `;
       }).join("")}
@@ -2089,14 +3706,32 @@ function renderKnockoutAdmin() {
 }
 
 async function saveKnockoutUnlock() {
-  if (!hasPermission("editKnockout")) { toast("Sem permissao."); return; }
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
 
   ensureKnockoutSettings();
   appSettings.knockout.adminUnlocked = Boolean($("adminKnockoutUnlockedInput")?.checked);
   await persistSettings();
   renderAll();
-  toast(appSettings.knockout.adminUnlocked ? "Fase Final desbloqueada para Admin." : "Fase Final volta a bloquear ate acabarem os grupos.");
+  toast(appSettings.knockout.adminUnlocked ? "Fase Final desbloqueada para Admin." : "Fase Final volta a bloquear até acabarem os grupos.");
 }
+
+function applyKnockoutLayoutFromSettings() {
+  if (!appSettings.knockout) return;
+  const layout = { ...defaultKnockoutLayout(), ...(appSettings.knockout.layout || {}) };
+
+  Object.entries(layout).forEach(([key, rawValue]) => {
+    const value = Number(rawValue);
+    const safeValue = Number.isFinite(value) ? Math.max(-180, Math.min(180, value)) : 0;
+
+    document.querySelectorAll(`[data-ko-layout="${CSS.escape(key)}"]`).forEach(element => {
+      element.style.setProperty("--ko-column-offset", `${safeValue}px`);
+      element.style.setProperty("--ko-match-offset", `${safeValue}px`);
+    });
+
+    syncKnockoutLayoutInputs(key, safeValue);
+  });
+}
+
 function syncKnockoutLayoutInputs(key, value) {
   document.querySelectorAll(`[data-ko-layout-input="${CSS.escape(key)}"], [data-ko-layout-number="${CSS.escape(key)}"]`).forEach(input => {
     input.value = value;
@@ -2104,55 +3739,72 @@ function syncKnockoutLayoutInputs(key, value) {
 }
 
 function previewKnockoutLayoutPosition(key, value) {
+  const safeValue = Number.isFinite(Number(value)) ? Math.max(-180, Math.min(180, Number(value))) : 0;
+
   document.querySelectorAll(`[data-ko-layout="${CSS.escape(key)}"]`).forEach(element => {
-    element.style.setProperty("--ko-column-offset", `${value}px`);
-    element.style.setProperty("--ko-match-offset", `${value}px`);
+    element.style.setProperty("--ko-column-offset", `${safeValue}px`);
+    element.style.setProperty("--ko-match-offset", `${safeValue}px`);
   });
+
+  syncKnockoutLayoutInputs(key, safeValue);
 }
 
 async function saveKnockoutLayoutFromAdmin(reset = false) {
-  if (!hasPermission("editKnockout")) { toast("Sem permissao."); return; }
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
 
   ensureKnockoutSettings();
-  const nextLayout = defaultKnockoutLayout();
 
-  if (!reset) {
+  const nextLayout = { ...defaultKnockoutLayout(), ...(appSettings.knockout.layout || {}) };
+
+  if (reset) {
+    Object.keys(nextLayout).forEach(key => { nextLayout[key] = 0; });
+  } else {
     KNOCKOUT_LAYOUT_KEYS.forEach(([key]) => {
       const input = document.querySelector(`[data-ko-layout-number="${CSS.escape(key)}"]`) ||
         document.querySelector(`[data-ko-layout-input="${CSS.escape(key)}"]`);
-      const value = Number(input?.value ?? 0);
+      const value = Number(input?.value ?? nextLayout[key] ?? 0);
       nextLayout[key] = Number.isFinite(value) ? Math.max(-180, Math.min(180, value)) : 0;
     });
   }
 
   appSettings.knockout.layout = nextLayout;
-  renderAll();
   markSettingsPending();
-  saveLocalData(reset ? "posicoes fase final repostas" : "posicoes fase final guardadas");
+  saveLocalData(reset ? "posições fase final repostas" : "posições fase final guardadas");
+
+  renderKnockout();
+  renderKnockoutAdmin();
+  applyKnockoutLayoutFromSettings();
+  requestAnimationFrame(applyKnockoutLayoutFromSettings);
 
   try {
-    const saved = await saveSettingsFastToFirebase(reset ? "repor posicoes fase final" : "guardar posicoes fase final");
-    if (saved) setFirebaseStatus("success", "Firebase: posicoes da Fase Final guardadas");
-    else scheduleFullSync("guardar posicoes fase final", 300);
+    const saved = await saveSettingsFastToFirebase(reset ? "repor posições fase final" : "guardar posições fase final");
+    if (saved) {
+      setFirebaseStatus("success", "Firebase: posições da Fase Final guardadas");
+      applyKnockoutLayoutFromSettings();
+      requestAnimationFrame(applyKnockoutLayoutFromSettings);
+    } else {
+      scheduleFullSync("guardar posições fase final", 300);
+    }
   } catch (error) {
-    console.error("Falhou guardar posicoes da Fase Final:", error);
-    scheduleFullSync("guardar posicoes fase final", 600);
-    setFirebaseStatus("error", `Firebase: posicoes pendentes (${shortFirebaseError(error)})`);
+    console.error("Falhou guardar posições da Fase Final:", error);
+    scheduleFullSync("guardar posições fase final", 600);
+    setFirebaseStatus("error", `Firebase: posições pendentes (${shortFirebaseError(error)})`);
   }
 
-  toast(reset ? "Posicoes repostas." : "Posicoes da Fase Final guardadas.");
+  toast(reset ? "Posições repostas." : "Posições da Fase Final guardadas.");
 }
 async function saveKnockoutMatchFromAdmin(matchId) {
-  if (!hasPermission("editKnockout")) { toast("Sem permissÃ£o."); return; }
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
 
   ensureKnockoutSettings();
+
   const row = document.querySelector(`[data-ko-admin="${CSS.escape(matchId)}"]`);
   const match = knockoutMatchById(matchId);
   if (!row || !match) return;
 
-  const manualRound = isManualKnockoutRound(match);
+  const firstRound = isFirstKnockoutRound(match);
 
-  if (manualRound) {
+  if (firstRound) {
     match.homeTeam = row.querySelector(".ko-home-team")?.value || "";
     match.awayTeam = row.querySelector(".ko-away-team")?.value || "";
   }
@@ -2162,48 +3814,50 @@ async function saveKnockoutMatchFromAdmin(matchId) {
     match.awayScore = null;
     match.homePenalties = null;
     match.awayPenalties = null;
+    markSettingsPending();
     saveLocalData("fase final equipas incompletas");
-    await persistSettings();
-    renderAll();
-    toast("Define as duas equipas deste jogo.");
+    await saveSettingsFastToFirebase("fase final equipas incompletas");
+    renderKnockout();
+    renderKnockoutAdmin();
+    toast(firstRound ? "Define as duas equipas deste jogo." : "Este jogo ainda está à espera dos vencedores anteriores.");
     return;
   }
 
-  const homeScore = row.querySelector(".ko-home-score")?.value ?? "";
-  const awayScore = row.querySelector(".ko-away-score")?.value ?? "";
-  const homePenalties = row.querySelector(".ko-home-penalties")?.value ?? "";
-  const awayPenalties = row.querySelector(".ko-away-penalties")?.value ?? "";
+  const homeScoreValue = row.querySelector(".ko-home-score")?.value ?? "";
+  const awayScoreValue = row.querySelector(".ko-away-score")?.value ?? "";
+  const homePenaltiesValue = row.querySelector(".ko-home-penalties")?.value ?? "";
+  const awayPenaltiesValue = row.querySelector(".ko-away-penalties")?.value ?? "";
 
-  match.homeScore = homeScore === "" ? null : Number(homeScore);
-  match.awayScore = awayScore === "" ? null : Number(awayScore);
+  match.homeScore = homeScoreValue === "" ? null : Number(homeScoreValue);
+  match.awayScore = awayScoreValue === "" ? null : Number(awayScoreValue);
 
   const hasFullScore = match.homeScore !== null && match.awayScore !== null;
   const isDraw = hasFullScore && Number(match.homeScore) === Number(match.awayScore);
 
   if (isDraw) {
-    if (homePenalties === "" || awayPenalties === "") {
-      toast("Jogo empatado. Preenche o resultado dos penÃ¡ltis.");
+    if (homePenaltiesValue === "" || awayPenaltiesValue === "") {
+      toast("Jogo empatado. Preenche o resultado dos penáltis.");
       return;
     }
 
-    match.homePenalties = Number(homePenalties);
-    match.awayPenalties = Number(awayPenalties);
+    match.homePenalties = Number(homePenaltiesValue);
+    match.awayPenalties = Number(awayPenaltiesValue);
 
     if (Number(match.homePenalties) === Number(match.awayPenalties)) {
-      toast("Os penÃ¡ltis nÃ£o podem ficar empatados.");
+      toast("Os penáltis não podem ficar empatados.");
       return;
     }
   } else {
-    match.homePenalties = homePenalties === "" ? null : Number(homePenalties);
-    match.awayPenalties = awayPenalties === "" ? null : Number(awayPenalties);
+    match.homePenalties = homePenaltiesValue === "" ? null : Number(homePenaltiesValue);
+    match.awayPenalties = awayPenaltiesValue === "" ? null : Number(awayPenaltiesValue);
 
-    if ((homePenalties === "") !== (awayPenalties === "")) {
-      toast("Preenche os dois campos dos penÃ¡ltis ou deixa os dois vazios.");
+    if ((homePenaltiesValue === "") !== (awayPenaltiesValue === "")) {
+      toast("Preenche os dois campos dos penáltis ou deixa os dois vazios.");
       return;
     }
 
-    if (homePenalties !== "" && Number(match.homePenalties) === Number(match.awayPenalties)) {
-      toast("Se preencheres penÃ¡ltis, eles nÃ£o podem ficar empatados.");
+    if (homePenaltiesValue !== "" && Number(match.homePenalties) === Number(match.awayPenalties)) {
+      toast("Se preencheres penáltis, eles não podem ficar empatados.");
       return;
     }
   }
@@ -2211,19 +3865,26 @@ async function saveKnockoutMatchFromAdmin(matchId) {
   match.updatedAt = new Date().toISOString();
 
   propagateKnockoutWinners(false);
-  saveLocalData("fase final jogo guardado com penaltis");
-  await persistSettings();
-  renderAll();
+  markSettingsPending();
+  saveLocalData("fase final jogo guardado");
 
-  if (manualRound) {
-    toast("Jogo da primeira ronda guardado. Vencedor avanÃ§a automaticamente.");
-  } else {
-    toast("Resultado guardado. Vencedor avanÃ§ou automaticamente.");
+  renderKnockout();
+  renderKnockoutAdmin();
+
+  try {
+    await saveSettingsFastToFirebase("fase final jogo guardado");
+    setFirebaseStatus("success", "Firebase: Fase Final guardada");
+  } catch (error) {
+    console.error("Falhou guardar Fase Final:", error);
+    scheduleFullSync("fase final jogo guardado", 600);
+    setFirebaseStatus("error", `Firebase: Fase Final pendente (${shortFirebaseError(error)})`);
   }
+
+  toast("Resultado guardado. Vencedor avançou automaticamente.");
 }
 
 function openKnockoutEditInAdmin(matchId) {
-  if (!hasPermission("editKnockout")) { toast("Sem permissÃ£o para editar a Fase Final."); return; }
+  if (!hasPermission("editKnockout")) { toast("Sem permissão para editar a Fase Final."); return; }
 
   if (!isAdmin) {
     toast("Entra no Admin para editar a Fase Final.");
@@ -2243,7 +3904,11 @@ function openKnockoutEditInAdmin(matchId) {
   }, 80);
 }
 
-function renderAll() { renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); updateActiveAppSection(); }
+function renderAll() {
+  setupSearchResultsAdminButton();
+  setTimeout(addSearchButtonsToResultCards, 0);
+  setupOnlineUsersCloseControls();
+  setupKnockoutAdjustTopButton(); renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); updateActiveAppSection(); }
 
 function renderCalendarFilterState() {
   $("calendarMissingResultsBtn")?.classList.toggle("active-filter", calendarViewMode === "missing");
@@ -2254,7 +3919,7 @@ function renderCalendar() {
   const container = $("gamesList");
   const groups = groupByDate(filteredGames());
   const days = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  if (!days.length) { container.innerHTML = `<div class="empty">NÃ£o hÃ¡ jogos para mostrar neste filtro.</div>${knockoutEntryButtonHtml()}`; return; }
+  if (!days.length) { container.innerHTML = `<div class="empty">Não há jogos para mostrar neste filtro.</div>${knockoutEntryButtonHtml()}`; return; }
   container.innerHTML = days.map(([, dayGames]) => `
     <section class="day-block"><h3>${escapeHtml(dateHeader(dayGames[0].matchDate))}</h3><div class="match-list">${dayGames.map(renderMatchRow).join("")}</div></section>
   `).join("") + knockoutEntryButtonHtml();
@@ -2263,7 +3928,7 @@ function renderMatchRow(game) {
   const status = statusOf(game);
   const scoreText = hasResult(game) ? `${game.homeScore}-${game.awayScore}` : "VS";
   const gameBets = betsForGame(game.id);
-  const settledText = hasResult(game) ? `${gameBets.length} apostas Â· pontos atribuÃ­dos` : `${gameBets.length} apostas importadas`;
+  const settledText = hasResult(game) ? `${gameBets.length} apostas · pontos atribuídos` : `${gameBets.length} apostas importadas`;
   const resultButtonText = hasResult(game) ? "Editar resultado" : "Adicionar resultado";
 
   return `
@@ -2320,27 +3985,46 @@ function renderScore() {
   if (!target) return;
 
   if (!rows.length) {
-    target.innerHTML = `<div class="empty">Importa o Excel de Resultados para criar a classificaÃ§Ã£o.</div>`;
+    target.innerHTML = `<div class="empty">Importa o Excel de Resultados para criar a classificacao.</div>`;
     return;
   }
 
-  target.innerHTML = `
+  const leaderPoints = rows[0]?.points || 0;
+  const currentName = String(currentProfile?.name || displayNameFromEmail(currentUser?.email || "") || "").trim().toLowerCase();
+target.innerHTML = `
+    <div class="score-podium">
+      ${podium.map((row, index) => {
+        const medal = ["1", "2", "3"][index];
+        const gap = index === 0 ? "Lider" : `-${leaderPoints - row.points} pts`;
+        return `
+          <div class="score-podium-card rank-${index + 1}">
+            <span class="score-medal">${medal}</span>
+            <strong>${escapeHtml(row.playerName)}</strong>
+            <b>${row.points} pts</b>
+            <small>${gap}</small>
+          </div>
+        `;
+      }).join("")}
+    </div>
     <div class="score-detail-list">
       ${rows.map((row, index) => {
         const gameRows = playerGameRows(row.playerName);
         const settled = gameRows.filter(item => hasResult(item.game)).length;
         const withBets = gameRows.filter(item => item.bet).length;
+        const gap = leaderPoints - row.points;
+        const isCurrent = currentName && row.playerName.toLowerCase() === currentName;
 
         return `
-          <details class="player-score-card">
+          <details class="player-score-card rank-${index + 1} ${isCurrent ? "is-current-user" : ""}">
             <summary>
               <div class="player-rank">${index + 1}</div>
               <div class="player-score-main">
                 <strong>${escapeHtml(row.playerName)}</strong>
-                <span>${row.exact} exatos Â· ${row.winner} vencedor/empate Â· ${settled} jogos com resultado Â· ${withBets} apostas</span>
+                <span>${row.exact} exatos / ${row.winner} vencedor/empate / ${settled} jogos com resultado / ${withBets} apostas</span>
               </div>
+              <div class="player-gap">${index === 0 ? "Lider" : `-${gap} pts`}</div>
               <div class="player-total">${row.points} pts</div>
-              <div class="player-arrow">âŒ„</div>
+              <div class="player-arrow">v</div>
             </summary>
 
             <div class="player-games-table">
@@ -2355,7 +4039,7 @@ function renderScore() {
                 <div class="player-game-row ${className}">
                   <span>
                     <b>${escapeHtml(game.homeTeam)} - ${escapeHtml(game.awayTeam)}</b>
-                    <small>${escapeHtml(game.group)} Â· ${dateHeader(game.matchDate)} Â· ${timePortugal(game.matchDate)}</small>
+                    <small>${escapeHtml(game.group)} / ${dateHeader(game.matchDate)} / ${timePortugal(game.matchDate)}</small>
                   </span>
                   <span>${bet ? `${bet.homeGuess}-${bet.awayGuess}` : "-"}</span>
                   <span>${hasResult(game) ? `${game.homeScore}-${game.awayScore}` : "-"}</span>
@@ -2369,7 +4053,6 @@ function renderScore() {
       }).join("")}
     </div>`;
 }
-
 function blankTeam(team) { return { team, played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, gd: 0, points: 0 }; }
 function groupSortName(group) { return String(group).match(/Grupo ([A-Z])/i)?.[1] || "Z"; }
 function buildStandings() {
@@ -2393,9 +4076,86 @@ function buildStandings() {
 function renderGroups() {
   $("groupsTables").innerHTML = buildStandings().map(({ group, rows }) => `
     <section class="group-table"><h3>${escapeHtml(group)}</h3><div class="table">
-      <div class="table-row head"><span>#</span><span>SeleÃ§Ã£o</span><span>J</span><span>DG</span><span>Pts</span></div>
+      <div class="table-row head"><span>#</span><span>Seleção</span><span>J</span><span>DG</span><span>Pts</span></div>
       ${rows.map((row, index) => `<div class="table-row"><span>${index + 1}</span><strong>${escapeHtml(row.team)}</strong><span>${row.played}</span><span>${row.gd}</span><b>${row.points}</b></div>`).join("")}
     </div></section>`).join("");
+}
+
+
+function openResultSearchForGame(game) {
+  if (!game) return toast("Jogo não encontrado.");
+
+  const home = game.homeTeam || game.home || game.teamA || "";
+  const away = game.awayTeam || game.away || game.teamB || "";
+  if (!home || !away) return toast("Este jogo ainda não tem as duas equipas definidas.");
+
+  const date = game.matchDate || game.date || "";
+  const query = `${home} vs ${away} ${date} resultado Mundial 2026`;
+  const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function openResultsSearchDashboard() {
+  if (!hasPermission("editResults")) {
+    toast("Só o Admin pode pesquisar resultados.");
+    return;
+  }
+
+  const dueGames = (games || [])
+    .filter(game => !hasResult(game))
+    .filter(game => parsePortugalDate(game.matchDate).getTime() <= Date.now())
+    .sort((a, b) => parsePortugalDate(a.matchDate) - parsePortugalDate(b.matchDate));
+
+  if (dueGames.length) {
+    openResultSearchForGame(dueGames[0]);
+    if (dueGames.length > 1) toast(`Abri a pesquisa do primeiro jogo. Existem ${dueGames.length} jogos sem resultado.`);
+    return;
+  }
+
+  const nextGame = (games || [])
+    .filter(game => !hasResult(game))
+    .sort((a, b) => parsePortugalDate(a.matchDate) - parsePortugalDate(b.matchDate))[0];
+
+  if (nextGame) {
+    openResultSearchForGame(nextGame);
+    return;
+  }
+
+  toast("Não existem jogos pendentes para pesquisar.");
+}
+
+function setupSearchResultsAdminButton() {
+  const button = $("searchAllResultsBtn");
+  if (!button || button.dataset.bound === "1") return;
+
+  button.dataset.bound = "1";
+  button.addEventListener("click", () => openResultsSearchDashboard());
+}
+
+function addSearchButtonsToResultCards() {
+  if (!hasPermission("editResults")) return;
+
+  document.querySelectorAll("[data-result-game]").forEach(resultButton => {
+    const gameId = resultButton.dataset.resultGame;
+    if (!gameId) return;
+
+    const parent = resultButton.parentElement;
+    if (!parent || parent.querySelector(`[data-search-result-game="${CSS.escape(gameId)}"]`)) return;
+
+    const searchButton = document.createElement("button");
+    searchButton.type = "button";
+    searchButton.className = "secondary small search-game-result-btn admin-only";
+    searchButton.dataset.searchResultGame = gameId;
+    searchButton.textContent = "Pesquisar";
+    searchButton.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const game = games.find(item => item.id === gameId);
+      openResultSearchForGame(game);
+    });
+
+    parent.insertBefore(searchButton, resultButton);
+  });
 }
 
 function renderAdminState() {
@@ -2415,7 +4175,7 @@ function renderSettingsForm() {
   $("finalTopScorerInput").value = appSettings.extraResults.topScorer || "";
   $("finalChampionInput").value = appSettings.extraResults.champion || "";
   if (appSettings.lastImport) {
-    $("importSummary").innerHTML = `<strong>Ãšltima importaÃ§Ã£o:</strong> ${escapeHtml(new Date(appSettings.lastImport.at).toLocaleString("pt-PT"))} Â· ${appSettings.lastImport.bets || 0} apostas Â· ${appSettings.lastImport.players || 0} users Â· ${appSettings.lastImport.results || 0} resultados.`;
+    $("importSummary").innerHTML = `<strong>Última importação:</strong> ${escapeHtml(new Date(appSettings.lastImport.at).toLocaleString("pt-PT"))} · ${appSettings.lastImport.bets || 0} apostas · ${appSettings.lastImport.players || 0} users · ${appSettings.lastImport.results || 0} resultados.`;
   }
 }
 
@@ -2428,8 +4188,8 @@ function renderApiSettings() {
   const summary = $("apiSyncSummary");
   if (summary) {
     summary.innerHTML = api.lastSync
-      ? `<strong>Ãšltima sincronizaÃ§Ã£o:</strong> ${escapeHtml(new Date(api.lastSync.at).toLocaleString("pt-PT"))} Â· ${api.lastSync.updated || 0} resultados atualizados Â· ${api.lastSync.matched || 0} jogos encontrados na app.`
-      : "Ainda nÃ£o foi feita sincronizaÃ§Ã£o automÃ¡tica.";
+      ? `<strong>Última sincronização:</strong> ${escapeHtml(new Date(api.lastSync.at).toLocaleString("pt-PT"))} · ${api.lastSync.updated || 0} resultados atualizados · ${api.lastSync.matched || 0} jogos encontrados na app.`
+      : "Ainda não foi feita sincronização automática.";
   }
 }
 
@@ -2459,7 +4219,7 @@ function renderUserBetsEditor() {
 
   const players = allPlayers();
   if (!players.length) {
-    container.innerHTML = `<div class="empty">Ainda nÃ£o existem users. Importa o Excel ou adiciona users no Admin.</div>`;
+    container.innerHTML = `<div class="empty">Ainda não existem users. Importa o Excel ou adiciona users no Admin.</div>`;
     renderUserBetsSelector();
     return;
   }
@@ -2483,7 +4243,7 @@ function renderUserBetsEditor() {
           <input id="editExtraTopScorerInput" type="text" value="${escapeHtml(extra.topScorer || "")}" placeholder="Nome do melhor marcador" />
         </label>
         <label>Equipa Vencedora
-          <input id="editExtraChampionInput" type="text" value="${escapeHtml(extra.champion || "")}" placeholder="SeleÃ§Ã£o vencedora" />
+          <input id="editExtraChampionInput" type="text" value="${escapeHtml(extra.champion || "")}" placeholder="Seleção vencedora" />
         </label>
       </div>
     </div>
@@ -2496,7 +4256,7 @@ function renderUserBetsEditor() {
             <div class="user-game-meta">
               <span>${escapeHtml(game.group)}</span>
               <strong>${escapeHtml(game.homeTeam)} - ${escapeHtml(game.awayTeam)}</strong>
-              <small>${dateHeader(game.matchDate)} Â· ${timePortugal(game.matchDate)}</small>
+              <small>${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}</small>
             </div>
             <div class="user-game-score">
               <input class="edit-home-score" type="number" min="0" inputmode="numeric" value="${bet ? bet.homeGuess : ""}" aria-label="Aposta ${escapeHtml(game.homeTeam)}" />
@@ -2512,7 +4272,7 @@ function renderUserBetsEditor() {
 }
 
 async function saveEditedUserBets() {
-  if (!hasPermission("editUsers")) { toast("Sem permissÃ£o."); return; }
+  if (!hasPermission("editUsers")) { toast("Sem permissão."); return; }
 
   const playerName = selectedEditUser;
   if (!playerName) {
@@ -2599,7 +4359,7 @@ function renderAdmin() {
   const container = $("adminGamesList");
   if (!isAdmin) { container.innerHTML = ""; return; }
   container.innerHTML = games.map(game => `
-    <article class="admin-row"><div class="admin-match"><span class="group-pill">${escapeHtml(game.group)}</span><strong>${escapeHtml(game.homeTeam)} vs ${escapeHtml(game.awayTeam)}</strong><small>${timePortugal(game.matchDate)} Â· ${escapeHtml(dateHeader(game.matchDate))} Â· ${betsForGame(game.id).length} apostas</small></div>
+    <article class="admin-row"><div class="admin-match"><span class="group-pill">${escapeHtml(game.group)}</span><strong>${escapeHtml(game.homeTeam)} vs ${escapeHtml(game.awayTeam)}</strong><small>${timePortugal(game.matchDate)} · ${escapeHtml(dateHeader(game.matchDate))} · ${betsForGame(game.id).length} apostas</small></div>
       <div class="result-inputs modal-result-actions">
         <span class="admin-result-chip">${hasResult(game) ? `Resultado: ${game.homeScore}-${game.awayScore}` : "Sem resultado"}</span>
         <button class="primary" type="button" data-result-game="${escapeHtml(game.id)}">${hasResult(game) ? "Editar resultado" : "Adicionar resultado"}</button>
@@ -2619,7 +4379,7 @@ async function saveBet(gameId, homeGuess, awayGuess, playerName = "Manual") {
   toast("Aposta guardada.");
 }
 async function setResult(gameId, homeScore, awayScore) {
-  if (!hasPermission("editResults")) { toast("Sem permissÃ£o para editar resultados."); return false; }
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
 
   if (homeScore === "" || awayScore === "") {
     toast("Preenche o resultado completo.");
@@ -2628,7 +4388,7 @@ async function setResult(gameId, homeScore, awayScore) {
 
   const game = games.find(item => item.id === gameId);
   if (!game) {
-    toast("Jogo nÃ£o encontrado.");
+    toast("Jogo não encontrado.");
     return false;
   }
 
@@ -2649,13 +4409,13 @@ async function setResult(gameId, homeScore, awayScore) {
     markGamePending(game.id);
     saveLocalData("resultado pendente firebase");
     setFirebaseStatus("error", `Firebase: resultado pendente (${shortFirebaseError(error)})`);
-    toast("Resultado ficou guardado localmente e serÃ¡ reenviado.");
+    toast("Resultado ficou guardado localmente e será reenviado.");
   });
 
   return true;
 }
 async function clearResult(gameId) {
-  if (!hasPermission("editResults")) { toast("Sem permissÃ£o para editar resultados."); return false; }
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
 
   const game = games.find(item => item.id === gameId);
   if (!game) return false;
@@ -2677,7 +4437,7 @@ async function clearResult(gameId) {
     markGamePending(game.id);
     saveLocalData("limpar resultado pendente firebase");
     setFirebaseStatus("error", `Firebase: limpeza pendente (${shortFirebaseError(error)})`);
-    toast("AlteraÃ§Ã£o ficou guardada localmente e serÃ¡ reenviada.");
+    toast("Alteração ficou guardada localmente e será reenviada.");
   });
 
   return true;
@@ -2686,20 +4446,20 @@ async function clearResult(gameId) {
 function todayGames() { const key = todayKey(); return games.filter(game => dateKey(game.matchDate) === key); }
 function scoreText() {
   const rows = leaderboard();
-  if (!rows.length) return "â­ ClassificaÃ§Ã£o Mundial 2026\n\nAinda nÃ£o hÃ¡ apostas importadas.";
-  return "â­ ClassificaÃ§Ã£o Mundial 2026\n\n" + rows.map((row, index) => `${index + 1}. ${row.playerName} - ${row.points} pts`).join("\n");
+  if (!rows.length) return "⭐ Classificação Mundial 2026\n\nAinda não há apostas importadas.";
+  return "⭐ Classificação Mundial 2026\n\n" + rows.map((row, index) => `${index + 1}. ${row.playerName} - ${row.points} pts`).join("\n");
 }
 function todayText() {
   const list = todayGames();
-  if (!list.length) return "â­ Jogos de Hoje\n\nHoje nÃ£o hÃ¡ jogos registados.";
+  if (!list.length) return "⭐ Jogos de Hoje\n\nHoje não há jogos registados.";
   const grouped = [...groupByGroup(list).entries()];
-  return "â­ Jogos de Hoje\n\n" + grouped.map(([group, rows]) => {
+  return "⭐ Jogos de Hoje\n\n" + grouped.map(([group, rows]) => {
     const lines = rows.map(game => `${game.homeTeam} vs ${game.awayTeam} - ${timePortugal(game.matchDate)}`);
     return `${group}\n${lines.join("\n")}`;
   }).join("\n\n");
 }
 function groupsText() {
-  return "â­ ClassificaÃ§Ã£o dos Grupos\n\n" + buildStandings().map(({ group, rows }) => {
+  return "⭐ Classificação dos Grupos\n\n" + buildStandings().map(({ group, rows }) => {
     const lines = rows.map((row, index) => `${index + 1}. ${row.team} - ${row.points} pts`);
     return `${group}\n${lines.join("\n")}`;
   }).join("\n\n");
@@ -2725,7 +4485,7 @@ function parseScore(value) {
   if (!raw) return null;
 
   // formatos aceites: 2-1, 2 - 1, 2:1, 2/1, 2 x 1
-  const normal = raw.replace(/[â€“â€”]/g, "-").replace(/\s+/g, " ");
+  const normal = raw.replace(/[–—]/g, "-").replace(/\s+/g, " ");
   const match = normal.match(/(^|\D)(\d{1,2})\s*(?:-|:|\/|x)\s*(\d{1,2})(\D|$)/i);
   if (!match) return null;
 
@@ -2735,17 +4495,17 @@ function splitMatchLabel(label) {
   const raw = String(label || "").trim();
   if (!raw) return null;
 
-  const scoreMatch = raw.match(/\s+(\d+\s*[-â€“:\/x]\s*\d+)\s*$/i);
+  const scoreMatch = raw.match(/\s+(\d+\s*[-–:\/x]\s*\d+)\s*$/i);
   const score = scoreMatch ? parseScore(scoreMatch[1]) : null;
   const cleanLabel = scoreMatch ? raw.slice(0, scoreMatch.index).trim() : raw;
 
-  const directParts = cleanLabel.split(/\s+(?:-|â€“|â€”|vs|v\.?|x)\s+/i);
+  const directParts = cleanLabel.split(/\s+(?:-|–|—|vs|v\.?|x)\s+/i);
   if (directParts.length >= 2) {
     return { home: canonicalTeam(directParts[0]), away: canonicalTeam(directParts.slice(1).join(" - ")), score };
   }
 
-  // Caso venha sem espaÃ§os: "ColÃ´mbia-RD Congo"
-  const looseParts = cleanLabel.split(/\s*(?:-|â€“|â€”)\s*/).filter(Boolean);
+  // Caso venha sem espaços: "Colômbia-RD Congo"
+  const looseParts = cleanLabel.split(/\s*(?:-|–|—)\s*/).filter(Boolean);
   if (looseParts.length >= 2) {
     return { home: canonicalTeam(looseParts[0]), away: canonicalTeam(looseParts.slice(1).join(" - ")), score };
   }
@@ -2790,7 +4550,7 @@ function findGameByTeams(home, away, group = "") {
   return findGameMatch(home, away, group)?.game || null;
 }
 async function readWorkbookFile(file) {
-  if (!window.XLSX) throw new Error("Biblioteca Excel ainda nÃ£o carregou. Verifica ligaÃ§Ã£o Ã  internet.");
+  if (!window.XLSX) throw new Error("Biblioteca Excel ainda não carregou. Verifica ligação à internet.");
   const buffer = await file.arrayBuffer();
   if (file.name.toLowerCase().endsWith(".csv")) {
     const text = new TextDecoder("utf-8").decode(buffer);
@@ -2844,21 +4604,21 @@ function importStatusFromResult(result) {
   const errorsCount = result?.errors?.length ?? 0;
 
   if (errorsCount > 0 && betsCount === 0 && resultsCount === 0) {
-    setImportStatus("error", "Erro ao importar Excel", `${errorsCount} avisos/erros encontrados. VÃª os detalhes abaixo.`);
+    setImportStatus("error", "Erro ao importar Excel", `${errorsCount} avisos/erros encontrados. Vê os detalhes abaixo.`);
     return;
   }
 
   if (errorsCount > 0) {
-    setImportStatus("warning", "Excel importado com avisos", `${betsCount} apostas Â· ${usersCount} users Â· ${errorsCount} avisos.`);
+    setImportStatus("warning", "Excel importado com avisos", `${betsCount} apostas · ${usersCount} users · ${errorsCount} avisos.`);
     return;
   }
 
-  setImportStatus("success", "Excel importado com sucesso", `${betsCount} apostas importadas Â· ${usersCount} users.`);
+  setImportStatus("success", "Excel importado com sucesso", `${betsCount} apostas importadas · ${usersCount} users.`);
 }
 
 function parseResultadosWorkbookRows(rows) {
   const info = findPlayersRow(rows);
-  if (!info) return { bets: [], extras: {}, errors: ["NÃ£o encontrei a linha Jogadores no ficheiro Resultados."] };
+  if (!info) return { bets: [], extras: {}, errors: ["Não encontrei a linha Jogadores no ficheiro Resultados."] };
   const importedBets = [];
   const extras = {};
   const errors = [];
@@ -2892,7 +4652,7 @@ function parseResultadosWorkbookRows(rows) {
       matchInfo = findGameMatch(parsedMatch.home, parsedMatch.away, currentGroup);
     }
 
-    if (!matchInfo) { errors.push(`Jogo nÃ£o encontrado: ${currentGroup} Â· ${label}${excelGameId ? ` Â· ID: ${excelGameId}` : ""}`); continue; }
+    if (!matchInfo) { errors.push(`Jogo não encontrado: ${currentGroup} · ${label}${excelGameId ? ` · ID: ${excelGameId}` : ""}`); continue; }
     const game = matchInfo.game;
     info.players.forEach(player => {
       const score = parseScore(row[player.col]);
@@ -2906,7 +4666,7 @@ function parseResultadosWorkbookRows(rows) {
 }
 function parsePontosWorkbookRows(rows) {
   const info = findPlayersRow(rows);
-  if (!info) return { results: [], importedPoints: {}, errors: ["NÃ£o encontrei a linha Jogadores no ficheiro Pontos."] };
+  if (!info) return { results: [], importedPoints: {}, errors: ["Não encontrei a linha Jogadores no ficheiro Pontos."] };
   const results = [];
   const importedPoints = {};
   const errors = [];
@@ -2924,7 +4684,7 @@ function parsePontosWorkbookRows(rows) {
         const finalScore = matchInfo.reversed ? [parsedMatch.score[1], parsedMatch.score[0]] : parsedMatch.score;
         results.push({ gameId: matchInfo.game.id, homeScore: finalScore[0], awayScore: finalScore[1] });
       }
-      else errors.push(`Resultado sem jogo encontrado: ${currentGroup} Â· ${label}`);
+      else errors.push(`Resultado sem jogo encontrado: ${currentGroup} · ${label}`);
     }
     info.players.forEach(player => {
       const value = Number(String(row[player.col] ?? "").replace(",", "."));
@@ -2934,7 +4694,7 @@ function parsePontosWorkbookRows(rows) {
   return { results, importedPoints, errors };
 }
 async function previewExcelImport() {
-  if (!hasPermission("importExcel")) { toast("Sem permissÃ£o."); return; }
+  if (!hasPermission("importExcel")) { toast("Sem permissão."); return; }
 
   const resultadosFile = $("resultadosExcelInput").files?.[0];
   const pontosFile = $("pontosExcelInput").files?.[0];
@@ -2966,7 +4726,7 @@ async function previewExcelImport() {
   importStatusFromResult(combined);
 preview.innerHTML = `
       <div class="preview-grid"><div><strong>${combined.bets.length}</strong><span>apostas lidas</span></div><div><strong>${players.size}</strong><span>users</span></div><div><strong>${combined.results.length}</strong><span>resultados de jogos</span></div><div><strong>${Object.keys(combined.extras).length}</strong><span>extras</span></div></div>
-      ${combined.errors.length ? `<details open><summary>${combined.errors.length} avisos â€” estas linhas nÃ£o foram importadas</summary><ul>${combined.errors.slice(0, 80).map(err => `<li>${escapeHtml(err)}</li>`).join("")}</ul></details>` : `<p class="ok-line">Sem erros crÃ­ticos encontrados.</p>`}
+      ${combined.errors.length ? `<details open><summary>${combined.errors.length} avisos — estas linhas não foram importadas</summary><ul>${combined.errors.slice(0, 80).map(err => `<li>${escapeHtml(err)}</li>`).join("")}</ul></details>` : `<p class="ok-line">Sem erros críticos encontrados.</p>`}
     `;
     $("confirmExcelImportBtn").disabled = false;
   } catch (error) {
@@ -2976,9 +4736,9 @@ preview.innerHTML = `
   }
 }
 async function confirmExcelImport() {
-  if (!hasPermission("importExcel")) { toast("Sem permissÃ£o."); return; }
+  if (!hasPermission("importExcel")) { toast("Sem permissão."); return; }
 
-  if (!pendingExcelImport) return toast("Faz primeiro a prÃ©-visualizaÃ§Ã£o.");
+  if (!pendingExcelImport) return toast("Faz primeiro a pré-visualização.");
   const replace = $("replaceExcelBetsInput").checked;
   pendingExcelImport.results.forEach(result => {
     const game = games.find(item => item.id === result.gameId);
@@ -3003,11 +4763,11 @@ async function confirmExcelImport() {
   $("excelModal").classList.add("hidden");
   $("confirmExcelImportBtn").disabled = true;
   renderAll();
-  setImportStatus("success", "Excel importado e guardado", "As apostas foram gravadas. Podes atualizar a pÃ¡gina sem perder os dados.");
-  toast("Excel importado. ClassificaÃ§Ã£o recalculada.");
+  setImportStatus("success", "Excel importado e guardado", "As apostas foram gravadas. Podes atualizar a página sem perder os dados.");
+  toast("Excel importado. Classificação recalculada.");
 }
 async function savePointsSettings() {
-  if (!hasPermission("editPoints")) { toast("Sem permissÃ£o."); return; }
+  if (!hasPermission("editPoints")) { toast("Sem permissão."); return; }
 
   appSettings.points = {
     exact: Number($("pointsExactInput").value) || 0,
@@ -3019,14 +4779,14 @@ async function savePointsSettings() {
   await persistSettings(); renderAll(); toast("Sistema de pontos atualizado.");
 }
 async function saveExtraResults() {
-  if (!hasPermission("editPoints")) { toast("Sem permissÃ£o."); return; }
+  if (!hasPermission("editPoints")) { toast("Sem permissão."); return; }
 
   appSettings.extraResults = { mvp: $("finalMvpInput").value.trim(), topScorer: $("finalTopScorerInput").value.trim(), champion: $("finalChampionInput").value.trim() };
   await persistSettings(); renderAll(); toast("Resultados especiais guardados.");
 }
 
 async function addUser() {
-  if (!hasPermission("editUsers")) { toast("Sem permissÃ£o."); return; }
+  if (!hasPermission("editUsers")) { toast("Sem permissão."); return; }
 
   const input = $("newUserNameInput");
   const name = input?.value.trim();
@@ -3041,9 +4801,9 @@ async function addUser() {
 }
 
 async function removeUser(name) {
-  if (!hasPermission("editUsers")) { toast("Sem permissÃ£o."); return; }
+  if (!hasPermission("editUsers")) { toast("Sem permissão."); return; }
 
-  if (!confirm(`Remover ${name} da lista de users? As apostas importadas nÃ£o sÃ£o apagadas.`)) return;
+  if (!confirm(`Remover ${name} da lista de users? As apostas importadas não são apagadas.`)) return;
   appSettings.users = (appSettings.users || []).filter(user => user !== name);
   await persistSettings();
   renderAll();
@@ -3055,7 +4815,7 @@ function renderUsers() {
   if (!el) return;
   const users = allPlayers();
   if (!users.length) {
-    el.innerHTML = `<div class="empty small-empty">Ainda nÃ£o existem users. Adiciona manualmente ou importa o Excel.</div>`;
+    el.innerHTML = `<div class="empty small-empty">Ainda não existem users. Adiciona manualmente ou importa o Excel.</div>`;
     return;
   }
   el.innerHTML = users.map(name => {
@@ -3064,7 +4824,7 @@ function renderUsers() {
     return `<div class="user-pill-row">
       <div>
         <strong>${escapeHtml(name)}</strong>
-        <small>${stats.points} pts Â· ${stats.totalBets} apostas${isManual ? " Â· user manual" : " Â· via Excel"}</small>
+        <small>${stats.points} pts · ${stats.totalBets} apostas${isManual ? " · user manual" : " · via Excel"}</small>
       </div>
       <button class="secondary small" type="button" onclick="window.removeUserFromUI('${escapeHtml(name).replace(/'/g, "\\'")}')">Remover</button>
     </div>`;
@@ -3087,7 +4847,7 @@ function resultLabelForExport(game) {
 
 function exportResultadosExcel() {
   if (!window.XLSX) {
-    toast("Biblioteca Excel ainda nÃ£o carregou.");
+    toast("Biblioteca Excel ainda não carregou.");
     return;
   }
 
@@ -3095,7 +4855,7 @@ function exportResultadosExcel() {
   const rows = [];
 
   rows.push(["Mundial 2026 - Resultados / Apostas"]);
-  rows.push(["Preenche as apostas no formato 2-1. NÃ£o alteres a coluna ID Jogo, ela serve para a app importar sem falhas."]);
+  rows.push(["Preenche as apostas no formato 2-1. Não alteres a coluna ID Jogo, ela serve para a app importar sem falhas."]);
   rows.push([]);
   rows.push(["Jogadores", "ID Jogo", ...players]);
 
@@ -3127,7 +4887,7 @@ function exportResultadosExcel() {
     ...players.map(() => ({ wch: 16 }))
   ];
 
-  // Congelar a linha dos jogadores e a primeira coluna em programas compatÃ­veis.
+  // Congelar a linha dos jogadores e a primeira coluna em programas compatíveis.
   ws["!freeze"] = { xSplit: 2, ySplit: 4 };
 
   XLSX.utils.book_append_sheet(wb, ws, "Resultados");
@@ -3137,7 +4897,7 @@ function exportResultadosExcel() {
     ["Users", players.length],
     ["Jogos", games.length],
     ["Apostas importadas", bets.length],
-    ["Ãšltima exportaÃ§Ã£o", new Date().toLocaleString("pt-PT")]
+    ["Última exportação", new Date().toLocaleString("pt-PT")]
   ];
   const wsResumo = XLSX.utils.aoa_to_sheet(resumo);
   wsResumo["!cols"] = [{ wch: 22 }, { wch: 18 }];
@@ -3149,7 +4909,7 @@ function exportResultadosExcel() {
 
 function exportPontosExcel() {
   if (!window.XLSX) {
-    toast("Biblioteca Excel ainda nÃ£o carregou.");
+    toast("Biblioteca Excel ainda não carregou.");
     return;
   }
 
@@ -3234,7 +4994,7 @@ function showGameBets(gameId) {
   const body = $("betsModalBody");
 
   if (!modal || !title || !summary || !body) {
-    const rows = betsForGame(gameId).sort((a, b) => a.playerName.localeCompare(b.playerName)).map(bet => `${bet.playerName}: ${bet.homeGuess}-${bet.awayGuess}${hasResult(game) ? ` Â· ${pointsForBet(bet, game)} pts` : ""}`);
+    const rows = betsForGame(gameId).sort((a, b) => a.playerName.localeCompare(b.playerName)).map(bet => `${bet.playerName}: ${bet.homeGuess}-${bet.awayGuess}${hasResult(game) ? ` · ${pointsForBet(bet, game)} pts` : ""}`);
     alert(`${game.homeTeam} vs ${game.awayTeam}\n\n${rows.length ? rows.join("\n") : "Sem apostas para este jogo."}`);
     return;
   }
@@ -3249,7 +5009,7 @@ function showGameBets(gameId) {
   const totalPoints = rows.reduce((sum, bet) => sum + pointsForBet(bet, game), 0);
 
   title.textContent = `${game.homeTeam} - ${game.awayTeam}`;
-  subtitle.textContent = `${game.group} Â· ${dateHeader(game.matchDate)} Â· ${timePortugal(game.matchDate)}`;
+  subtitle.textContent = `${game.group} · ${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}`;
 
   summary.innerHTML = `
     <div class="bets-summary-card main">
@@ -3275,7 +5035,7 @@ function showGameBets(gameId) {
   `;
 
   if (!rows.length) {
-    body.innerHTML = `<div class="empty">Ainda nÃ£o existem apostas importadas para este jogo.</div>`;
+    body.innerHTML = `<div class="empty">Ainda não existem apostas importadas para este jogo.</div>`;
   } else {
     body.innerHTML = `
       <div class="bets-list-head">
@@ -3319,7 +5079,7 @@ function resultImpactPreview(game, homeScore, awayScore) {
   const winner = gameBets.filter(bet => !isExactBet(bet, tempGame) && isOutcomeBet(bet, tempGame)).length;
   const totalPoints = gameBets.reduce((sum, bet) => sum + pointsForBet(bet, tempGame), 0);
 
-  return `${gameBets.length} apostas Â· ${exact} resultados exatos Â· ${winner} vencedor/empate Â· ${totalPoints} pontos atribuÃ­dos`;
+  return `${gameBets.length} apostas · ${exact} resultados exatos · ${winner} vencedor/empate · ${totalPoints} pontos atribuídos`;
 }
 
 function updateResultPreview() {
@@ -3335,20 +5095,20 @@ function updateResultPreview() {
 }
 
 function openResultModal(gameId) {
-  if (!hasPermission("editResults")) { toast("Sem permissÃ£o para editar resultados."); return; }
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return; }
 
   const game = games.find(item => item.id === gameId);
   if (!game) return;
 
   $("resultGameIdInput").value = game.id;
   $("resultModalTitle").textContent = hasResult(game) ? "Editar resultado" : "Adicionar resultado";
-  $("resultModalSubtitle").textContent = "Ao guardar, a app compara as apostas dos users e recalcula a classificaÃ§Ã£o.";
+  $("resultModalSubtitle").textContent = "Ao guardar, a app compara as apostas dos users e recalcula a classificação.";
   $("resultHomeFlag").textContent = "";
   $("resultAwayFlag").textContent = "";
   $("resultHomeTeam").textContent = game.homeTeam;
   $("resultAwayTeam").textContent = game.awayTeam;
   $("resultGroupInput").value = game.group;
-  $("resultDateInput").value = `${dateHeader(game.matchDate)} Â· ${timePortugal(game.matchDate)}`;
+  $("resultDateInput").value = `${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}`;
   $("modalHomeScoreInput").value = game.homeScore ?? "";
   $("modalAwayScoreInput").value = game.awayScore ?? "";
 
@@ -3362,7 +5122,7 @@ function closeResultModal() {
 }
 
 async function saveResultFromModal() {
-  if (!hasPermission("editResults")) { toast("Sem permissÃ£o para editar resultados."); return false; }
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
 
   const gameId = $("resultGameIdInput").value;
   const homeScore = $("modalHomeScoreInput").value;
@@ -3391,7 +5151,7 @@ async function saveResultFromModal() {
 }
 
 async function clearResultFromModal() {
-  if (!hasPermission("editResults")) { toast("Sem permissÃ£o para editar resultados."); return false; }
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
 
   const gameId = $("resultGameIdInput").value;
   if (!gameId) return;
@@ -3467,7 +5227,7 @@ document.addEventListener("click", event => {
 document.querySelectorAll(".tab").forEach(button => {
   button.addEventListener("click", () => {
     if (!permissionTabAllowed(button.dataset.tab)) {
-      toast("Sem permissÃ£o para abrir esta pÃ¡gina.");
+      toast("Sem permissão para abrir esta página.");
       return;
     }
     if (button.dataset.tab === "knockoutTab" && !knockoutAvailable()) {
@@ -3499,7 +5259,7 @@ $("calendarAllGamesBtn")?.addEventListener("click", () => {
   renderCalendarFilterState();
 });
 
-$("copyScoreBtn").addEventListener("click", () => copyText(scoreText(), "ClassificaÃ§Ã£o copiada."));
+$("copyScoreBtn")?.addEventListener("click", () => copyText(scoreText(), "Classificação copiada."));
 $("addUserBtn")?.addEventListener("click", addUser);
 $("newUserNameInput")?.addEventListener("keydown", event => { if (event.key === "Enter") addUser(); });
 $("exportResultadosBtn")?.addEventListener("click", exportResultadosExcel);
@@ -3589,7 +5349,7 @@ function setupPwaInstall() {
 
   installBtn.addEventListener("click", async () => {
     if (!deferredInstallPrompt) {
-      toast("No Edge: menu â‹¯ > Apps > Instalar este site como aplicaÃ§Ã£o.");
+      toast("No Edge: menu ⋯ > Apps > Instalar este site como aplicação.");
       return;
     }
 
@@ -3610,16 +5370,103 @@ function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js")
-      .catch(error => console.warn("Service worker nÃ£o registado:", error));
+      .then(registration => {
+        setupAppUpdateRefresh(registration);
+      })
+      .catch(error => console.warn("Service worker nao registado:", error));
   });
 }
 
+async function clearAppCaches() {
+  try {
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(key => caches.delete(key)));
+    }
+  } catch (error) {
+    console.warn("Nao consegui limpar a cache da app:", error);
+  }
+}
+
+function showRefreshAppButton(message = "Nova versao disponivel.") {
+  const button = $("refreshAppBtn");
+  if (!button) return;
+  button.classList.remove("hidden");
+  button.classList.add("has-update");
+  button.title = message;
+}
+
+async function refreshAppNow() {
+  const button = $("refreshAppBtn");
+  if (button) {
+    button.disabled = true;
+    button.textContent = "A atualizar...";
+  }
+
+  toast("A atualizar app...");
+
+  try {
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(async registration => {
+        try { registration.waiting?.postMessage({ type: "SKIP_WAITING" }); } catch {}
+        try { await registration.update(); } catch {}
+      }));
+    }
+
+    await clearAppCaches();
+  } catch (error) {
+    console.warn("Atualizacao da app falhou, vou recarregar na mesma:", error);
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("v", Date.now().toString());
+  window.location.replace(url.toString());
+}
+
+function setupAppUpdateRefresh(registration) {
+  const button = $("refreshAppBtn");
+  if (button && button.dataset.bound !== "1") {
+    button.dataset.bound = "1";
+    button.addEventListener("click", refreshAppNow);
+  }
+
+  if (!registration) return;
+
+  registration.addEventListener("updatefound", () => {
+    const worker = registration.installing;
+    if (!worker) return;
+
+    worker.addEventListener("statechange", () => {
+      if (worker.state === "installed" && navigator.serviceWorker.controller) {
+        showRefreshAppButton("Nova versao pronta para instalar.");
+        toast("Nova versao pronta. Toca em Atualizar app.");
+      }
+    });
+  });
+
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (window.__appRefreshControllerChanged) return;
+    window.__appRefreshControllerChanged = true;
+    window.location.reload();
+  });
+
+  navigator.serviceWorker.addEventListener("message", event => {
+    if (event.data?.type === "APP_VERSION_READY") {
+      showRefreshAppButton("Nova versao pronta para instalar.");
+    }
+  });
+
+  setTimeout(() => {
+    registration.update().catch(() => {});
+  }, 1200);
+}
 
 function setupPageWheelScroll() {
   document.addEventListener("wheel", event => {
     if (document.body.classList.contains("knockout-layout-active")) return;
     if (event.defaultPrevented || !event.deltaY) return;
-    if (event.target.closest(".modal, .modal-card, .ko-admin-list")) return;
+    if (event.target.closest("#chatPanel, #chatActionMenu, #chatImageViewer, .chat-panel, .chat-messages, .chat-action-menu, .chat-image-viewer, .modal, .modal-card, .ko-admin-list")) return;
 
     const before = window.scrollY;
     window.scrollBy({ top: event.deltaY, left: 0, behavior: "auto" });
@@ -3675,62 +5522,1013 @@ await initFirebase();
 setupAuthGate();
 
 
-// v97 — patch seguro: não mexe na lógica/permissões, apenas remove visual indesejado.
-function cleanPontuacaoTop3AndPesquisarV97() {
+// beforeunload_presence_v63
+window.addEventListener("beforeunload", () => {
   try {
-    // 1) Remover/ocultar Top 3 na página Pontuação.
-    const top3Selectors = [
-      ".top3", ".top-3", ".top-three", ".podium", ".podio", ".pódio",
-      ".pontuacao-top3", ".score-top3", ".leaderboard-top3",
-      "[class*='top3']", "[class*='Top3']", "[class*='podium']", "[class*='Podium']",
-      "[class*='podio']", "[class*='Podio']", "[id*='top3']", "[id*='Top3']",
-      "[id*='podium']", "[id*='Podium']", "[id*='podio']", "[id*='Podio']"
-    ];
-
-    top3Selectors.forEach(selector => {
-      document.querySelectorAll(selector).forEach(el => {
-        const text = String(el.textContent || "").toLowerCase();
-        const cls = String(el.className || "").toLowerCase();
-        const id = String(el.id || "").toLowerCase();
-
-        const looksTop3 =
-          text.includes("top 3") ||
-          text.includes("pódio") ||
-          text.includes("podio") ||
-          cls.includes("top3") ||
-          cls.includes("podium") ||
-          cls.includes("podio") ||
-          id.includes("top3") ||
-          id.includes("podium") ||
-          id.includes("podio");
-
-        if (looksTop3) el.style.display = "none";
-      });
-    });
-
-    // 2) Remover botão Pesquisar apenas dentro de cards de jogos/calendário.
-    document.querySelectorAll("button, a").forEach(el => {
-      const text = String(el.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
-      if (text !== "pesquisar" && text !== "🔎 pesquisar" && text !== "🔍 pesquisar") return;
-
-      const inGameCard = el.closest(
-        ".match-card, .game-card, .jogo-card, .fixture-card, .calendar-card, .calendario-card, [data-game-id], [data-jogo-id]"
-      );
-
-      if (inGameCard) el.style.display = "none";
-    });
+    updateMyPresence(true);
   } catch (error) {
-    console.warn("Limpeza visual v97 falhou:", error);
+    console.warn("Não foi possível marcar offline ao sair:", error);
   }
+});
+
+setupKnockoutAdjustTopButton();
+
+setupOnlineUsersCloseControls();
+
+
+
+setupSearchResultsAdminButton();
+
+
+
+
+// v89 — Chat mobile limpo: sem capturas globais agressivas.
+(function setupChatMobileCleanV89(){
+  if (window.__chatMobileCleanV89) return;
+  window.__chatMobileCleanV89 = true;
+
+  function isMobileChat() {
+    return window.matchMedia?.("(max-width: 760px)")?.matches || window.innerWidth <= 760;
+  }
+
+  function clearChatState() {
+    document.body.classList.remove("chat-fullscreen-open", "chat-mobile-page-open", "chat-window-open");
+    document.documentElement.classList.remove("chat-mobile-page-open");
+    document.body.style.overflow = "";
+    document.body.style.position = "";
+    document.body.style.width = "";
+    document.body.style.height = "";
+  }
+
+  function applyChatOpenState() {
+    const mobile = isMobileChat();
+    document.body.classList.toggle("chat-mobile-page-open", mobile);
+    document.body.classList.toggle("chat-fullscreen-open", mobile);
+    document.body.classList.toggle("chat-window-open", !mobile);
+    document.documentElement.classList.toggle("chat-mobile-page-open", mobile);
+  }
+
+  window.closeChatMobileClean = function closeChatMobileClean(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const panel = document.getElementById("chatPanel");
+    if (panel) panel.classList.add("hidden");
+
+    clearChatState();
+
+    try { if (typeof closeChatActionMenu === "function") closeChatActionMenu(); } catch {}
+    try { if (typeof clearChatReply === "function") clearChatReply(); } catch {}
+    try { if (typeof updateChatTyping === "function") updateChatTyping(false); } catch {}
+    try { document.getElementById("chatInput")?.blur(); } catch {}
+
+    if (window.location.hash === "#chat") {
+      try { history.replaceState(null, "", window.location.pathname + window.location.search); } catch {}
+    }
+
+    try {
+      chatLastSeenAt = Date.now();
+      localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
+      updateChatUnreadBadge();
+    } catch {}
+
+    return false;
+  };
+
+  window.closeChatPanelNow = window.closeChatMobileClean;
+  window.closeChatPanel = function closeChatPanelClean() {
+    return window.closeChatMobileClean();
+  };
+
+  window.openChatPanel = function openChatPanelClean() {
+    const panel = document.getElementById("chatPanel");
+    if (!panel) {
+      clearChatState();
+      return;
+    }
+
+    panel.classList.remove("hidden");
+    applyChatOpenState();
+
+    if (isMobileChat() && window.location.hash !== "#chat") {
+      try { history.pushState({ chatOpen: true }, "", "#chat"); } catch {}
+    }
+
+    try { chatOpenedOnce = true; } catch {}
+    try {
+      chatLastSeenAt = Date.now();
+      localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
+    } catch {}
+    try { updateChatUnreadBadge(); } catch {}
+    try { if (typeof chatNotifyNewMessages === "function") chatNotifyNewMessages(); } catch {}
+    try { if (typeof renderChatPinnedMessage === "function") renderChatPinnedMessage(); } catch {}
+
+    setTimeout(() => {
+      try { scrollChatToBottom(); } catch {}
+    }, 50);
+  };
+
+  window.openChatImageClean = function openChatImageClean(src, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (!viewer || !img || !src) return false;
+
+    img.src = src;
+    viewer.classList.remove("hidden");
+    document.body.classList.add("chat-image-viewer-open");
+    return false;
+  };
+
+  window.closeChatImageClean = function closeChatImageClean(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (viewer) viewer.classList.add("hidden");
+    if (img) img.removeAttribute("src");
+    document.body.classList.remove("chat-image-viewer-open");
+    return false;
+  };
+
+  function bindCleanChat() {
+    const openBtn = document.getElementById("chatOpenBtn");
+    const closeBtn = document.getElementById("chatCloseBtn");
+    const messages = document.getElementById("chatMessages");
+    const imageClose = document.getElementById("chatImageViewerClose");
+    const imageViewer = document.getElementById("chatImageViewer");
+
+    if (openBtn && openBtn.dataset.v89Open !== "1") {
+      openBtn.dataset.v89Open = "1";
+      openBtn.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        window.openChatPanel();
+      });
+    }
+
+    if (closeBtn && closeBtn.dataset.v89Close !== "1") {
+      closeBtn.dataset.v89Close = "1";
+      closeBtn.setAttribute("onclick", "return window.closeChatMobileClean(event)");
+      ["click", "touchend"].forEach(name => {
+        closeBtn.addEventListener(name, event => window.closeChatMobileClean(event), { passive: false });
+      });
+    }
+
+    if (messages && messages.dataset.v89Messages !== "1") {
+      messages.dataset.v89Messages = "1";
+
+      // Tocar na imagem: abre imagem. Não interfere com texto.
+      messages.addEventListener("click", event => {
+        const imageButton = event.target.closest?.(".chat-image-button,[data-chat-image-src]");
+        if (imageButton) {
+          const src = imageButton.dataset.chatImageSrc || imageButton.querySelector?.("img")?.src || "";
+          window.openChatImageClean(src, event);
+          return;
+        }
+
+        // No mobile, tocar na mensagem abre ações, para não depender de long press do Safari.
+      });
+
+      // Long press continua disponível, mas sem capturar imagens.
+      let pressTimer = null;
+      messages.addEventListener("touchstart", event => {
+        if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+        const row = event.target.closest?.(".chat-message-row[data-chat-message]");
+        if (!row) return;
+        pressTimer = setTimeout(() => {
+          if (typeof openChatActionMenu === "function") openChatActionMenu(row.dataset.chatMessage, event);
+        }, 520);
+      }, { passive: true });
+
+      ["touchend", "touchmove", "touchcancel"].forEach(name => {
+        messages.addEventListener(name, () => {
+          if (pressTimer) clearTimeout(pressTimer);
+          pressTimer = null;
+        }, { passive: true });
+      });
+    }
+
+    if (imageClose && imageClose.dataset.v89Close !== "1") {
+      imageClose.dataset.v89Close = "1";
+      imageClose.addEventListener("click", event => window.closeChatImageClean(event));
+      imageClose.addEventListener("touchend", event => window.closeChatImageClean(event), { passive: false });
+    }
+
+    if (imageViewer && imageViewer.dataset.v89Viewer !== "1") {
+      imageViewer.dataset.v89Viewer = "1";
+      imageViewer.addEventListener("click", event => {
+        if (event.target === imageViewer) window.closeChatImageClean(event);
+      });
+    }
+  }
+
+  bindCleanChat();
+  document.addEventListener("DOMContentLoaded", () => {
+    bindCleanChat();
+
+    const panel = document.getElementById("chatPanel");
+    if (panel) panel.classList.add("hidden");
+    clearChatState();
+
+    if (window.location.hash === "#chat") {
+      try { history.replaceState(null, "", window.location.pathname + window.location.search); } catch {}
+    }
+  });
+  setTimeout(bindCleanChat, 400);
+
+  window.addEventListener("popstate", () => {
+    const panel = document.getElementById("chatPanel");
+    if (panel && !panel.classList.contains("hidden") && window.location.hash !== "#chat") {
+      window.closeChatMobileClean();
+    }
+  });
+})();
+
+
+// v91 — fixes sobre base v89: menu por toque e imagem acima do chat.
+(function setupChatMenuImageV91(){
+  if (window.__chatMenuImageV91) return;
+  window.__chatMenuImageV91 = true;
+
+  function isMobileV91() {
+    return window.matchMedia?.("(max-width: 760px)")?.matches || window.innerWidth <= 760;
+  }
+
+  function getMessageIdFromTarget(target) {
+    return target?.closest?.(".chat-message-row[data-chat-message], .chat-bubble[data-chat-message]")?.dataset?.chatMessage || "";
+  }
+
+  window.openChatImageAboveV91 = function openChatImageAboveV91(src, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (!viewer || !img || !src) return false;
+
+    img.src = src;
+    viewer.classList.remove("hidden");
+    viewer.style.zIndex = "2147483600";
+    document.body.classList.add("chat-image-viewer-open");
+    return false;
+  };
+
+  window.closeChatImageAboveV91 = function closeChatImageAboveV91(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (viewer) viewer.classList.add("hidden");
+    if (img) img.removeAttribute("src");
+    document.body.classList.remove("chat-image-viewer-open");
+    return false;
+  };
+
+  function openMessageMenuV91(id, event) {
+    if (!id || typeof openChatActionMenu !== "function") return false;
+
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    openChatActionMenu(id, event || { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2, target: document.body });
+    return false;
+  }
+
+  function bindV91() {
+    const messages = document.getElementById("chatMessages");
+    const viewer = document.getElementById("chatImageViewer");
+    const viewerClose = document.getElementById("chatImageViewerClose");
+
+    if (messages && messages.dataset.v91Bound !== "1") {
+      messages.dataset.v91Bound = "1";
+
+      // Click normal: imagem abre; mensagem abre menu no mobile.
+      messages.addEventListener("click", event => {
+        const imageButton = event.target.closest?.(".chat-image-button,[data-chat-image-src]");
+        if (imageButton) {
+          const src = imageButton.dataset.chatImageSrc || imageButton.querySelector?.("img")?.src || "";
+          return window.openChatImageAboveV91(src, event);
+        }
+
+      });
+
+      // iPhone/Safari às vezes falha click em elementos dentro de scroll: usar touchend só no container.
+      messages.addEventListener("touchend", event => {
+        const imageButton = event.target.closest?.(".chat-image-button,[data-chat-image-src]");
+        if (imageButton) {
+          const src = imageButton.dataset.chatImageSrc || imageButton.querySelector?.("img")?.src || "";
+          return window.openChatImageAboveV91(src, event);
+        }
+
+      }, { passive: false });
+
+      // PC continua com botão direito.
+      messages.addEventListener("contextmenu", event => {
+        const id = getMessageIdFromTarget(event.target);
+        if (id) return openMessageMenuV91(id, event);
+      });
+    }
+
+    if (viewerClose && viewerClose.dataset.v91Bound !== "1") {
+      viewerClose.dataset.v91Bound = "1";
+      viewerClose.addEventListener("click", event => window.closeChatImageAboveV91(event));
+      viewerClose.addEventListener("touchend", event => window.closeChatImageAboveV91(event), { passive: false });
+    }
+
+    if (viewer && viewer.dataset.v91Bound !== "1") {
+      viewer.dataset.v91Bound = "1";
+      viewer.addEventListener("click", event => {
+        if (event.target === viewer) window.closeChatImageAboveV91(event);
+      });
+    }
+  }
+
+  bindV91();
+  document.addEventListener("DOMContentLoaded", bindV91);
+  setTimeout(bindV91, 350);
+})();
+
+
+// v92 — Força visualizador de imagem por cima do chat mobile.
+(function setupImageAboveChatV92(){
+  if (window.__imageAboveChatV92) return;
+  window.__imageAboveChatV92 = true;
+
+  const previousOpen = window.openChatImageAboveV91 || window.openChatImageClean || window.openChatImageViewerV90 || window.openChatImageViewer;
+
+  window.openChatImageAboveChatV92 = function openChatImageAboveChatV92(src, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (!viewer || !img || !src) return false;
+
+    img.src = src;
+    viewer.classList.remove("hidden");
+    viewer.style.visibility = "visible";
+    viewer.style.pointerEvents = "auto";
+    viewer.style.zIndex = "2147483646";
+    document.body.classList.add("chat-image-viewer-open");
+    document.documentElement.classList.add("chat-image-viewer-open");
+
+    return false;
+  };
+
+  window.closeChatImageAboveChatV92 = function closeChatImageAboveChatV92(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (viewer) viewer.classList.add("hidden");
+    if (img) img.removeAttribute("src");
+
+    document.body.classList.remove("chat-image-viewer-open");
+    document.documentElement.classList.remove("chat-image-viewer-open");
+
+    return false;
+  };
+
+  // Substitui os nomes usados pelas versões anteriores.
+  window.openChatImageAboveV91 = window.openChatImageAboveChatV92;
+  window.openChatImageClean = window.openChatImageAboveChatV92;
+  window.openChatImageViewerV90 = window.openChatImageAboveChatV92;
+  window.closeChatImageAboveV91 = window.closeChatImageAboveChatV92;
+  window.closeChatImageClean = window.closeChatImageAboveChatV92;
+  window.closeChatImageViewerV90 = window.closeChatImageAboveChatV92;
+
+  function bindV92() {
+    const viewer = document.getElementById("chatImageViewer");
+    const closeBtn = document.getElementById("chatImageViewerClose");
+    const messages = document.getElementById("chatMessages");
+
+    if (closeBtn && closeBtn.dataset.v92Bound !== "1") {
+      closeBtn.dataset.v92Bound = "1";
+      closeBtn.addEventListener("click", event => window.closeChatImageAboveChatV92(event));
+      closeBtn.addEventListener("touchend", event => window.closeChatImageAboveChatV92(event), { passive: false });
+    }
+
+    if (viewer && viewer.dataset.v92Bound !== "1") {
+      viewer.dataset.v92Bound = "1";
+      viewer.addEventListener("click", event => {
+        if (event.target === viewer) window.closeChatImageAboveChatV92(event);
+      });
+      viewer.addEventListener("touchend", event => {
+        if (event.target === viewer) window.closeChatImageAboveChatV92(event);
+      }, { passive: false });
+    }
+
+    if (messages && messages.dataset.v92ImageBound !== "1") {
+      messages.dataset.v92ImageBound = "1";
+      messages.addEventListener("click", event => {
+        const imageButton = event.target.closest?.(".chat-image-button,[data-chat-image-src]");
+        if (!imageButton) return;
+        const src = imageButton.dataset.chatImageSrc || imageButton.querySelector?.("img")?.src || "";
+        if (src) return window.openChatImageAboveChatV92(src, event);
+      });
+      messages.addEventListener("touchend", event => {
+        const imageButton = event.target.closest?.(".chat-image-button,[data-chat-image-src]");
+        if (!imageButton) return;
+        const src = imageButton.dataset.chatImageSrc || imageButton.querySelector?.("img")?.src || "";
+        if (src) return window.openChatImageAboveChatV92(src, event);
+      }, { passive: false });
+    }
+  }
+
+  bindV92();
+  document.addEventListener("DOMContentLoaded", bindV92);
+  setTimeout(bindV92, 350);
+})();
+
+
+// v93 — visualizador usa SEMPRE o src real do <img>, seguro no iPhone/Safari.
+(function setupChatImageSrcRealV93(){
+  if (window.__chatImageSrcRealV93) return;
+  window.__chatImageSrcRealV93 = true;
+
+  function getRealImageSrcFromButton(button) {
+    const img = button?.querySelector?.("img.chat-image, img");
+    return img?.currentSrc || img?.src || img?.getAttribute?.("src") || "";
+  }
+
+  window.openChatImageSrcRealV93 = function openChatImageSrcRealV93(src, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (!viewer || !img || !src) return false;
+
+    viewer.classList.remove("hidden");
+    viewer.style.display = "flex";
+    viewer.style.visibility = "visible";
+    viewer.style.opacity = "1";
+    viewer.style.pointerEvents = "auto";
+    viewer.style.zIndex = "2147483646";
+
+    img.style.display = "block";
+    img.style.visibility = "visible";
+    img.style.opacity = "1";
+    img.style.maxWidth = "96vw";
+    img.style.maxHeight = "86dvh";
+    img.style.objectFit = "contain";
+    img.style.zIndex = "2147483646";
+
+    img.onload = () => {
+      img.style.display = "block";
+      img.style.visibility = "visible";
+      img.style.opacity = "1";
+    };
+
+    img.onerror = () => {
+      console.warn("Imagem do chat não carregou no viewer.");
+    };
+
+    img.src = src;
+
+    document.body.classList.add("chat-image-viewer-open");
+    document.documentElement.classList.add("chat-image-viewer-open");
+
+    return false;
+  };
+
+  window.closeChatImageSrcRealV93 = function closeChatImageSrcRealV93(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+
+    if (viewer) {
+      viewer.classList.add("hidden");
+      viewer.style.display = "";
+      viewer.style.visibility = "";
+      viewer.style.opacity = "";
+      viewer.style.pointerEvents = "";
+    }
+
+    if (img) {
+      img.removeAttribute("src");
+      img.onload = null;
+      img.onerror = null;
+    }
+
+    document.body.classList.remove("chat-image-viewer-open");
+    document.documentElement.classList.remove("chat-image-viewer-open");
+
+    return false;
+  };
+
+  window.openChatImageAboveChatV92 = window.openChatImageSrcRealV93;
+  window.openChatImageAboveV91 = window.openChatImageSrcRealV93;
+  window.openChatImageClean = window.openChatImageSrcRealV93;
+  window.openChatImageViewerV90 = window.openChatImageSrcRealV93;
+
+  window.closeChatImageAboveChatV92 = window.closeChatImageSrcRealV93;
+  window.closeChatImageAboveV91 = window.closeChatImageSrcRealV93;
+  window.closeChatImageClean = window.closeChatImageSrcRealV93;
+  window.closeChatImageViewerV90 = window.closeChatImageSrcRealV93;
+
+  function bindV93() {
+    const messages = document.getElementById("chatMessages");
+    const viewer = document.getElementById("chatImageViewer");
+    const closeBtn = document.getElementById("chatImageViewerClose");
+
+    if (messages && messages.dataset.v93ImageBound !== "1") {
+      messages.dataset.v93ImageBound = "1";
+
+      const openFromEvent = event => {
+        const button = event.target.closest?.(".chat-image-button");
+        if (!button) return;
+
+        const src = getRealImageSrcFromButton(button);
+        if (!src) return;
+
+        return window.openChatImageSrcRealV93(src, event);
+      };
+
+      messages.addEventListener("click", openFromEvent, { capture: true });
+      messages.addEventListener("touchend", openFromEvent, { capture: true, passive: false });
+    }
+
+    if (closeBtn && closeBtn.dataset.v93Bound !== "1") {
+      closeBtn.dataset.v93Bound = "1";
+      closeBtn.addEventListener("click", event => window.closeChatImageSrcRealV93(event));
+      closeBtn.addEventListener("touchend", event => window.closeChatImageSrcRealV93(event), { passive: false });
+    }
+
+    if (viewer && viewer.dataset.v93Bound !== "1") {
+      viewer.dataset.v93Bound = "1";
+      viewer.addEventListener("click", event => {
+        if (event.target === viewer) window.closeChatImageSrcRealV93(event);
+      });
+      viewer.addEventListener("touchend", event => {
+        if (event.target === viewer) window.closeChatImageSrcRealV93(event);
+      }, { passive: false });
+    }
+  }
+
+  bindV93();
+  document.addEventListener("DOMContentLoaded", bindV93);
+  setTimeout(bindV93, 350);
+})();
+
+
+// v96 - interacao do menu: long press correto no mobile e clique direito no PC.
+(function setupChatInteractionV96(){
+  if (window.__chatInteractionV96) return;
+  window.__chatInteractionV96 = true;
+
+  let pressTimer = null;
+  let pressStart = null;
+  let pressOpened = false;
+  let suppressNextClickUntil = 0;
+
+  function isTouchLike(event) {
+    return event?.pointerType === "touch" || event?.pointerType === "pen" || event?.type?.startsWith("touch");
+  }
+
+  function pointFromEvent(event) {
+    const touch = event?.changedTouches?.[0] || event?.touches?.[0];
+    return {
+      x: Number(touch?.clientX ?? event?.clientX ?? 0),
+      y: Number(touch?.clientY ?? event?.clientY ?? 0)
+    };
+  }
+
+  function rowFromEvent(event) {
+    return event?.target?.closest?.(".chat-message-row[data-chat-message]") || null;
+  }
+
+  function clearPress() {
+    if (pressTimer) clearTimeout(pressTimer);
+    pressTimer = null;
+    pressStart = null;
+    pressOpened = false;
+  }
+
+  function openMenuForRow(row, point) {
+    const id = row?.dataset?.chatMessage || "";
+    if (!id || typeof openChatActionMenu !== "function") return;
+    if (pressTimer) clearTimeout(pressTimer);
+    pressTimer = null;
+    pressOpened = true;
+    suppressNextClickUntil = Date.now() + 1500;
+    openChatActionMenu(id, {
+      clientX: point.x,
+      clientY: point.y,
+      target: row,
+      preventDefault() {},
+      stopPropagation() {}
+    });
+  }
+
+  function bindV96() {
+    const messages = document.getElementById("chatMessages");
+    if (!messages || messages.dataset.v96Bound === "1") return;
+    messages.dataset.v96Bound = "1";
+
+    messages.addEventListener("pointerdown", event => {
+      if (!isTouchLike(event)) return;
+      if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+
+      const row = rowFromEvent(event);
+      if (!row) {
+        if (typeof closeChatActionMenu === "function") closeChatActionMenu();
+        return;
+      }
+
+      event.stopImmediatePropagation();
+      clearPress();
+
+      const point = pointFromEvent(event);
+      pressStart = { ...point, row };
+      pressTimer = setTimeout(() => {
+        if (!pressStart || pressStart.row !== row) return;
+        if (navigator.vibrate) {
+          try { navigator.vibrate(15); } catch {}
+        }
+        openMenuForRow(row, point);
+      }, 620);
+    }, { capture: true, passive: false });
+
+    messages.addEventListener("touchstart", event => {
+      if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+      if (!rowFromEvent(event)) return;
+      event.stopImmediatePropagation();
+    }, { capture: true, passive: true });
+
+    const cancelIfMoved = event => {
+      if (!pressStart) return;
+      const point = pointFromEvent(event);
+      if (Math.abs(point.x - pressStart.x) > 10 || Math.abs(point.y - pressStart.y) > 10) {
+        clearPress();
+      }
+    };
+
+    messages.addEventListener("pointermove", cancelIfMoved, { capture: true, passive: true });
+    messages.addEventListener("touchmove", cancelIfMoved, { capture: true, passive: true });
+    messages.addEventListener("scroll", clearPress, { passive: true });
+
+    const finishTouch = event => {
+      if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+      if (Date.now() < suppressNextClickUntil) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        clearPress();
+        return;
+      }
+      const hadPress = Boolean(pressTimer || pressStart || pressOpened);
+      const opened = pressOpened;
+      clearPress();
+      if (hadPress) event.stopImmediatePropagation();
+      if (!opened && typeof closeChatActionMenu === "function") closeChatActionMenu();
+    };
+
+    messages.addEventListener("pointerup", finishTouch, { capture: true, passive: false });
+    messages.addEventListener("pointercancel", finishTouch, { capture: true, passive: false });
+    messages.addEventListener("touchend", finishTouch, { capture: true, passive: false });
+    messages.addEventListener("touchcancel", finishTouch, { capture: true, passive: false });
+
+    messages.addEventListener("click", event => {
+      if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+      if (Date.now() < suppressNextClickUntil) {
+        event.stopImmediatePropagation();
+        return;
+      }
+      if (rowFromEvent(event)) {
+        event.stopImmediatePropagation();
+        if (typeof closeChatActionMenu === "function") closeChatActionMenu();
+      }
+    }, { capture: true });
+
+    messages.addEventListener("contextmenu", event => {
+      const row = rowFromEvent(event);
+      if (!row || event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openMenuForRow(row, pointFromEvent(event));
+    }, { capture: true });
+  }
+
+  function closeMenuOnOutsidePress(event) {
+    const menu = document.getElementById("chatActionMenu");
+    if (!menu || menu.classList.contains("hidden")) return;
+    if (menu.contains(event.target)) return;
+    if (event.type === "click" && Date.now() < suppressNextClickUntil) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+    if (typeof closeChatActionMenu === "function") closeChatActionMenu();
+    if (event.target.closest?.("#chatPanel, #chatMessages, .chat-message-row")) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }
+
+  document.addEventListener("pointerdown", closeMenuOnOutsidePress, { capture: true });
+  document.addEventListener("touchstart", closeMenuOnOutsidePress, { capture: true, passive: false });
+
+  bindV96();
+  document.addEventListener("DOMContentLoaded", bindV96);
+  setTimeout(bindV96, 350);
+})();
+
+
+// v99 - abertura do chat mais rapida e sem bloquear no primeiro toque.
+(function setupChatOpenFastV99(){
+  if (window.__chatOpenFastV99) return;
+  window.__chatOpenFastV99 = true;
+
+  function isMobileV99() {
+    return window.matchMedia?.("(max-width: 760px)")?.matches || window.innerWidth <= 760;
+  }
+
+  function applyOpenClasses(open) {
+    const mobile = isMobileV99();
+    document.body.classList.toggle("chat-mobile-page-open", Boolean(open && mobile));
+    document.body.classList.toggle("chat-fullscreen-open", Boolean(open && mobile));
+    document.body.classList.toggle("chat-window-open", Boolean(open && !mobile));
+    document.documentElement.classList.toggle("chat-mobile-page-open", Boolean(open && mobile));
+  }
+
+  window.openChatPanel = function openChatPanelFastV99(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    }
+
+    const panel = document.getElementById("chatPanel");
+    const messages = document.getElementById("chatMessages");
+    if (!panel) return false;
+
+    panel.classList.remove("hidden");
+    panel.style.pointerEvents = "auto";
+    applyOpenClasses(true);
+
+    if (isMobileV99() && window.location.hash !== "#chat") {
+      try { history.pushState({ chatOpen: true }, "", "#chat"); } catch {}
+    }
+
+    try { if (typeof setupChatUi === "function") setupChatUi(); } catch {}
+    try { if (typeof renderChatTabs === "function") renderChatTabs(); } catch {}
+    try { if (typeof closeChatActionMenu === "function") closeChatActionMenu(); } catch {}
+
+    try {
+      chatOpenedOnce = true;
+      chatLastSeenAt = Date.now();
+      localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
+    } catch {}
+
+    if (!currentUser) {
+      try { if (typeof renderChatMessages === "function") renderChatMessages(); } catch {}
+    } else if (messages && (!Array.isArray(chatMessagesCache) || !chatMessagesCache.length)) {
+      messages.innerHTML = `<div class="empty small-empty">A carregar chat...</div>`;
+    }
+
+    try { if (typeof startChatListenerSafe === "function") startChatListenerSafe(); } catch {}
+    try { if (typeof startPinnedChatListenerSafe === "function") startPinnedChatListenerSafe(); } catch {}
+    try { if (typeof startChatTypingListenerSafe === "function") startChatTypingListenerSafe(); } catch {}
+    try { if (typeof updateChatUnreadBadge === "function") updateChatUnreadBadge(); } catch {}
+    try { if (typeof chatNotifyNewMessages === "function") chatNotifyNewMessages(); } catch {}
+    try { if (typeof renderChatPinnedMessage === "function") renderChatPinnedMessage(); } catch {}
+
+    setTimeout(() => {
+      try { if (typeof scrollChatToBottom === "function") scrollChatToBottom(); } catch {}
+      if (!isMobileV99()) {
+        try { document.getElementById("chatInput")?.focus(); } catch {}
+      }
+    }, 40);
+
+    setTimeout(() => {
+      try {
+        if ((!Array.isArray(chatMessagesCache) || !chatMessagesCache.length) && typeof loadChatMessagesOnce === "function") {
+          loadChatMessagesOnce();
+        }
+      } catch {}
+    }, 450);
+
+    return false;
+  };
+
+  function bindV99() {
+    const openBtn = document.getElementById("chatOpenBtn");
+    if (!openBtn || openBtn.dataset.v99Open === "1") return;
+    openBtn.dataset.v99Open = "1";
+    openBtn.addEventListener("click", event => window.openChatPanel(event), { capture: true });
+    openBtn.addEventListener("touchend", event => window.openChatPanel(event), { capture: true, passive: false });
+  }
+
+  bindV99();
+  document.addEventListener("DOMContentLoaded", bindV99);
+  setTimeout(bindV99, 350);
+})();
+
+
+// v100 - botoes do menu de chat respondem no mobile sem bloquear.
+(function setupChatActionButtonsV100(){
+  if (window.__chatActionButtonsV100) return;
+  window.__chatActionButtonsV100 = true;
+
+  function handleAction(event, action) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    }
+
+    const id = chatActionMessageId;
+    closeChatActionMenu();
+    if (!id) return false;
+
+    if (action === "reply") setChatReply(id);
+    if (action === "pin") pinChatMessage(id);
+    if (action === "delete") deleteChatMessage(id);
+    return false;
+  }
+
+  function bindButton(button, action) {
+    if (!button || button.dataset.v100Bound === "1") return;
+    button.dataset.v100Bound = "1";
+    ["click", "pointerup", "touchend"].forEach(name => {
+      button.addEventListener(name, event => handleAction(event, action), { capture: true, passive: false });
+    });
+  }
+
+  function bindV100() {
+    bindButton(document.getElementById("chatActionReplyBtn"), "reply");
+    bindButton(document.getElementById("chatActionPinBtn"), "pin");
+    bindButton(document.getElementById("chatActionDeleteBtn"), "delete");
+  }
+
+  bindV100();
+  document.addEventListener("DOMContentLoaded", bindV100);
+  setTimeout(bindV100, 350);
+})();
+
+
+// v103 - recupera o chat quando algum estado antigo deixa o painel sem toque.
+(function setupChatTouchRecoveryV103(){
+  if (window.__chatTouchRecoveryV103) return;
+  window.__chatTouchRecoveryV103 = true;
+
+  let recoveryTimer = null;
+
+  function isMobileV103() {
+    return window.matchMedia?.("(max-width: 760px)")?.matches || window.innerWidth <= 760;
+  }
+
+  function chatIsOpen() {
+    const panel = document.getElementById("chatPanel");
+    return Boolean(panel && !panel.classList.contains("hidden"));
+  }
+
+  function closeImageViewerIfHiddenOrIdle() {
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (!viewer) return;
+    if (viewer.classList.contains("hidden")) {
+      viewer.style.pointerEvents = "none";
+      viewer.style.visibility = "";
+      viewer.style.opacity = "";
+      viewer.style.display = "";
+      document.body.classList.remove("chat-image-viewer-open");
+      document.documentElement.classList.remove("chat-image-viewer-open");
+      if (img && !viewer.classList.contains("hidden")) img.removeAttribute("src");
+    }
+  }
+
+  function forceChatInteractive() {
+    const panel = document.getElementById("chatPanel");
+    if (!panel || panel.classList.contains("hidden")) return;
+
+    const mobile = isMobileV103();
+    document.body.classList.toggle("chat-mobile-page-open", mobile);
+    document.body.classList.toggle("chat-fullscreen-open", mobile);
+    document.body.classList.toggle("chat-window-open", !mobile);
+    document.documentElement.classList.toggle("chat-mobile-page-open", mobile);
+
+    panel.style.pointerEvents = "auto";
+    panel.style.visibility = "visible";
+    panel.style.opacity = "1";
+
+    panel.querySelectorAll("button,input,textarea,select,.chat-messages,.chat-form,.chat-room-switch").forEach(el => {
+      el.style.pointerEvents = "auto";
+    });
+
+    closeImageViewerIfHiddenOrIdle();
+
+    if (typeof setupChatUi === "function") {
+      try { setupChatUi(); } catch {}
+    }
+    if (typeof setupChatCloseButtonSafe === "function") {
+      try { setupChatCloseButtonSafe(); } catch {}
+    }
+  }
+
+  function scheduleRecovery() {
+    if (recoveryTimer) clearTimeout(recoveryTimer);
+    forceChatInteractive();
+    recoveryTimer = setTimeout(forceChatInteractive, 80);
+  }
+
+  const previousOpen = window.openChatPanel;
+  window.openChatPanel = function openChatPanelRecoveredV103(event) {
+    const result = typeof previousOpen === "function" ? previousOpen(event) : false;
+    scheduleRecovery();
+    setTimeout(scheduleRecovery, 350);
+    return result;
+  };
+
+  document.addEventListener("pointerdown", event => {
+    if (!chatIsOpen()) return;
+    if (event.target.closest?.("#chatPanel, #chatActionMenu, #chatImageViewer")) scheduleRecovery();
+  }, { capture: true, passive: true });
+
+  document.addEventListener("touchstart", event => {
+    if (!chatIsOpen()) return;
+    if (event.target.closest?.("#chatPanel, #chatActionMenu, #chatImageViewer")) scheduleRecovery();
+  }, { capture: true, passive: true });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && chatIsOpen()) scheduleRecovery();
+  });
+
+  window.addEventListener("resize", () => {
+    if (chatIsOpen()) scheduleRecovery();
+  });
+
+  setInterval(() => {
+    if (chatIsOpen()) forceChatInteractive();
+  }, 2500);
+})();
+
+
+// v94 — limpeza defensiva: remove apenas visual Top 3 da página Pontuação.
+function removeTop3PontuacaoV94() {
+  const selectors = [
+    ".top3", ".top-3", ".top-three", ".podium", ".podio", ".pódio",
+    ".pontuacao-top3", ".score-top3", ".leaderboard-top3",
+    "[class*='top3']", "[class*='Top3']", "[class*='podium']", "[class*='Podium']",
+    "[class*='podio']", "[class*='Podio']", "[id*='top3']", "[id*='Top3']",
+    "[id*='podium']", "[id*='Podium']", "[id*='podio']", "[id*='Podio']"
+  ];
+
+  selectors.forEach(selector => {
+    document.querySelectorAll(selector).forEach(el => {
+      const text = String(el.textContent || "").toLowerCase();
+      const klass = String(el.className || "").toLowerCase();
+      const id = String(el.id || "").toLowerCase();
+
+      if (
+        text.includes("top 3") ||
+        text.includes("pódio") ||
+        text.includes("podio") ||
+        klass.includes("top3") ||
+        klass.includes("podium") ||
+        klass.includes("podio") ||
+        id.includes("top3") ||
+        id.includes("podium") ||
+        id.includes("podio")
+      ) {
+        el.remove();
+      }
+    });
+  });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  cleanPontuacaoTop3AndPesquisarV97();
-  setTimeout(cleanPontuacaoTop3AndPesquisarV97, 300);
-  setTimeout(cleanPontuacaoTop3AndPesquisarV97, 1000);
-  setTimeout(cleanPontuacaoTop3AndPesquisarV97, 2000);
-});
-
-document.addEventListener("click", () => {
-  setTimeout(cleanPontuacaoTop3AndPesquisarV97, 80);
+  removeTop3PontuacaoV94();
+  setTimeout(removeTop3PontuacaoV94, 300);
+  setTimeout(removeTop3PontuacaoV94, 1000);
 });
