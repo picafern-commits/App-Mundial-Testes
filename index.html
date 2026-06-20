@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Mundial Pontos 2026 · Imagem Src Real</title>
+  <title>Mundial Pontos 2026 · API-Football</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Mundial 2026" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -69,7 +69,15 @@
         <p class="eyebrow">Calendário da Fase de Grupos</p>
         <h1>Mundial Pontos 2026</h1>
       </div>
-      <button id="chatOpenBtn" class="secondary chat-open-btn" type="button">Chat <span id="chatUnreadBadge" class="chat-unread-badge hidden">0</span></button>
+      
+          <button id="chatAdminToggleBtn" class="topbar-btn chat-admin-toggle hidden" type="button" title="Ativar/desativar chat">
+            Chat: <span id="chatAdminToggleLabel">...</span>
+          </button>
+
+          <button id="apiFootballOpenBtn" class="topbar-btn api-football-open hidden" type="button" title="API-Football">
+            API-Football
+          </button>
+<button id="chatOpenBtn" class="secondary chat-open-btn" type="button">Chat <span id="chatUnreadBadge" class="chat-unread-badge hidden">0</span></button>
         <div id="sessionBox" class="session-box hidden">
         <span id="sessionUserLabel">Sem login</span>
         <button id="logoutBtn" class="secondary small" type="button">Sair</button>
@@ -501,5 +509,48 @@
         <button id="chatImageViewerClose" class="chat-image-viewer-close" type="button" aria-label="Fechar imagem">×</button>
         <img id="chatImageViewerImg" alt="Imagem do chat" />
       </div>
+
+      <div id="apiFootballPanel" class="api-football-panel hidden" aria-modal="true" role="dialog">
+        <div class="api-football-card">
+          <div class="api-football-head">
+            <div>
+              <h2>API-Football</h2>
+              <p>Opção B · Atualizar jogos terminados manualmente</p>
+            </div>
+            <button id="apiFootballCloseBtn" class="api-football-close" type="button" aria-label="Fechar">×</button>
+          </div>
+
+          <div class="api-football-grid">
+            <label class="api-football-field">
+              <span>API Key</span>
+              <input id="apiFootballKeyInput" type="password" placeholder="Colar API key" autocomplete="off" />
+            </label>
+
+            <label class="api-football-field">
+              <span>Season</span>
+              <input id="apiFootballSeasonInput" type="number" inputmode="numeric" value="2026" />
+            </label>
+
+            <label class="api-football-field">
+              <span>League ID / Cup ID</span>
+              <input id="apiFootballLeagueInput" type="number" inputmode="numeric" placeholder="Ex: ID do Mundial" />
+            </label>
+          </div>
+
+          <div class="api-football-actions">
+            <button id="apiFootballSaveBtn" type="button">Guardar API</button>
+            <button id="apiFootballTestBtn" type="button">Testar API</button>
+            <button id="apiFootballUpdateFinishedBtn" type="button" class="primary">Atualizar jogos terminados</button>
+          </div>
+
+          <div class="api-football-note">
+            <strong>Como funciona:</strong> cada jogo terminado usa até 3 pedidos:
+            resultado final, estatísticas e eventos. Depois fica guardado no Firebase e não volta a gastar API.
+          </div>
+
+          <div id="apiFootballStatus" class="api-football-status">Ainda não testado.</div>
+        </div>
+      </div>
+
 </body>
 </html>

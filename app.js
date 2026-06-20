@@ -6474,3 +6474,747 @@ setupSearchResultsAdminButton();
     if (chatIsOpen()) forceChatInteractive();
   }, 2500);
 })();
+
+
+// v98 — Sistema de chat ativado/desativado por admin.
+let chatSystemEnabled = false;
+let chatSettingsUnsubscribeV98 = null;
+let chatSettingsLoadedV98 = false;
+
+function chatSettingsDocRefV98() {
+  if (!db || !firebaseApi) return null;
+  const { doc } = firebaseApi;
+  if (typeof doc !== "function") return null;
+  return doc(db, "appSettings", "chatSystem");
+}
+
+function isCurrentUserAdminV98() {
+  try {
+    if (typeof isCurrentUserAdmin === "function") return Boolean(isCurrentUserAdmin());
+  } catch {}
+
+  try {
+    if (typeof isAdmin === "function") return Boolean(isAdmin());
+  } catch {}
+
+  try {
+    if (typeof currentUserIsAdmin !== "undefined") return Boolean(currentUserIsAdmin);
+  } catch {}
+
+  try {
+    const email = String(currentUser?.email || "").toLowerCase().trim();
+    const cfg = window.APP_CONFIG || window.appConfig || {};
+    const admins = cfg.adminEmails || cfg.admins || [];
+    if (Array.isArray(admins) && admins.map(x => String(x).toLowerCase().trim()).includes(email)) return true;
+  } catch {}
+
+  try {
+    const email = String(currentUser?.email || "").toLowerCase().trim();
+    if (Array.isArray(window.adminEmails) && window.adminEmails.map(x => String(x).toLowerCase().trim()).includes(email)) return true;
+  } catch {}
+
+  try {
+    const email = String(currentUser?.email || "").toLowerCase().trim();
+    if (Array.isArray(APP_CONFIG?.adminEmails) && APP_CONFIG.adminEmails.map(x => String(x).toLowerCase().trim()).includes(email)) return true;
+  } catch {}
+
+  return false;
+}
+
+function setChatVisibleV98(enabled) {
+  chatSystemEnabled = Boolean(enabled);
+
+  const chatBtn = document.getElementById("chatOpenBtn");
+  const chatPanel = document.getElementById("chatPanel");
+  const adminToggle = document.getElementById("chatAdminToggleBtn");
+  const adminLabel = document.getElementById("chatAdminToggleLabel");
+  const isAdmin = isCurrentUserAdminV98();
+
+  if (chatBtn) {
+    chatBtn.classList.toggle("hidden", !chatSystemEnabled);
+    chatBtn.style.display = chatSystemEnabled ? "" : "none";
+  }
+
+  if (!chatSystemEnabled && chatPanel) {
+    chatPanel.classList.add("hidden");
+    try { document.body.classList.remove("chat-fullscreen-open", "chat-mobile-page-open", "chat-window-open"); } catch {}
+    try { document.documentElement.classList.remove("chat-mobile-page-open"); } catch {}
+  }
+
+  if (adminToggle) {
+    adminToggle.classList.toggle("hidden", !isAdmin);
+    adminToggle.style.display = isAdmin ? "" : "none";
+    adminToggle.classList.toggle("is-on", chatSystemEnabled);
+    adminToggle.classList.toggle("is-off", !chatSystemEnabled);
+  }
+
+  if (adminLabel) adminLabel.textContent = chatSystemEnabled ? "Ativo" : "Desativo";
+}
+
+async function saveChatSystemEnabledV98(enabled) {
+  if (!isCurrentUserAdminV98()) {
+    try { toast("Só o admin pode alterar o chat."); } catch {}
+    return;
+  }
+
+  if (!db || !firebaseApi || storageMode !== "firebase") {
+    try { toast("Firebase não está ligado."); } catch {}
+    return;
+  }
+
+  try {
+    const ref = chatSettingsDocRefV98();
+    if (!ref) throw new Error("Sem referência Firebase");
+
+    const { setDoc, serverTimestamp } = firebaseApi;
+    await setDoc(ref, {
+      enabled: Boolean(enabled),
+      updatedAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString(),
+      updatedBy: currentUser?.uid || "",
+      updatedByEmail: String(currentUser?.email || "").toLowerCase()
+    }, { merge: true });
+
+    setChatVisibleV98(Boolean(enabled));
+    try { toast(Boolean(enabled) ? "Chat ativado." : "Chat desativado."); } catch {}
+  } catch (error) {
+    console.error("Falhou guardar estado do chat:", error);
+    try { toast("Não consegui guardar o estado do chat."); } catch {}
+  }
+}
+
+async function loadChatSystemEnabledV98() {
+  setChatVisibleV98(false);
+
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) {
+    chatSettingsLoadedV98 = false;
+    setChatVisibleV98(false);
+    return;
+  }
+
+  try {
+    if (typeof chatSettingsUnsubscribeV98 === "function") {
+      try { chatSettingsUnsubscribeV98(); } catch {}
+      chatSettingsUnsubscribeV98 = null;
+    }
+
+    const ref = chatSettingsDocRefV98();
+    if (!ref) throw new Error("Sem referência Firebase");
+
+    const { onSnapshot, getDoc, setDoc, serverTimestamp } = firebaseApi;
+
+    if (typeof getDoc === "function") {
+      const snap = await getDoc(ref);
+      chatSettingsLoadedV98 = true;
+
+      if (!snap.exists?.() && isCurrentUserAdminV98() && typeof setDoc === "function") {
+        await setDoc(ref, {
+          enabled: false,
+          createdAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString(),
+          createdBy: currentUser?.uid || "",
+          createdByEmail: String(currentUser?.email || "").toLowerCase()
+        }, { merge: true });
+        setChatVisibleV98(false);
+      } else if (snap.exists?.()) {
+        setChatVisibleV98(Boolean((snap.data?.() || {}).enabled));
+      } else {
+        setChatVisibleV98(false);
+      }
+    }
+
+    if (typeof onSnapshot === "function") {
+      chatSettingsUnsubscribeV98 = onSnapshot(ref, snap => {
+        chatSettingsLoadedV98 = true;
+        const data = snap.exists?.() ? (snap.data?.() || {}) : {};
+        setChatVisibleV98(Boolean(data.enabled));
+      }, error => {
+        console.warn("Estado do chat não carregou:", error);
+        setChatVisibleV98(false);
+      });
+    }
+  } catch (error) {
+    console.warn("Erro ao carregar estado do chat:", error);
+    setChatVisibleV98(false);
+  }
+}
+
+function setupChatAdminToggleV98() {
+  const btn = document.getElementById("chatAdminToggleBtn");
+  if (btn && btn.dataset.v98Bound !== "1") {
+    btn.dataset.v98Bound = "1";
+    btn.addEventListener("click", async event => {
+      event.preventDefault();
+      event.stopPropagation();
+      await saveChatSystemEnabledV98(!chatSystemEnabled);
+    });
+  }
+
+  setChatVisibleV98(chatSystemEnabled);
+}
+
+// Bloqueia abertura se estiver desativado.
+(function wrapChatOpenWithToggleV98(){
+  if (window.__chatOpenToggleWrappedV98) return;
+  window.__chatOpenToggleWrappedV98 = true;
+
+  const originalWindowOpen = typeof window.openChatPanel === "function" ? window.openChatPanel : null;
+
+  window.openChatPanel = function openChatPanelToggleV98(...args) {
+    if (!chatSystemEnabled) {
+      try { toast("Chat desativado pelo admin."); } catch {}
+      return;
+    }
+
+    if (typeof originalWindowOpen === "function") return originalWindowOpen.apply(this, args);
+    try {
+      const panel = document.getElementById("chatPanel");
+      if (panel) panel.classList.remove("hidden");
+    } catch {}
+  };
+})();
+
+document.addEventListener("click", event => {
+  const chatBtn = event.target.closest?.("#chatOpenBtn");
+  if (!chatBtn) return;
+
+  if (!chatSystemEnabled) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    try { toast("Chat desativado pelo admin."); } catch {}
+    return false;
+  }
+}, { capture: true });
+
+document.addEventListener("DOMContentLoaded", () => {
+  setupChatAdminToggleV98();
+  setChatVisibleV98(false);
+  setTimeout(setupChatAdminToggleV98, 300);
+});
+
+(function startChatSettingsWatcherV98(){
+  if (window.__chatSettingsWatcherV98) return;
+  window.__chatSettingsWatcherV98 = true;
+
+  const tick = () => {
+    setupChatAdminToggleV98();
+
+    if (currentUser && db && firebaseApi && storageMode === "firebase") {
+      if (!chatSettingsLoadedV98) loadChatSystemEnabledV98();
+    } else {
+      chatSettingsLoadedV98 = false;
+      setChatVisibleV98(false);
+    }
+  };
+
+  setInterval(tick, 2500);
+  setTimeout(tick, 600);
+  setTimeout(tick, 1600);
+  setTimeout(tick, 3200);
+})();
+
+
+// v99 — API-Football Opção B: admin atualiza jogos terminados e guarda no Firebase.
+let apiFootballSettingsV99 = {
+  apiKey: "",
+  season: 2026,
+  league: ""
+};
+
+function apiFootballIsAdminV99() {
+  try {
+    if (typeof isCurrentUserAdminV98 === "function") return Boolean(isCurrentUserAdminV98());
+  } catch {}
+  try {
+    if (typeof isCurrentUserAdmin === "function") return Boolean(isCurrentUserAdmin());
+  } catch {}
+  try {
+    if (typeof isAdmin === "function") return Boolean(isAdmin());
+  } catch {}
+  try {
+    if (typeof currentUserIsAdmin !== "undefined") return Boolean(currentUserIsAdmin);
+  } catch {}
+
+  try {
+    const email = String(currentUser?.email || "").toLowerCase().trim();
+    const cfg = window.APP_CONFIG || window.appConfig || {};
+    const admins = cfg.adminEmails || cfg.admins || [];
+    if (Array.isArray(admins) && admins.map(x => String(x).toLowerCase().trim()).includes(email)) return true;
+  } catch {}
+
+  return false;
+}
+
+function apiFootballStatusV99(message, type = "") {
+  const el = document.getElementById("apiFootballStatus");
+  if (!el) return;
+  el.textContent = message;
+  el.className = "api-football-status" + (type ? " " + type : "");
+}
+
+function apiFootballSettingsRefV99() {
+  if (!db || !firebaseApi) return null;
+  const { doc } = firebaseApi;
+  if (typeof doc !== "function") return null;
+  return doc(db, "appSettings", "apiFootball");
+}
+
+async function loadApiFootballSettingsV99() {
+  if (!currentUser || !db || !firebaseApi || storageMode !== "firebase") return;
+
+  try {
+    const ref = apiFootballSettingsRefV99();
+    if (!ref) return;
+    const { getDoc } = firebaseApi;
+    if (typeof getDoc !== "function") return;
+
+    const snap = await getDoc(ref);
+    const data = snap.exists?.() ? (snap.data?.() || {}) : {};
+
+    apiFootballSettingsV99 = {
+      apiKey: String(data.apiKey || ""),
+      season: Number(data.season || 2026),
+      league: String(data.league || data.leagueId || "")
+    };
+
+    const keyInput = document.getElementById("apiFootballKeyInput");
+    const seasonInput = document.getElementById("apiFootballSeasonInput");
+    const leagueInput = document.getElementById("apiFootballLeagueInput");
+
+    if (keyInput) keyInput.value = apiFootballSettingsV99.apiKey ? "••••••••••••••••" : "";
+    if (seasonInput) seasonInput.value = String(apiFootballSettingsV99.season || 2026);
+    if (leagueInput) leagueInput.value = apiFootballSettingsV99.league || "";
+
+    if (apiFootballSettingsV99.apiKey) {
+      apiFootballStatusV99("API guardada. Podes testar ou atualizar jogos terminados.", "ok");
+    }
+  } catch (error) {
+    console.warn("Falhou carregar API-Football:", error);
+    apiFootballStatusV99("Não consegui carregar configuração da API.", "err");
+  }
+}
+
+async function saveApiFootballSettingsV99() {
+  if (!apiFootballIsAdminV99()) {
+    try { toast("Só o admin pode guardar a API."); } catch {}
+    return;
+  }
+
+  if (!db || !firebaseApi || storageMode !== "firebase") {
+    try { toast("Firebase não está ligado."); } catch {}
+    return;
+  }
+
+  const keyInput = document.getElementById("apiFootballKeyInput");
+  const seasonInput = document.getElementById("apiFootballSeasonInput");
+  const leagueInput = document.getElementById("apiFootballLeagueInput");
+
+  const typedKey = String(keyInput?.value || "").trim();
+  const keepOldKey = typedKey.startsWith("••") && apiFootballSettingsV99.apiKey;
+  const apiKey = keepOldKey ? apiFootballSettingsV99.apiKey : typedKey;
+  const season = Number(seasonInput?.value || 2026);
+  const league = String(leagueInput?.value || "").trim();
+
+  if (!apiKey) {
+    apiFootballStatusV99("Cola a API key primeiro.", "err");
+    return;
+  }
+
+  try {
+    const ref = apiFootballSettingsRefV99();
+    if (!ref) throw new Error("Sem referência Firebase");
+    const { setDoc, serverTimestamp } = firebaseApi;
+
+    await setDoc(ref, {
+      apiKey,
+      season,
+      league,
+      updatedAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString(),
+      updatedBy: currentUser?.uid || "",
+      updatedByEmail: String(currentUser?.email || "").toLowerCase()
+    }, { merge: true });
+
+    apiFootballSettingsV99 = { apiKey, season, league };
+    if (keyInput) keyInput.value = "••••••••••••••••";
+
+    apiFootballStatusV99("API guardada com sucesso.", "ok");
+    try { toast("API-Football guardada."); } catch {}
+  } catch (error) {
+    console.error("Falhou guardar API-Football:", error);
+    apiFootballStatusV99("Erro ao guardar API no Firebase.", "err");
+  }
+}
+
+async function apiFootballFetchV99(endpoint, params = {}) {
+  const apiKey = apiFootballSettingsV99.apiKey;
+  if (!apiKey) throw new Error("API key não configurada.");
+
+  const url = new URL("https://v3.football.api-sports.io/" + endpoint.replace(/^\/+/, ""));
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value) !== "") {
+      url.searchParams.set(key, String(value));
+    }
+  });
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    headers: {
+      "x-apisports-key": apiKey
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error("API respondeu " + response.status);
+  }
+
+  const data = await response.json();
+
+  if (Array.isArray(data.errors) && data.errors.length) {
+    throw new Error(data.errors.join(", "));
+  }
+
+  if (data.errors && typeof data.errors === "object" && Object.keys(data.errors).length) {
+    throw new Error(JSON.stringify(data.errors));
+  }
+
+  return data;
+}
+
+async function testApiFootballV99() {
+  if (!apiFootballIsAdminV99()) return;
+
+  try {
+    await saveApiFootballSettingsV99();
+    apiFootballStatusV99("A testar API...", "");
+    const data = await apiFootballFetchV99("status");
+    const requests = data?.response?.requests || {};
+    apiFootballStatusV99(
+      "API OK. Pedidos: " + (requests.current || 0) + "/" + (requests.limit_day || requests.limit || "?"),
+      "ok"
+    );
+  } catch (error) {
+    console.error("Teste API-Football falhou:", error);
+    apiFootballStatusV99("Erro no teste da API: " + error.message, "err");
+  }
+}
+
+function getGamesArrayV99() {
+  const candidates = [
+    "games", "jogos", "matches", "fixtures", "calendarGames",
+    "mundialGames", "allGames", "appGames"
+  ];
+
+  for (const name of candidates) {
+    try {
+      if (Array.isArray(window[name])) return window[name];
+    } catch {}
+  }
+
+  try {
+    if (typeof state !== "undefined") {
+      for (const key of candidates) {
+        if (Array.isArray(state[key])) return state[key];
+      }
+    }
+  } catch {}
+
+  try {
+    if (typeof appState !== "undefined") {
+      for (const key of candidates) {
+        if (Array.isArray(appState[key])) return appState[key];
+      }
+    }
+  } catch {}
+
+  // Fallback: tentar collections usadas no código local por ID de jogo.
+  return [];
+}
+
+function gameIdV99(game, index = 0) {
+  return String(
+    game.id ||
+    game.gameId ||
+    game.jogoId ||
+    game.fixtureIdLocal ||
+    game.matchId ||
+    game.uid ||
+    game.codigo ||
+    index
+  );
+}
+
+function gameApiFixtureIdV99(game) {
+  return String(
+    game.apiFixtureId ||
+    game.fixtureId ||
+    game.apiId ||
+    game.apiFootballId ||
+    game.fixture?.id ||
+    ""
+  ).trim();
+}
+
+function gameIsFinishedCandidateV99(game) {
+  const status = String(game.status || game.estado || game.state || game.fixture?.status?.short || "").toLowerCase();
+  if (["ft", "aet", "pen", "finished", "terminado", "finalizado", "fim", "final"].some(x => status.includes(x))) return true;
+
+  const end = game.endTime || game.dataFim || game.fim || game.finishedAt;
+  if (end && new Date(end).getTime() < Date.now()) return true;
+
+  const date = game.date || game.data || game.startTime || game.inicio || game.kickoff;
+  if (date) {
+    const t = new Date(date).getTime();
+    if (Number.isFinite(t) && Date.now() > t + 2.2 * 60 * 60 * 1000) return true;
+  }
+
+  return false;
+}
+
+function gameAlreadyImportedV99(game) {
+  return Boolean(
+    game.apiImported ||
+    game.dadosApiImportados ||
+    game.apiFootballImported ||
+    game.apiStatsImported
+  );
+}
+
+async function updateGameInFirebaseV99(game, patch) {
+  if (!db || !firebaseApi || storageMode !== "firebase") throw new Error("Firebase não está ligado.");
+  const { doc, setDoc, updateDoc } = firebaseApi;
+  if (typeof doc !== "function") throw new Error("Firebase doc indisponível.");
+
+  const id = gameIdV99(game);
+  const collections = ["games", "jogos", "matches"];
+
+  let lastError = null;
+  for (const collectionName of collections) {
+    try {
+      const ref = doc(db, collectionName, id);
+      if (typeof setDoc === "function") {
+        await setDoc(ref, patch, { merge: true });
+        return;
+      }
+      if (typeof updateDoc === "function") {
+        await updateDoc(ref, patch);
+        return;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error("Não consegui atualizar jogo no Firebase.");
+}
+
+function buildResultPatchV99(fixture, statistics, events) {
+  const f = fixture?.fixture || {};
+  const teams = fixture?.teams || {};
+  const goals = fixture?.goals || {};
+  const score = fixture?.score || {};
+  const status = f?.status || {};
+
+  return {
+    apiFootball: {
+      fixtureId: f.id || fixture?.fixtureId || "",
+      importedAt: new Date().toISOString(),
+      fixture,
+      statistics,
+      events
+    },
+    apiImported: true,
+    dadosApiImportados: true,
+    apiFootballImported: true,
+    apiStatsImported: true,
+    apiStatus: status.short || status.long || "FT",
+    estado: "Terminado",
+    status: status.short || "FT",
+    homeGoals: typeof goals.home === "number" ? goals.home : null,
+    awayGoals: typeof goals.away === "number" ? goals.away : null,
+    resultadoCasa: typeof goals.home === "number" ? goals.home : null,
+    resultadoFora: typeof goals.away === "number" ? goals.away : null,
+    score: {
+      home: goals.home,
+      away: goals.away,
+      halftime: score.halftime || null,
+      fulltime: score.fulltime || null,
+      extratime: score.extratime || null,
+      penalty: score.penalty || null
+    },
+    teams: {
+      home: teams.home || null,
+      away: teams.away || null
+    },
+    estatisticas: statistics,
+    eventos: events
+  };
+}
+
+async function importFinishedGameFromApiV99(game, index = 0) {
+  const fixtureId = gameApiFixtureIdV99(game);
+  if (!fixtureId) {
+    return { skipped: true, reason: "sem fixture ID" };
+  }
+
+  if (gameAlreadyImportedV99(game)) {
+    return { skipped: true, reason: "já importado" };
+  }
+
+  // 1 pedido: resultado/fixture
+  const fixtureData = await apiFootballFetchV99("fixtures", { id: fixtureId });
+  const fixture = fixtureData?.response?.[0];
+
+  if (!fixture) return { skipped: true, reason: "fixture não encontrado" };
+
+  const shortStatus = String(fixture?.fixture?.status?.short || "").toUpperCase();
+  const finished = ["FT", "AET", "PEN"].includes(shortStatus);
+
+  if (!finished && !gameIsFinishedCandidateV99(game)) {
+    return { skipped: true, reason: "ainda não terminou" };
+  }
+
+  // 1 pedido: estatísticas
+  let statistics = [];
+  try {
+    const statData = await apiFootballFetchV99("fixtures/statistics", { fixture: fixtureId });
+    statistics = statData?.response || [];
+  } catch (error) {
+    statistics = [];
+  }
+
+  // 1 pedido: eventos/golos/cartões
+  let events = [];
+  try {
+    const eventData = await apiFootballFetchV99("fixtures/events", { fixture: fixtureId });
+    events = eventData?.response || [];
+  } catch (error) {
+    events = [];
+  }
+
+  const patch = buildResultPatchV99(fixture, statistics, events);
+  await updateGameInFirebaseV99(game, patch);
+
+  return {
+    imported: true,
+    fixtureId,
+    home: fixture?.teams?.home?.name || "",
+    away: fixture?.teams?.away?.name || ""
+  };
+}
+
+async function updateFinishedGamesApiFootballV99() {
+  if (!apiFootballIsAdminV99()) {
+    try { toast("Só o admin pode atualizar pela API."); } catch {}
+    return;
+  }
+
+  try {
+    await saveApiFootballSettingsV99();
+
+    const games = getGamesArrayV99();
+    if (!games.length) {
+      apiFootballStatusV99("Não encontrei a lista de jogos carregada na app.", "err");
+      return;
+    }
+
+    const candidates = games.filter(game => {
+      const hasFixture = Boolean(gameApiFixtureIdV99(game));
+      const notImported = !gameAlreadyImportedV99(game);
+      return hasFixture && notImported && gameIsFinishedCandidateV99(game);
+    });
+
+    if (!candidates.length) {
+      apiFootballStatusV99("Nenhum jogo terminado por importar. Confirma se os jogos têm Fixture ID.", "warn");
+      return;
+    }
+
+    apiFootballStatusV99("A importar " + candidates.length + " jogo(s)...", "");
+
+    let imported = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    for (let i = 0; i < candidates.length; i++) {
+      const game = candidates[i];
+      apiFootballStatusV99("A importar jogo " + (i + 1) + "/" + candidates.length + "...", "");
+      try {
+        const result = await importFinishedGameFromApiV99(game, i);
+        if (result.imported) imported += 1;
+        else skipped += 1;
+      } catch (error) {
+        console.error("Erro ao importar jogo:", game, error);
+        errors += 1;
+      }
+    }
+
+    apiFootballStatusV99(
+      "Concluído. Importados: " + imported + " · Ignorados: " + skipped + " · Erros: " + errors,
+      errors ? "warn" : "ok"
+    );
+
+    try { toast("Atualização API concluída."); } catch {}
+
+    // Tenta refrescar UI se existirem funções de render.
+    try { if (typeof renderApp === "function") renderApp(); } catch {}
+    try { if (typeof renderCalendar === "function") renderCalendar(); } catch {}
+    try { if (typeof renderJogos === "function") renderJogos(); } catch {}
+    try { if (typeof renderPontuacao === "function") renderPontuacao(); } catch {}
+  } catch (error) {
+    console.error("Atualização API-Football falhou:", error);
+    apiFootballStatusV99("Erro: " + error.message, "err");
+  }
+}
+
+function setupApiFootballPanelV99() {
+  const openBtn = document.getElementById("apiFootballOpenBtn");
+  const panel = document.getElementById("apiFootballPanel");
+  const closeBtn = document.getElementById("apiFootballCloseBtn");
+  const saveBtn = document.getElementById("apiFootballSaveBtn");
+  const testBtn = document.getElementById("apiFootballTestBtn");
+  const updateBtn = document.getElementById("apiFootballUpdateFinishedBtn");
+
+  const isAdmin = apiFootballIsAdminV99();
+
+  if (openBtn) {
+    openBtn.classList.toggle("hidden", !isAdmin);
+    openBtn.style.display = isAdmin ? "" : "none";
+  }
+
+  if (openBtn && openBtn.dataset.v99Bound !== "1") {
+    openBtn.dataset.v99Bound = "1";
+    openBtn.addEventListener("click", async event => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!apiFootballIsAdminV99()) return;
+      await loadApiFootballSettingsV99();
+      panel?.classList.remove("hidden");
+    });
+  }
+
+  if (closeBtn && closeBtn.dataset.v99Bound !== "1") {
+    closeBtn.dataset.v99Bound = "1";
+    closeBtn.addEventListener("click", () => panel?.classList.add("hidden"));
+  }
+
+  if (saveBtn && saveBtn.dataset.v99Bound !== "1") {
+    saveBtn.dataset.v99Bound = "1";
+    saveBtn.addEventListener("click", saveApiFootballSettingsV99);
+  }
+
+  if (testBtn && testBtn.dataset.v99Bound !== "1") {
+    testBtn.dataset.v99Bound = "1";
+    testBtn.addEventListener("click", testApiFootballV99);
+  }
+
+  if (updateBtn && updateBtn.dataset.v99Bound !== "1") {
+    updateBtn.dataset.v99Bound = "1";
+    updateBtn.addEventListener("click", updateFinishedGamesApiFootballV99);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setupApiFootballPanelV99();
+  setTimeout(setupApiFootballPanelV99, 500);
+  setTimeout(loadApiFootballSettingsV99, 1200);
+});
+
+setInterval(setupApiFootballPanelV99, 2500);
