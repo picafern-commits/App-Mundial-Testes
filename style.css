@@ -6579,3 +6579,68 @@ body.chat-mobile-page-open{
   z-index:2147483550!important;
   pointer-events:auto!important;
 }
+
+
+/* v92 — o visualizador de imagem fica por cima do chat mobile */
+body.chat-mobile-page-open > #chatImageViewer,
+body.chat-fullscreen-open > #chatImageViewer,
+html.chat-image-viewer-open body > #chatImageViewer,
+body.chat-image-viewer-open > #chatImageViewer{
+  visibility:visible!important;
+  pointer-events:auto!important;
+  opacity:1!important;
+  display:flex!important;
+  position:fixed!important;
+  inset:0!important;
+  z-index:2147483646!important;
+}
+
+body.chat-mobile-page-open > #chatImageViewer.hidden,
+body.chat-fullscreen-open > #chatImageViewer.hidden,
+body.chat-image-viewer-open > #chatImageViewer.hidden{
+  display:none!important;
+  pointer-events:none!important;
+}
+
+#chatImageViewer.chat-image-viewer{
+  position:fixed!important;
+  inset:0!important;
+  z-index:2147483646!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:rgba(0,0,0,.96)!important;
+  backdrop-filter:blur(8px)!important;
+}
+
+#chatImageViewer.chat-image-viewer:not(.hidden){
+  display:flex!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+}
+
+#chatImageViewerImg{
+  max-width:100vw!important;
+  max-height:100dvh!important;
+  object-fit:contain!important;
+  border-radius:12px!important;
+  z-index:2147483646!important;
+}
+
+#chatImageViewerClose.chat-image-viewer-close{
+  visibility:visible!important;
+  pointer-events:auto!important;
+  z-index:2147483647!important;
+}
+
+/* Garante que a regra antiga que escondia tudo por trás do chat não esconde o viewer */
+@media(max-width:760px){
+  body.chat-mobile-page-open > #chatImageViewer{
+    visibility:visible!important;
+    pointer-events:auto!important;
+  }
+
+  body.chat-mobile-page-open > #chatImageViewer.hidden{
+    display:none!important;
+    visibility:hidden!important;
+  }
+}

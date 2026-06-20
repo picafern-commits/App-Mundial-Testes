@@ -5663,3 +5663,100 @@ setupSearchResultsAdminButton();
   document.addEventListener("DOMContentLoaded", bindV91);
   setTimeout(bindV91, 350);
 })();
+
+
+// v92 — Força visualizador de imagem por cima do chat mobile.
+(function setupImageAboveChatV92(){
+  if (window.__imageAboveChatV92) return;
+  window.__imageAboveChatV92 = true;
+
+  const previousOpen = window.openChatImageAboveV91 || window.openChatImageClean || window.openChatImageViewerV90 || window.openChatImageViewer;
+
+  window.openChatImageAboveChatV92 = function openChatImageAboveChatV92(src, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (!viewer || !img || !src) return false;
+
+    img.src = src;
+    viewer.classList.remove("hidden");
+    viewer.style.visibility = "visible";
+    viewer.style.pointerEvents = "auto";
+    viewer.style.zIndex = "2147483646";
+    document.body.classList.add("chat-image-viewer-open");
+    document.documentElement.classList.add("chat-image-viewer-open");
+
+    return false;
+  };
+
+  window.closeChatImageAboveChatV92 = function closeChatImageAboveChatV92(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (viewer) viewer.classList.add("hidden");
+    if (img) img.removeAttribute("src");
+
+    document.body.classList.remove("chat-image-viewer-open");
+    document.documentElement.classList.remove("chat-image-viewer-open");
+
+    return false;
+  };
+
+  // Substitui os nomes usados pelas versões anteriores.
+  window.openChatImageAboveV91 = window.openChatImageAboveChatV92;
+  window.openChatImageClean = window.openChatImageAboveChatV92;
+  window.openChatImageViewerV90 = window.openChatImageAboveChatV92;
+  window.closeChatImageAboveV91 = window.closeChatImageAboveChatV92;
+  window.closeChatImageClean = window.closeChatImageAboveChatV92;
+  window.closeChatImageViewerV90 = window.closeChatImageAboveChatV92;
+
+  function bindV92() {
+    const viewer = document.getElementById("chatImageViewer");
+    const closeBtn = document.getElementById("chatImageViewerClose");
+    const messages = document.getElementById("chatMessages");
+
+    if (closeBtn && closeBtn.dataset.v92Bound !== "1") {
+      closeBtn.dataset.v92Bound = "1";
+      closeBtn.addEventListener("click", event => window.closeChatImageAboveChatV92(event));
+      closeBtn.addEventListener("touchend", event => window.closeChatImageAboveChatV92(event), { passive: false });
+    }
+
+    if (viewer && viewer.dataset.v92Bound !== "1") {
+      viewer.dataset.v92Bound = "1";
+      viewer.addEventListener("click", event => {
+        if (event.target === viewer) window.closeChatImageAboveChatV92(event);
+      });
+      viewer.addEventListener("touchend", event => {
+        if (event.target === viewer) window.closeChatImageAboveChatV92(event);
+      }, { passive: false });
+    }
+
+    if (messages && messages.dataset.v92ImageBound !== "1") {
+      messages.dataset.v92ImageBound = "1";
+      messages.addEventListener("click", event => {
+        const imageButton = event.target.closest?.(".chat-image-button,[data-chat-image-src]");
+        if (!imageButton) return;
+        const src = imageButton.dataset.chatImageSrc || imageButton.querySelector?.("img")?.src || "";
+        if (src) return window.openChatImageAboveChatV92(src, event);
+      });
+      messages.addEventListener("touchend", event => {
+        const imageButton = event.target.closest?.(".chat-image-button,[data-chat-image-src]");
+        if (!imageButton) return;
+        const src = imageButton.dataset.chatImageSrc || imageButton.querySelector?.("img")?.src || "";
+        if (src) return window.openChatImageAboveChatV92(src, event);
+      }, { passive: false });
+    }
+  }
+
+  bindV92();
+  document.addEventListener("DOMContentLoaded", bindV92);
+  setTimeout(bindV92, 350);
+})();
