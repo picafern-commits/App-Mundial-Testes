@@ -1,4 +1,4 @@
-﻿const APP_CONFIG = window.MUNDIAL_CONFIG || {};
+const APP_CONFIG = window.MUNDIAL_CONFIG || {};
 const ADMIN_PIN = APP_CONFIG.adminPin || "1234";
 const STORAGE_KEY = "mundial_pontos_2026_import_id_jogo_v32";
 const PENDING_FIREBASE_KEY = `${STORAGE_KEY}_pending_games_v1`;
@@ -3985,46 +3985,27 @@ function renderScore() {
   if (!target) return;
 
   if (!rows.length) {
-    target.innerHTML = `<div class="empty">Importa o Excel de Resultados para criar a classificacao.</div>`;
+    target.innerHTML = `<div class="empty">Importa o Excel de Resultados para criar a classificação.</div>`;
     return;
   }
 
-  const leaderPoints = rows[0]?.points || 0;
-  const currentName = String(currentProfile?.name || displayNameFromEmail(currentUser?.email || "") || "").trim().toLowerCase();
-target.innerHTML = `
-    <div class="score-podium">
-      ${podium.map((row, index) => {
-        const medal = ["1", "2", "3"][index];
-        const gap = index === 0 ? "Lider" : `-${leaderPoints - row.points} pts`;
-        return `
-          <div class="score-podium-card rank-${index + 1}">
-            <span class="score-medal">${medal}</span>
-            <strong>${escapeHtml(row.playerName)}</strong>
-            <b>${row.points} pts</b>
-            <small>${gap}</small>
-          </div>
-        `;
-      }).join("")}
-    </div>
+  target.innerHTML = `
     <div class="score-detail-list">
       ${rows.map((row, index) => {
         const gameRows = playerGameRows(row.playerName);
         const settled = gameRows.filter(item => hasResult(item.game)).length;
         const withBets = gameRows.filter(item => item.bet).length;
-        const gap = leaderPoints - row.points;
-        const isCurrent = currentName && row.playerName.toLowerCase() === currentName;
 
         return `
-          <details class="player-score-card rank-${index + 1} ${isCurrent ? "is-current-user" : ""}">
+          <details class="player-score-card">
             <summary>
               <div class="player-rank">${index + 1}</div>
               <div class="player-score-main">
                 <strong>${escapeHtml(row.playerName)}</strong>
-                <span>${row.exact} exatos / ${row.winner} vencedor/empate / ${settled} jogos com resultado / ${withBets} apostas</span>
+                <span>${row.exact} exatos · ${row.winner} vencedor/empate · ${settled} jogos com resultado · ${withBets} apostas</span>
               </div>
-              <div class="player-gap">${index === 0 ? "Lider" : `-${gap} pts`}</div>
               <div class="player-total">${row.points} pts</div>
-              <div class="player-arrow">v</div>
+              <div class="player-arrow">⌄</div>
             </summary>
 
             <div class="player-games-table">
@@ -4039,7 +4020,7 @@ target.innerHTML = `
                 <div class="player-game-row ${className}">
                   <span>
                     <b>${escapeHtml(game.homeTeam)} - ${escapeHtml(game.awayTeam)}</b>
-                    <small>${escapeHtml(game.group)} / ${dateHeader(game.matchDate)} / ${timePortugal(game.matchDate)}</small>
+                    <small>${escapeHtml(game.group)} · ${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}</small>
                   </span>
                   <span>${bet ? `${bet.homeGuess}-${bet.awayGuess}` : "-"}</span>
                   <span>${hasResult(game) ? `${game.homeScore}-${game.awayScore}` : "-"}</span>
@@ -4053,6 +4034,7 @@ target.innerHTML = `
       }).join("")}
     </div>`;
 }
+
 function blankTeam(team) { return { team, played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, gd: 0, points: 0 }; }
 function groupSortName(group) { return String(group).match(/Grupo ([A-Z])/i)?.[1] || "Z"; }
 function buildStandings() {
@@ -6492,43 +6474,3 @@ setupSearchResultsAdminButton();
     if (chatIsOpen()) forceChatInteractive();
   }, 2500);
 })();
-
-
-// v94 — limpeza defensiva: remove apenas visual Top 3 da página Pontuação.
-function removeTop3PontuacaoV94() {
-  const selectors = [
-    ".top3", ".top-3", ".top-three", ".podium", ".podio", ".pódio",
-    ".pontuacao-top3", ".score-top3", ".leaderboard-top3",
-    "[class*='top3']", "[class*='Top3']", "[class*='podium']", "[class*='Podium']",
-    "[class*='podio']", "[class*='Podio']", "[id*='top3']", "[id*='Top3']",
-    "[id*='podium']", "[id*='Podium']", "[id*='podio']", "[id*='Podio']"
-  ];
-
-  selectors.forEach(selector => {
-    document.querySelectorAll(selector).forEach(el => {
-      const text = String(el.textContent || "").toLowerCase();
-      const klass = String(el.className || "").toLowerCase();
-      const id = String(el.id || "").toLowerCase();
-
-      if (
-        text.includes("top 3") ||
-        text.includes("pódio") ||
-        text.includes("podio") ||
-        klass.includes("top3") ||
-        klass.includes("podium") ||
-        klass.includes("podio") ||
-        id.includes("top3") ||
-        id.includes("podium") ||
-        id.includes("podio")
-      ) {
-        el.remove();
-      }
-    });
-  });
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  removeTop3PontuacaoV94();
-  setTimeout(removeTop3PontuacaoV94, 300);
-  setTimeout(removeTop3PontuacaoV94, 1000);
-});
