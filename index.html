@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt">
 <head>
   <meta charset="utf-8" />
@@ -451,7 +451,8 @@
 
       <div id="chatPanel" class="chat-panel hidden">
         <div class="chat-header">
-          <div>
+          <div class="chat-group-avatar" aria-hidden="true">MP</div>
+          <div class="chat-title-block">
             <strong>Chat Mundial</strong>
             <span id="chatSubtitle">Conversa geral dos users</span>
           </div>
@@ -482,15 +483,40 @@
           <button id="chatReplyCancelBtn" type="button" aria-label="Cancelar resposta">×</button>
         </div>
 
+        <div id="chatEditPreview" class="chat-edit-preview hidden">
+          <div>
+            <span>A editar mensagem</span>
+            <p id="chatEditText"></p>
+          </div>
+          <button id="chatEditCancelBtn" type="button" aria-label="Cancelar edicao">x</button>
+        </div>
+
+        <div id="chatStickerPanel" class="chat-sticker-panel hidden">
+          <button type="button" data-chat-sticker="GOLOOO!">GOLOOO!</button>
+          <button type="button" data-chat-sticker="Vamos!">Vamos!</button>
+          <button type="button" data-chat-sticker="Que jogo!">Que jogo!</button>
+          <button type="button" data-chat-sticker="Campeoes!">Campeoes!</button>
+          <button type="button" data-chat-sticker="😂">😂</button>
+          <button type="button" data-chat-sticker="⚽">⚽</button>
+          <button type="button" data-chat-sticker="🏆">🏆</button>
+          <button type="button" data-chat-sticker="🔥">🔥</button>
+        </div>
+
+        <div id="chatAttachMenu" class="chat-attach-menu hidden">
+          <button id="chatAttachImageBtn" type="button">Imagem</button>
+          <button id="chatAttachStickerBtn" type="button">Stickers/GIFs</button>
+        </div>
         <form id="chatForm" class="chat-form">
-          <button id="chatImageBtn" class="chat-attach-btn" type="button" aria-label="Enviar imagem">＋</button>
+          <button id="chatImageBtn" class="chat-attach-btn" type="button" aria-label="Anexos">+</button>
           <input id="chatImageInput" type="file" accept="image/*" class="hidden" />
+          <button id="chatAudioBtn" class="chat-audio-btn" type="button" aria-label="Gravar audio">Audio</button>
           <input id="chatInput" type="text" maxlength="500" autocomplete="off" placeholder="Mensagem" />
-          <button id="chatSendBtn" class="primary" type="submit" aria-label="Enviar mensagem">➤</button>
+          <button id="chatSendBtn" class="primary" type="submit" aria-label="Enviar mensagem">&gt;</button>
         </form>
       </div>
       <div id="chatActionMenu" class="chat-action-menu hidden">
         <button id="chatActionReplyBtn" type="button">Responder</button>
+        <button id="chatActionEditBtn" type="button">Editar</button>
         <button id="chatActionPinBtn" type="button">Fixar</button>
         <button id="chatActionDeleteBtn" type="button">Apagar</button>
         <div class="chat-reaction-bar" id="chatReactionBar">

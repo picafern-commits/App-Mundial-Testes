@@ -2125,7 +2125,7 @@ async function pinChatMessage(messageId) {
     const { doc, setDoc, serverTimestamp } = firebaseApi;
     await setDoc(doc(db, CHAT_SETTINGS_COLLECTION, `pinned_${chatCurrentRoom}`), {
       messageId,
-      text: String(message.text || ""),
+      text: String(message.text || (message.sticker ? `Sticker: ${message.sticker}` : message.audioData ? "Audio" : message.imageData ? "Imagem" : "")),
       uid: message.uid || "",
       email: message.email || "",
       name: message.name || displayNameFromEmail(message.email || ""),
@@ -2194,6 +2194,10 @@ async function deleteChatMessage(messageId) {
         deletedBy: currentUser?.uid || "",
         text: "",
         imageData: "",
+        audioData: "",
+        audioMime: "",
+        audioDuration: 0,
+        sticker: "",
         replyTo: "",
         replyName: "",
         replyText: "",
@@ -2774,7 +2778,9 @@ async function sendChatImage(file) {
 
   try {
     toast("A preparar imagem...");
-    const data = await compressChatImage(file);
+    const data = file.type === "image/gif" && file.size <= 650000
+      ? await readFileAsDataURL(file)
+      : await compressChatImage(file);
     await sendChatMessage("", data);
   } catch (error) {
     console.error("Falhou enviar imagem do chat:", error);
@@ -6777,3 +6783,626 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(tick, 1600);
   setTimeout(tick, 3200);
 })();
+
+
+// v107 - Chat estilo WhatsApp completo: audio, stickers, editar, lidos e swipe.
+let chatEditingMessageIdV107 = "";
+let chatMediaRecorderV107 = null;
+let chatAudioChunksV107 = [];
+let chatAudioStartedAtV107 = 0;
+let chatReadReceiptTimerV107 = null;
+let chatReadReceiptLastRunV107 = 0;
+
+function chatMessageTextForPreviewV107(message) {
+  if (!message) return "";
+  if (message.text) return String(message.text);
+  if (message.sticker) return `Sticker: ${message.sticker}`;
+  if (message.audioData) return "Audio";
+  if (message.imageData) return "Imagem";
+  return "Mensagem";
+}
+
+function canEditChatMessageV107(message) {
+  return Boolean(currentUser && message && message.uid === currentUser.uid && !isSystemChatMessage(message) && !message.deleted && !message.deletedAt);
+}
+
+function isChatPanelOpenV107() {
+  const panel = $("chatPanel");
+  return Boolean(panel && !panel.classList.contains("hidden"));
+}
+
+function renderChatEditPreviewV107() {
+  const box = $("chatEditPreview");
+  const text = $("chatEditText");
+  if (!box) return;
+  const message = chatMessagesCache.find(item => item.id === chatEditingMessageIdV107);
+  if (!message) {
+    box.classList.add("hidden");
+    if (text) text.textContent = "";
+    return;
+  }
+  box.classList.remove("hidden");
+  if (text) text.textContent = chatMessageTextForPreviewV107(message).slice(0, 160);
+}
+
+function clearChatEditV107() {
+  chatEditingMessageIdV107 = "";
+  const input = $("chatInput");
+  if (input) input.value = "";
+  renderChatEditPreviewV107();
+}
+
+function startEditChatMessageV107(messageId) {
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  if (!canEditChatMessageV107(message)) return toast("So podes editar mensagens de texto tuas.");
+  if (message.imageData || message.audioData || message.sticker) return toast("So podes editar mensagens de texto.");
+  chatEditingMessageIdV107 = messageId;
+  const input = $("chatInput");
+  if (input) {
+    input.value = String(message.text || "");
+    input.focus();
+  }
+  renderChatEditPreviewV107();
+}
+
+async function saveChatEditMessageV107(nextText) {
+  const clean = String(nextText || "").trim().slice(0, 500);
+  if (!clean) return toast("A mensagem nao pode ficar vazia.");
+  const message = chatMessagesCache.find(item => item.id === chatEditingMessageIdV107);
+  if (!canEditChatMessageV107(message)) {
+    clearChatEditV107();
+    return toast("Nao podes editar esta mensagem.");
+  }
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase nao esta ligado.");
+
+  const before = [...chatMessagesCache];
+  const editedAtLocal = new Date().toISOString();
+  chatMessagesCache = chatMessagesCache.map(item => item.id === message.id ? {
+    ...item,
+    text: clean,
+    edited: true,
+    editedAtLocal
+  } : item);
+  clearChatEditV107();
+  renderChatMessages();
+
+  try {
+    const { doc, updateDoc, serverTimestamp } = firebaseApi;
+    await updateDoc(doc(db, chatCollectionRef(message.room || chatCurrentRoom), message.id), {
+      text: clean,
+      edited: true,
+      editedAt: typeof serverTimestamp === "function" ? serverTimestamp() : editedAtLocal,
+      editedAtLocal
+    });
+    toast("Mensagem editada.");
+  } catch (error) {
+    console.error("Falhou editar mensagem:", error);
+    chatMessagesCache = before;
+    renderChatMessages();
+    toast("Nao consegui editar a mensagem.");
+  }
+}
+
+function readChatAudioBlobV107(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Falha a ler audio"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function finishChatAudioRecordingV107() {
+  const button = $("chatAudioBtn");
+  if (button) {
+    button.classList.remove("recording");
+    button.textContent = "Audio";
+  }
+  const blob = new Blob(chatAudioChunksV107, { type: chatAudioChunksV107[0]?.type || "audio/webm" });
+  chatAudioChunksV107 = [];
+  const duration = Math.max(1, Math.round((Date.now() - chatAudioStartedAtV107) / 1000));
+  if (!blob.size) return;
+  if (blob.size > 650000) return toast("Audio demasiado grande. Tenta uma mensagem mais curta.");
+  try {
+    const audioData = await readChatAudioBlobV107(blob);
+    await sendChatMessage("", "", { audioData, audioMime: blob.type || "audio/webm", audioDuration: duration });
+  } catch (error) {
+    console.error("Falhou enviar audio:", error);
+    toast("Nao consegui enviar o audio.");
+  }
+}
+
+async function toggleChatAudioRecordingV107(event) {
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  if (chatMediaRecorderV107 && chatMediaRecorderV107.state === "recording") {
+    chatMediaRecorderV107.stop();
+    return false;
+  }
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    toast("Este dispositivo nao suporta gravacao de audio.");
+    return false;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    chatAudioChunksV107 = [];
+    chatAudioStartedAtV107 = Date.now();
+    chatMediaRecorderV107 = new MediaRecorder(stream);
+    chatMediaRecorderV107.ondataavailable = ev => {
+      if (ev.data?.size) chatAudioChunksV107.push(ev.data);
+    };
+    chatMediaRecorderV107.onstop = () => {
+      stream.getTracks().forEach(track => track.stop());
+      finishChatAudioRecordingV107();
+    };
+    chatMediaRecorderV107.start();
+    const button = $("chatAudioBtn");
+    if (button) {
+      button.classList.add("recording");
+      button.textContent = "Parar";
+    }
+    toast("A gravar audio...");
+    setTimeout(() => {
+      if (chatMediaRecorderV107?.state === "recording") chatMediaRecorderV107.stop();
+    }, 25000);
+  } catch (error) {
+    console.warn("Audio nao autorizado:", error);
+    toast("Nao consegui aceder ao microfone.");
+  }
+  return false;
+}
+
+function chatReadByOthersV107(message) {
+  const readBy = message?.readBy || {};
+  return Object.keys(readBy).some(uid => uid && uid !== currentUser?.uid);
+}
+
+function chatReadCountV107(message) {
+  return Object.keys(message?.readBy || {}).filter(Boolean).length;
+}
+
+chatMessageMatchesSearch = function chatMessageMatchesSearchV107(message) {
+  if (message?.deleted || message?.deletedAt) return false;
+  const term = chatSearchTerm.trim().toLowerCase();
+  if (!term) return true;
+  return [
+    message.text,
+    message.sticker,
+    message.name,
+    message.email,
+    message.replyName,
+    message.replyText,
+    message.audioData ? "audio" : "",
+    message.imageData ? "imagem" : ""
+  ].some(value => String(value || "").toLowerCase().includes(term));
+};
+
+chatMessageMetaMarkup = function chatMessageMetaMarkupV107(message, mine) {
+  const time = chatTimeLabel(chatMessageDateValue(message));
+  let status = "";
+  let statusClass = "";
+  let title = "";
+
+  if (message.failed) {
+    status = "erro";
+    statusClass = " failed";
+  } else if (message.pending) {
+    status = "a enviar";
+    statusClass = " pending";
+  } else if (mine) {
+    status = "✓✓";
+    statusClass = chatReadByOthersV107(message) ? " read" : " delivered";
+    const count = chatReadCountV107(message);
+    title = count ? `Lida por ${count}` : "Enviada";
+  }
+
+  return `
+    <span class="chat-message-meta${statusClass}" ${title ? `title="${escapeHtml(title)}"` : ""}>
+      ${message.edited ? `<span class="chat-edited-label">editada</span>` : ""}
+      <span>${escapeHtml(time)}</span>
+      ${status ? `<span class="chat-message-status">${escapeHtml(status)}</span>` : ""}
+    </span>`;
+};
+
+setChatReply = function setChatReplyV107(messageId) {
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  if (!message) return;
+  chatReplyTo = {
+    id: message.id,
+    name: message.name || displayNameFromEmail(message.email || "") || chatSystemName(),
+    text: chatMessageTextForPreviewV107(message).slice(0, 120)
+  };
+  renderChatReplyPreview();
+  $("chatInput")?.focus();
+};
+
+function chatAudioMarkupV107(message) {
+  if (!message.audioData) return "";
+  const src = escapeHtml(message.audioData);
+  const duration = Number(message.audioDuration || 0);
+  return `
+    <div class="chat-audio-message">
+      <audio controls preload="metadata" src="${src}"></audio>
+      ${duration ? `<span>${duration}s</span>` : ""}
+    </div>`;
+}
+
+function chatStickerMarkupV107(message) {
+  if (!message.sticker) return "";
+  return `<div class="chat-sticker-message">${escapeHtml(message.sticker)}</div>`;
+}
+
+function shouldGroupChatMessageV107(previous, message) {
+  if (!previous || !message) return false;
+  if (previous.uid !== message.uid) return false;
+  if (isSystemChatMessage(previous) || isSystemChatMessage(message)) return false;
+  if (chatDateKey(chatMessageDateValue(previous)) !== chatDateKey(chatMessageDateValue(message))) return false;
+  const diff = Math.abs(chatTimestampMs(chatMessageDateValue(message)) - chatTimestampMs(chatMessageDateValue(previous)));
+  return diff <= 5 * 60 * 1000;
+}
+
+renderChatMessages = function renderChatMessagesV107() {
+  const box = $("chatMessages");
+  if (!box) return;
+  renderChatTabs();
+
+  if (!currentUser) {
+    box.innerHTML = `<div class="empty small-empty">Faz login para usar o chat.</div>`;
+    return;
+  }
+
+  const visibleMessages = chatMessagesCache.filter(chatMessageMatchesSearch);
+  if (!visibleMessages.length) {
+    box.innerHTML = `<div class="empty small-empty">${chatSearchTerm ? "Nenhuma mensagem encontrada." : "Ainda nao ha mensagens. Escreve a primeira :)"}</div>`;
+    updateChatUnreadBadge();
+    chatNotifyNewMessages();
+    renderChatPinnedMessage();
+    return;
+  }
+
+  const stick = box.scrollHeight - box.scrollTop - box.clientHeight < 110;
+  let lastDateKey = "";
+
+  box.innerHTML = visibleMessages.map((message, index) => {
+    const previous = visibleMessages[index - 1];
+    const next = visibleMessages[index + 1];
+    const mine = message.uid === currentUser?.uid;
+    const system = isSystemChatMessage(message);
+    const groupedWithPrevious = shouldGroupChatMessageV107(previous, message);
+    const groupedWithNext = shouldGroupChatMessageV107(message, next);
+    const name = message.name || displayNameFromEmail(message.email || "");
+    const dateValue = chatMessageDateValue(message);
+    const currentDateKey = chatDateKey(dateValue);
+    const dateSeparator = currentDateKey && currentDateKey !== lastDateKey
+      ? `<div class="chat-date-separator"><span>${escapeHtml(chatDateLabel(dateValue))}</span></div>`
+      : "";
+    if (currentDateKey) lastDateKey = currentDateKey;
+
+    if (system) {
+      return `${dateSeparator}
+        <div class="chat-message-row system" data-chat-message="${escapeHtml(message.id)}">
+          <div class="chat-bubble system-bubble" data-chat-message="${escapeHtml(message.id)}">
+            <p>${escapeHtml(String(message.text || ""))}</p>
+            ${chatMessageMetaMarkup(message, false)}
+          </div>
+        </div>`;
+    }
+
+    return `${dateSeparator}
+      <div class="chat-message-row ${mine ? "mine" : "theirs"} ${groupedWithPrevious ? "is-grouped" : ""} ${groupedWithNext ? "has-next" : ""} ${message.pending ? "is-pending" : ""} ${message.failed ? "is-failed" : ""}" data-chat-message="${escapeHtml(message.id)}">
+        <div class="chat-bubble" data-chat-message="${escapeHtml(message.id)}">
+          ${!mine && !groupedWithPrevious ? `<strong>${escapeHtml(name)}</strong>` : ""}
+          ${chatReplyMarkup(message)}
+          ${message.text ? `<p>${escapeHtml(String(message.text || ""))}</p>` : ""}
+          ${chatStickerMarkupV107(message)}
+          ${chatImageMarkup(message)}
+          ${chatAudioMarkupV107(message)}
+          ${chatMessageMetaMarkup(message, mine)}
+          ${chatReactionsMarkup(message)}
+        </div>
+      </div>`;
+  }).join("");
+
+  setupChatMessageActions();
+  setupChatCloseButtonSafe();
+  setupChatV107Bindings();
+
+  if (stick || !chatOpenedOnce) scrollChatToBottom();
+  updateChatUnreadBadge();
+  chatNotifyNewMessages();
+  renderChatPinnedMessage();
+  markVisibleChatMessagesReadV107();
+};
+
+sendChatMessage = async function sendChatMessageV107(text, imageData = "", extra = {}) {
+  const clean = String(text || "").trim();
+  const image = String(imageData || "");
+  const audioData = String(extra?.audioData || "");
+  const sticker = String(extra?.sticker || "");
+
+  if (chatEditingMessageIdV107 && !image && !audioData && !sticker) {
+    return saveChatEditMessageV107(clean);
+  }
+
+  if (!clean && !image && !audioData && !sticker) return;
+  if (!currentUser) return toast("Faz login para escrever no chat.");
+  if (!canUseChatRoom()) return toast("Nao tens acesso a este chat.");
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase nao esta ligado.");
+
+  const now = Date.now();
+  const optimisticId = `local_${now}_${Math.random().toString(36).slice(2)}`;
+  const baseMessage = {
+    uid: currentUser.uid,
+    email: normalizeEmail(currentUser.email),
+    name: chatUserName(),
+    text: clean.slice(0, 500),
+    imageData: image,
+    audioData,
+    audioMime: String(extra?.audioMime || ""),
+    audioDuration: Number(extra?.audioDuration || 0),
+    sticker,
+    replyTo: chatReplyTo?.id || "",
+    replyName: chatReplyTo?.name || "",
+    replyText: chatReplyTo?.text || "",
+    reactions: {},
+    readBy: { [currentUser.uid]: now },
+    room: chatCurrentRoom,
+    createdAtLocal: new Date(now).toISOString(),
+    createdAtMillis: now
+  };
+
+  chatMessagesCache = [...chatMessagesCache, { id: optimisticId, pending: true, ...baseMessage }].slice(-CHAT_LIMIT);
+  clearChatReply();
+  clearChatEditV107();
+  renderChatMessages();
+  setTimeout(scrollChatToBottom, 20);
+
+  try {
+    const { collection, addDoc, serverTimestamp } = firebaseApi;
+    await addDoc(collection(db, chatCollectionRef()), {
+      ...baseMessage,
+      createdAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString()
+    });
+    chatMessagesCache = chatMessagesCache.filter(message => message.id !== optimisticId);
+    renderChatMessages();
+    updateChatTyping(false);
+  } catch (error) {
+    console.error("Falhou enviar mensagem:", error);
+    chatMessagesCache = chatMessagesCache.map(message => (
+      message.id === optimisticId ? { ...message, pending: false, failed: true } : message
+    ));
+    renderChatMessages();
+    toast("Nao consegui enviar a mensagem.");
+  }
+};
+
+function markVisibleChatMessagesReadV107() {
+  if (!isChatPanelOpenV107() || !currentUser || !db || !firebaseApi || storageMode !== "firebase") return;
+  if (chatReadReceiptTimerV107) return;
+  chatReadReceiptTimerV107 = setTimeout(async () => {
+    chatReadReceiptTimerV107 = null;
+    if (Date.now() - chatReadReceiptLastRunV107 < 8000) return;
+    chatReadReceiptLastRunV107 = Date.now();
+
+    const candidates = chatMessagesCache
+      .filter(message => message.id && !String(message.id).startsWith("local_"))
+      .filter(message => message.uid && message.uid !== currentUser.uid)
+      .filter(message => !message.readBy || !message.readBy[currentUser.uid])
+      .slice(-20);
+    if (!candidates.length) return;
+
+    try {
+      const { doc, writeBatch, updateDoc } = firebaseApi;
+      const field = `readBy.${currentUser.uid}`;
+      if (typeof writeBatch === "function") {
+        const batch = writeBatch(db);
+        candidates.forEach(message => batch.update(doc(db, chatCollectionRef(message.room || chatCurrentRoom), message.id), { [field]: Date.now() }));
+        await batch.commit();
+      } else if (typeof updateDoc === "function") {
+        await Promise.all(candidates.slice(0, 8).map(message =>
+          updateDoc(doc(db, chatCollectionRef(message.room || chatCurrentRoom), message.id), { [field]: Date.now() })
+        ));
+      }
+    } catch (error) {
+      console.warn("Lidos do chat nao foram atualizados:", error);
+    }
+  }, 700);
+}
+
+openChatActionMenu = function openChatActionMenuV107(messageId, anchorEvent) {
+  const menu = $("chatActionMenu");
+  const pinBtn = $("chatActionPinBtn");
+  const deleteBtn = $("chatActionDeleteBtn");
+  const replyBtn = $("chatActionReplyBtn");
+  const editBtn = $("chatActionEditBtn");
+  const reactionBar = $("chatReactionBar");
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  if (!menu || !message) return;
+
+  const system = isSystemChatMessage(message);
+  const canPin = isChatAdmin() && !system;
+  const canDelete = canDeleteChatMessage(message);
+  const canReply = !system;
+  const canReact = !system;
+  const canEdit = canEditChatMessageV107(message) && Boolean(message.text) && !message.imageData && !message.audioData && !message.sticker;
+  if (!canPin && !canDelete && !canReply && !canReact && !canEdit) return;
+
+  chatActionMessageId = messageId;
+  document.querySelectorAll(".chat-message-row.is-selected").forEach(row => row.classList.remove("is-selected"));
+  document.querySelector(`[data-chat-message="${CSS.escape(messageId)}"]`)?.closest(".chat-message-row")?.classList.add("is-selected");
+
+  if (pinBtn) pinBtn.classList.toggle("hidden", !canPin);
+  if (deleteBtn) deleteBtn.classList.toggle("hidden", !canDelete);
+  if (replyBtn) replyBtn.classList.toggle("hidden", !canReply);
+  if (editBtn) editBtn.classList.toggle("hidden", !canEdit);
+  if (reactionBar) reactionBar.classList.toggle("hidden", !canReact);
+
+  const panel = $("chatPanel");
+  const panelRect = panel?.getBoundingClientRect();
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+  const rect = anchorEvent?.target?.getBoundingClientRect?.();
+  let x = Number(anchorEvent?.clientX || rect?.left + rect?.width / 2 || viewportWidth / 2);
+  let y = Number(anchorEvent?.clientY || rect?.top || viewportHeight / 2);
+
+  menu.classList.remove("hidden");
+  const menuRect = menu.getBoundingClientRect();
+  const width = menuRect.width || 280;
+  const height = menuRect.height || 130;
+  let left = Math.min(Math.max(10, x - width / 2), viewportWidth - width - 10);
+  let top = Math.min(Math.max(10, y - height - 12), viewportHeight - height - 10);
+
+  if (panelRect) {
+    left = Math.min(Math.max(panelRect.left + 10, left), panelRect.right - width - 10);
+    top = Math.min(Math.max(panelRect.top + 10, top), panelRect.bottom - height - 10);
+  }
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+};
+
+function setupChatV107Bindings() {
+  if (window.__chatV107Bound) return;
+  window.__chatV107Bound = true;
+
+  const attachBtn = $("chatImageBtn");
+  const attachMenu = $("chatAttachMenu");
+  const attachImage = $("chatAttachImageBtn");
+  const attachSticker = $("chatAttachStickerBtn");
+  const stickerPanel = $("chatStickerPanel");
+  const imageInput = $("chatImageInput");
+  const audioBtn = $("chatAudioBtn");
+  const editCancel = $("chatEditCancelBtn");
+  const editBtn = $("chatActionEditBtn");
+  const form = $("chatForm");
+  const messages = $("chatMessages");
+
+  attachBtn?.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    attachMenu?.classList.toggle("hidden");
+    stickerPanel?.classList.add("hidden");
+  }, { capture: true });
+
+  attachImage?.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    attachMenu?.classList.add("hidden");
+    imageInput?.click();
+  });
+
+  attachSticker?.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    attachMenu?.classList.add("hidden");
+    stickerPanel?.classList.toggle("hidden");
+  });
+
+  stickerPanel?.addEventListener("click", event => {
+    const btn = event.target.closest?.("[data-chat-sticker]");
+    if (!btn) return;
+    event.preventDefault();
+    event.stopPropagation();
+    stickerPanel.classList.add("hidden");
+    sendChatMessage("", "", { sticker: btn.dataset.chatSticker || "" });
+  });
+
+  audioBtn?.addEventListener("click", toggleChatAudioRecordingV107, { capture: true });
+  editCancel?.addEventListener("click", clearChatEditV107);
+  editBtn?.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    const id = chatActionMessageId;
+    closeChatActionMenu();
+    if (id) startEditChatMessageV107(id);
+  }, { capture: true });
+
+  form?.addEventListener("submit", event => {
+    if (!chatEditingMessageIdV107) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    saveChatEditMessageV107($("chatInput")?.value || "");
+  }, { capture: true });
+
+  document.addEventListener("pointerdown", event => {
+    if (!attachMenu?.classList.contains("hidden") && !event.target.closest?.("#chatAttachMenu,#chatImageBtn")) attachMenu.classList.add("hidden");
+    if (!stickerPanel?.classList.contains("hidden") && !event.target.closest?.("#chatStickerPanel,#chatAttachStickerBtn,#chatImageBtn")) stickerPanel.classList.add("hidden");
+    const menu = $("chatActionMenu");
+    if (menu && !menu.classList.contains("hidden") && !event.target.closest?.("#chatActionMenu,.chat-message-row[data-chat-message]")) {
+      closeChatActionMenu();
+    }
+  }, { capture: true });
+
+  messages?.addEventListener("wheel", event => {
+    event.stopPropagation();
+  }, { passive: true });
+
+  messages?.addEventListener("touchmove", event => {
+    event.stopPropagation();
+  }, { passive: true });
+
+  let swipeStart = null;
+  messages?.addEventListener("pointerdown", event => {
+    const row = event.target.closest?.(".chat-message-row[data-chat-message]");
+    if (!row || event.target.closest?.(".chat-image-button,audio,button")) return;
+    swipeStart = { x: event.clientX, y: event.clientY, id: row.dataset.chatMessage, row };
+  }, { passive: true });
+
+  messages?.addEventListener("pointerup", event => {
+    if (!swipeStart) return;
+    const dx = event.clientX - swipeStart.x;
+    const dy = event.clientY - swipeStart.y;
+    const id = swipeStart.id;
+    swipeStart = null;
+    if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.7) {
+      setChatReply(id);
+      if (navigator.vibrate) {
+        try { navigator.vibrate(10); } catch {}
+      }
+    }
+  }, { passive: true });
+}
+
+const playChatNotificationV106 = playChatNotification;
+playChatNotification = function playChatNotificationV107(message) {
+  if (!message || message.uid === currentUser?.uid || isSystemChatMessage(message)) return;
+  if (message.id === chatLastNotifiedId) return;
+  chatLastNotifiedId = message.id;
+  localStorage.setItem("mundial_chat_last_notified_id", message.id || "");
+  if (navigator.vibrate) {
+    try { navigator.vibrate([18, 30, 18]); } catch {}
+  }
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0.028;
+    gain.connect(audioCtx.destination);
+    [620, 820].forEach((frequency, index) => {
+      const osc = audioCtx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = frequency;
+      osc.connect(gain);
+      const start = audioCtx.currentTime + index * 0.095;
+      osc.start(start);
+      osc.stop(start + 0.07);
+    });
+    setTimeout(() => audioCtx.close?.(), 300);
+  } catch {
+    try { playChatNotificationV106(message); } catch {}
+  }
+};
+
+const openChatPanelBeforeV107 = window.openChatPanel;
+window.openChatPanel = function openChatPanelV107(event) {
+  const result = typeof openChatPanelBeforeV107 === "function" ? openChatPanelBeforeV107(event) : false;
+  setupChatV107Bindings();
+  markVisibleChatMessagesReadV107();
+  setTimeout(markVisibleChatMessagesReadV107, 1100);
+  return result;
+};
+
+setupChatV107Bindings();
+document.addEventListener("DOMContentLoaded", setupChatV107Bindings);
+setTimeout(setupChatV107Bindings, 500);
