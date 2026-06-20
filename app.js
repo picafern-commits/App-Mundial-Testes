@@ -31,6 +31,8 @@ let onlineUsersCache = [];
 let chatMessagesCache = [];
 let chatPinnedMessage = null;
 let chatPinnedUnsubscribe = null;
+let chatLongPressTimer = null;
+let chatActionMessageId = null;
 let chatUnsubscribe = null;
 let chatOpenedOnce = false;
 let chatLastSeenAt = Number(localStorage.getItem('mundial_chat_last_seen_at') || '0');
@@ -1895,6 +1897,7 @@ function closeChatPanel() {
   const panel = $("chatPanel");
   if (!panel) return;
   panel.classList.add("hidden");
+  closeChatActionMenu();
   chatLastSeenAt = Date.now();
   localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
   updateChatUnreadBadge();
@@ -2046,26 +2049,154 @@ async function deleteChatMessage(messageId) {
   }
 }
 
+
+function closeChatActionMenu() {
+  const menu = $("chatActionMenu");
+  if (!menu) return;
+  menu.classList.add("hidden");
+  chatActionMessageId = null;
+  document.querySelectorAll(".chat-message-row.is-selected").forEach(row => row.classList.remove("is-selected"));
+}
+
+function openChatActionMenu(messageId, anchorEvent) {
+  const menu = $("chatActionMenu");
+  const pinBtn = $("chatActionPinBtn");
+  const deleteBtn = $("chatActionDeleteBtn");
+  const message = chatMessagesCache.find(item => item.id === messageId);
+
+  if (!menu || !message) return;
+
+  const canPin = isChatAdmin();
+  const canDelete = canDeleteChatMessage(message);
+
+  if (!canPin && !canDelete) return;
+
+  chatActionMessageId = messageId;
+
+  document.querySelectorAll(".chat-message-row.is-selected").forEach(row => row.classList.remove("is-selected"));
+  document.querySelector(`[data-chat-message="${CSS.escape(messageId)}"]`)?.closest(".chat-message-row")?.classList.add("is-selected");
+
+  if (pinBtn) pinBtn.classList.toggle("hidden", !canPin);
+  if (deleteBtn) deleteBtn.classList.toggle("hidden", !canDelete);
+
+  const panel = $("chatPanel");
+  const panelRect = panel?.getBoundingClientRect();
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+  let x = anchorEvent?.clientX || 0;
+  let y = anchorEvent?.clientY || 0;
+
+  if ((!x || !y) && anchorEvent?.target) {
+    const rect = anchorEvent.target.getBoundingClientRect();
+    x = rect.left + rect.width / 2;
+    y = rect.top + rect.height / 2;
+  }
+
+  menu.classList.remove("hidden");
+
+  const menuRect = menu.getBoundingClientRect();
+  const width = menuRect.width || 180;
+  const height = menuRect.height || 46;
+
+  let left = Math.min(Math.max(10, x - width / 2), viewportWidth - width - 10);
+  let top = Math.min(Math.max(10, y - height - 12), viewportHeight - height - 10);
+
+  if (panelRect) {
+    left = Math.min(Math.max(panelRect.left + 10, left), panelRect.right - width - 10);
+    top = Math.min(Math.max(panelRect.top + 10, top), panelRect.bottom - height - 10);
+  }
+
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+}
+
+function fireChatLongPress(messageId, event) {
+  if (!messageId) return;
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  if (navigator.vibrate) {
+    try { navigator.vibrate(15); } catch {}
+  }
+  openChatActionMenu(messageId, event);
+}
+
 function setupChatMessageActions() {
   const box = $("chatMessages");
+  const menu = $("chatActionMenu");
+  const pinBtn = $("chatActionPinBtn");
+  const deleteBtn = $("chatActionDeleteBtn");
+
   if (!box || box.dataset.actionsBound === "1") return;
 
   box.dataset.actionsBound = "1";
-  box.addEventListener("click", event => {
-    const deleteButton = event.target.closest?.("[data-chat-delete]");
-    if (deleteButton) {
-      event.preventDefault();
-      event.stopPropagation();
-      deleteChatMessage(deleteButton.dataset.chatDelete);
-      return;
-    }
 
-    const pinButton = event.target.closest?.("[data-chat-pin]");
-    if (pinButton) {
-      event.preventDefault();
-      event.stopPropagation();
-      pinChatMessage(pinButton.dataset.chatPin);
+  const clearTimer = () => {
+    if (chatLongPressTimer) {
+      clearTimeout(chatLongPressTimer);
+      chatLongPressTimer = null;
     }
+  };
+
+  const messageIdFromEvent = event => event.target.closest?.("[data-chat-message]")?.dataset.chatMessage || "";
+
+  box.addEventListener("pointerdown", event => {
+    const messageId = messageIdFromEvent(event);
+    if (!messageId) return;
+
+    clearTimer();
+    chatLongPressTimer = setTimeout(() => fireChatLongPress(messageId, event), 520);
+  });
+
+  box.addEventListener("pointerup", clearTimer);
+  box.addEventListener("pointerleave", clearTimer);
+  box.addEventListener("pointercancel", clearTimer);
+  box.addEventListener("scroll", clearTimer, { passive: true });
+
+  box.addEventListener("contextmenu", event => {
+    const messageId = messageIdFromEvent(event);
+    if (!messageId) return;
+
+    event.preventDefault();
+    openChatActionMenu(messageId, event);
+  });
+
+  box.addEventListener("click", event => {
+    const messageId = messageIdFromEvent(event);
+    if (!messageId) return;
+    if (!$("chatActionMenu")?.classList.contains("hidden")) {
+      event.stopPropagation();
+    }
+  });
+
+  pinBtn?.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const id = chatActionMessageId;
+    closeChatActionMenu();
+    if (id) pinChatMessage(id);
+  });
+
+  deleteBtn?.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const id = chatActionMessageId;
+    closeChatActionMenu();
+    if (id) deleteChatMessage(id);
+  });
+
+  document.addEventListener("click", event => {
+    const activeMenu = $("chatActionMenu");
+    if (!activeMenu || activeMenu.classList.contains("hidden")) return;
+    if (activeMenu.contains(event.target)) return;
+    if (event.target.closest?.("[data-chat-message]")) return;
+    closeChatActionMenu();
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeChatActionMenu();
   });
 }
 
@@ -2136,21 +2267,13 @@ function renderChatMessages() {
   box.innerHTML = chatMessagesCache.map(message => {
     const mine = message.uid === currentUser?.uid;
     const name = message.name || displayNameFromEmail(message.email || "");
-    const canDelete = canDeleteChatMessage(message);
-    const canPin = isChatAdmin();
-    const actions = (canDelete || canPin) ? `
-      <div class="chat-actions">
-        ${canPin ? `<button type="button" data-chat-pin="${escapeHtml(message.id)}">Fixar</button>` : ""}
-        ${canDelete ? `<button type="button" data-chat-delete="${escapeHtml(message.id)}">Apagar</button>` : ""}
-      </div>` : "";
 
     return `
-      <div class="chat-message-row ${mine ? "mine" : "theirs"}">
-        <div class="chat-bubble">
+      <div class="chat-message-row ${mine ? "mine" : "theirs"}" data-chat-message="${escapeHtml(message.id)}">
+        <div class="chat-bubble" data-chat-message="${escapeHtml(message.id)}">
           ${mine ? "" : `<strong>${escapeHtml(name)}</strong>`}
           <p>${escapeHtml(String(message.text || ""))}</p>
           <span>${escapeHtml(chatTimeLabel(message.createdAt || message.createdAtLocal))}</span>
-          ${actions}
         </div>
       </div>`;
   }).join("");
