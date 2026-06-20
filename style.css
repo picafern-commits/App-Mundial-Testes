@@ -6164,3 +6164,122 @@ main,
 body:not(.chat-fullscreen-open) #chatPanel.hidden{
   pointer-events:none!important;
 }
+
+
+/* v82 — Mobile: chat como página separada; PC: janela */
+body.chat-mobile-page-open{
+  overflow:hidden!important;
+  background:rgba(7,11,19,1)!important;
+}
+
+@media(min-width:761px){
+  #chatPanel.chat-panel{
+    position:fixed!important;
+    right:18px!important;
+    bottom:18px!important;
+    left:auto!important;
+    top:auto!important;
+    width:min(420px, calc(100vw - 24px))!important;
+    height:min(640px, calc(100dvh - 36px))!important;
+    max-height:calc(100dvh - 36px)!important;
+    border-radius:22px!important;
+    border:1px solid rgba(255,255,255,.12)!important;
+    box-shadow:0 28px 90px rgba(0,0,0,.54)!important;
+    z-index:9998!important;
+  }
+}
+
+/* No mobile deixa de parecer popup: é uma página */
+@media(max-width:760px){
+  body.chat-mobile-page-open > *:not(#chatPanel):not(#chatActionMenu):not(script):not(style){
+    visibility:hidden!important;
+    pointer-events:none!important;
+  }
+
+  body.chat-mobile-page-open #chatPanel.chat-panel{
+    visibility:visible!important;
+    pointer-events:auto!important;
+  }
+
+  #chatPanel.chat-panel{
+    position:fixed!important;
+    inset:0!important;
+    left:0!important;
+    right:0!important;
+    top:0!important;
+    bottom:0!important;
+    width:100vw!important;
+    height:100dvh!important;
+    min-height:100dvh!important;
+    max-height:100dvh!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+    border:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+    z-index:10050!important;
+    background:linear-gradient(180deg,rgba(13,19,31,1),rgba(7,11,19,1))!important;
+  }
+
+  #chatPanel .chat-header{
+    flex:0 0 auto!important;
+    min-height:64px!important;
+    padding:calc(10px + env(safe-area-inset-top)) 14px 10px!important;
+    border-radius:0!important;
+  }
+
+  #chatPanel .chat-room-switch,
+  #chatPanel .chat-search-wrap,
+  #chatPanel .chat-pinned-box,
+  #chatPanel .chat-typing-box,
+  #chatPanel .chat-reply-preview,
+  #chatPanel .chat-form{
+    flex:0 0 auto!important;
+  }
+
+  #chatPanel .chat-messages{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+    touch-action:pan-y!important;
+  }
+
+  #chatPanel .chat-form{
+    margin-top:auto!important;
+    width:100%!important;
+    box-sizing:border-box!important;
+    padding-bottom:calc(9px + env(safe-area-inset-bottom))!important;
+  }
+
+  #chatActionMenu.chat-action-menu{
+    visibility:visible!important;
+    z-index:10080!important;
+  }
+}
+
+@media(max-width:420px){
+  #chatPanel.chat-panel{
+    height:100dvh!important;
+    min-height:100dvh!important;
+    max-height:100dvh!important;
+  }
+
+  #chatPanel .chat-header{
+    min-height:62px!important;
+    padding:calc(9px + env(safe-area-inset-top)) 12px 9px!important;
+  }
+}
+
+@supports(height:100svh){
+  @media(max-width:760px){
+    #chatPanel.chat-panel{
+      height:100svh!important;
+      min-height:100svh!important;
+      max-height:100svh!important;
+    }
+  }
+}

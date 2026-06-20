@@ -1885,11 +1885,47 @@ function chatTimeLabel(value) {
   return new Date(time).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
 }
 
+
+function isMobileChatPageMode() {
+  return window.matchMedia?.("(max-width: 760px)")?.matches || window.innerWidth <= 760;
+}
+
+function setChatMobilePageState(open) {
+  document.body.classList.toggle("chat-mobile-page-open", Boolean(open && isMobileChatPageMode()));
+  document.body.classList.toggle("chat-window-open", Boolean(open && !isMobileChatPageMode()));
+}
+
+function pushChatMobileHistory() {
+  if (!isMobileChatPageMode()) return;
+  if (window.location.hash === "#chat") return;
+
+  try {
+    history.pushState({ chatOpen: true }, "", "#chat");
+  } catch {}
+}
+
+function closeChatFromHistorySafe() {
+  const panel = $("chatPanel");
+  if (!panel || panel.classList.contains("hidden")) return;
+  window.closeChatPanelNow();
+}
+
+if (!window.__chatMobilePagePopBound) {
+  window.__chatMobilePagePopBound = true;
+  window.addEventListener("popstate", () => {
+    if (window.location.hash !== "#chat") closeChatFromHistorySafe();
+  });
+}
+
 function openChatPanel() {
   const panel = $("chatPanel");
   const input = $("chatInput");
-  if (!panel) { document.body.classList.remove("chat-fullscreen-open"); return; }
+  if (!panel) { document.body.classList.remove("chat-fullscreen-open");
+    setChatMobilePageState(false);
+    setChatMobilePageState(false); return; }
   panel.classList.remove("hidden");
+  setChatMobilePageState(true);
+  pushChatMobileHistory();
   document.body.classList.add("chat-fullscreen-open");
   renderChatTabs();
   chatOpenedOnce = true;
@@ -1920,6 +1956,12 @@ window.closeChatPanelNow = function closeChatPanelNow(event) {
 
     const input = document.getElementById("chatInput");
     if (input) input.blur();
+
+    if (window.location.hash === "#chat") {
+      try {
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+      } catch {}
+    }
   } catch (error) {
     console.warn("Falhou fechar chat:", error);
     document.body.classList.remove("chat-fullscreen-open");
