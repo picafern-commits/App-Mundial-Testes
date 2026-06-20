@@ -6205,7 +6205,9 @@ setupSearchResultsAdminButton();
       localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
     } catch {}
 
-    if (messages && (!Array.isArray(chatMessagesCache) || !chatMessagesCache.length)) {
+    if (!currentUser) {
+      try { if (typeof renderChatMessages === "function") renderChatMessages(); } catch {}
+    } else if (messages && (!Array.isArray(chatMessagesCache) || !chatMessagesCache.length)) {
       messages.innerHTML = `<div class="empty small-empty">A carregar chat...</div>`;
     }
 
