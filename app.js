@@ -6290,3 +6290,100 @@ setupSearchResultsAdminButton();
   document.addEventListener("DOMContentLoaded", bindV100);
   setTimeout(bindV100, 350);
 })();
+
+
+// v103 - recupera o chat quando algum estado antigo deixa o painel sem toque.
+(function setupChatTouchRecoveryV103(){
+  if (window.__chatTouchRecoveryV103) return;
+  window.__chatTouchRecoveryV103 = true;
+
+  let recoveryTimer = null;
+
+  function isMobileV103() {
+    return window.matchMedia?.("(max-width: 760px)")?.matches || window.innerWidth <= 760;
+  }
+
+  function chatIsOpen() {
+    const panel = document.getElementById("chatPanel");
+    return Boolean(panel && !panel.classList.contains("hidden"));
+  }
+
+  function closeImageViewerIfHiddenOrIdle() {
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (!viewer) return;
+    if (viewer.classList.contains("hidden")) {
+      viewer.style.pointerEvents = "none";
+      viewer.style.visibility = "";
+      viewer.style.opacity = "";
+      viewer.style.display = "";
+      document.body.classList.remove("chat-image-viewer-open");
+      document.documentElement.classList.remove("chat-image-viewer-open");
+      if (img && !viewer.classList.contains("hidden")) img.removeAttribute("src");
+    }
+  }
+
+  function forceChatInteractive() {
+    const panel = document.getElementById("chatPanel");
+    if (!panel || panel.classList.contains("hidden")) return;
+
+    const mobile = isMobileV103();
+    document.body.classList.toggle("chat-mobile-page-open", mobile);
+    document.body.classList.toggle("chat-fullscreen-open", mobile);
+    document.body.classList.toggle("chat-window-open", !mobile);
+    document.documentElement.classList.toggle("chat-mobile-page-open", mobile);
+
+    panel.style.pointerEvents = "auto";
+    panel.style.visibility = "visible";
+    panel.style.opacity = "1";
+
+    panel.querySelectorAll("button,input,textarea,select,.chat-messages,.chat-form,.chat-room-switch").forEach(el => {
+      el.style.pointerEvents = "auto";
+    });
+
+    closeImageViewerIfHiddenOrIdle();
+
+    if (typeof setupChatUi === "function") {
+      try { setupChatUi(); } catch {}
+    }
+    if (typeof setupChatCloseButtonSafe === "function") {
+      try { setupChatCloseButtonSafe(); } catch {}
+    }
+  }
+
+  function scheduleRecovery() {
+    if (recoveryTimer) clearTimeout(recoveryTimer);
+    forceChatInteractive();
+    recoveryTimer = setTimeout(forceChatInteractive, 80);
+  }
+
+  const previousOpen = window.openChatPanel;
+  window.openChatPanel = function openChatPanelRecoveredV103(event) {
+    const result = typeof previousOpen === "function" ? previousOpen(event) : false;
+    scheduleRecovery();
+    setTimeout(scheduleRecovery, 350);
+    return result;
+  };
+
+  document.addEventListener("pointerdown", event => {
+    if (!chatIsOpen()) return;
+    if (event.target.closest?.("#chatPanel, #chatActionMenu, #chatImageViewer")) scheduleRecovery();
+  }, { capture: true, passive: true });
+
+  document.addEventListener("touchstart", event => {
+    if (!chatIsOpen()) return;
+    if (event.target.closest?.("#chatPanel, #chatActionMenu, #chatImageViewer")) scheduleRecovery();
+  }, { capture: true, passive: true });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && chatIsOpen()) scheduleRecovery();
+  });
+
+  window.addEventListener("resize", () => {
+    if (chatIsOpen()) scheduleRecovery();
+  });
+
+  setInterval(() => {
+    if (chatIsOpen()) forceChatInteractive();
+  }, 2500);
+})();

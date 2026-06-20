@@ -6946,3 +6946,34 @@ body.chat-image-viewer-open > #chatImageViewer.hidden{
     max-width:84%!important;
   }
 }
+
+
+/* v103 - garante que o chat aberto recebe sempre toques */
+#chatPanel.chat-panel:not(.hidden){
+  pointer-events:auto!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+#chatPanel.chat-panel:not(.hidden) *,
+#chatActionMenu.chat-action-menu:not(.hidden),
+#chatActionMenu.chat-action-menu:not(.hidden) *{
+  pointer-events:auto!important;
+}
+
+body.chat-mobile-page-open #chatPanel.chat-panel:not(.hidden),
+body.chat-fullscreen-open #chatPanel.chat-panel:not(.hidden){
+  display:flex!important;
+  pointer-events:auto!important;
+  visibility:visible!important;
+  opacity:1!important;
+  z-index:2147483000!important;
+}
+
+body.chat-mobile-page-open #chatImageViewer.hidden,
+body.chat-fullscreen-open #chatImageViewer.hidden,
+body.chat-image-viewer-open #chatImageViewer.hidden{
+  pointer-events:none!important;
+  visibility:hidden!important;
+  display:none!important;
+}
