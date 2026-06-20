@@ -6898,20 +6898,26 @@ async function testApiFootballV99() {
 }
 
 function getGamesArrayV99() {
-  const candidates = [
-    "games", "jogos", "matches", "fixtures", "calendarGames",
-    "mundialGames", "allGames", "appGames"
-  ];
+  try {
+    if (typeof games !== "undefined" && Array.isArray(games)) return games;
+  } catch {}
 
-  for (const name of candidates) {
-    try {
-      if (Array.isArray(window[name])) return window[name];
-    } catch {}
-  }
+  try {
+    if (typeof window !== "undefined") {
+      const candidates = [
+        "games", "jogos", "matches", "fixtures", "calendarGames",
+        "mundialGames", "allGames", "appGames"
+      ];
+
+      for (const name of candidates) {
+        if (Array.isArray(window[name])) return window[name];
+      }
+    }
+  } catch {}
 
   try {
     if (typeof state !== "undefined") {
-      for (const key of candidates) {
+      for (const key of ["games", "jogos", "matches", "fixtures"]) {
         if (Array.isArray(state[key])) return state[key];
       }
     }
@@ -6919,13 +6925,12 @@ function getGamesArrayV99() {
 
   try {
     if (typeof appState !== "undefined") {
-      for (const key of candidates) {
+      for (const key of ["games", "jogos", "matches", "fixtures"]) {
         if (Array.isArray(appState[key])) return appState[key];
       }
     }
   } catch {}
 
-  // Fallback: tentar collections usadas no código local por ID de jogo.
   return [];
 }
 
@@ -6948,19 +6953,32 @@ function gameApiFixtureIdV99(game) {
     game.fixtureId ||
     game.apiId ||
     game.apiFootballId ||
+    game.api_football_id ||
+    game.fixture_id ||
+    game.footballApiFixtureId ||
+    game.api?.fixtureId ||
+    game.apiFootball?.fixtureId ||
     game.fixture?.id ||
     ""
   ).trim();
 }
 
 function gameIsFinishedCandidateV99(game) {
+  try {
+    if (typeof hasResult === "function" && hasResult(game)) return true;
+  } catch {}
+
   const status = String(game.status || game.estado || game.state || game.fixture?.status?.short || "").toLowerCase();
   if (["ft", "aet", "pen", "finished", "terminado", "finalizado", "fim", "final"].some(x => status.includes(x))) return true;
+
+  const home = game.homeGoals ?? game.resultadoCasa ?? game.homeScore ?? game.casa ?? game.goalsHome ?? game.score?.home;
+  const away = game.awayGoals ?? game.resultadoFora ?? game.awayScore ?? game.fora ?? game.goalsAway ?? game.score?.away;
+  if (home !== undefined && home !== null && home !== "" && away !== undefined && away !== null && away !== "") return true;
 
   const end = game.endTime || game.dataFim || game.fim || game.finishedAt;
   if (end && new Date(end).getTime() < Date.now()) return true;
 
-  const date = game.date || game.data || game.startTime || game.inicio || game.kickoff;
+  const date = game.matchDate || game.date || game.data || game.startTime || game.inicio || game.kickoff;
   if (date) {
     const t = new Date(date).getTime();
     if (Number.isFinite(t) && Date.now() > t + 2.2 * 60 * 60 * 1000) return true;
@@ -7110,20 +7128,26 @@ async function updateFinishedGamesApiFootballV99() {
   try {
     await saveApiFootballSettingsV99();
 
-    const games = getGamesArrayV99();
-    if (!games.length) {
-      apiFootballStatusV99("Não encontrei a lista de jogos carregada na app.", "err");
+    const gamesList = getGamesArrayV99();
+    if (!gamesList.length) {
+      apiFootballStatusV99("A lista de jogos ainda não carregou. Espera uns segundos e tenta novamente.", "warn");
       return;
     }
 
-    const candidates = games.filter(game => {
+    const withFixture = gamesList.filter(game => Boolean(gameApiFixtureIdV99(game))).length;
+    if (!withFixture) {
+      apiFootballStatusV99("Encontrei " + gamesList.length + " jogos, mas nenhum tem Fixture ID da API-Football associado.", "warn");
+      return;
+    }
+
+    const candidates = gamesList.filter(game => {
       const hasFixture = Boolean(gameApiFixtureIdV99(game));
       const notImported = !gameAlreadyImportedV99(game);
       return hasFixture && notImported && gameIsFinishedCandidateV99(game);
     });
 
     if (!candidates.length) {
-      apiFootballStatusV99("Nenhum jogo terminado por importar. Confirma se os jogos têm Fixture ID.", "warn");
+      apiFootballStatusV99("Há " + withFixture + " jogo(s) com Fixture ID, mas nenhum terminado por importar.", "warn");
       return;
     }
 
@@ -7153,7 +7177,6 @@ async function updateFinishedGamesApiFootballV99() {
 
     try { toast("Atualização API concluída."); } catch {}
 
-    // Tenta refrescar UI se existirem funções de render.
     try { if (typeof renderApp === "function") renderApp(); } catch {}
     try { if (typeof renderCalendar === "function") renderCalendar(); } catch {}
     try { if (typeof renderJogos === "function") renderJogos(); } catch {}
@@ -7218,3 +7241,204 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 setInterval(setupApiFootballPanelV99, 2500);
+
+
+// v100 — correção API-Football: fallback local quando Firebase bloqueia appSettings.
+(function setupApiFootballFallbackV100(){
+  if (window.__apiFootballFallbackV100) return;
+  window.__apiFootballFallbackV100 = true;
+
+  const LOCAL_KEY = "mundial_api_football_settings_v100";
+
+  function readInputsV100() {
+    const keyInput = document.getElementById("apiFootballKeyInput");
+    const seasonInput = document.getElementById("apiFootballSeasonInput");
+    const leagueInput = document.getElementById("apiFootballLeagueInput");
+
+    const typedKey = String(keyInput?.value || "").trim();
+    const keepOldKey = typedKey.startsWith("••") && apiFootballSettingsV99?.apiKey;
+
+    return {
+      apiKey: keepOldKey ? apiFootballSettingsV99.apiKey : typedKey,
+      season: Number(seasonInput?.value || apiFootballSettingsV99?.season || 2026),
+      league: String(leagueInput?.value || apiFootballSettingsV99?.league || "").trim()
+    };
+  }
+
+  function saveLocalSettingsV100(settings) {
+    try {
+      localStorage.setItem(LOCAL_KEY, JSON.stringify({
+        apiKey: settings.apiKey || "",
+        season: Number(settings.season || 2026),
+        league: String(settings.league || ""),
+        savedAt: new Date().toISOString()
+      }));
+    } catch {}
+  }
+
+  function loadLocalSettingsV100() {
+    try {
+      const raw = localStorage.getItem(LOCAL_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data?.apiKey) return null;
+      return {
+        apiKey: String(data.apiKey || ""),
+        season: Number(data.season || 2026),
+        league: String(data.league || "")
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  const oldLoad = typeof loadApiFootballSettingsV99 === "function" ? loadApiFootballSettingsV99 : null;
+  window.loadApiFootballSettingsV99 = async function loadApiFootballSettingsV100() {
+    let loadedFromFirebase = false;
+
+    try {
+      if (typeof oldLoad === "function") {
+        await oldLoad();
+        loadedFromFirebase = Boolean(apiFootballSettingsV99?.apiKey);
+      }
+    } catch (error) {
+      console.warn("Firebase API settings falhou, vou tentar local:", error);
+    }
+
+    if (!loadedFromFirebase) {
+      const local = loadLocalSettingsV100();
+      if (local?.apiKey) {
+        apiFootballSettingsV99 = local;
+
+        const keyInput = document.getElementById("apiFootballKeyInput");
+        const seasonInput = document.getElementById("apiFootballSeasonInput");
+        const leagueInput = document.getElementById("apiFootballLeagueInput");
+
+        if (keyInput) keyInput.value = "••••••••••••••••";
+        if (seasonInput) seasonInput.value = String(local.season || 2026);
+        if (leagueInput) leagueInput.value = local.league || "";
+
+        if (typeof apiFootballStatusV99 === "function") {
+          apiFootballStatusV99("API carregada deste dispositivo. Firebase ainda pode estar a bloquear a gravação.", "warn");
+        }
+      }
+    }
+  };
+
+  window.saveApiFootballSettingsV99 = async function saveApiFootballSettingsV100() {
+    if (typeof apiFootballIsAdminV99 === "function" && !apiFootballIsAdminV99()) {
+      try { toast("Só o admin pode guardar a API."); } catch {}
+      return false;
+    }
+
+    const settings = readInputsV100();
+
+    if (!settings.apiKey) {
+      if (typeof apiFootballStatusV99 === "function") {
+        apiFootballStatusV99("Cola a API key primeiro.", "err");
+      }
+      return false;
+    }
+
+    // Atualiza memória ANTES de tentar Firebase, para o teste funcionar mesmo se Firestore bloquear.
+    apiFootballSettingsV99 = settings;
+    saveLocalSettingsV100(settings);
+
+    let firebaseOk = false;
+
+    if (db && firebaseApi && storageMode === "firebase") {
+      try {
+        const ref = typeof apiFootballSettingsRefV99 === "function" ? apiFootballSettingsRefV99() : null;
+        if (!ref) throw new Error("Sem referência Firebase");
+
+        const { setDoc, serverTimestamp } = firebaseApi;
+        if (typeof setDoc !== "function") throw new Error("setDoc indisponível");
+
+        await setDoc(ref, {
+          apiKey: settings.apiKey,
+          season: settings.season,
+          league: settings.league,
+          updatedAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString(),
+          updatedBy: currentUser?.uid || "",
+          updatedByEmail: String(currentUser?.email || "").toLowerCase()
+        }, { merge: true });
+
+        firebaseOk = true;
+      } catch (error) {
+        console.warn("Firebase bloqueou a API key; ficou local no admin:", error);
+      }
+    }
+
+    const keyInput = document.getElementById("apiFootballKeyInput");
+    if (keyInput) keyInput.value = "••••••••••••••••";
+
+    if (typeof apiFootballStatusV99 === "function") {
+      apiFootballStatusV99(
+        firebaseOk
+          ? "API guardada no Firebase com sucesso."
+          : "Firebase bloqueou a gravação. A API ficou guardada neste dispositivo para conseguires testar. Tens de publicar as regras Firestore para guardar globalmente.",
+        firebaseOk ? "ok" : "warn"
+      );
+    }
+
+    try {
+      toast(firebaseOk ? "API-Football guardada." : "API guardada neste dispositivo.");
+    } catch {}
+
+    return true;
+  };
+
+  window.testApiFootballV99 = async function testApiFootballV100() {
+    try {
+      const saved = await window.saveApiFootballSettingsV99();
+      if (!saved || !apiFootballSettingsV99?.apiKey) {
+        if (typeof apiFootballStatusV99 === "function") apiFootballStatusV99("API key não configurada.", "err");
+        return;
+      }
+
+      if (typeof apiFootballStatusV99 === "function") apiFootballStatusV99("A testar API...", "");
+
+      const data = await apiFootballFetchV99("status");
+      const requests = data?.response?.requests || {};
+      const current = requests.current ?? requests.current_day ?? "?";
+      const limit = requests.limit_day ?? requests.limit ?? "?";
+
+      if (typeof apiFootballStatusV99 === "function") {
+        apiFootballStatusV99("API OK. Pedidos: " + current + "/" + limit, "ok");
+      }
+    } catch (error) {
+      console.error("Teste API-Football falhou:", error);
+      if (typeof apiFootballStatusV99 === "function") {
+        apiFootballStatusV99("Erro no teste da API: " + error.message, "err");
+      }
+    }
+  };
+
+  // Reassociar botões caso já estivessem ligados à função antiga.
+  function rebindApiButtonsV100() {
+    const saveBtn = document.getElementById("apiFootballSaveBtn");
+    const testBtn = document.getElementById("apiFootballTestBtn");
+
+    if (saveBtn && saveBtn.dataset.v100Bound !== "1") {
+      saveBtn.dataset.v100Bound = "1";
+      saveBtn.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        window.saveApiFootballSettingsV99();
+      }, { capture: true });
+    }
+
+    if (testBtn && testBtn.dataset.v100Bound !== "1") {
+      testBtn.dataset.v100Bound = "1";
+      testBtn.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        window.testApiFootballV99();
+      }, { capture: true });
+    }
+  }
+
+  rebindApiButtonsV100();
+  document.addEventListener("DOMContentLoaded", rebindApiButtonsV100);
+  setTimeout(rebindApiButtonsV100, 500);
+})();

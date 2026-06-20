@@ -7204,3 +7204,10 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
     width:100%!important;
   }
 }
+
+
+/* v100 — estado aviso API */
+.api-football-status.warn{
+  background:rgba(255,190,80,.15)!important;
+  color:#ffe5ad!important;
+}
