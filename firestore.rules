@@ -59,7 +59,7 @@ service cloud.firestore {
       allow update: if signedIn();
       allow delete: if signedIn() && (
         resource.data.uid == request.auth.uid ||
-        request.auth.token.email in ["pica.fern@gmail.com"]
+        chatAdminUser()
       );
     }
 

@@ -2148,25 +2148,46 @@ async function deleteChatMessage(messageId) {
   if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase nao esta ligado.");
 
   const beforeDelete = [...chatMessagesCache];
+  const collectionName = chatCollectionRef(message.room || chatCurrentRoom);
   chatMessagesCache = chatMessagesCache.filter(item => item.id !== messageId);
   renderChatMessages();
-  toast("A apagar mensagem...");
+  toast("Mensagem apagada.");
 
   try {
-    const { doc, deleteDoc } = firebaseApi;
-    if (typeof deleteDoc !== "function") {
-      chatMessagesCache = beforeDelete;
-      renderChatMessages();
-      toast("Esta versao do Firebase nao permite apagar mensagens.");
+    const { doc, deleteDoc, updateDoc, serverTimestamp } = firebaseApi;
+    const ref = doc(db, collectionName, messageId);
+
+    if (typeof deleteDoc === "function") {
+      try {
+        await withTimeout(deleteDoc(ref), 4500, "apagar mensagem");
+        return;
+      } catch (deleteError) {
+        console.warn("Delete fisico do chat falhou, vou marcar como apagada:", deleteError);
+      }
+    }
+
+    if (typeof updateDoc === "function") {
+      await withTimeout(updateDoc(ref, {
+        deleted: true,
+        deletedAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString(),
+        deletedAtLocal: new Date().toISOString(),
+        deletedBy: currentUser?.uid || "",
+        text: "",
+        imageData: "",
+        replyTo: "",
+        replyName: "",
+        replyText: "",
+        reactions: {}
+      }), 4500, "marcar mensagem apagada");
       return;
     }
-    await withTimeout(deleteDoc(doc(db, chatCollectionRef(message.room || chatCurrentRoom), messageId)), 8000, "apagar mensagem");
-    toast("Mensagem apagada.");
+
+    throw new Error("Firebase sem deleteDoc/updateDoc");
   } catch (error) {
     console.error("Falhou apagar mensagem:", error);
     chatMessagesCache = beforeDelete;
     renderChatMessages();
-    toast("Nao consegui apagar a mensagem.");
+    toast("Nao consegui apagar a mensagem. Confirma as regras Firebase.");
   }
 }
 
@@ -2411,6 +2432,7 @@ function isSystemChatMessage(message) {
 }
 
 function chatMessageMatchesSearch(message) {
+  if (message?.deleted || message?.deletedAt) return false;
   const term = chatSearchTerm.trim().toLowerCase();
   if (!term) return true;
   return [
