@@ -2376,7 +2376,7 @@ function chatMessageMatchesSearch(message) {
 
 function chatImageMarkup(message) {
   if (!message.imageData) return "";
-  return `<img class="chat-image" src="${escapeHtml(message.imageData)}" alt="Imagem enviada no chat" loading="lazy" />`;
+  return `<img class="chat-image" src="${escapeHtml(message.imageData)}" alt="Imagem enviada no chat" loading="lazy" data-chat-image="1" />`;
 }
 
 function chatReactionsMarkup(message) {
@@ -2724,6 +2724,7 @@ function renderChatMessages() {
   }).join("");
 
   setupChatMessageActions();
+  setupChatImageViewer();
   setupChatCloseButtonSafe();
 
   if (stick || !chatOpenedOnce) scrollChatToBottom();
@@ -2826,6 +2827,83 @@ function setupChatCloseButtonSafe() {
   closeBtn.addEventListener("click", event => window.closeChatPanelNow(event));
   closeBtn.addEventListener("pointerup", event => window.closeChatPanelNow(event));
   closeBtn.addEventListener("touchend", event => window.closeChatPanelNow(event), { passive: false });
+}
+
+
+function openChatImageViewer(src) {
+  const viewer = $("chatImageViewer");
+  const image = $("chatImageViewerImg");
+  if (!viewer || !image || !src) return;
+
+  image.src = src;
+  viewer.classList.remove("hidden");
+  document.body.classList.add("chat-image-viewer-open");
+}
+
+function closeChatImageViewer() {
+  const viewer = $("chatImageViewer");
+  const image = $("chatImageViewerImg");
+  if (!viewer || !image) return;
+
+  viewer.classList.add("hidden");
+  image.removeAttribute("src");
+  document.body.classList.remove("chat-image-viewer-open");
+}
+
+function setupChatImageViewer() {
+  const messages = $("chatMessages");
+  const viewer = $("chatImageViewer");
+  const closeBtn = $("chatImageViewerClose");
+
+  if (messages && messages.dataset.imageViewerBound !== "1") {
+    messages.dataset.imageViewerBound = "1";
+
+    messages.addEventListener("click", event => {
+      const img = event.target.closest?.(".chat-image, [data-chat-image]");
+      if (!img) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      openChatImageViewer(img.currentSrc || img.src);
+    });
+
+    messages.addEventListener("touchend", event => {
+      const img = event.target.closest?.(".chat-image, [data-chat-image]");
+      if (!img) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      openChatImageViewer(img.currentSrc || img.src);
+    }, { passive: false });
+  }
+
+  if (closeBtn && closeBtn.dataset.bound !== "1") {
+    closeBtn.dataset.bound = "1";
+    closeBtn.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeChatImageViewer();
+    });
+    closeBtn.addEventListener("touchend", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeChatImageViewer();
+    }, { passive: false });
+  }
+
+  if (viewer && viewer.dataset.bound !== "1") {
+    viewer.dataset.bound = "1";
+    viewer.addEventListener("click", event => {
+      if (event.target === viewer) closeChatImageViewer();
+    });
+  }
+
+  if (!window.__chatImageViewerEscBound) {
+    window.__chatImageViewerEscBound = true;
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") closeChatImageViewer();
+    });
+  }
 }
 
 function setupChatUi() {

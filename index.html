@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Mundial Pontos 2026 · Chat Imagens Corrigido</title>
+  <title>Mundial Pontos 2026 · Abrir Imagem Chat</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Mundial 2026" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -496,5 +496,11 @@
           <button type="button" data-chat-reaction="👍">👍</button>
         </div>
       </div>
+
+      <div id="chatImageViewer" class="chat-image-viewer hidden" aria-modal="true" role="dialog">
+        <button id="chatImageViewerClose" class="chat-image-viewer-close" type="button" aria-label="Fechar imagem">×</button>
+        <img id="chatImageViewerImg" alt="Imagem do chat" />
+      </div>
+
 </body>
 </html>
