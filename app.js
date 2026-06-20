@@ -964,6 +964,10 @@ function filteredGames() {
     base = base.filter(game => !hasResult(game));
   }
 
+  if (calendarViewMode === "played") {
+    base = base.filter(game => hasResult(game));
+  }
+
   const query = (searchText || "").trim().toLowerCase();
   if (query) {
     base = base.filter(game => `${game.group} ${game.homeTeam} ${game.awayTeam}`.toLowerCase().includes(query));
@@ -976,7 +980,11 @@ function filteredGames() {
 
   return base.sort((a, b) => {
     const diff = timeValue(a) - timeValue(b);
-    if (calendarViewMode === "all") return -diff;
+
+    // Já jogaram: mais recente para o mais antigo.
+    if (calendarViewMode === "played") return -diff;
+
+    // Faltam resultados e Todos os jogos: ordem natural do calendário.
     return diff;
   });
 }
@@ -3924,9 +3932,11 @@ function renderAll() {
 
 function renderCalendarFilterState() {
   const missingBtn = $("calendarMissingResultsBtn");
+  const playedBtn = $("calendarPlayedGamesBtn");
   const allBtn = $("calendarAllGamesBtn");
 
   const missingCount = games.filter(game => !hasResult(game)).length;
+  const playedCount = games.filter(game => hasResult(game)).length;
   const totalCount = games.length;
 
   if (missingBtn) {
@@ -3936,11 +3946,18 @@ function renderCalendarFilterState() {
     missingBtn.setAttribute("aria-label", `Faltam resultados: ${missingCount} jogos`);
   }
 
+  if (playedBtn) {
+    playedBtn.classList.toggle("active-filter", calendarViewMode === "played");
+    playedBtn.innerHTML = `Já jogaram <span class="filter-count">${playedCount}</span>`;
+    playedBtn.title = "Mostra apenas jogos que já têm resultado, do mais recente para o mais antigo.";
+    playedBtn.setAttribute("aria-label", `Já jogaram: ${playedCount} jogos, do mais recente para o mais antigo`);
+  }
+
   if (allBtn) {
     allBtn.classList.toggle("active-filter", calendarViewMode === "all");
     allBtn.innerHTML = `Todos os jogos <span class="filter-count">${totalCount}</span>`;
-    allBtn.title = "Mostra todos os jogos, do mais recente para o mais antigo.";
-    allBtn.setAttribute("aria-label", `Todos os jogos: ${totalCount} jogos, do mais recente para o mais antigo`);
+    allBtn.title = "Mostra todos os jogos por data/calendário.";
+    allBtn.setAttribute("aria-label", `Todos os jogos: ${totalCount} jogos por data`);
   }
 }
 
@@ -3948,7 +3965,10 @@ function renderCalendar() {
   const container = $("gamesList");
   const groups = groupByDate(filteredGames());
   const days = [...groups.entries()].sort((a, b) => {
-    if (calendarViewMode === "all") return b[0].localeCompare(a[0]);
+    // Já jogaram: dias mais recentes primeiro.
+    if (calendarViewMode === "played") return b[0].localeCompare(a[0]);
+
+    // Todos os jogos e Faltam resultados: por data/calendário.
     return a[0].localeCompare(b[0]);
   });
 
@@ -5271,6 +5291,12 @@ $("unlockAdminBtn").addEventListener("click", () => {
 
 $("calendarMissingResultsBtn")?.addEventListener("click", () => {
   calendarViewMode = "missing";
+  renderCalendar();
+  renderCalendarFilterState();
+});
+
+$("calendarPlayedGamesBtn")?.addEventListener("click", () => {
+  calendarViewMode = "played";
   renderCalendar();
   renderCalendarFilterState();
 });
