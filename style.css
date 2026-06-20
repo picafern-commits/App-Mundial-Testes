@@ -7211,3 +7211,10 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
   background:rgba(255,190,80,.15)!important;
   color:#ffe5ad!important;
 }
+
+
+/* v102 — botão associar Fixture IDs */
+#apiFootballLinkFixturesBtn{
+  background:rgba(255,255,255,.10)!important;
+  border-color:rgba(255,255,255,.20)!important;
+}

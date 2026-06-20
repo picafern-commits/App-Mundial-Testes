@@ -7442,3 +7442,214 @@ setInterval(setupApiFootballPanelV99, 2500);
   document.addEventListener("DOMContentLoaded", rebindApiButtonsV100);
   setTimeout(rebindApiButtonsV100, 500);
 })();
+
+
+// v102 — Associar Fixture IDs da API-Football aos jogos da app.
+function normalizeTeamNameV102(name) {
+  return String(name || "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\b(fc|cf|sc|afc|club|football|team|seleccao|seleção|national)\b/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function getGameTeamsV102(game) {
+  const home =
+    game.homeTeam || game.casa || game.equipaCasa || game.teamHome || game.home ||
+    game.local || game.mandante || game.teams?.home?.name || game.homeName || "";
+
+  const away =
+    game.awayTeam || game.fora || game.equipaFora || game.teamAway || game.away ||
+    game.visitante || game.teams?.away?.name || game.awayName || "";
+
+  return {
+    home: String(home || ""),
+    away: String(away || ""),
+    homeNorm: normalizeTeamNameV102(home),
+    awayNorm: normalizeTeamNameV102(away)
+  };
+}
+
+function getGameDateV102(game) {
+  const raw =
+    game.matchDate || game.date || game.data || game.startTime || game.inicio ||
+    game.kickoff || game.datetime || game.fixture?.date || "";
+
+  const t = new Date(raw).getTime();
+  return Number.isFinite(t) ? t : null;
+}
+
+function teamsMatchScoreV102(game, apiFixture) {
+  const g = getGameTeamsV102(game);
+  const apiHome = normalizeTeamNameV102(apiFixture?.teams?.home?.name || "");
+  const apiAway = normalizeTeamNameV102(apiFixture?.teams?.away?.name || "");
+
+  if (!g.homeNorm || !g.awayNorm || !apiHome || !apiAway) return 0;
+
+  let score = 0;
+
+  if (g.homeNorm === apiHome) score += 3;
+  else if (apiHome.includes(g.homeNorm) || g.homeNorm.includes(apiHome)) score += 2;
+
+  if (g.awayNorm === apiAway) score += 3;
+  else if (apiAway.includes(g.awayNorm) || g.awayNorm.includes(apiAway)) score += 2;
+
+  // Caso raro de equipas invertidas.
+  if (g.homeNorm === apiAway && g.awayNorm === apiHome) score -= 2;
+
+  return score;
+}
+
+function dateMatchScoreV102(game, apiFixture) {
+  const localDate = getGameDateV102(game);
+  const apiDate = new Date(apiFixture?.fixture?.date || "").getTime();
+
+  if (!localDate || !Number.isFinite(apiDate)) return 0;
+
+  const diffHours = Math.abs(localDate - apiDate) / (1000 * 60 * 60);
+
+  if (diffHours <= 2) return 3;
+  if (diffHours <= 8) return 2;
+  if (diffHours <= 24) return 1;
+  return 0;
+}
+
+function findBestFixtureForGameV102(game, apiFixtures) {
+  let best = null;
+  let bestScore = -999;
+
+  for (const fixture of apiFixtures) {
+    const score = teamsMatchScoreV102(game, fixture) + dateMatchScoreV102(game, fixture);
+    if (score > bestScore) {
+      bestScore = score;
+      best = fixture;
+    }
+  }
+
+  if (!best || bestScore < 5) return null;
+  return best;
+}
+
+async function updateGameFixtureIdInFirebaseV102(game, fixture) {
+  const patch = {
+    apiFixtureId: fixture?.fixture?.id || "",
+    fixtureId: fixture?.fixture?.id || "",
+    apiFootballId: fixture?.fixture?.id || "",
+    apiFootballMatch: {
+      fixtureId: fixture?.fixture?.id || "",
+      date: fixture?.fixture?.date || "",
+      status: fixture?.fixture?.status || null,
+      teams: fixture?.teams || null
+    },
+    apiFixtureLinkedAt: new Date().toISOString()
+  };
+
+  // Atualiza objeto local também para o próximo passo funcionar sem refresh.
+  Object.assign(game, patch);
+
+  await updateGameInFirebaseV99(game, patch);
+}
+
+async function linkApiFootballFixtureIdsV102() {
+  if (!apiFootballIsAdminV99()) {
+    try { toast("Só o admin pode associar Fixture IDs."); } catch {}
+    return;
+  }
+
+  try {
+    await saveApiFootballSettingsV99();
+
+    const gamesList = getGamesArrayV99();
+    if (!gamesList.length) {
+      apiFootballStatusV99("A lista de jogos ainda não carregou. Espera uns segundos e tenta novamente.", "warn");
+      return;
+    }
+
+    const season = Number(apiFootballSettingsV99?.season || 2026);
+    const league = String(apiFootballSettingsV99?.league || "").trim();
+
+    if (!league) {
+      apiFootballStatusV99("Preenche o League ID / Cup ID primeiro.", "err");
+      return;
+    }
+
+    apiFootballStatusV99("A procurar jogos na API-Football...", "");
+
+    // 1 pedido: lista de fixtures da competição/época.
+    const apiData = await apiFootballFetchV99("fixtures", {
+      league,
+      season
+    });
+
+    const apiFixtures = apiData?.response || [];
+
+    if (!apiFixtures.length) {
+      apiFootballStatusV99("A API não devolveu jogos. Confirma League ID/Cup ID e Season.", "err");
+      return;
+    }
+
+    let linked = 0;
+    let already = 0;
+    let notFound = 0;
+    let errors = 0;
+
+    const gamesWithoutFixture = gamesList.filter(game => {
+      if (gameApiFixtureIdV99(game)) {
+        already += 1;
+        return false;
+      }
+      return true;
+    });
+
+    for (let i = 0; i < gamesWithoutFixture.length; i++) {
+      const game = gamesWithoutFixture[i];
+      apiFootballStatusV99("A associar Fixture ID " + (i + 1) + "/" + gamesWithoutFixture.length + "...", "");
+
+      const match = findBestFixtureForGameV102(game, apiFixtures);
+      if (!match) {
+        notFound += 1;
+        continue;
+      }
+
+      try {
+        await updateGameFixtureIdInFirebaseV102(game, match);
+        linked += 1;
+      } catch (error) {
+        console.error("Erro a guardar Fixture ID:", game, match, error);
+        errors += 1;
+      }
+    }
+
+    apiFootballStatusV99(
+      "Fixture IDs: associados " + linked + " · já tinham " + already + " · sem correspondência " + notFound + " · erros " + errors,
+      errors ? "warn" : "ok"
+    );
+
+    try { toast("Associação de Fixture IDs concluída."); } catch {}
+
+    try { if (typeof renderApp === "function") renderApp(); } catch {}
+    try { if (typeof renderCalendar === "function") renderCalendar(); } catch {}
+    try { if (typeof renderJogos === "function") renderJogos(); } catch {}
+  } catch (error) {
+    console.error("Associar Fixture IDs falhou:", error);
+    apiFootballStatusV99("Erro ao associar Fixture IDs: " + error.message, "err");
+  }
+}
+
+(function setupFixtureIdButtonV102(){
+  if (window.__fixtureIdButtonV102) return;
+  window.__fixtureIdButtonV102 = true;
+
+  function bind() {
+    const btn = document.getElementById("apiFootballLinkFixturesBtn");
+    if (btn && btn.dataset.v102Bound !== "1") {
+      btn.dataset.v102Bound = "1";
+      btn.addEventListener("click", linkApiFootballFixtureIdsV102);
+    }
+  }
+
+  bind();
+  document.addEventListener("DOMContentLoaded", bind);
+  setTimeout(bind, 500);
+})();
