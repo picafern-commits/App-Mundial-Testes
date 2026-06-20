@@ -1890,6 +1890,7 @@ function openChatPanel() {
   const input = $("chatInput");
   if (!panel) return;
   panel.classList.remove("hidden");
+  document.body.classList.add("chat-fullscreen-open");
   renderChatTabs();
   chatOpenedOnce = true;
   chatLastSeenAt = Date.now();
@@ -1904,6 +1905,7 @@ function closeChatPanel() {
   const panel = $("chatPanel");
   if (!panel) return;
   panel.classList.add("hidden");
+  document.body.classList.remove("chat-fullscreen-open");
   closeChatActionMenu();
   updateChatTyping(false);
   chatLastSeenAt = Date.now();
