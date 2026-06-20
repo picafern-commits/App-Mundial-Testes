@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Mundial Pontos 2026 · Permissões OK</title>
+  <title>Mundial Pontos 2026 · Permissões Reparadas</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Mundial 2026" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -69,29 +69,14 @@
         <p class="eyebrow">Calendário da Fase de Grupos</p>
         <h1>Mundial Pontos 2026</h1>
       </div>
-      <button id="chatOpenBtn" class="secondary chat-open-btn" type="button">Chat <span id="chatUnreadBadge" class="chat-unread-badge hidden">0</span></button>
-        <div id="sessionBox" class="session-box hidden">
+      <div id="sessionBox" class="session-box hidden">
         <span id="sessionUserLabel">Sem login</span>
         <button id="logoutBtn" class="secondary small" type="button">Sair</button>
       </div>
       <div class="copy-actions" aria-label="Copiar para WhatsApp">
         <button id="calendarMissingResultsBtn" class="primary" type="button">Por colocar resultado</button>
             <button id="calendarAllGamesBtn" class="secondary" type="button">Todos os jogos</button>
-        <details id="onlineUsersPanel" class="online-users-panel topbar-online-users">
-          <summary class="secondary online-users-trigger">
-            <span class="online-users-trigger-label">Users</span>
-            <span id="onlineUsersBadge" class="online-users-badge">0 online</span>
-          </summary>
-<div id="onlineUsersList" class="online-users-list">
-            <div class="online-users-popup-head">
-              <strong>Utilizadores online</strong>
-              <button id="closeOnlineUsersBtn" class="online-users-close" type="button" aria-label="Fechar utilizadores online" onclick="return window.closeOnlineUsersPanelNow(event)">×</button>
-            </div>
-            <div class="empty small-empty">A carregar utilizadores...</div>
-          </div>
-        </details>
-        <button id="copyScoreBtn" class="secondary hidden" type="button">Copiar pontuação</button>
-        <button id="refreshAppBtn" class="secondary refresh-app-btn hidden" type="button">Atualizar app</button>
+        <button id="copyScoreBtn" class="secondary" type="button">Copiar pontuação</button>
         <button id="installAppBtn" class="secondary install-btn hidden" type="button">Instalar app</button>
       </div>
     </header>
@@ -104,7 +89,7 @@
     </nav>
 
     <main>
-<section id="calendarTab" class="tab-panel active">
+      <section id="calendarTab" class="tab-panel active">
         <div class="section-head compact">
           <div>
             <h2>Fase de Grupos</h2>
@@ -163,9 +148,6 @@
                 <label>Email do utilizador
                   <input id="permissionEmailInput" type="email" placeholder="email@exemplo.com" />
                 </label>
-                <label>Nome visível
-                  <input id="permissionNameInput" type="text" placeholder="Ex: Ricardo" />
-                </label>
                 <label>Tipo
                   <select id="permissionRoleInput">
                     <option value="user">User normal</option>
@@ -211,9 +193,7 @@
                 <select id="editUserSelect"></select>
               </label>
               <button id="saveUserBetsBtn" class="primary" type="button">Guardar alterações</button>
-            
-          <button id="openKnockoutLayoutBtn" class="secondary knockout-adjust-top-btn" type="button">Ajustar cards</button>
-        </div>
+            </div>
 
             <div id="userBetsEditor" class="user-bets-editor"></div>
           </details>
@@ -258,7 +238,6 @@
             </summary>
             <div class="collapse-actions">
               <button id="exportResultadosBtn" class="secondary" type="button">Exportar Excel Resultados</button>
-                <button id="searchAllResultsBtn" class="secondary admin-only search-results-admin-btn" type="button">Pesquisar resultados</button>
               <button id="openExcelModalBtn" class="primary" type="button">Importar Excel Resultados</button>
             </div>
             <div id="importStatusBox" class="import-status-box idle">Ainda não foi feita nenhuma importação.</div>
@@ -443,63 +422,5 @@
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script type="module" src="app.js"></script>
-
-      <div id="chatPanel" class="chat-panel hidden">
-        <div class="chat-header">
-          <div>
-            <strong>Chat Mundial</strong>
-            <span id="chatSubtitle">Conversa geral dos users</span>
-          </div>
-          <button id="chatCloseBtn" class="chat-close-btn" type="button" aria-label="Fechar chat" onclick="return window.closeChatMobileClean(event)">×</button>
-        </div>
-
-        <div class="chat-room-switch">
-          <button id="chatGeneralTab" class="chat-room-btn active" type="button" data-chat-room="general">Geral</button>
-          <button id="chatAdminTab" class="chat-room-btn admin-chat-tab hidden" type="button" data-chat-room="admin">Admin</button>
-        </div>
-
-        <div class="chat-search-wrap">
-          <input id="chatSearchInput" type="search" autocomplete="off" placeholder="Pesquisar no chat..." />
-        </div>
-
-        <div id="chatPinnedBox" class="chat-pinned-box hidden"></div>
-        <div id="chatTypingBox" class="chat-typing-box hidden"></div>
-
-        <div id="chatMessages" class="chat-messages">
-          <div class="empty small-empty">A carregar chat...</div>
-        </div>
-
-        <div id="chatReplyPreview" class="chat-reply-preview hidden">
-          <div>
-            <span>A responder a <strong id="chatReplyName"></strong></span>
-            <p id="chatReplyText"></p>
-          </div>
-          <button id="chatReplyCancelBtn" type="button" aria-label="Cancelar resposta">×</button>
-        </div>
-
-        <form id="chatForm" class="chat-form">
-          <button id="chatImageBtn" class="chat-attach-btn" type="button" aria-label="Enviar imagem">＋</button>
-          <input id="chatImageInput" type="file" accept="image/*" class="hidden" />
-          <input id="chatInput" type="text" maxlength="500" autocomplete="off" placeholder="Mensagem" />
-          <button id="chatSendBtn" class="primary" type="submit" aria-label="Enviar mensagem">➤</button>
-        </form>
-      </div>
-      <div id="chatActionMenu" class="chat-action-menu hidden">
-        <button id="chatActionReplyBtn" type="button">Responder</button>
-        <button id="chatActionPinBtn" type="button">Fixar</button>
-        <button id="chatActionDeleteBtn" type="button">Apagar</button>
-        <div class="chat-reaction-bar" id="chatReactionBar">
-          <button type="button" data-chat-reaction="😂">😂</button>
-          <button type="button" data-chat-reaction="⚽">⚽</button>
-          <button type="button" data-chat-reaction="🏆">🏆</button>
-          <button type="button" data-chat-reaction="🔥">🔥</button>
-          <button type="button" data-chat-reaction="👀">👀</button>
-          <button type="button" data-chat-reaction="👍">👍</button>
-        </div>
-      </div>
-      <div id="chatImageViewer" class="chat-image-viewer hidden" aria-modal="true" role="dialog">
-        <button id="chatImageViewerClose" class="chat-image-viewer-close" type="button" aria-label="Fechar imagem">×</button>
-        <img id="chatImageViewerImg" alt="Imagem do chat" />
-      </div>
 </body>
 </html>
