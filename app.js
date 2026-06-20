@@ -1864,7 +1864,7 @@ function stopOnlineFeaturesSafe() {
 
 
 const CHAT_COLLECTION = "chatMessages";
-const CHAT_LIMIT = 120;
+const CHAT_LIMIT = 500;
 
 function chatUserName() {
   return String(currentProfile?.name || "").trim() || displayNameFromEmail(currentUser?.email || "") || currentUser?.email || "User";
@@ -1883,6 +1883,47 @@ function chatTimeLabel(value) {
   const time = chatTimestampMs(value);
   if (!Number.isFinite(time) || !time) return "";
   return new Date(time).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+}
+
+function chatDateKey(value) {
+  const time = chatTimestampMs(value);
+  if (!Number.isFinite(time) || !time) return "";
+  const date = new Date(time);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function chatDateLabel(value) {
+  const time = chatTimestampMs(value);
+  if (!Number.isFinite(time) || !time) return "";
+  const messageDate = new Date(time);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (chatDateKey(messageDate) === chatDateKey(today)) return "Hoje";
+  if (chatDateKey(messageDate) === chatDateKey(yesterday)) return "Ontem";
+  return messageDate.toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function chatMessageDateValue(message) {
+  return message?.createdAt || message?.createdAtLocal || message?.createdAtMillis || 0;
+}
+
+function chatParticipantsCount() {
+  const names = new Set();
+  (appSettings.users || []).forEach(name => {
+    const clean = String(name || "").trim();
+    if (clean) names.add(clean.toLowerCase());
+  });
+  (permissionsCache || []).forEach(profile => {
+    if (profile?.active === false) return;
+    const clean = String(profile?.name || profile?.email || profile?.id || "").trim();
+    if (clean) names.add(clean.toLowerCase());
+  });
+  if (currentProfile?.active !== false) {
+    const clean = String(currentProfile?.name || currentProfile?.email || currentUser?.email || "").trim();
+    if (clean) names.add(clean.toLowerCase());
+  }
+  return names.size || 18;
 }
 
 
@@ -2378,7 +2419,7 @@ function chatImageMarkup(message) {
   if (!message.imageData) return "";
   const src = escapeHtml(message.imageData);
   return `
-    <button type="button" class="chat-image-button" aria-label="Abrir imagem do chat">
+    <button type="button" class="chat-image-button" data-chat-image-src="${src}" aria-label="Abrir imagem do chat">
       <img class="chat-image" src="${src}" alt="Imagem enviada no chat" loading="lazy" />
     </button>`;
 }
@@ -2402,6 +2443,17 @@ function chatReplyMarkup(message) {
       <strong>${escapeHtml(message.replyName || "Mensagem")}</strong>
       <p>${escapeHtml(message.replyText || "")}</p>
     </div>`;
+}
+
+function chatMessageMetaMarkup(message, mine) {
+  const time = chatTimeLabel(chatMessageDateValue(message));
+  const status = message.failed ? "erro" : (message.pending ? "a enviar" : (mine ? "✓✓" : ""));
+  const statusClass = message.failed ? " failed" : (message.pending ? " pending" : "");
+  return `
+    <span class="chat-message-meta${statusClass}">
+      <span>${escapeHtml(time)}</span>
+      ${status ? `<span class="chat-message-status">${escapeHtml(status)}</span>` : ""}
+    </span>`;
 }
 
 function setChatReply(messageId) {
@@ -2479,7 +2531,11 @@ function renderChatTabs() {
   $("chatAdminTab")?.classList.toggle("active", chatCurrentRoom === "admin");
   $("chatAdminTab")?.classList.toggle("hidden", !isChatAdmin());
   const subtitle = $("chatSubtitle");
-  if (subtitle) subtitle.textContent = chatCurrentRoom === "admin" ? "Conversa privada dos admins" : "Conversa geral dos users";
+  if (subtitle) {
+    subtitle.textContent = chatCurrentRoom === "admin"
+      ? "Conversa privada dos admins"
+      : `Grupo geral - ${chatParticipantsCount()} participantes`;
+  }
 }
 
 async function sendSystemChatMessage(text, room = "general") {
@@ -2699,29 +2755,37 @@ function renderChatMessages() {
 
   const stick = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
 
+  let lastDateKey = "";
+
   box.innerHTML = visibleMessages.map(message => {
     const mine = message.uid === currentUser?.uid;
     const system = isSystemChatMessage(message);
     const name = message.name || displayNameFromEmail(message.email || "");
+    const dateValue = chatMessageDateValue(message);
+    const currentDateKey = chatDateKey(dateValue);
+    const dateSeparator = currentDateKey && currentDateKey !== lastDateKey
+      ? `<div class="chat-date-separator"><span>${escapeHtml(chatDateLabel(dateValue))}</span></div>`
+      : "";
+    if (currentDateKey) lastDateKey = currentDateKey;
 
     if (system) {
-      return `
+      return `${dateSeparator}
         <div class="chat-message-row system" data-chat-message="${escapeHtml(message.id)}">
           <div class="chat-bubble system-bubble" data-chat-message="${escapeHtml(message.id)}">
             <p>${escapeHtml(String(message.text || ""))}</p>
-            <span>${escapeHtml(chatTimeLabel(message.createdAt || message.createdAtLocal))}</span>
+            ${chatMessageMetaMarkup(message, false)}
           </div>
         </div>`;
     }
 
-    return `
-      <div class="chat-message-row ${mine ? "mine" : "theirs"}" data-chat-message="${escapeHtml(message.id)}">
+    return `${dateSeparator}
+      <div class="chat-message-row ${mine ? "mine" : "theirs"} ${message.pending ? "is-pending" : ""} ${message.failed ? "is-failed" : ""}" data-chat-message="${escapeHtml(message.id)}">
         <div class="chat-bubble" data-chat-message="${escapeHtml(message.id)}">
           ${mine ? "" : `<strong>${escapeHtml(name)}</strong>`}
           ${chatReplyMarkup(message)}
           ${message.text ? `<p>${escapeHtml(String(message.text || ""))}</p>` : ""}
           ${chatImageMarkup(message)}
-          <span>${escapeHtml(chatTimeLabel(message.createdAt || message.createdAtLocal))}</span>
+          ${chatMessageMetaMarkup(message, mine)}
           ${chatReactionsMarkup(message)}
         </div>
       </div>`;
@@ -2741,8 +2805,9 @@ async function loadChatMessagesOnce() {
   if (!canUseChatRoom()) return;
 
   try {
-    const { collection, getDocs, query, orderBy, limit } = firebaseApi;
-    const q = query(collection(db, chatCollectionRef()), orderBy("createdAt", "asc"), limit(CHAT_LIMIT));
+    const { collection, getDocs, query, orderBy, limit, limitToLast } = firebaseApi;
+    const limiter = typeof limitToLast === "function" ? limitToLast : limit;
+    const q = query(collection(db, chatCollectionRef()), orderBy("createdAt", "asc"), limiter(CHAT_LIMIT));
     const snap = await withTimeout(getDocs(q), 10000, "ler chat");
     chatMessagesCache = snap.docs.map(docSnap => ({ id: docSnap.id, room: chatCurrentRoom, ...(docSnap.data() || {}) }));
     renderChatMessages();
@@ -2759,13 +2824,14 @@ function startChatListenerSafe() {
   if (chatUnsubscribe) return;
 
   try {
-    const { collection, query, orderBy, limit, onSnapshot } = firebaseApi;
+    const { collection, query, orderBy, limit, limitToLast, onSnapshot } = firebaseApi;
     if (typeof onSnapshot !== "function") {
       loadChatMessagesOnce();
       return;
     }
 
-    const q = query(collection(db, chatCollectionRef()), orderBy("createdAt", "asc"), limit(CHAT_LIMIT));
+    const limiter = typeof limitToLast === "function" ? limitToLast : limit;
+    const q = query(collection(db, chatCollectionRef()), orderBy("createdAt", "asc"), limiter(CHAT_LIMIT));
     chatUnsubscribe = onSnapshot(q, snap => {
       const previousLast = chatMessagesCache.at?.(-1)?.id || "";
       chatMessagesCache = snap.docs.map(docSnap => ({ id: docSnap.id, room: chatCurrentRoom, ...(docSnap.data() || {}) }));
@@ -2794,33 +2860,49 @@ async function sendChatMessage(text, imageData = "") {
   const image = String(imageData || "");
   if (!clean && !image) return;
   if (!currentUser) return toast("Faz login para escrever no chat.");
-  if (!canUseChatRoom()) return toast("Não tens acesso a este chat.");
-  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase não está ligado.");
+  if (!canUseChatRoom()) return toast("Nao tens acesso a este chat.");
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase nao esta ligado.");
+
+  const now = Date.now();
+  const optimisticId = `local_${now}_${Math.random().toString(36).slice(2)}`;
+  const baseMessage = {
+    uid: currentUser.uid,
+    email: normalizeEmail(currentUser.email),
+    name: chatUserName(),
+    text: clean.slice(0, 500),
+    imageData: image,
+    replyTo: chatReplyTo?.id || "",
+    replyName: chatReplyTo?.name || "",
+    replyText: chatReplyTo?.text || "",
+    reactions: {},
+    room: chatCurrentRoom,
+    createdAtLocal: new Date(now).toISOString(),
+    createdAtMillis: now
+  };
+
+  chatMessagesCache = [...chatMessagesCache, { id: optimisticId, pending: true, ...baseMessage }].slice(-CHAT_LIMIT);
+  clearChatReply();
+  renderChatMessages();
+  setTimeout(scrollChatToBottom, 20);
 
   try {
     const { collection, addDoc, serverTimestamp } = firebaseApi;
     await addDoc(collection(db, chatCollectionRef()), {
-      uid: currentUser.uid,
-      email: normalizeEmail(currentUser.email),
-      name: chatUserName(),
-      text: clean.slice(0, 500),
-      imageData: image,
-      replyTo: chatReplyTo?.id || "",
-      replyName: chatReplyTo?.name || "",
-      replyText: chatReplyTo?.text || "",
-      reactions: {},
-      room: chatCurrentRoom,
-      createdAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString(),
-      createdAtLocal: new Date().toISOString()
+      ...baseMessage,
+      createdAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString()
     });
-    clearChatReply();
+    chatMessagesCache = chatMessagesCache.filter(message => message.id !== optimisticId);
+    renderChatMessages();
     updateChatTyping(false);
   } catch (error) {
     console.error("Falhou enviar mensagem:", error);
-    toast("Não consegui enviar a mensagem.");
+    chatMessagesCache = chatMessagesCache.map(message => (
+      message.id === optimisticId ? { ...message, pending: false, failed: true } : message
+    ));
+    renderChatMessages();
+    toast("Nao consegui enviar a mensagem.");
   }
 }
-
 
 function setupChatCloseButtonSafe() {
   const closeBtn = $("chatCloseBtn");
@@ -2920,6 +3002,7 @@ function startChatSafe() {
     setupChatUi();
     startChatListenerSafe();
     startPinnedChatListenerSafe();
+    startChatTypingListenerSafe();
   } catch (error) {
     console.warn("Chat não iniciou:", error);
   }
@@ -2929,6 +3012,7 @@ function stopChatSafe() {
   closeChatPanel();
   stopChatListenerSafe();
   stopPinnedChatListenerSafe();
+  stopChatTypingListenerSafe();
 }
 
 function setupAuthGate() {
