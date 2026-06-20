@@ -6977,3 +6977,28 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
   visibility:hidden!important;
   display:none!important;
 }
+
+
+/* v104 - botao atualizar app */
+.refresh-app-btn{
+  border-color:rgba(255,212,90,.40)!important;
+  color:#ffd45a!important;
+}
+
+.refresh-app-btn.has-update{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  animation:refreshAppPulse 1.4s ease-in-out infinite;
+  box-shadow:0 0 0 4px rgba(255,212,90,.10)!important;
+}
+
+.refresh-app-btn:disabled{
+  opacity:.72!important;
+  cursor:wait!important;
+}
+
+@keyframes refreshAppPulse{
+  0%,100%{ transform:translateY(0); }
+  50%{ transform:translateY(-1px); }
+}

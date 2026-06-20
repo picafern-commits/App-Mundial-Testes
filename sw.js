@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-testes-v103";
+const CACHE_NAME = "mundial-pontos-2026-testes-v104";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -25,7 +25,15 @@ self.addEventListener("activate", event => {
     caches.keys()
       .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
       .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: "window", includeUncontrolled: true }))
+      .then(clients => clients.forEach(client => client.postMessage({ type: "APP_VERSION_READY", cacheName: CACHE_NAME })))
   );
+});
+
+self.addEventListener("message", event => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("fetch", event => {

@@ -5352,10 +5352,97 @@ function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js")
-      .catch(error => console.warn("Service worker não registado:", error));
+      .then(registration => {
+        setupAppUpdateRefresh(registration);
+      })
+      .catch(error => console.warn("Service worker nao registado:", error));
   });
 }
 
+async function clearAppCaches() {
+  try {
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(key => caches.delete(key)));
+    }
+  } catch (error) {
+    console.warn("Nao consegui limpar a cache da app:", error);
+  }
+}
+
+function showRefreshAppButton(message = "Nova versao disponivel.") {
+  const button = $("refreshAppBtn");
+  if (!button) return;
+  button.classList.remove("hidden");
+  button.classList.add("has-update");
+  button.title = message;
+}
+
+async function refreshAppNow() {
+  const button = $("refreshAppBtn");
+  if (button) {
+    button.disabled = true;
+    button.textContent = "A atualizar...";
+  }
+
+  toast("A atualizar app...");
+
+  try {
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(async registration => {
+        try { registration.waiting?.postMessage({ type: "SKIP_WAITING" }); } catch {}
+        try { await registration.update(); } catch {}
+      }));
+    }
+
+    await clearAppCaches();
+  } catch (error) {
+    console.warn("Atualizacao da app falhou, vou recarregar na mesma:", error);
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("v", Date.now().toString());
+  window.location.replace(url.toString());
+}
+
+function setupAppUpdateRefresh(registration) {
+  const button = $("refreshAppBtn");
+  if (button && button.dataset.bound !== "1") {
+    button.dataset.bound = "1";
+    button.addEventListener("click", refreshAppNow);
+  }
+
+  if (!registration) return;
+
+  registration.addEventListener("updatefound", () => {
+    const worker = registration.installing;
+    if (!worker) return;
+
+    worker.addEventListener("statechange", () => {
+      if (worker.state === "installed" && navigator.serviceWorker.controller) {
+        showRefreshAppButton("Nova versao pronta para instalar.");
+        toast("Nova versao pronta. Toca em Atualizar app.");
+      }
+    });
+  });
+
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (window.__appRefreshControllerChanged) return;
+    window.__appRefreshControllerChanged = true;
+    window.location.reload();
+  });
+
+  navigator.serviceWorker.addEventListener("message", event => {
+    if (event.data?.type === "APP_VERSION_READY") {
+      showRefreshAppButton("Nova versao pronta para instalar.");
+    }
+  });
+
+  setTimeout(() => {
+    registration.update().catch(() => {});
+  }, 1200);
+}
 
 function setupPageWheelScroll() {
   document.addEventListener("wheel", event => {
