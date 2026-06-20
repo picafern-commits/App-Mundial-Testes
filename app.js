@@ -5243,3 +5243,131 @@ setupOnlineUsersCloseControls();
 
 
 setupSearchResultsAdminButton();
+
+
+// v83 — override robusto para abrir/fechar chat no mobile sem prender a app.
+(function setupChatMobileUnlockV83(){
+  if (window.__chatMobileUnlockV83) return;
+  window.__chatMobileUnlockV83 = true;
+
+  function v83IsMobileChat() {
+    return window.matchMedia?.("(max-width: 760px)")?.matches || window.innerWidth <= 760;
+  }
+
+  window.forceChatClosedState = function forceChatClosedState() {
+    const panel = document.getElementById("chatPanel");
+    if (panel) panel.classList.add("hidden");
+
+    document.body.classList.remove("chat-fullscreen-open", "chat-mobile-page-open", "chat-window-open");
+    document.documentElement.classList.remove("chat-mobile-page-open");
+
+    try { if (typeof closeChatActionMenu === "function") closeChatActionMenu(); } catch {}
+    try { if (typeof clearChatReply === "function") clearChatReply(); } catch {}
+    try { if (typeof updateChatTyping === "function") updateChatTyping(false); } catch {}
+
+    const input = document.getElementById("chatInput");
+    if (input) input.blur();
+  };
+
+  window.forceChatOpenState = function forceChatOpenState() {
+    const panel = document.getElementById("chatPanel");
+    if (!panel) return false;
+
+    panel.classList.remove("hidden");
+
+    const mobile = v83IsMobileChat();
+    document.body.classList.toggle("chat-mobile-page-open", mobile);
+    document.body.classList.toggle("chat-fullscreen-open", mobile);
+    document.body.classList.toggle("chat-window-open", !mobile);
+    document.documentElement.classList.toggle("chat-mobile-page-open", mobile);
+
+    return true;
+  };
+
+  window.closeChatPanelNow = function closeChatPanelNow(event) {
+    try {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      window.forceChatClosedState();
+
+      if (window.location.hash === "#chat") {
+        try {
+          history.replaceState(null, "", window.location.pathname + window.location.search);
+        } catch {}
+      }
+    } catch (error) {
+      console.warn("Falhou fechar chat:", error);
+      try { window.forceChatClosedState(); } catch {}
+    }
+
+    return false;
+  };
+
+  const oldOpen = typeof openChatPanel === "function" ? openChatPanel : null;
+  window.openChatPanel = function openChatPanelV83() {
+    const ok = window.forceChatOpenState();
+    if (!ok) {
+      try { window.forceChatClosedState(); } catch {}
+      return;
+    }
+
+    try {
+      if (v83IsMobileChat() && window.location.hash !== "#chat") {
+        history.pushState({ chatOpen: true }, "", "#chat");
+      }
+    } catch {}
+
+    try { chatOpenedOnce = true; } catch {}
+    try {
+      chatLastSeenAt = Date.now();
+      localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
+    } catch {}
+    try { updateChatUnreadBadge(); } catch {}
+    try { if (typeof chatNotifyNewMessages === "function") chatNotifyNewMessages(); } catch {}
+    try { if (typeof renderChatPinnedMessage === "function") renderChatPinnedMessage(); } catch {}
+
+    setTimeout(() => {
+      try { scrollChatToBottom(); } catch {}
+      try { document.getElementById("chatInput")?.focus(); } catch {}
+    }, 50);
+  };
+
+  window.closeChatPanel = function closeChatPanelV83() {
+    window.closeChatPanelNow();
+    try {
+      chatLastSeenAt = Date.now();
+      localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
+      updateChatUnreadBadge();
+    } catch {}
+  };
+
+  function bindCloseButton() {
+    const btn = document.getElementById("chatCloseBtn");
+    if (!btn || btn.dataset.v83Bound === "1") return;
+    btn.dataset.v83Bound = "1";
+    btn.setAttribute("onclick", "return window.closeChatPanelNow(event)");
+    ["click", "pointerup", "touchend"].forEach(eventName => {
+      btn.addEventListener(eventName, event => window.closeChatPanelNow(event), { passive: false });
+    });
+  }
+
+  bindCloseButton();
+  document.addEventListener("DOMContentLoaded", bindCloseButton);
+  setTimeout(bindCloseButton, 500);
+
+  window.addEventListener("popstate", () => {
+    const panel = document.getElementById("chatPanel");
+    if (panel && !panel.classList.contains("hidden") && window.location.hash !== "#chat") {
+      window.closeChatPanelNow();
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    const panel = document.getElementById("chatPanel");
+    if (!panel || panel.classList.contains("hidden")) return;
+    window.forceChatOpenState();
+  });
+})();
