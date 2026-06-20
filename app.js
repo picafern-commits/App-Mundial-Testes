@@ -1888,7 +1888,7 @@ function chatTimeLabel(value) {
 function openChatPanel() {
   const panel = $("chatPanel");
   const input = $("chatInput");
-  if (!panel) return;
+  if (!panel) { document.body.classList.remove("chat-fullscreen-open"); return; }
   panel.classList.remove("hidden");
   document.body.classList.add("chat-fullscreen-open");
   renderChatTabs();
@@ -1901,13 +1901,35 @@ function openChatPanel() {
   setTimeout(() => { scrollChatToBottom(); input?.focus(); }, 50);
 }
 
+
+window.closeChatPanelNow = function closeChatPanelNow(event) {
+  try {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const panel = document.getElementById("chatPanel");
+    if (panel) panel.classList.add("hidden");
+
+    document.body.classList.remove("chat-fullscreen-open");
+
+    if (typeof closeChatActionMenu === "function") closeChatActionMenu();
+    if (typeof clearChatReply === "function") clearChatReply();
+    if (typeof updateChatTyping === "function") updateChatTyping(false);
+
+    const input = document.getElementById("chatInput");
+    if (input) input.blur();
+  } catch (error) {
+    console.warn("Falhou fechar chat:", error);
+    document.body.classList.remove("chat-fullscreen-open");
+  }
+
+  return false;
+};
+
 function closeChatPanel() {
-  const panel = $("chatPanel");
-  if (!panel) return;
-  panel.classList.add("hidden");
-  document.body.classList.remove("chat-fullscreen-open");
-  closeChatActionMenu();
-  updateChatTyping(false);
+  window.closeChatPanelNow();
   chatLastSeenAt = Date.now();
   localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
   updateChatUnreadBadge();
@@ -2587,6 +2609,7 @@ function renderChatMessages() {
   }).join("");
 
   setupChatMessageActions();
+  setupChatCloseButtonSafe();
 
   if (stick || !chatOpenedOnce) scrollChatToBottom();
   updateChatUnreadBadge();
@@ -2677,6 +2700,17 @@ async function sendChatMessage(text, imageData = "") {
     console.error("Falhou enviar mensagem:", error);
     toast("Não consegui enviar a mensagem.");
   }
+}
+
+
+function setupChatCloseButtonSafe() {
+  const closeBtn = $("chatCloseBtn");
+  if (!closeBtn || closeBtn.dataset.closeFixBound === "1") return;
+
+  closeBtn.dataset.closeFixBound = "1";
+  closeBtn.addEventListener("click", event => window.closeChatPanelNow(event));
+  closeBtn.addEventListener("pointerup", event => window.closeChatPanelNow(event));
+  closeBtn.addEventListener("touchend", event => window.closeChatPanelNow(event), { passive: false });
 }
 
 function setupChatUi() {
