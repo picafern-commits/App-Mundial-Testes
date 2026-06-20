@@ -6077,3 +6077,71 @@ main,
     font-size:14px!important;
   }
 }
+
+
+/* v80 — Chat mobile até ao fundo do ecrã */
+@media(max-width:760px){
+  #chatPanel.chat-panel{
+    display:flex!important;
+    flex-direction:column!important;
+    height:100dvh!important;
+    min-height:100dvh!important;
+    max-height:100dvh!important;
+    overflow:hidden!important;
+  }
+
+  #chatPanel .chat-header,
+  #chatPanel .chat-room-switch,
+  #chatPanel .chat-search-wrap,
+  #chatPanel .chat-pinned-box,
+  #chatPanel .chat-typing-box,
+  #chatPanel .chat-reply-preview,
+  #chatPanel .chat-form{
+    flex:0 0 auto!important;
+  }
+
+  #chatPanel .chat-messages{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+    padding-bottom:14px!important;
+  }
+
+  #chatPanel .chat-form{
+    margin-top:auto!important;
+    width:100%!important;
+    box-sizing:border-box!important;
+    border-top:1px solid rgba(255,255,255,.10)!important;
+  }
+}
+
+@media(max-width:420px){
+  #chatPanel.chat-panel{
+    height:100dvh!important;
+    min-height:100dvh!important;
+    max-height:100dvh!important;
+  }
+
+  #chatPanel .chat-messages{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    padding-bottom:12px!important;
+  }
+
+  #chatPanel .chat-form{
+    margin-top:auto!important;
+  }
+}
+
+/* fallback para browsers que ainda mexem mal com 100dvh */
+@supports(height:100svh){
+  @media(max-width:760px){
+    #chatPanel.chat-panel{
+      height:100svh!important;
+      min-height:100svh!important;
+      max-height:100svh!important;
+    }
+  }
+}
