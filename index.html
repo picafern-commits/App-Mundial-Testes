@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Mundial Pontos 2026 · X Corrigido</title>
+  <title>Mundial Pontos 2026 · Chat</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Mundial 2026" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -69,7 +69,8 @@
         <p class="eyebrow">Calendário da Fase de Grupos</p>
         <h1>Mundial Pontos 2026</h1>
       </div>
-      <div id="sessionBox" class="session-box hidden">
+      <button id="chatOpenBtn" class="secondary chat-open-btn" type="button">Chat <span id="chatUnreadBadge" class="chat-unread-badge hidden">0</span></button>
+        <div id="sessionBox" class="session-box hidden">
         <span id="sessionUserLabel">Sem login</span>
         <button id="logoutBtn" class="secondary small" type="button">Sair</button>
       </div>
@@ -256,6 +257,7 @@
             </summary>
             <div class="collapse-actions">
               <button id="exportResultadosBtn" class="secondary" type="button">Exportar Excel Resultados</button>
+                <button id="searchAllResultsBtn" class="secondary admin-only search-results-admin-btn" type="button">Pesquisar resultados</button>
               <button id="openExcelModalBtn" class="primary" type="button">Importar Excel Resultados</button>
             </div>
             <div id="importStatusBox" class="import-status-box idle">Ainda não foi feita nenhuma importação.</div>
@@ -440,5 +442,19 @@
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script type="module" src="app.js"></script>
+
+      <div id="chatPanel" class="chat-panel hidden">
+        <div class="chat-header">
+          <div><strong>Chat Mundial</strong><span>Conversa geral dos users</span></div>
+          <button id="chatCloseBtn" class="chat-close-btn" type="button" aria-label="Fechar chat">×</button>
+        </div>
+        <div id="chatMessages" class="chat-messages">
+          <div class="empty small-empty">A carregar chat...</div>
+        </div>
+        <form id="chatForm" class="chat-form">
+          <input id="chatInput" type="text" maxlength="500" autocomplete="off" placeholder="Escrever mensagem..." />
+          <button id="chatSendBtn" class="primary" type="submit">Enviar</button>
+        </form>
+      </div>
 </body>
 </html>

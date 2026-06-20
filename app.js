@@ -28,6 +28,10 @@ let fullSyncTimer = null;
 let realtimeUnsubscribers = [];
 let realtimeRenderTimer = null;
 let onlineUsersCache = [];
+let chatMessagesCache = [];
+let chatUnsubscribe = null;
+let chatOpenedOnce = false;
+let chatLastSeenAt = Number(localStorage.getItem('mundial_chat_last_seen_at') || '0');
 let presenceIntervalId = null;
 let onlineUsersIntervalId = null;
 
@@ -1497,6 +1501,8 @@ function applyPermissionsToUi() {
   $("savePointsSettingsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
   $("saveExtraResultsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
   $("saveKnockoutUnlockBtn")?.classList.toggle("hidden", !hasPermission("editKnockout"));
+    $("searchAllResultsBtn")?.classList.toggle("hidden", !hasPermission("editResults"));
+    document.querySelectorAll(".search-game-result-btn").forEach(btn => btn.classList.toggle("hidden", !hasPermission("editResults")));
 
   document.querySelectorAll("[data-ko-save], [data-ko-edit]").forEach(btn => {
     btn.classList.toggle("hidden", !hasPermission("editKnockout"));
@@ -1846,6 +1852,205 @@ function stopOnlineFeaturesSafe() {
   }
 }
 
+
+const CHAT_COLLECTION = "chatMessages";
+const CHAT_LIMIT = 120;
+
+function chatUserName() {
+  return String(currentProfile?.name || "").trim() || displayNameFromEmail(currentUser?.email || "") || currentUser?.email || "User";
+}
+
+function chatTimestampMs(value) {
+  if (!value) return 0;
+  if (typeof value?.toDate === "function") return value.toDate().getTime();
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return new Date(value).getTime();
+  return 0;
+}
+
+function chatTimeLabel(value) {
+  const time = chatTimestampMs(value);
+  if (!Number.isFinite(time) || !time) return "";
+  return new Date(time).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+}
+
+function openChatPanel() {
+  const panel = $("chatPanel");
+  const input = $("chatInput");
+  if (!panel) return;
+  panel.classList.remove("hidden");
+  chatOpenedOnce = true;
+  chatLastSeenAt = Date.now();
+  localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
+  updateChatUnreadBadge();
+  setTimeout(() => { scrollChatToBottom(); input?.focus(); }, 50);
+}
+
+function closeChatPanel() {
+  const panel = $("chatPanel");
+  if (!panel) return;
+  panel.classList.add("hidden");
+  chatLastSeenAt = Date.now();
+  localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
+  updateChatUnreadBadge();
+}
+
+function scrollChatToBottom() {
+  const box = $("chatMessages");
+  if (box) box.scrollTop = box.scrollHeight;
+}
+
+function updateChatUnreadBadge() {
+  const badge = $("chatUnreadBadge");
+  if (!badge) return;
+  const panelOpen = !$("chatPanel")?.classList.contains("hidden");
+  const unread = chatMessagesCache.filter(message => {
+    if (message.uid === currentUser?.uid) return false;
+    return chatTimestampMs(message.createdAt || message.createdAtLocal) > chatLastSeenAt;
+  }).length;
+  if (panelOpen || unread <= 0) {
+    badge.classList.add("hidden");
+    badge.textContent = "0";
+  } else {
+    badge.classList.remove("hidden");
+    badge.textContent = String(Math.min(99, unread));
+  }
+}
+
+function renderChatMessages() {
+  const box = $("chatMessages");
+  if (!box) return;
+  if (!currentUser) {
+    box.innerHTML = `<div class="empty small-empty">Faz login para usar o chat.</div>`;
+    return;
+  }
+  if (!chatMessagesCache.length) {
+    box.innerHTML = `<div class="empty small-empty">Ainda não há mensagens. Escreve a primeira 🙂</div>`;
+    updateChatUnreadBadge();
+    return;
+  }
+  const stick = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
+  box.innerHTML = chatMessagesCache.map(message => {
+    const mine = message.uid === currentUser?.uid;
+    const name = message.name || displayNameFromEmail(message.email || "");
+    return `
+      <div class="chat-message-row ${mine ? "mine" : "theirs"}">
+        <div class="chat-bubble">
+          ${mine ? "" : `<strong>${escapeHtml(name)}</strong>`}
+          <p>${escapeHtml(String(message.text || ""))}</p>
+          <span>${escapeHtml(chatTimeLabel(message.createdAt || message.createdAtLocal))}</span>
+        </div>
+      </div>`;
+  }).join("");
+  if (stick || !chatOpenedOnce) scrollChatToBottom();
+  updateChatUnreadBadge();
+}
+
+async function loadChatMessagesOnce() {
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) return;
+  try {
+    const { collection, getDocs, query, orderBy, limit } = firebaseApi;
+    const q = query(collection(db, CHAT_COLLECTION), orderBy("createdAt", "asc"), limit(CHAT_LIMIT));
+    const snap = await withTimeout(getDocs(q), 10000, "ler chat");
+    chatMessagesCache = snap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+    renderChatMessages();
+  } catch (error) {
+    console.warn("Chat não carregou:", error);
+    const box = $("chatMessages");
+    if (box) box.innerHTML = `<div class="empty small-empty">Não foi possível carregar o chat. Confirma as regras Firebase.</div>`;
+  }
+}
+
+function startChatListenerSafe() {
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) return;
+  if (chatUnsubscribe) return;
+  try {
+    const { collection, query, orderBy, limit, onSnapshot } = firebaseApi;
+    if (typeof onSnapshot !== "function") {
+      loadChatMessagesOnce();
+      return;
+    }
+    const q = query(collection(db, CHAT_COLLECTION), orderBy("createdAt", "asc"), limit(CHAT_LIMIT));
+    chatUnsubscribe = onSnapshot(q, snap => {
+      chatMessagesCache = snap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+      renderChatMessages();
+    }, error => {
+      console.warn("Chat em tempo real falhou:", error);
+      chatUnsubscribe = null;
+      loadChatMessagesOnce();
+    });
+  } catch (error) {
+    console.warn("Listener do chat não iniciou:", error);
+    loadChatMessagesOnce();
+  }
+}
+
+function stopChatListenerSafe() {
+  try { if (typeof chatUnsubscribe === "function") chatUnsubscribe(); } catch (error) { console.warn("Erro a parar chat:", error); }
+  chatUnsubscribe = null;
+}
+
+async function sendChatMessage(text) {
+  const clean = String(text || "").trim();
+  if (!clean) return;
+  if (!currentUser) return toast("Faz login para escrever no chat.");
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase não está ligado.");
+  try {
+    const { collection, addDoc, serverTimestamp } = firebaseApi;
+    await addDoc(collection(db, CHAT_COLLECTION), {
+      uid: currentUser.uid,
+      email: normalizeEmail(currentUser.email),
+      name: chatUserName(),
+      text: clean.slice(0, 500),
+      createdAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString(),
+      createdAtLocal: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Falhou enviar mensagem:", error);
+    toast("Não consegui enviar a mensagem.");
+  }
+}
+
+function setupChatUi() {
+  const openBtn = $("chatOpenBtn");
+  const closeBtn = $("chatCloseBtn");
+  const form = $("chatForm");
+  const input = $("chatInput");
+  if (openBtn && openBtn.dataset.bound !== "1") {
+    openBtn.dataset.bound = "1";
+    openBtn.addEventListener("click", () => openChatPanel());
+  }
+  if (closeBtn && closeBtn.dataset.bound !== "1") {
+    closeBtn.dataset.bound = "1";
+    closeBtn.addEventListener("click", () => closeChatPanel());
+  }
+  if (form && form.dataset.bound !== "1") {
+    form.dataset.bound = "1";
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const text = input?.value || "";
+      if (input) input.value = "";
+      await sendChatMessage(text);
+      setTimeout(scrollChatToBottom, 80);
+    });
+  }
+}
+
+function startChatSafe() {
+  try {
+    setupChatUi();
+    startChatListenerSafe();
+  } catch (error) {
+    console.warn("Chat não iniciou:", error);
+  }
+}
+
+function stopChatSafe() {
+  closeChatPanel();
+  stopChatListenerSafe();
+}
+
 function setupAuthGate() {
   if (!firebaseAuthApi || !firebaseAuth) {
     showLoginScreen();
@@ -1861,6 +2066,7 @@ function setupAuthGate() {
     if (!user) {
       currentProfile = null;
       stopOnlineFeaturesSafe();
+      stopChatSafe();
       showLoginScreen();
       updateSessionBox();
       return;
@@ -1882,6 +2088,7 @@ function setupAuthGate() {
       await loadData();
       applyPermissionsToUi();
       setLoginStatus("Login efetuado.", "success");
+      startChatSafe();
       startOnlineFeaturesSafe();
     } catch (error) {
       console.error("Erro no arranque com login:", error);
@@ -2210,7 +2417,7 @@ function setupOnlineUsersCloseControls() {
       if (!activePanel || !activePanel.open) return;
       if (activePanel.contains(event.target)) return;
       activePanel.open = false;
-    });
+    }, false);
 
     document.addEventListener("keydown", event => {
       if (event.key === "Escape") closeOnlineUsersPanel();
@@ -2705,6 +2912,8 @@ function openKnockoutEditInAdmin(matchId) {
 }
 
 function renderAll() {
+  setupSearchResultsAdminButton();
+  setTimeout(addSearchButtonsToResultCards, 0);
   setupOnlineUsersCloseControls();
   setupKnockoutAdjustTopButton(); renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); updateActiveAppSection(); }
 
@@ -2859,6 +3068,83 @@ function renderGroups() {
       <div class="table-row head"><span>#</span><span>Seleção</span><span>J</span><span>DG</span><span>Pts</span></div>
       ${rows.map((row, index) => `<div class="table-row"><span>${index + 1}</span><strong>${escapeHtml(row.team)}</strong><span>${row.played}</span><span>${row.gd}</span><b>${row.points}</b></div>`).join("")}
     </div></section>`).join("");
+}
+
+
+function openResultSearchForGame(game) {
+  if (!game) return toast("Jogo não encontrado.");
+
+  const home = game.homeTeam || game.home || game.teamA || "";
+  const away = game.awayTeam || game.away || game.teamB || "";
+  if (!home || !away) return toast("Este jogo ainda não tem as duas equipas definidas.");
+
+  const date = game.matchDate || game.date || "";
+  const query = `${home} vs ${away} ${date} resultado Mundial 2026`;
+  const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function openResultsSearchDashboard() {
+  if (!hasPermission("editResults")) {
+    toast("Só o Admin pode pesquisar resultados.");
+    return;
+  }
+
+  const dueGames = (games || [])
+    .filter(game => !hasResult(game))
+    .filter(game => parsePortugalDate(game.matchDate).getTime() <= Date.now())
+    .sort((a, b) => parsePortugalDate(a.matchDate) - parsePortugalDate(b.matchDate));
+
+  if (dueGames.length) {
+    openResultSearchForGame(dueGames[0]);
+    if (dueGames.length > 1) toast(`Abri a pesquisa do primeiro jogo. Existem ${dueGames.length} jogos sem resultado.`);
+    return;
+  }
+
+  const nextGame = (games || [])
+    .filter(game => !hasResult(game))
+    .sort((a, b) => parsePortugalDate(a.matchDate) - parsePortugalDate(b.matchDate))[0];
+
+  if (nextGame) {
+    openResultSearchForGame(nextGame);
+    return;
+  }
+
+  toast("Não existem jogos pendentes para pesquisar.");
+}
+
+function setupSearchResultsAdminButton() {
+  const button = $("searchAllResultsBtn");
+  if (!button || button.dataset.bound === "1") return;
+
+  button.dataset.bound = "1";
+  button.addEventListener("click", () => openResultsSearchDashboard());
+}
+
+function addSearchButtonsToResultCards() {
+  if (!hasPermission("editResults")) return;
+
+  document.querySelectorAll("[data-result-game]").forEach(resultButton => {
+    const gameId = resultButton.dataset.resultGame;
+    if (!gameId) return;
+
+    const parent = resultButton.parentElement;
+    if (!parent || parent.querySelector(`[data-search-result-game="${CSS.escape(gameId)}"]`)) return;
+
+    const searchButton = document.createElement("button");
+    searchButton.type = "button";
+    searchButton.className = "secondary small search-game-result-btn admin-only";
+    searchButton.dataset.searchResultGame = gameId;
+    searchButton.textContent = "Pesquisar";
+    searchButton.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const game = games.find(item => item.id === gameId);
+      openResultSearchForGame(game);
+    });
+
+    parent.insertBefore(searchButton, resultButton);
+  });
 }
 
 function renderAdminState() {
@@ -4152,18 +4438,5 @@ setupKnockoutAdjustTopButton();
 setupOnlineUsersCloseControls();
 
 
-// v70 backup: fecha Users Online por captura, mesmo no Safari/iPhone.
-if (!window.__onlineUsersCloseCaptureBound) {
-  window.__onlineUsersCloseCaptureBound = true;
-  document.addEventListener("pointerdown", event => {
-    const closeButton = event.target.closest?.("#closeOnlineUsersBtn, .online-users-close");
-    if (!closeButton) return;
-    window.closeOnlineUsersPanelNow(event);
-  }, true);
 
-  document.addEventListener("touchstart", event => {
-    const closeButton = event.target.closest?.("#closeOnlineUsersBtn, .online-users-close");
-    if (!closeButton) return;
-    window.closeOnlineUsersPanelNow(event);
-  }, true);
-}
+setupSearchResultsAdminButton();

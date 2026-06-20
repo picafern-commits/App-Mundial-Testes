@@ -33,6 +33,17 @@ service cloud.firestore {
       allow create, update, delete: if signedIn() && request.auth.uid == userId;
     }
 
+
+    match /chatMessages/{messageId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 500;
+      allow update, delete: if false;
+    }
+
     match /{document=**} {
       allow read: if true;
       allow write: if false;
