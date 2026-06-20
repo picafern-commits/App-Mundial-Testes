@@ -6099,13 +6099,20 @@ setupSearchResultsAdminButton();
     }, { capture: true });
   }
 
-  document.addEventListener("pointerdown", event => {
+  function closeMenuOnOutsidePress(event) {
     const menu = document.getElementById("chatActionMenu");
     if (!menu || menu.classList.contains("hidden")) return;
     if (menu.contains(event.target)) return;
-    if (event.target.closest?.("#chatMessages")) return;
     if (typeof closeChatActionMenu === "function") closeChatActionMenu();
-  }, { capture: true });
+    if (event.target.closest?.("#chatPanel, #chatMessages, .chat-message-row")) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }
+
+  document.addEventListener("pointerdown", closeMenuOnOutsidePress, { capture: true });
+  document.addEventListener("touchstart", closeMenuOnOutsidePress, { capture: true, passive: false });
+  document.addEventListener("click", closeMenuOnOutsidePress, { capture: true });
 
   bindV96();
   document.addEventListener("DOMContentLoaded", bindV96);
