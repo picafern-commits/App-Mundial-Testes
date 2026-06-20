@@ -2265,6 +2265,8 @@ function setupChatMessageActions() {
   const messageIdFromEvent = event => event.target.closest?.("[data-chat-message]")?.dataset.chatMessage || "";
 
   box.addEventListener("pointerdown", event => {
+    if (event.pointerType && event.pointerType !== "touch" && event.pointerType !== "pen") return;
+    if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
     const messageId = messageIdFromEvent(event);
     if (!messageId) return;
     clearTimer();
@@ -5332,7 +5334,7 @@ function setupPageWheelScroll() {
   document.addEventListener("wheel", event => {
     if (document.body.classList.contains("knockout-layout-active")) return;
     if (event.defaultPrevented || !event.deltaY) return;
-    if (event.target.closest(".modal, .modal-card, .ko-admin-list")) return;
+    if (event.target.closest("#chatPanel, #chatActionMenu, #chatImageViewer, .chat-panel, .chat-messages, .chat-action-menu, .chat-image-viewer, .modal, .modal-card, .ko-admin-list")) return;
 
     const before = window.scrollY;
     window.scrollBy({ top: event.deltaY, left: 0, behavior: "auto" });
@@ -5563,13 +5565,6 @@ setupSearchResultsAdminButton();
         }
 
         // No mobile, tocar na mensagem abre ações, para não depender de long press do Safari.
-        if (isMobileChat()) {
-          const row = event.target.closest?.(".chat-message-row[data-chat-message]");
-          if (!row) return;
-          if (event.target.closest?.("button,input,textarea,select,a")) return;
-          const id = row.dataset.chatMessage;
-          if (id && typeof openChatActionMenu === "function") openChatActionMenu(id, event);
-        }
       });
 
       // Long press continua disponível, mas sem capturar imagens.
@@ -5700,11 +5695,6 @@ setupSearchResultsAdminButton();
           return window.openChatImageAboveV91(src, event);
         }
 
-        if (!isMobileV91()) return;
-        if (event.target.closest?.("button,input,textarea,select,a")) return;
-
-        const id = getMessageIdFromTarget(event.target);
-        if (id) return openMessageMenuV91(id, event);
       });
 
       // iPhone/Safari às vezes falha click em elementos dentro de scroll: usar touchend só no container.
@@ -5715,11 +5705,6 @@ setupSearchResultsAdminButton();
           return window.openChatImageAboveV91(src, event);
         }
 
-        if (!isMobileV91()) return;
-        if (event.target.closest?.("button,input,textarea,select,a")) return;
-
-        const id = getMessageIdFromTarget(event.target);
-        if (id) return openMessageMenuV91(id, event);
       }, { passive: false });
 
       // PC continua com botão direito.

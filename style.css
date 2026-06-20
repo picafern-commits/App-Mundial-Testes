@@ -6731,6 +6731,7 @@ body.chat-image-viewer-open > #chatImageViewer.hidden{
   background:#0b141a!important;
   border-color:rgba(255,255,255,.12)!important;
   box-shadow:0 28px 90px rgba(0,0,0,.58)!important;
+  overscroll-behavior:contain!important;
 }
 
 #chatPanel .chat-header{
@@ -6794,6 +6795,7 @@ body.chat-image-viewer-open > #chatImageViewer.hidden{
     radial-gradient(circle at 20% 0%,rgba(0,168,132,.16),transparent 24%),
     radial-gradient(circle at 80% 35%,rgba(233,237,239,.05),transparent 25%)!important;
   padding:14px 12px!important;
+  overscroll-behavior:contain!important;
 }
 
 #chatPanel .chat-date-separator{
