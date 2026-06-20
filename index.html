@@ -446,6 +446,22 @@
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <script src="config.js"></script>
+  <script>
+    (() => {
+      const officialUrl = window.MUNDIAL_CONFIG && window.MUNDIAL_CONFIG.officialUrl;
+      const host = window.location.hostname.toLowerCase();
+      if (!officialUrl || !host.endsWith("github.io")) return;
+      try {
+        const target = new URL(officialUrl);
+        target.search = window.location.search;
+        target.hash = window.location.hash;
+        target.searchParams.set("migrado", "github");
+        window.location.replace(target.toString());
+      } catch {
+        window.location.replace(officialUrl);
+      }
+    })();
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script type="module" src="app.js"></script>
 

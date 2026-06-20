@@ -9,9 +9,12 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 
 let db = null;
+let firebaseApp = null;
 let firebaseApi = null;
 let firebaseAuth = null;
 let firebaseAuthApi = null;
+let firebaseMessaging = null;
+let firebaseMessagingApi = null;
 let currentUser = null;
 let currentProfile = null;
 let permissionsCache = [];
@@ -554,6 +557,7 @@ async function initFirebase() {
     const firestoreModule = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js");
 
     const app = appModule.initializeApp(config);
+    firebaseApp = app;
     firebaseAuth = authModule.getAuth(app);
     firebaseAuthApi = authModule;
     db = firestoreModule.getFirestore(app);
@@ -1016,7 +1020,10 @@ async function saveGameFastToFirebase(game, options = {}) {
     ...game,
     homeScore: game.homeScore === "" || game.homeScore === undefined ? null : game.homeScore,
     awayScore: game.awayScore === "" || game.awayScore === undefined ? null : game.awayScore,
-    updatedAt: localUpdatedAt
+    updatedAt: localUpdatedAt,
+    updatedBy: currentUser?.uid || game.updatedBy || "",
+    updatedByEmail: normalizeEmail(currentUser?.email || game.updatedByEmail || ""),
+    updatedByName: String(currentProfile?.name || displayNameFromEmail(currentUser?.email || "") || game.updatedByName || "")
   };
   const firebasePayload = { ...payload, firebaseUpdatedAt: serverTimestamp() };
 
@@ -1045,8 +1052,17 @@ async function saveSettingsFastToFirebase(reason = "settings") {
   if (!db || !firebaseApi || storageMode !== "firebase") return false;
 
   const { doc, setDoc } = firebaseApi;
-  await withTimeout(setDoc(doc(db, "settings", "main"), appSettings, { merge: true }), 12000, reason);
+  const payload = {
+    ...appSettings,
+    updatedBy: currentUser?.uid || appSettings.updatedBy || "",
+    updatedByEmail: normalizeEmail(currentUser?.email || appSettings.updatedByEmail || ""),
+    updatedByName: String(currentProfile?.name || displayNameFromEmail(currentUser?.email || "") || appSettings.updatedByName || ""),
+    updatedReason: reason,
+    updatedAtLocal: new Date().toISOString()
+  };
+  await withTimeout(setDoc(doc(db, "settings", "main"), payload, { merge: true }), 12000, reason);
   clearSettingsPending();
+  appSettings = mergeSettings(payload);
   saveLocalData(`${reason} firebase-ok`);
   return true;
 }
@@ -8291,3 +8307,419 @@ renderOnlineUsers = function renderOnlineUsersV109() {
 setupChatV109Bindings();
 document.addEventListener("DOMContentLoaded", setupChatV109Bindings);
 setTimeout(setupChatV109Bindings, 500);
+
+
+// v110 - notificacoes reais por Firebase Cloud Messaging.
+const NOTIFICATION_VAPID_KEY_V110 = APP_CONFIG.notifications?.vapidKey || "";
+const NOTIFICATION_ENABLED_KEY_V110 = "mundial_notifications_enabled_v110";
+const NOTIFICATION_AUTO_ASKED_KEY_V110 = "mundial_notifications_auto_asked_v110";
+const NOTIFICATION_TOKEN_DOC_KEY_V110 = "mundial_notification_token_doc_v110";
+let notificationOnMessageBoundV110 = false;
+let notificationTokenBusyV110 = false;
+
+function notificationsWantedV110() {
+  return localStorage.getItem(NOTIFICATION_ENABLED_KEY_V110) === "1";
+}
+
+function setNotificationsWantedV110(enabled) {
+  localStorage.setItem(NOTIFICATION_ENABLED_KEY_V110, enabled ? "1" : "0");
+  chatNotificationsEnabledV109 = Boolean(enabled);
+  localStorage.setItem("mundial_chat_notifications_v109", enabled ? "1" : "0");
+}
+
+function notificationTokenHashV110(token) {
+  let hash = 0;
+  const raw = String(token || "");
+  for (let i = 0; i < raw.length; i += 1) {
+    hash = ((hash << 5) - hash + raw.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+function notificationSupportedV110() {
+  return Boolean(
+    NOTIFICATION_VAPID_KEY_V110 &&
+    "Notification" in window &&
+    "serviceWorker" in navigator &&
+    currentUser &&
+    db &&
+    firebaseApi &&
+    storageMode === "firebase"
+  );
+}
+
+function notificationPrefsV110() {
+  return {
+    chatGeneral: true,
+    chatAdmin: isChatAdmin(),
+    mentions: true,
+    results: true,
+    knockout: true
+  };
+}
+
+function notificationRoomsV110() {
+  return {
+    general: true,
+    admin: isChatAdmin()
+  };
+}
+
+async function ensureFirebaseMessagingV110() {
+  if (!notificationSupportedV110()) return false;
+  if (firebaseMessaging && firebaseMessagingApi) return true;
+
+  try {
+    const messagingModule = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging.js");
+    if (typeof messagingModule.isSupported === "function") {
+      const supported = await messagingModule.isSupported();
+      if (!supported) return false;
+    }
+    firebaseMessagingApi = messagingModule;
+    firebaseMessaging = messagingModule.getMessaging(firebaseApp);
+
+    if (!notificationOnMessageBoundV110 && typeof messagingModule.onMessage === "function") {
+      notificationOnMessageBoundV110 = true;
+      messagingModule.onMessage(firebaseMessaging, payload => {
+        const data = payload?.data || {};
+        const notification = payload?.notification || {};
+        const title = notification.title || data.title || "Mundial Pontos 2026";
+        const body = notification.body || data.body || "Nova notificacao.";
+        if (data.uid && data.uid === currentUser?.uid) return;
+        toast(`${title}: ${body}`);
+        if (document.visibilityState !== "visible" && "Notification" in window && Notification.permission === "granted") {
+          try {
+            const note = new Notification(title, {
+              body,
+              icon: "icons/icon-192.png",
+              badge: "icons/icon-192.png",
+              tag: data.tag || `mundial-${data.type || "notificacao"}-${data.id || Date.now()}`
+            });
+            note.onclick = () => {
+              window.focus?.();
+              handleNotificationTargetV110(data.url || "", data);
+              note.close();
+            };
+          } catch {}
+        }
+      });
+    }
+    return true;
+  } catch (error) {
+    console.warn("Firebase Messaging nao iniciou:", error);
+    return false;
+  }
+}
+
+async function saveNotificationTokenV110(token) {
+  if (!token || !currentUser || !db || !firebaseApi) return false;
+  const { doc, setDoc, serverTimestamp } = firebaseApi;
+  const hash = notificationTokenHashV110(token);
+  const docId = `${currentUser.uid}_${hash}`;
+  const payload = {
+    uid: currentUser.uid,
+    email: normalizeEmail(currentUser.email),
+    name: currentProfile?.name || displayNameFromEmail(currentUser.email || ""),
+    token,
+    tokenHash: hash,
+    enabled: true,
+    rooms: notificationRoomsV110(),
+    preferences: notificationPrefsV110(),
+    appVersion: APP_CONFIG.appVersion || "112.0",
+    platform: navigator.platform || "",
+    userAgent: navigator.userAgent || "",
+    origin: window.location.origin,
+    updatedAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString(),
+    createdAtLocal: new Date().toISOString()
+  };
+  await setDoc(doc(db, "notificationTokens", docId), payload, { merge: true });
+  localStorage.setItem(NOTIFICATION_TOKEN_DOC_KEY_V110, docId);
+  return true;
+}
+
+async function disableNotificationTokenV110() {
+  if (!currentUser || !db || !firebaseApi) return false;
+  const docId = localStorage.getItem(NOTIFICATION_TOKEN_DOC_KEY_V110) || "";
+  if (!docId) return false;
+  try {
+    const { doc, setDoc, serverTimestamp } = firebaseApi;
+    await setDoc(doc(db, "notificationTokens", docId), {
+      uid: currentUser.uid,
+      enabled: false,
+      disabledAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString()
+    }, { merge: true });
+    return true;
+  } catch (error) {
+    console.warn("Nao consegui desativar notificacoes:", error);
+    return false;
+  }
+}
+
+async function ensureNotificationTokenV110(force = false) {
+  if (notificationTokenBusyV110) return false;
+  if (!notificationsWantedV110() && !force) return false;
+  if (!notificationSupportedV110()) return false;
+  if (Notification.permission !== "granted") return false;
+
+  notificationTokenBusyV110 = true;
+  try {
+    const ready = await ensureFirebaseMessagingV110();
+    if (!ready) throw new Error("Messaging nao suportado neste browser");
+    const registration = await navigator.serviceWorker.ready;
+    const token = await firebaseMessagingApi.getToken(firebaseMessaging, {
+      vapidKey: NOTIFICATION_VAPID_KEY_V110,
+      serviceWorkerRegistration: registration
+    });
+    if (!token) throw new Error("Sem token FCM");
+    await saveNotificationTokenV110(token);
+    updateChatNotificationButtonV109();
+    return true;
+  } catch (error) {
+    console.warn("Token de notificacoes nao guardado:", error);
+    toast("Nao consegui ligar as notificacoes neste dispositivo.");
+    return false;
+  } finally {
+    notificationTokenBusyV110 = false;
+  }
+}
+
+requestChatNotificationsV109 = async function requestChatNotificationsV110(event) {
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+
+  if (!notificationSupportedV110()) {
+    toast(!currentUser ? "Faz login para ativar notificacoes." : "Este browser nao suporta notificacoes push.");
+    return;
+  }
+
+  if (notificationsWantedV110() && Notification.permission === "granted") {
+    setNotificationsWantedV110(false);
+    await disableNotificationTokenV110();
+    updateChatNotificationButtonV109();
+    toast("Notificacoes desligadas neste dispositivo.");
+    return;
+  }
+
+  const permission = Notification.permission === "granted"
+    ? "granted"
+    : await Notification.requestPermission();
+
+  if (permission !== "granted") {
+    setNotificationsWantedV110(false);
+    updateChatNotificationButtonV109();
+    toast("Notificacoes nao autorizadas.");
+    return;
+  }
+
+  setNotificationsWantedV110(true);
+  const ok = await ensureNotificationTokenV110(true);
+  updateChatNotificationButtonV109();
+  toast(ok ? "Notificacoes reais ligadas neste dispositivo." : "Nao consegui guardar este dispositivo.");
+};
+
+updateChatNotificationButtonV109 = function updateChatNotificationButtonV110() {
+  const button = $("chatNotifyBtnV109");
+  if (!button) return;
+  const granted = "Notification" in window && Notification.permission === "granted";
+  const active = notificationsWantedV110() && granted;
+  button.textContent = active ? "Notif on" : "Notif";
+  button.classList.toggle("is-on", active);
+  button.title = active ? "Notificacoes reais ligadas" : "Ligar notificacoes reais";
+};
+
+function handleNotificationTargetV110(rawUrl = "", data = {}) {
+  const targetType = data.type || "";
+  const targetRoom = data.room || "";
+  const url = rawUrl ? new URL(rawUrl, window.location.href) : new URL(window.location.href);
+  const open = url.searchParams.get("open") || "";
+  const room = targetRoom || url.searchParams.get("room") || "general";
+
+  if (open === "chat" || targetType.includes("chat") || targetType === "mention") {
+    if (room === "admin" && isChatAdmin()) setChatRoom("admin");
+    else setChatRoom("general");
+    setTimeout(() => window.openChatPanel?.(), 80);
+    return true;
+  }
+
+  if (targetType === "result" || open === "calendar") {
+    document.querySelector('[data-tab="calendarTab"]')?.click();
+    return true;
+  }
+
+  if (targetType === "knockout" || open === "knockout") {
+    document.querySelector('[data-tab="knockoutTab"]')?.click();
+    return true;
+  }
+
+  return false;
+}
+
+function handleInitialNotificationTargetV110() {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.get("open") && !url.searchParams.get("notif")) return;
+  const data = {
+    type: url.searchParams.get("notif") || "",
+    room: url.searchParams.get("room") || ""
+  };
+  const handled = handleNotificationTargetV110(url.href, data);
+  if (handled) {
+    url.searchParams.delete("open");
+    url.searchParams.delete("room");
+    url.searchParams.delete("notif");
+    window.history.replaceState({}, "", url.toString());
+  }
+}
+
+async function autoAskNotificationsOnceV110() {
+  if (!currentUser || !notificationSupportedV110()) return false;
+  if (notificationsWantedV110()) return ensureNotificationTokenV110(false);
+  if (localStorage.getItem(NOTIFICATION_AUTO_ASKED_KEY_V110) === "1") return false;
+  if (!("Notification" in window) || Notification.permission !== "default") return false;
+
+  localStorage.setItem(NOTIFICATION_AUTO_ASKED_KEY_V110, "1");
+  toast("Ativa as notificacoes para receber resultados, chat e fase final.");
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      setNotificationsWantedV110(false);
+      updateChatNotificationButtonV109();
+      toast("Notificacoes nao autorizadas. Podes ligar depois no botao Notif.");
+      return false;
+    }
+
+    setNotificationsWantedV110(true);
+    const ok = await ensureNotificationTokenV110(true);
+    updateChatNotificationButtonV109();
+    toast(ok ? "Notificacoes ligadas neste dispositivo." : "Nao consegui guardar este dispositivo.");
+    return ok;
+  } catch (error) {
+    console.warn("Pedido automatico de notificacoes falhou:", error);
+    updateChatNotificationButtonV109();
+    return false;
+  }
+}
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("message", event => {
+    if (event.data?.type === "OPEN_NOTIFICATION_TARGET") {
+      handleNotificationTargetV110(event.data.url || "", event.data.data || {});
+    }
+  });
+}
+
+setNotificationsWantedV110(notificationsWantedV110() || chatNotificationsEnabledV109);
+document.addEventListener("DOMContentLoaded", () => {
+  updateChatNotificationButtonV109();
+  setTimeout(() => autoAskNotificationsOnceV110(), 1800);
+  setTimeout(() => ensureNotificationTokenV110(false), 4200);
+  setTimeout(handleInitialNotificationTargetV110, 2200);
+});
+window.addEventListener("load", () => setTimeout(() => autoAskNotificationsOnceV110(), 2600));
+window.addEventListener("focus", () => ensureNotificationTokenV110(false));
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") ensureNotificationTokenV110(false);
+});
+setInterval(() => ensureNotificationTokenV110(false), 1000 * 60 * 30);
+
+
+// v112 - migracao GitHub Pages -> Firebase Hosting e teste real de notificacoes.
+function showMigrationNoticeV112() {
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("migrado") !== "github") return;
+  toast("Estas agora no link oficial da app. Aceita notificacoes neste novo link.");
+  url.searchParams.delete("migrado");
+  window.history.replaceState({}, "", url.toString());
+}
+
+function showLocalNotificationTestV112() {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try {
+    const note = new Notification("Teste local", {
+      body: "Este dispositivo consegue mostrar notificacoes.",
+      icon: "icons/icon-192.png",
+      badge: "icons/icon-192.png",
+      tag: "mundial-local-notification-test"
+    });
+    note.onclick = () => {
+      window.focus?.();
+      note.close();
+    };
+    setTimeout(() => note.close(), 6000);
+  } catch (error) {
+    console.warn("Teste local de notificacao falhou:", error);
+  }
+}
+
+async function sendFirebaseNotificationTestV112(event) {
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+
+  if (!currentUser) return toast("Faz login para testar notificacoes.");
+  if (!notificationSupportedV110()) return toast("Este browser nao suporta notificacoes push.");
+
+  const permission = Notification.permission === "granted"
+    ? "granted"
+    : await Notification.requestPermission();
+
+  if (permission !== "granted") {
+    setNotificationsWantedV110(false);
+    updateChatNotificationButtonV109();
+    return toast("Notificacoes nao autorizadas neste dispositivo.");
+  }
+
+  setNotificationsWantedV110(true);
+  const tokenOk = await ensureNotificationTokenV110(true);
+  updateChatNotificationButtonV109();
+  showLocalNotificationTestV112();
+
+  if (!tokenOk) return toast("Teste local feito, mas o token Firebase nao ficou guardado.");
+
+  try {
+    const { collection, addDoc, serverTimestamp } = firebaseApi;
+    await addDoc(collection(db, "notificationTests"), {
+      uid: currentUser.uid,
+      email: normalizeEmail(currentUser.email),
+      name: currentProfile?.name || displayNameFromEmail(currentUser.email || ""),
+      createdAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString(),
+      createdAtLocal: new Date().toISOString(),
+      appVersion: APP_CONFIG.appVersion || "112.0",
+      origin: window.location.origin
+    });
+    toast("Teste enviado. Se receberes 'Teste Firebase', esta tudo a funcionar.");
+  } catch (error) {
+    console.error("Teste Firebase de notificacao falhou:", error);
+    toast("Teste local feito, mas o Firebase nao enviou o teste.");
+  }
+}
+
+function ensureNotificationTestButtonV112() {
+  const header = document.querySelector("#chatPanel .chat-header");
+  const close = $("chatCloseBtn");
+  if (!header || $("chatNotifyTestBtnV112")) return;
+  const button = document.createElement("button");
+  button.id = "chatNotifyTestBtnV112";
+  button.className = "chat-header-mini-btn chat-notify-test-btn";
+  button.type = "button";
+  button.textContent = "Teste";
+  button.title = "Testar notificacoes neste dispositivo";
+  button.addEventListener("click", sendFirebaseNotificationTestV112);
+  header.insertBefore(button, close || null);
+}
+
+const ensureChatHeaderButtonsBeforeV112 = ensureChatHeaderButtonsV109;
+ensureChatHeaderButtonsV109 = function ensureChatHeaderButtonsV112() {
+  ensureChatHeaderButtonsBeforeV112();
+  ensureNotificationTestButtonV112();
+};
+
+const setupChatV109BindingsBeforeV112 = setupChatV109Bindings;
+setupChatV109Bindings = function setupChatV112Bindings() {
+  setupChatV109BindingsBeforeV112();
+  ensureNotificationTestButtonV112();
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(showMigrationNoticeV112, 1200);
+  setTimeout(ensureNotificationTestButtonV112, 1400);
+});

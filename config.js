@@ -1,5 +1,6 @@
 window.MUNDIAL_CONFIG = {
-  appVersion: "109.0",
+  appVersion: "112.0",
+  officialUrl: "https://app-mundial2026.web.app/",
   adminPin: "1234",
   adminEmails: ["pica.fern@gmail.com"],
   firebase: {
@@ -9,5 +10,8 @@ window.MUNDIAL_CONFIG = {
     storageBucket: "app-mundial2026.firebasestorage.app",
     messagingSenderId: "143980254410",
     appId: "1:143980254410:web:0f48873c3aa4c9ad201033"
+  },
+  notifications: {
+    vapidKey: "BIMrOfE1jj6MP_qPJraoSZ-noW5dT2-9XtmgEEUOmA0om4Y1VaE-K5RcvKNLG_yek0kECRZagwrrGCD5NDOS1x4"
   }
 };
