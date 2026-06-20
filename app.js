@@ -5968,3 +5968,146 @@ setupSearchResultsAdminButton();
   document.addEventListener("DOMContentLoaded", bindV93);
   setTimeout(bindV93, 350);
 })();
+
+
+// v96 - interacao do menu: long press correto no mobile e clique direito no PC.
+(function setupChatInteractionV96(){
+  if (window.__chatInteractionV96) return;
+  window.__chatInteractionV96 = true;
+
+  let pressTimer = null;
+  let pressStart = null;
+  let pressOpened = false;
+  let suppressNextClickUntil = 0;
+
+  function isTouchLike(event) {
+    return event?.pointerType === "touch" || event?.pointerType === "pen" || event?.type?.startsWith("touch");
+  }
+
+  function pointFromEvent(event) {
+    const touch = event?.changedTouches?.[0] || event?.touches?.[0];
+    return {
+      x: Number(touch?.clientX ?? event?.clientX ?? 0),
+      y: Number(touch?.clientY ?? event?.clientY ?? 0)
+    };
+  }
+
+  function rowFromEvent(event) {
+    return event?.target?.closest?.(".chat-message-row[data-chat-message]") || null;
+  }
+
+  function clearPress() {
+    if (pressTimer) clearTimeout(pressTimer);
+    pressTimer = null;
+    pressStart = null;
+    pressOpened = false;
+  }
+
+  function openMenuForRow(row, point) {
+    const id = row?.dataset?.chatMessage || "";
+    if (!id || typeof openChatActionMenu !== "function") return;
+    pressOpened = true;
+    suppressNextClickUntil = Date.now() + 900;
+    openChatActionMenu(id, {
+      clientX: point.x,
+      clientY: point.y,
+      target: row,
+      preventDefault() {},
+      stopPropagation() {}
+    });
+  }
+
+  function bindV96() {
+    const messages = document.getElementById("chatMessages");
+    if (!messages || messages.dataset.v96Bound === "1") return;
+    messages.dataset.v96Bound = "1";
+
+    messages.addEventListener("pointerdown", event => {
+      if (!isTouchLike(event)) return;
+      if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+
+      const row = rowFromEvent(event);
+      if (!row) {
+        if (typeof closeChatActionMenu === "function") closeChatActionMenu();
+        return;
+      }
+
+      event.stopImmediatePropagation();
+      clearPress();
+
+      const point = pointFromEvent(event);
+      pressStart = { ...point, row };
+      pressTimer = setTimeout(() => {
+        if (!pressStart || pressStart.row !== row) return;
+        if (navigator.vibrate) {
+          try { navigator.vibrate(15); } catch {}
+        }
+        openMenuForRow(row, point);
+      }, 620);
+    }, { capture: true, passive: false });
+
+    messages.addEventListener("touchstart", event => {
+      if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+      if (!rowFromEvent(event)) return;
+      event.stopImmediatePropagation();
+    }, { capture: true, passive: true });
+
+    const cancelIfMoved = event => {
+      if (!pressStart) return;
+      const point = pointFromEvent(event);
+      if (Math.abs(point.x - pressStart.x) > 10 || Math.abs(point.y - pressStart.y) > 10) {
+        clearPress();
+      }
+    };
+
+    messages.addEventListener("pointermove", cancelIfMoved, { capture: true, passive: true });
+    messages.addEventListener("touchmove", cancelIfMoved, { capture: true, passive: true });
+    messages.addEventListener("scroll", clearPress, { passive: true });
+
+    const finishTouch = event => {
+      if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+      const hadPress = Boolean(pressTimer || pressStart || pressOpened);
+      const opened = pressOpened;
+      clearPress();
+      if (hadPress) event.stopImmediatePropagation();
+      if (!opened && typeof closeChatActionMenu === "function") closeChatActionMenu();
+    };
+
+    messages.addEventListener("pointerup", finishTouch, { capture: true, passive: false });
+    messages.addEventListener("pointercancel", finishTouch, { capture: true, passive: false });
+    messages.addEventListener("touchend", finishTouch, { capture: true, passive: false });
+    messages.addEventListener("touchcancel", finishTouch, { capture: true, passive: false });
+
+    messages.addEventListener("click", event => {
+      if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+      if (Date.now() < suppressNextClickUntil) {
+        event.stopImmediatePropagation();
+        return;
+      }
+      if (rowFromEvent(event)) {
+        event.stopImmediatePropagation();
+        if (typeof closeChatActionMenu === "function") closeChatActionMenu();
+      }
+    }, { capture: true });
+
+    messages.addEventListener("contextmenu", event => {
+      const row = rowFromEvent(event);
+      if (!row || event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openMenuForRow(row, pointFromEvent(event));
+    }, { capture: true });
+  }
+
+  document.addEventListener("pointerdown", event => {
+    const menu = document.getElementById("chatActionMenu");
+    if (!menu || menu.classList.contains("hidden")) return;
+    if (menu.contains(event.target)) return;
+    if (event.target.closest?.("#chatMessages")) return;
+    if (typeof closeChatActionMenu === "function") closeChatActionMenu();
+  }, { capture: true });
+
+  bindV96();
+  document.addEventListener("DOMContentLoaded", bindV96);
+  setTimeout(bindV96, 350);
+})();
