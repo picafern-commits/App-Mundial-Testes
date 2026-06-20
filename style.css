@@ -6454,3 +6454,19 @@ body.chat-image-viewer-open{
     font-size:32px;
   }
 }
+
+
+/* v88 — iPhone/Safari: imagem do chat tocável */
+.chat-image,
+[data-chat-image="1"]{
+  cursor:zoom-in!important;
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  -webkit-user-select:none!important;
+  user-select:none!important;
+  -webkit-touch-callout:none!important;
+}
+
+.chat-bubble:has(.chat-image){
+  touch-action:manipulation!important;
+}

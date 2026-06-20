@@ -2376,7 +2376,7 @@ function chatMessageMatchesSearch(message) {
 
 function chatImageMarkup(message) {
   if (!message.imageData) return "";
-  return `<img class="chat-image" src="${escapeHtml(message.imageData)}" alt="Imagem enviada no chat" loading="lazy" data-chat-image="1" />`;
+  return `<img class="chat-image" src="${escapeHtml(message.imageData)}" alt="Imagem enviada no chat" loading="lazy" data-chat-image="1" onclick="return window.openChatImageViewerFromElement(this,event)" />`;
 }
 
 function chatReactionsMarkup(message) {
@@ -5558,3 +5558,57 @@ setupSearchResultsAdminButton();
     if (panel?.classList.contains("hidden")) clearChatClasses();
   });
 })();
+
+
+// v88 — abrir imagem no iPhone/Safari sem depender do click normal.
+window.openChatImageViewerFromElement = function openChatImageViewerFromElement(element, event) {
+  try {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    }
+
+    if (typeof chatLongPressTimer !== "undefined" && chatLongPressTimer) {
+      clearTimeout(chatLongPressTimer);
+      chatLongPressTimer = null;
+    }
+
+    const src = element?.currentSrc || element?.src || element?.getAttribute?.("src") || "";
+    if (src && typeof openChatImageViewer === "function") openChatImageViewer(src);
+  } catch (error) {
+    console.warn("Falhou abrir imagem do chat:", error);
+  }
+
+  return false;
+};
+
+function setupChatImageViewerIphoneFix() {
+  if (window.__chatImageViewerIphoneFixBound) return;
+  window.__chatImageViewerIphoneFixBound = true;
+
+  const openFromEvent = event => {
+    const img = event.target.closest?.(".chat-image, [data-chat-image]");
+    if (!img) return;
+
+    window.openChatImageViewerFromElement(img, event);
+  };
+
+  // Captura antes do long press da mensagem.
+  document.addEventListener("touchend", openFromEvent, { capture: true, passive: false });
+  document.addEventListener("pointerup", openFromEvent, { capture: true, passive: false });
+  document.addEventListener("click", openFromEvent, { capture: true, passive: false });
+
+  document.addEventListener("pointerdown", event => {
+    const img = event.target.closest?.(".chat-image, [data-chat-image]");
+    if (!img) return;
+
+    if (typeof chatLongPressTimer !== "undefined" && chatLongPressTimer) {
+      clearTimeout(chatLongPressTimer);
+      chatLongPressTimer = null;
+    }
+  }, { capture: true, passive: true });
+}
+
+setupChatImageViewerIphoneFix();
+document.addEventListener("DOMContentLoaded", setupChatImageViewerIphoneFix);
