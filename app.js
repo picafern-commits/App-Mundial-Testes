@@ -29,6 +29,8 @@ let realtimeUnsubscribers = [];
 let realtimeRenderTimer = null;
 let onlineUsersCache = [];
 let chatMessagesCache = [];
+let chatPinnedMessage = null;
+let chatPinnedUnsubscribe = null;
 let chatUnsubscribe = null;
 let chatOpenedOnce = false;
 let chatLastSeenAt = Number(localStorage.getItem('mundial_chat_last_seen_at') || '0');
@@ -1884,6 +1886,8 @@ function openChatPanel() {
   chatLastSeenAt = Date.now();
   localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
   updateChatUnreadBadge();
+  chatNotifyNewMessages();
+  renderChatPinnedMessage();
   setTimeout(() => { scrollChatToBottom(); input?.focus(); }, 50);
 }
 
@@ -1916,6 +1920,200 @@ function updateChatUnreadBadge() {
     badge.classList.remove("hidden");
     badge.textContent = String(Math.min(99, unread));
   }
+  chatNotifyNewMessages();
+}
+
+
+const CHAT_SETTINGS_COLLECTION = "chatSettings";
+
+function isChatAdmin() {
+  return hasPermission("editResults") || currentProfile?.role === "admin";
+}
+
+function canDeleteChatMessage(message) {
+  return Boolean(currentUser && (message?.uid === currentUser.uid || isChatAdmin()));
+}
+
+function chatNotifyNewMessages() {
+  const panelOpen = !$("chatPanel")?.classList.contains("hidden");
+  const unread = chatMessagesCache.filter(message => {
+    if (message.uid === currentUser?.uid) return false;
+    return chatTimestampMs(message.createdAt || message.createdAtLocal) > chatLastSeenAt;
+  }).length;
+
+  const button = $("chatOpenBtn");
+  if (!button) return;
+
+  button.classList.toggle("has-chat-unread", !panelOpen && unread > 0);
+  button.title = unread > 0 ? `${unread} mensagem(ns) nova(s)` : "Chat";
+}
+
+function renderChatPinnedMessage() {
+  const box = $("chatPinnedBox");
+  if (!box) return;
+
+  if (!chatPinnedMessage?.text) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+
+  box.classList.remove("hidden");
+  box.innerHTML = `
+    <div class="chat-pinned-content">
+      <div>
+        <span>📌 Mensagem fixada</span>
+        <strong>${escapeHtml(chatPinnedMessage.name || "Admin")}</strong>
+        <p>${escapeHtml(chatPinnedMessage.text || "")}</p>
+      </div>
+      ${isChatAdmin() ? `<button id="chatUnpinBtn" class="chat-pin-action" type="button">Remover</button>` : ""}
+    </div>
+  `;
+
+  const unpin = $("chatUnpinBtn");
+  if (unpin && unpin.dataset.bound !== "1") {
+    unpin.dataset.bound = "1";
+    unpin.addEventListener("click", () => unpinChatMessage());
+  }
+}
+
+async function pinChatMessage(messageId) {
+  if (!isChatAdmin()) return toast("Só o Admin pode fixar mensagens.");
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  if (!message) return toast("Mensagem não encontrada.");
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase não está ligado.");
+
+  try {
+    const { doc, setDoc, serverTimestamp } = firebaseApi;
+    await setDoc(doc(db, CHAT_SETTINGS_COLLECTION, "pinned"), {
+      messageId,
+      text: String(message.text || ""),
+      uid: message.uid || "",
+      email: message.email || "",
+      name: message.name || displayNameFromEmail(message.email || ""),
+      pinnedBy: currentUser?.uid || "",
+      pinnedByEmail: normalizeEmail(currentUser?.email),
+      pinnedAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString(),
+      pinnedAtLocal: new Date().toISOString()
+    }, { merge: true });
+    toast("Mensagem fixada.");
+  } catch (error) {
+    console.error("Falhou fixar mensagem:", error);
+    toast("Não consegui fixar a mensagem.");
+  }
+}
+
+async function unpinChatMessage() {
+  if (!isChatAdmin()) return toast("Só o Admin pode remover a mensagem fixada.");
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase não está ligado.");
+
+  try {
+    const { doc, deleteDoc, setDoc } = firebaseApi;
+    if (typeof deleteDoc === "function") {
+      await deleteDoc(doc(db, CHAT_SETTINGS_COLLECTION, "pinned"));
+    } else {
+      await setDoc(doc(db, CHAT_SETTINGS_COLLECTION, "pinned"), { text: "", removedAt: new Date().toISOString() }, { merge: true });
+    }
+    chatPinnedMessage = null;
+    renderChatPinnedMessage();
+    toast("Mensagem fixada removida.");
+  } catch (error) {
+    console.error("Falhou remover fixada:", error);
+    toast("Não consegui remover a mensagem fixada.");
+  }
+}
+
+async function deleteChatMessage(messageId) {
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  if (!message) return toast("Mensagem não encontrada.");
+  if (!canDeleteChatMessage(message)) return toast("Só podes apagar as tuas mensagens.");
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase não está ligado.");
+
+  const ok = confirm("Apagar esta mensagem?");
+  if (!ok) return;
+
+  try {
+    const { doc, deleteDoc } = firebaseApi;
+    if (typeof deleteDoc !== "function") {
+      toast("Esta versão do Firebase não permite apagar mensagens.");
+      return;
+    }
+    await deleteDoc(doc(db, CHAT_COLLECTION, messageId));
+    toast("Mensagem apagada.");
+  } catch (error) {
+    console.error("Falhou apagar mensagem:", error);
+    toast("Não consegui apagar a mensagem.");
+  }
+}
+
+function setupChatMessageActions() {
+  const box = $("chatMessages");
+  if (!box || box.dataset.actionsBound === "1") return;
+
+  box.dataset.actionsBound = "1";
+  box.addEventListener("click", event => {
+    const deleteButton = event.target.closest?.("[data-chat-delete]");
+    if (deleteButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      deleteChatMessage(deleteButton.dataset.chatDelete);
+      return;
+    }
+
+    const pinButton = event.target.closest?.("[data-chat-pin]");
+    if (pinButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      pinChatMessage(pinButton.dataset.chatPin);
+    }
+  });
+}
+
+async function loadPinnedChatOnce() {
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) return;
+
+  try {
+    const { doc, getDoc } = firebaseApi;
+    const snap = await withTimeout(getDoc(doc(db, CHAT_SETTINGS_COLLECTION, "pinned")), 10000, "ler mensagem fixada");
+    chatPinnedMessage = snap.exists() ? (snap.data() || null) : null;
+    renderChatPinnedMessage();
+  } catch (error) {
+    console.warn("Mensagem fixada não carregou:", error);
+  }
+}
+
+function startPinnedChatListenerSafe() {
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) return;
+  if (chatPinnedUnsubscribe) return;
+
+  try {
+    const { doc, onSnapshot } = firebaseApi;
+    if (typeof onSnapshot !== "function") {
+      loadPinnedChatOnce();
+      return;
+    }
+
+    chatPinnedUnsubscribe = onSnapshot(doc(db, CHAT_SETTINGS_COLLECTION, "pinned"), snap => {
+      chatPinnedMessage = snap.exists() ? (snap.data() || null) : null;
+      renderChatPinnedMessage();
+    }, error => {
+      console.warn("Listener da mensagem fixada falhou:", error);
+      chatPinnedUnsubscribe = null;
+      loadPinnedChatOnce();
+    });
+  } catch (error) {
+    console.warn("Listener da mensagem fixada não iniciou:", error);
+    loadPinnedChatOnce();
+  }
+}
+
+function stopPinnedChatListenerSafe() {
+  try {
+    if (typeof chatPinnedUnsubscribe === "function") chatPinnedUnsubscribe();
+  } catch (error) {
+    console.warn("Erro a parar mensagem fixada:", error);
+  }
+  chatPinnedUnsubscribe = null;
 }
 
 function renderChatMessages() {
@@ -1928,23 +2126,41 @@ function renderChatMessages() {
   if (!chatMessagesCache.length) {
     box.innerHTML = `<div class="empty small-empty">Ainda não há mensagens. Escreve a primeira 🙂</div>`;
     updateChatUnreadBadge();
+    chatNotifyNewMessages();
+    renderChatPinnedMessage();
     return;
   }
+
   const stick = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
+
   box.innerHTML = chatMessagesCache.map(message => {
     const mine = message.uid === currentUser?.uid;
     const name = message.name || displayNameFromEmail(message.email || "");
+    const canDelete = canDeleteChatMessage(message);
+    const canPin = isChatAdmin();
+    const actions = (canDelete || canPin) ? `
+      <div class="chat-actions">
+        ${canPin ? `<button type="button" data-chat-pin="${escapeHtml(message.id)}">Fixar</button>` : ""}
+        ${canDelete ? `<button type="button" data-chat-delete="${escapeHtml(message.id)}">Apagar</button>` : ""}
+      </div>` : "";
+
     return `
       <div class="chat-message-row ${mine ? "mine" : "theirs"}">
         <div class="chat-bubble">
           ${mine ? "" : `<strong>${escapeHtml(name)}</strong>`}
           <p>${escapeHtml(String(message.text || ""))}</p>
           <span>${escapeHtml(chatTimeLabel(message.createdAt || message.createdAtLocal))}</span>
+          ${actions}
         </div>
       </div>`;
   }).join("");
+
+  setupChatMessageActions();
+
   if (stick || !chatOpenedOnce) scrollChatToBottom();
   updateChatUnreadBadge();
+  chatNotifyNewMessages();
+  renderChatPinnedMessage();
 }
 
 async function loadChatMessagesOnce() {
@@ -2041,6 +2257,7 @@ function startChatSafe() {
   try {
     setupChatUi();
     startChatListenerSafe();
+    startPinnedChatListenerSafe();
   } catch (error) {
     console.warn("Chat não iniciou:", error);
   }
@@ -2049,6 +2266,7 @@ function startChatSafe() {
 function stopChatSafe() {
   closeChatPanel();
   stopChatListenerSafe();
+  stopPinnedChatListenerSafe();
 }
 
 function setupAuthGate() {

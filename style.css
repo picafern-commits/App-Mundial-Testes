@@ -5058,3 +5058,96 @@ main,
 .chat-form button{min-height:42px;border-radius:999px;padding:0 15px}
 @media(max-width:760px){.chat-panel{left:8px;right:8px;bottom:8px;width:auto;height:min(620px,calc(100dvh - 16px));border-radius:20px}.chat-messages{padding:12px 10px}.chat-bubble{max-width:88%}}
 @media(max-width:420px){.chat-panel{left:0;right:0;bottom:0;height:calc(100dvh - 10px);border-radius:18px 18px 0 0}}
+
+
+/* v74 — Melhorias do chat */
+.chat-open-btn.has-chat-unread{
+  animation:chatPulse 1.25s ease-in-out infinite;
+  border-color:rgba(255,77,109,.55)!important;
+  box-shadow:0 0 0 4px rgba(255,77,109,.10)!important;
+}
+
+@keyframes chatPulse{
+  0%,100%{ transform:translateY(0); }
+  50%{ transform:translateY(-1px); }
+}
+
+.chat-pinned-box{
+  border-bottom:1px solid rgba(255,255,255,.10);
+  background:linear-gradient(135deg,rgba(255,212,90,.14),rgba(255,255,255,.04));
+  padding:9px 10px;
+}
+
+.chat-pinned-box.hidden{ display:none!important; }
+
+.chat-pinned-content{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.chat-pinned-content span{
+  display:block;
+  color:var(--gold);
+  font-size:10px;
+  font-weight:1000;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+
+.chat-pinned-content strong{
+  display:block;
+  margin-top:2px;
+  font-size:12px;
+  font-weight:1000;
+}
+
+.chat-pinned-content p{
+  margin:3px 0 0;
+  color:var(--text);
+  font-size:13px;
+  line-height:1.25;
+  font-weight:800;
+  overflow-wrap:anywhere;
+}
+
+.chat-pin-action{
+  flex:0 0 auto;
+  min-height:30px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:var(--text);
+  font-size:11px;
+  font-weight:950;
+  cursor:pointer;
+}
+
+.chat-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:6px;
+  margin-top:6px;
+  opacity:.78;
+}
+
+.chat-actions button{
+  min-height:24px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  color:rgba(255,255,255,.82);
+  font-size:10px;
+  font-weight:950;
+  padding:3px 8px;
+  cursor:pointer;
+}
+
+.chat-actions button:hover{ background:rgba(255,255,255,.14); }
+
+@media(max-width:760px){
+  .chat-actions{ opacity:1; }
+  .chat-actions button{ min-height:28px; padding:4px 9px; }
+  .chat-pinned-content{ align-items:flex-start; }
+}
