@@ -7406,3 +7406,526 @@ window.openChatPanel = function openChatPanelV107(event) {
 setupChatV107Bindings();
 document.addEventListener("DOMContentLoaded", setupChatV107Bindings);
 setTimeout(setupChatV107Bindings, 500);
+
+
+// v108 - links, copiar/encaminhar, filtros, multiplas fixadas, apagadas visiveis e som.
+let chatSearchFilterV108 = "all";
+let chatSoundMutedV108 = localStorage.getItem("mundial_chat_sound_muted_v108") === "1";
+
+function chatUrlRegexV108() {
+  return /\bhttps?:\/\/[^\s<>"']+/gi;
+}
+
+function chatExtractLinksV108(text = "") {
+  const matches = String(text || "").match(chatUrlRegexV108()) || [];
+  return [...new Set(matches.map(url => url.replace(/[),.;!?]+$/g, "")))].slice(0, 4);
+}
+
+function chatFirstLinkV108(message) {
+  return chatExtractLinksV108(message?.text || "")[0] || "";
+}
+
+function chatLinkDomainV108(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+function escapeRegExpV108(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function chatMentionHtmlV108(text) {
+  const current = String(chatUserName() || "").trim();
+  let html = escapeHtml(text);
+  html = html.replace(/(^|\s)@([\p{L}\p{N}._-]{2,30})/gu, '$1<span class="chat-mention">@$2</span>');
+  if (current) {
+    const first = current.split(/\s+/)[0];
+    if (first && first.length >= 2) {
+      const re = new RegExp(`@${escapeRegExpV108(first)}`, "gi");
+      html = html.replace(re, match => `<span class="chat-mention mine">${match}</span>`);
+    }
+  }
+  return html;
+}
+
+function chatLinkifyHtmlV108(text = "") {
+  const raw = String(text || "");
+  const links = chatExtractLinksV108(raw);
+  if (!links.length) return chatMentionHtmlV108(raw);
+
+  let result = "";
+  let cursor = 0;
+  raw.replace(chatUrlRegexV108(), (match, offset) => {
+    const clean = match.replace(/[),.;!?]+$/g, "");
+    const trailing = match.slice(clean.length);
+    result += chatMentionHtmlV108(raw.slice(cursor, offset));
+    const safeUrl = escapeHtml(clean);
+    const label = escapeHtml(clean.length > 52 ? `${clean.slice(0, 49)}...` : clean);
+    result += `<a class="chat-link" href="${safeUrl}" target="_blank" rel="noopener noreferrer">${label}</a>${escapeHtml(trailing)}`;
+    cursor = offset + match.length;
+    return match;
+  });
+  result += chatMentionHtmlV108(raw.slice(cursor));
+  return result;
+}
+
+function chatLinkPreviewMarkupV108(message) {
+  const link = chatFirstLinkV108(message);
+  if (!link) return "";
+  const domain = chatLinkDomainV108(link);
+  const title = domain || "Link";
+  return `
+    <a class="chat-link-preview" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">
+      <span>${escapeHtml(domain)}</span>
+      <strong>${escapeHtml(title)}</strong>
+      <small>${escapeHtml(link.length > 86 ? `${link.slice(0, 83)}...` : link)}</small>
+    </a>`;
+}
+
+function chatMessagePlainTextV108(message) {
+  if (!message) return "";
+  if (message.deleted || message.deletedAt) return "Esta mensagem foi apagada";
+  if (message.text) return String(message.text);
+  if (message.sticker) return String(message.sticker);
+  if (message.audioData) return "Audio";
+  if (message.imageData) return "Imagem";
+  return "";
+}
+
+function chatMessageReadNamesV108(message) {
+  const readBy = message?.readBy || {};
+  const ids = Object.keys(readBy).filter(uid => uid && uid !== currentUser?.uid);
+  if (!ids.length) return [];
+  const names = ids.map(uid => {
+    const profile = (permissionsCache || []).find(item => item.uid === uid);
+    return profile?.name || profile?.email || uid.slice(0, 6);
+  });
+  return names;
+}
+
+function chatMatchesFilterV108(message) {
+  if (chatSearchFilterV108 === "links") return Boolean(chatFirstLinkV108(message));
+  if (chatSearchFilterV108 === "images") return Boolean(message?.imageData);
+  if (chatSearchFilterV108 === "audio") return Boolean(message?.audioData);
+  if (chatSearchFilterV108 === "mine") return message?.uid === currentUser?.uid;
+  return true;
+}
+
+chatMessageMatchesSearch = function chatMessageMatchesSearchV108(message) {
+  if (!chatMatchesFilterV108(message)) return false;
+  const term = chatSearchTerm.trim().toLowerCase();
+  if (!term) return true;
+  return [
+    message.text,
+    message.sticker,
+    message.name,
+    message.email,
+    message.replyName,
+    message.replyText,
+    message.audioData ? "audio" : "",
+    message.imageData ? "imagem" : "",
+    chatFirstLinkV108(message)
+  ].some(value => String(value || "").toLowerCase().includes(term));
+};
+
+function renderChatPinnedMessageV108() {
+  const box = $("chatPinnedBox");
+  if (!box) return;
+  const items = Array.isArray(chatPinnedMessage?.items)
+    ? chatPinnedMessage.items.filter(item => item?.text)
+    : (chatPinnedMessage?.text ? [chatPinnedMessage] : []);
+
+  if (!items.length) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+
+  box.classList.remove("hidden");
+  box.innerHTML = `
+    <div class="chat-pinned-list">
+      ${items.slice(-3).reverse().map(item => `
+        <div class="chat-pinned-content" data-pinned-message="${escapeHtml(item.messageId || "")}">
+          <div>
+            <span>Mensagem fixada</span>
+            <strong>${escapeHtml(item.name || "Admin")}</strong>
+            <p>${escapeHtml(item.text || "")}</p>
+          </div>
+          ${isChatAdmin() ? `<button class="chat-pin-action" type="button" data-chat-unpin="${escapeHtml(item.messageId || "")}">Remover</button>` : ""}
+        </div>
+      `).join("")}
+    </div>`;
+
+  box.querySelectorAll("[data-chat-unpin]").forEach(button => {
+    if (button.dataset.bound === "1") return;
+    button.dataset.bound = "1";
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      unpinChatMessageV108(button.dataset.chatUnpin || "");
+    });
+  });
+}
+
+renderChatPinnedMessage = renderChatPinnedMessageV108;
+
+pinChatMessage = async function pinChatMessageV108(messageId) {
+  if (!isChatAdmin()) return toast("So o Admin pode fixar mensagens.");
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  if (!message || isSystemChatMessage(message)) return toast("Mensagem nao encontrada.");
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase nao esta ligado.");
+
+  const item = {
+    messageId,
+    text: chatMessagePlainTextV108(message).slice(0, 180),
+    uid: message.uid || "",
+    email: message.email || "",
+    name: message.name || displayNameFromEmail(message.email || ""),
+    pinnedBy: currentUser?.uid || "",
+    pinnedByEmail: normalizeEmail(currentUser?.email),
+    pinnedAtLocal: new Date().toISOString()
+  };
+
+  const previous = Array.isArray(chatPinnedMessage?.items)
+    ? chatPinnedMessage.items
+    : (chatPinnedMessage?.text ? [chatPinnedMessage] : []);
+  const nextItems = [...previous.filter(pin => pin.messageId !== messageId), item].slice(-6);
+  chatPinnedMessage = { items: nextItems, text: nextItems.at(-1)?.text || "" };
+  renderChatPinnedMessage();
+
+  try {
+    const { doc, setDoc, serverTimestamp } = firebaseApi;
+    await setDoc(doc(db, CHAT_SETTINGS_COLLECTION, `pinned_${chatCurrentRoom}`), {
+      items: nextItems.map(pin => ({
+        ...pin,
+        pinnedAt: typeof serverTimestamp === "function" ? serverTimestamp() : pin.pinnedAtLocal
+      })),
+      text: item.text,
+      updatedAtLocal: new Date().toISOString()
+    }, { merge: true });
+    toast("Mensagem fixada.");
+  } catch (error) {
+    console.error("Falhou fixar mensagem:", error);
+    toast("Nao consegui fixar a mensagem.");
+  }
+};
+
+async function unpinChatMessageV108(messageId = "") {
+  if (!isChatAdmin()) return toast("So o Admin pode remover mensagens fixadas.");
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase nao esta ligado.");
+  const previous = Array.isArray(chatPinnedMessage?.items)
+    ? chatPinnedMessage.items
+    : (chatPinnedMessage?.text ? [chatPinnedMessage] : []);
+  const nextItems = messageId ? previous.filter(pin => pin.messageId !== messageId) : [];
+  chatPinnedMessage = nextItems.length ? { items: nextItems, text: nextItems.at(-1)?.text || "" } : null;
+  renderChatPinnedMessage();
+
+  try {
+    const { doc, setDoc } = firebaseApi;
+    await setDoc(doc(db, CHAT_SETTINGS_COLLECTION, `pinned_${chatCurrentRoom}`), {
+      items: nextItems,
+      text: nextItems.at(-1)?.text || "",
+      updatedAtLocal: new Date().toISOString()
+    }, { merge: true });
+    toast("Mensagem fixada removida.");
+  } catch (error) {
+    console.error("Falhou remover fixada:", error);
+    toast("Nao consegui remover a mensagem fixada.");
+  }
+}
+
+unpinChatMessage = unpinChatMessageV108;
+
+deleteChatMessage = async function deleteChatMessageV108(messageId) {
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  if (!message) return toast("Mensagem nao encontrada.");
+  if (!canDeleteChatMessage(message)) return toast("So podes apagar as tuas mensagens.");
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase nao esta ligado.");
+
+  const beforeDelete = [...chatMessagesCache];
+  const deletedAtLocal = new Date().toISOString();
+  chatMessagesCache = chatMessagesCache.map(item => item.id === messageId ? {
+    ...item,
+    deleted: true,
+    deletedAtLocal,
+    deletedBy: currentUser?.uid || "",
+    text: "",
+    imageData: "",
+    audioData: "",
+    audioMime: "",
+    audioDuration: 0,
+    sticker: "",
+    replyTo: "",
+    replyName: "",
+    replyText: "",
+    reactions: {}
+  } : item);
+  renderChatMessages();
+
+  try {
+    const { doc, updateDoc, serverTimestamp } = firebaseApi;
+    await withTimeout(updateDoc(doc(db, chatCollectionRef(message.room || chatCurrentRoom), messageId), {
+      deleted: true,
+      deletedAt: typeof serverTimestamp === "function" ? serverTimestamp() : deletedAtLocal,
+      deletedAtLocal,
+      deletedBy: currentUser?.uid || "",
+      text: "",
+      imageData: "",
+      audioData: "",
+      audioMime: "",
+      audioDuration: 0,
+      sticker: "",
+      replyTo: "",
+      replyName: "",
+      replyText: "",
+      reactions: {}
+    }), 6500, "apagar mensagem");
+    toast("Mensagem apagada.");
+  } catch (error) {
+    console.error("Falhou apagar mensagem:", error);
+    chatMessagesCache = beforeDelete;
+    renderChatMessages();
+    toast("Nao consegui apagar a mensagem.");
+  }
+};
+
+function copyChatMessageV108(messageId) {
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  const text = chatMessagePlainTextV108(message);
+  if (!text) return toast("Nada para copiar.");
+  copyText(text, "Mensagem copiada.");
+}
+
+function copyChatFirstLinkV108(messageId) {
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  const link = chatFirstLinkV108(message);
+  if (!link) return copyChatMessageV108(messageId);
+  copyText(link, "Link copiado.");
+}
+
+function forwardChatMessageV108(messageId) {
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  if (!message) return;
+  const input = $("chatInput");
+  const prefix = message.name ? `${message.name}: ` : "";
+  const text = chatMessagePlainTextV108(message);
+  if (input) {
+    input.value = `${prefix}${text}`.slice(0, 500);
+    input.focus();
+  }
+  clearChatReply();
+  closeChatActionMenu();
+  toast("Mensagem pronta para encaminhar.");
+}
+
+function showReadByV108(messageId) {
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  const names = chatMessageReadNamesV108(message);
+  toast(names.length ? `Lida por: ${names.slice(0, 6).join(", ")}` : "Ainda sem leituras de outros users.");
+}
+
+function renderChatMessagesBaseV108() {
+  const box = $("chatMessages");
+  if (!box) return;
+  renderChatTabs();
+
+  if (!currentUser) {
+    box.innerHTML = `<div class="empty small-empty">Faz login para usar o chat.</div>`;
+    return;
+  }
+
+  const visibleMessages = chatMessagesCache.filter(chatMessageMatchesSearch);
+  if (!visibleMessages.length) {
+    box.innerHTML = `<div class="empty small-empty">${chatSearchTerm || chatSearchFilterV108 !== "all" ? "Nenhuma mensagem encontrada." : "Ainda nao ha mensagens. Escreve a primeira :)"}</div>`;
+    updateChatUnreadBadge();
+    chatNotifyNewMessages();
+    renderChatPinnedMessage();
+    return;
+  }
+
+  const stick = box.scrollHeight - box.scrollTop - box.clientHeight < 110;
+  let lastDateKey = "";
+
+  box.innerHTML = visibleMessages.map((message, index) => {
+    const previous = visibleMessages[index - 1];
+    const next = visibleMessages[index + 1];
+    const mine = message.uid === currentUser?.uid;
+    const system = isSystemChatMessage(message);
+    const groupedWithPrevious = shouldGroupChatMessageV107(previous, message);
+    const groupedWithNext = shouldGroupChatMessageV107(message, next);
+    const name = message.name || displayNameFromEmail(message.email || "");
+    const dateValue = chatMessageDateValue(message);
+    const currentDateKey = chatDateKey(dateValue);
+    const dateSeparator = currentDateKey && currentDateKey !== lastDateKey
+      ? `<div class="chat-date-separator"><span>${escapeHtml(chatDateLabel(dateValue))}</span></div>`
+      : "";
+    if (currentDateKey) lastDateKey = currentDateKey;
+
+    if (message.deleted || message.deletedAt) {
+      return `${dateSeparator}
+        <div class="chat-message-row ${mine ? "mine" : "theirs"} is-deleted" data-chat-message="${escapeHtml(message.id)}">
+          <div class="chat-bubble deleted-bubble" data-chat-message="${escapeHtml(message.id)}">
+            <p>Esta mensagem foi apagada</p>
+            ${chatMessageMetaMarkup(message, mine)}
+          </div>
+        </div>`;
+    }
+
+    if (system) {
+      return `${dateSeparator}
+        <div class="chat-message-row system" data-chat-message="${escapeHtml(message.id)}">
+          <div class="chat-bubble system-bubble" data-chat-message="${escapeHtml(message.id)}">
+            <p>${chatLinkifyHtmlV108(String(message.text || ""))}</p>
+            ${chatMessageMetaMarkup(message, false)}
+          </div>
+        </div>`;
+    }
+
+    return `${dateSeparator}
+      <div class="chat-message-row ${mine ? "mine" : "theirs"} ${groupedWithPrevious ? "is-grouped" : ""} ${groupedWithNext ? "has-next" : ""} ${message.pending ? "is-pending" : ""} ${message.failed ? "is-failed" : ""}" data-chat-message="${escapeHtml(message.id)}">
+        <div class="chat-bubble" data-chat-message="${escapeHtml(message.id)}">
+          ${!mine && !groupedWithPrevious ? `<strong>${escapeHtml(name)}</strong>` : ""}
+          ${chatReplyMarkup(message)}
+          ${message.text ? `<p>${chatLinkifyHtmlV108(String(message.text || ""))}</p>` : ""}
+          ${chatLinkPreviewMarkupV108(message)}
+          ${chatStickerMarkupV107(message)}
+          ${chatImageMarkup(message)}
+          ${chatAudioMarkupV107(message)}
+          ${chatMessageMetaMarkup(message, mine)}
+          ${chatReactionsMarkup(message)}
+        </div>
+      </div>`;
+  }).join("");
+
+  setupChatMessageActions();
+  setupChatCloseButtonSafe();
+  setupChatV107Bindings();
+  setupChatV108Bindings();
+
+  if (stick || !chatOpenedOnce) scrollChatToBottom();
+  updateChatUnreadBadge();
+  chatNotifyNewMessages();
+  renderChatPinnedMessage();
+  markVisibleChatMessagesReadV107();
+}
+
+renderChatMessages = renderChatMessagesBaseV108;
+
+function setChatSoundMutedV108(muted) {
+  chatSoundMutedV108 = Boolean(muted);
+  localStorage.setItem("mundial_chat_sound_muted_v108", chatSoundMutedV108 ? "1" : "0");
+  const button = $("chatMuteBtnV108");
+  if (button) button.textContent = chatSoundMutedV108 ? "Som off" : "Som on";
+}
+
+const playChatNotificationBeforeV108 = playChatNotification;
+playChatNotification = function playChatNotificationV108(message) {
+  if (chatSoundMutedV108) {
+    if (!message || message.uid === currentUser?.uid || isSystemChatMessage(message)) return;
+    chatLastNotifiedId = message.id;
+    localStorage.setItem("mundial_chat_last_notified_id", message.id || "");
+    return;
+  }
+  return playChatNotificationBeforeV108(message);
+};
+
+function ensureChatMuteButtonV108() {
+  const header = document.querySelector("#chatPanel .chat-header");
+  if (!header || $("chatMuteBtnV108")) return;
+  const close = $("chatCloseBtn");
+  const button = document.createElement("button");
+  button.id = "chatMuteBtnV108";
+  button.className = "chat-mute-btn";
+  button.type = "button";
+  button.textContent = chatSoundMutedV108 ? "Som off" : "Som on";
+  button.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    setChatSoundMutedV108(!chatSoundMutedV108);
+  });
+  header.insertBefore(button, close || null);
+}
+
+function setupChatV108Bindings() {
+  if (window.__chatV108Bound) return;
+  window.__chatV108Bound = true;
+
+  ensureChatMuteButtonV108();
+
+  $("chatSearchFilters")?.addEventListener("click", event => {
+    const button = event.target.closest?.("[data-chat-filter]");
+    if (!button) return;
+    event.preventDefault();
+    chatSearchFilterV108 = button.dataset.chatFilter || "all";
+    document.querySelectorAll("#chatSearchFilters [data-chat-filter]").forEach(btn => btn.classList.toggle("active", btn === button));
+    renderChatMessages();
+  });
+
+  $("chatActionCopyBtn")?.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const id = chatActionMessageId;
+    closeChatActionMenu();
+    if (id) copyChatMessageV108(id);
+  }, { capture: true });
+
+  $("chatActionForwardBtn")?.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const id = chatActionMessageId;
+    if (id) forwardChatMessageV108(id);
+  }, { capture: true });
+
+  $("chatActionReadByBtn")?.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const id = chatActionMessageId;
+    closeChatActionMenu();
+    if (id) showReadByV108(id);
+  }, { capture: true });
+
+  document.addEventListener("click", event => {
+    const link = event.target.closest?.("#chatPanel a.chat-link, #chatPanel a.chat-link-preview");
+    if (!link) return;
+    event.stopPropagation();
+  }, { capture: true });
+}
+
+const openChatActionMenuBeforeV108 = openChatActionMenu;
+openChatActionMenu = function openChatActionMenuV108(messageId, anchorEvent) {
+  openChatActionMenuBeforeV108(messageId, anchorEvent);
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  const copyBtn = $("chatActionCopyBtn");
+  const forwardBtn = $("chatActionForwardBtn");
+  const readByBtn = $("chatActionReadByBtn");
+  const replyBtn = $("chatActionReplyBtn");
+  const editBtn = $("chatActionEditBtn");
+  const pinBtn = $("chatActionPinBtn");
+  const deleteBtn = $("chatActionDeleteBtn");
+  const reactionBar = $("chatReactionBar");
+  const deleted = Boolean(message?.deleted || message?.deletedAt);
+  if (copyBtn) copyBtn.classList.toggle("hidden", !message || isSystemChatMessage(message));
+  if (forwardBtn) forwardBtn.classList.toggle("hidden", !message || isSystemChatMessage(message) || deleted);
+  if (readByBtn) readByBtn.classList.toggle("hidden", !message || message.uid !== currentUser?.uid);
+  if (replyBtn && deleted) replyBtn.classList.add("hidden");
+  if (editBtn && deleted) editBtn.classList.add("hidden");
+  if (pinBtn && deleted) pinBtn.classList.add("hidden");
+  if (deleteBtn && deleted) deleteBtn.classList.add("hidden");
+  if (reactionBar && deleted) reactionBar.classList.add("hidden");
+  if (pinBtn) pinBtn.textContent = "Fixar";
+};
+
+const openChatPanelBeforeV108 = window.openChatPanel;
+window.openChatPanel = function openChatPanelV108(event) {
+  const result = typeof openChatPanelBeforeV108 === "function" ? openChatPanelBeforeV108(event) : false;
+  ensureChatMuteButtonV108();
+  setupChatV108Bindings();
+  return result;
+};
+
+setupChatV108Bindings();
+document.addEventListener("DOMContentLoaded", setupChatV108Bindings);
+setTimeout(setupChatV108Bindings, 500);

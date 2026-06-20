@@ -466,6 +466,13 @@
 
         <div class="chat-search-wrap">
           <input id="chatSearchInput" type="search" autocomplete="off" placeholder="Pesquisar no chat..." />
+          <div id="chatSearchFilters" class="chat-search-filters">
+            <button type="button" class="active" data-chat-filter="all">Tudo</button>
+            <button type="button" data-chat-filter="links">Links</button>
+            <button type="button" data-chat-filter="images">Imagens</button>
+            <button type="button" data-chat-filter="audio">Audio</button>
+            <button type="button" data-chat-filter="mine">Minhas</button>
+          </div>
         </div>
 
         <div id="chatPinnedBox" class="chat-pinned-box hidden"></div>
@@ -517,6 +524,9 @@
       <div id="chatActionMenu" class="chat-action-menu hidden">
         <button id="chatActionReplyBtn" type="button">Responder</button>
         <button id="chatActionEditBtn" type="button">Editar</button>
+        <button id="chatActionCopyBtn" type="button">Copiar</button>
+        <button id="chatActionForwardBtn" type="button">Encaminhar</button>
+        <button id="chatActionReadByBtn" type="button">Lida por</button>
         <button id="chatActionPinBtn" type="button">Fixar</button>
         <button id="chatActionDeleteBtn" type="button">Apagar</button>
         <div class="chat-reaction-bar" id="chatReactionBar">
