@@ -2586,18 +2586,91 @@ function stopChatTypingListenerSafe() {
   renderTypingBox([]);
 }
 
+
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Falha a ler imagem"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImageElement(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Falha a carregar imagem"));
+    img.src = src;
+  });
+}
+
+async function compressChatImage(file) {
+  const originalDataUrl = await readFileAsDataURL(file);
+  const img = await loadImageElement(originalDataUrl);
+
+  let width = img.naturalWidth || img.width || 0;
+  let height = img.naturalHeight || img.height || 0;
+
+  if (!width || !height) return originalDataUrl;
+
+  const maxSide = 1600;
+  const scale = Math.min(1, maxSide / Math.max(width, height));
+  width = Math.max(1, Math.round(width * scale));
+  height = Math.max(1, Math.round(height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d", { alpha: false });
+  if (!ctx) return originalDataUrl;
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(img, 0, 0, width, height);
+
+  const maxLength = 650000; // margem segura para Firestore
+  let quality = 0.88;
+  let result = canvas.toDataURL("image/jpeg", quality);
+
+  while (result.length > maxLength && quality > 0.45) {
+    quality -= 0.08;
+    result = canvas.toDataURL("image/jpeg", quality);
+  }
+
+  while (result.length > maxLength && width > 700 && height > 700) {
+    width = Math.round(width * 0.85);
+    height = Math.round(height * 0.85);
+    canvas.width = width;
+    canvas.height = height;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(img, 0, 0, width, height);
+    quality = Math.max(0.62, quality);
+    result = canvas.toDataURL("image/jpeg", quality);
+  }
+
+  if (result.length > maxLength) {
+    throw new Error("Imagem demasiado grande para o chat");
+  }
+
+  return result;
+}
+
 async function sendChatImage(file) {
   if (!file) return;
   if (!file.type?.startsWith("image/")) return toast("Escolhe uma imagem.");
-  if (file.size > 900 * 1024) return toast("Imagem demasiado grande. Usa uma imagem até 900 KB.");
+  if (file.size > 8 * 1024 * 1024) return toast("Imagem demasiado grande. Usa uma imagem até 8 MB.");
 
-  const reader = new FileReader();
-  reader.onload = async () => {
-    const data = String(reader.result || "");
+  try {
+    toast("A preparar imagem...");
+    const data = await compressChatImage(file);
     await sendChatMessage("", data);
-  };
-  reader.onerror = () => toast("Não consegui ler a imagem.");
-  reader.readAsDataURL(file);
+  } catch (error) {
+    console.error("Falhou enviar imagem do chat:", error);
+    toast("Não consegui enviar a imagem.");
+  }
 }
 
 function renderChatMessages() {

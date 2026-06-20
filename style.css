@@ -6368,3 +6368,16 @@ body.chat-mobile-page-open{
     }
   }
 }
+
+
+/* v86 — imagens do chat mais robustas */
+.chat-image{
+  display:block!important;
+  width:auto!important;
+  max-width:min(260px, 100%)!important;
+  max-height:260px!important;
+  object-fit:cover!important;
+  border-radius:12px!important;
+  margin-top:6px!important;
+  background:rgba(255,255,255,.06)!important;
+}
