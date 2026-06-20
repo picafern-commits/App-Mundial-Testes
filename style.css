@@ -7393,3 +7393,29 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
     min-height:104px!important;
   }
 }
+
+
+/* v94 — Pontuação sem sistema Top 3 */
+.top3,
+.top-3,
+.top-three,
+.podium,
+.podio,
+.pódio,
+.pontuacao-top3,
+.score-top3,
+.leaderboard-top3,
+[class*="top3"],
+[class*="Top3"],
+[class*="podium"],
+[class*="Podium"],
+[class*="podio"],
+[class*="Podio"],
+[id*="top3"],
+[id*="Top3"],
+[id*="podium"],
+[id*="Podium"],
+[id*="podio"],
+[id*="Podio"]{
+  display:none!important;
+}

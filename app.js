@@ -3991,9 +3991,7 @@ function renderScore() {
 
   const leaderPoints = rows[0]?.points || 0;
   const currentName = String(currentProfile?.name || displayNameFromEmail(currentUser?.email || "") || "").trim().toLowerCase();
-  const podium = rows.slice(0, 3);
-
-  target.innerHTML = `
+target.innerHTML = `
     <div class="score-podium">
       ${podium.map((row, index) => {
         const medal = ["1", "2", "3"][index];
@@ -6494,3 +6492,43 @@ setupSearchResultsAdminButton();
     if (chatIsOpen()) forceChatInteractive();
   }, 2500);
 })();
+
+
+// v94 — limpeza defensiva: remove apenas visual Top 3 da página Pontuação.
+function removeTop3PontuacaoV94() {
+  const selectors = [
+    ".top3", ".top-3", ".top-three", ".podium", ".podio", ".pódio",
+    ".pontuacao-top3", ".score-top3", ".leaderboard-top3",
+    "[class*='top3']", "[class*='Top3']", "[class*='podium']", "[class*='Podium']",
+    "[class*='podio']", "[class*='Podio']", "[id*='top3']", "[id*='Top3']",
+    "[id*='podium']", "[id*='Podium']", "[id*='podio']", "[id*='Podio']"
+  ];
+
+  selectors.forEach(selector => {
+    document.querySelectorAll(selector).forEach(el => {
+      const text = String(el.textContent || "").toLowerCase();
+      const klass = String(el.className || "").toLowerCase();
+      const id = String(el.id || "").toLowerCase();
+
+      if (
+        text.includes("top 3") ||
+        text.includes("pódio") ||
+        text.includes("podio") ||
+        klass.includes("top3") ||
+        klass.includes("podium") ||
+        klass.includes("podio") ||
+        id.includes("top3") ||
+        id.includes("podium") ||
+        id.includes("podio")
+      ) {
+        el.remove();
+      }
+    });
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  removeTop3PontuacaoV94();
+  setTimeout(removeTop3PontuacaoV94, 300);
+  setTimeout(removeTop3PontuacaoV94, 1000);
+});
