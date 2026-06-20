@@ -33,6 +33,12 @@ let chatPinnedMessage = null;
 let chatPinnedUnsubscribe = null;
 let chatLongPressTimer = null;
 let chatActionMessageId = null;
+let chatCurrentRoom = localStorage.getItem('mundial_chat_room') || 'general';
+let chatReplyTo = null;
+let chatTypingUnsubscribe = null;
+let chatTypingTimer = null;
+let chatSearchTerm = '';
+let chatLastNotifiedId = localStorage.getItem('mundial_chat_last_notified_id') || '';
 let chatUnsubscribe = null;
 let chatOpenedOnce = false;
 let chatLastSeenAt = Number(localStorage.getItem('mundial_chat_last_seen_at') || '0');
@@ -1884,6 +1890,7 @@ function openChatPanel() {
   const input = $("chatInput");
   if (!panel) return;
   panel.classList.remove("hidden");
+  renderChatTabs();
   chatOpenedOnce = true;
   chatLastSeenAt = Date.now();
   localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
@@ -1898,6 +1905,7 @@ function closeChatPanel() {
   if (!panel) return;
   panel.classList.add("hidden");
   closeChatActionMenu();
+  updateChatTyping(false);
   chatLastSeenAt = Date.now();
   localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
   updateChatUnreadBadge();
@@ -1988,7 +1996,7 @@ async function pinChatMessage(messageId) {
 
   try {
     const { doc, setDoc, serverTimestamp } = firebaseApi;
-    await setDoc(doc(db, CHAT_SETTINGS_COLLECTION, "pinned"), {
+    await setDoc(doc(db, CHAT_SETTINGS_COLLECTION, `pinned_${chatCurrentRoom}`), {
       messageId,
       text: String(message.text || ""),
       uid: message.uid || "",
@@ -2013,9 +2021,9 @@ async function unpinChatMessage() {
   try {
     const { doc, deleteDoc, setDoc } = firebaseApi;
     if (typeof deleteDoc === "function") {
-      await deleteDoc(doc(db, CHAT_SETTINGS_COLLECTION, "pinned"));
+      await deleteDoc(doc(db, CHAT_SETTINGS_COLLECTION, `pinned_${chatCurrentRoom}`));
     } else {
-      await setDoc(doc(db, CHAT_SETTINGS_COLLECTION, "pinned"), { text: "", removedAt: new Date().toISOString() }, { merge: true });
+      await setDoc(doc(db, CHAT_SETTINGS_COLLECTION, `pinned_${chatCurrentRoom}`), { text: "", removedAt: new Date().toISOString() }, { merge: true });
     }
     chatPinnedMessage = null;
     renderChatPinnedMessage();
@@ -2041,7 +2049,7 @@ async function deleteChatMessage(messageId) {
       toast("Esta versão do Firebase não permite apagar mensagens.");
       return;
     }
-    await deleteDoc(doc(db, CHAT_COLLECTION, messageId));
+    await deleteDoc(doc(db, chatCollectionRef(message.room || chatCurrentRoom), messageId));
     toast("Mensagem apagada.");
   } catch (error) {
     console.error("Falhou apagar mensagem:", error);
@@ -2062,14 +2070,19 @@ function openChatActionMenu(messageId, anchorEvent) {
   const menu = $("chatActionMenu");
   const pinBtn = $("chatActionPinBtn");
   const deleteBtn = $("chatActionDeleteBtn");
+  const replyBtn = $("chatActionReplyBtn");
+  const reactionBar = $("chatReactionBar");
   const message = chatMessagesCache.find(item => item.id === messageId);
 
   if (!menu || !message) return;
 
-  const canPin = isChatAdmin();
+  const system = isSystemChatMessage(message);
+  const canPin = isChatAdmin() && !system;
   const canDelete = canDeleteChatMessage(message);
+  const canReply = !system;
+  const canReact = !system;
 
-  if (!canPin && !canDelete) return;
+  if (!canPin && !canDelete && !canReply && !canReact) return;
 
   chatActionMessageId = messageId;
 
@@ -2078,6 +2091,8 @@ function openChatActionMenu(messageId, anchorEvent) {
 
   if (pinBtn) pinBtn.classList.toggle("hidden", !canPin);
   if (deleteBtn) deleteBtn.classList.toggle("hidden", !canDelete);
+  if (replyBtn) replyBtn.classList.toggle("hidden", !canReply);
+  if (reactionBar) reactionBar.classList.toggle("hidden", !canReact);
 
   const panel = $("chatPanel");
   const panelRect = panel?.getBoundingClientRect();
@@ -2094,10 +2109,9 @@ function openChatActionMenu(messageId, anchorEvent) {
   }
 
   menu.classList.remove("hidden");
-
   const menuRect = menu.getBoundingClientRect();
-  const width = menuRect.width || 180;
-  const height = menuRect.height || 46;
+  const width = menuRect.width || 260;
+  const height = menuRect.height || 90;
 
   let left = Math.min(Math.max(10, x - width / 2), viewportWidth - width - 10);
   let top = Math.min(Math.max(10, y - height - 12), viewportHeight - height - 10);
@@ -2125,9 +2139,10 @@ function fireChatLongPress(messageId, event) {
 
 function setupChatMessageActions() {
   const box = $("chatMessages");
-  const menu = $("chatActionMenu");
   const pinBtn = $("chatActionPinBtn");
   const deleteBtn = $("chatActionDeleteBtn");
+  const replyBtn = $("chatActionReplyBtn");
+  const reactionBar = $("chatReactionBar");
 
   if (!box || box.dataset.actionsBound === "1") return;
 
@@ -2145,7 +2160,6 @@ function setupChatMessageActions() {
   box.addEventListener("pointerdown", event => {
     const messageId = messageIdFromEvent(event);
     if (!messageId) return;
-
     clearTimer();
     chatLongPressTimer = setTimeout(() => fireChatLongPress(messageId, event), 520);
   });
@@ -2158,17 +2172,16 @@ function setupChatMessageActions() {
   box.addEventListener("contextmenu", event => {
     const messageId = messageIdFromEvent(event);
     if (!messageId) return;
-
     event.preventDefault();
     openChatActionMenu(messageId, event);
   });
 
-  box.addEventListener("click", event => {
-    const messageId = messageIdFromEvent(event);
-    if (!messageId) return;
-    if (!$("chatActionMenu")?.classList.contains("hidden")) {
-      event.stopPropagation();
-    }
+  replyBtn?.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const id = chatActionMessageId;
+    closeChatActionMenu();
+    if (id) setChatReply(id);
   });
 
   pinBtn?.addEventListener("click", event => {
@@ -2185,6 +2198,17 @@ function setupChatMessageActions() {
     const id = chatActionMessageId;
     closeChatActionMenu();
     if (id) deleteChatMessage(id);
+  });
+
+  reactionBar?.addEventListener("click", event => {
+    const btn = event.target.closest?.("[data-chat-reaction]");
+    if (!btn) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const id = chatActionMessageId;
+    const emoji = btn.dataset.chatReaction;
+    closeChatActionMenu();
+    if (id && emoji) reactToChatMessage(id, emoji);
   });
 
   document.addEventListener("click", event => {
@@ -2205,7 +2229,7 @@ async function loadPinnedChatOnce() {
 
   try {
     const { doc, getDoc } = firebaseApi;
-    const snap = await withTimeout(getDoc(doc(db, CHAT_SETTINGS_COLLECTION, "pinned")), 10000, "ler mensagem fixada");
+    const snap = await withTimeout(getDoc(doc(db, CHAT_SETTINGS_COLLECTION, `pinned_${chatCurrentRoom}`)), 10000, "ler mensagem fixada");
     chatPinnedMessage = snap.exists() ? (snap.data() || null) : null;
     renderChatPinnedMessage();
   } catch (error) {
@@ -2224,7 +2248,7 @@ function startPinnedChatListenerSafe() {
       return;
     }
 
-    chatPinnedUnsubscribe = onSnapshot(doc(db, CHAT_SETTINGS_COLLECTION, "pinned"), snap => {
+    chatPinnedUnsubscribe = onSnapshot(doc(db, CHAT_SETTINGS_COLLECTION, `pinned_${chatCurrentRoom}`), snap => {
       chatPinnedMessage = snap.exists() ? (snap.data() || null) : null;
       renderChatPinnedMessage();
     }, error => {
@@ -2247,15 +2271,283 @@ function stopPinnedChatListenerSafe() {
   chatPinnedUnsubscribe = null;
 }
 
+
+function chatRoomLabel(room = chatCurrentRoom) {
+  return room === "admin" ? "Chat Admin" : "Chat Geral";
+}
+
+function canUseChatRoom(room = chatCurrentRoom) {
+  return room !== "admin" || isChatAdmin();
+}
+
+function chatCollectionRef(room = chatCurrentRoom) {
+  return room === "admin" ? "chatAdminMessages" : CHAT_COLLECTION;
+}
+
+function chatTypingDocId(room = chatCurrentRoom) {
+  return `${room}_${currentUser?.uid || "anon"}`;
+}
+
+function chatSystemName() {
+  return "Sistema Mundial";
+}
+
+function isSystemChatMessage(message) {
+  return message?.type === "system";
+}
+
+function chatMessageMatchesSearch(message) {
+  const term = chatSearchTerm.trim().toLowerCase();
+  if (!term) return true;
+  return [
+    message.text,
+    message.name,
+    message.email,
+    message.replyName,
+    message.replyText
+  ].some(value => String(value || "").toLowerCase().includes(term));
+}
+
+function chatImageMarkup(message) {
+  if (!message.imageData) return "";
+  return `<img class="chat-image" src="${escapeHtml(message.imageData)}" alt="Imagem enviada no chat" loading="lazy" />`;
+}
+
+function chatReactionsMarkup(message) {
+  const reactions = message.reactions || {};
+  const groups = {};
+  Object.values(reactions).forEach(emoji => {
+    if (!emoji) return;
+    groups[emoji] = (groups[emoji] || 0) + 1;
+  });
+  const entries = Object.entries(groups);
+  if (!entries.length) return "";
+  return `<div class="chat-reactions">${entries.map(([emoji, count]) => `<span>${escapeHtml(emoji)}${count > 1 ? ` ${count}` : ""}</span>`).join("")}</div>`;
+}
+
+function chatReplyMarkup(message) {
+  if (!message.replyTo && !message.replyText) return "";
+  return `
+    <div class="chat-reply-card">
+      <strong>${escapeHtml(message.replyName || "Mensagem")}</strong>
+      <p>${escapeHtml(message.replyText || "")}</p>
+    </div>`;
+}
+
+function setChatReply(messageId) {
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  if (!message) return;
+  chatReplyTo = {
+    id: message.id,
+    name: message.name || displayNameFromEmail(message.email || "") || chatSystemName(),
+    text: String(message.text || (message.imageData ? "Imagem" : "")).slice(0, 120)
+  };
+  renderChatReplyPreview();
+  $("chatInput")?.focus();
+}
+
+function clearChatReply() {
+  chatReplyTo = null;
+  renderChatReplyPreview();
+}
+
+function renderChatReplyPreview() {
+  const box = $("chatReplyPreview");
+  if (!box) return;
+  if (!chatReplyTo) {
+    box.classList.add("hidden");
+    $("chatReplyName") && ($("chatReplyName").textContent = "");
+    $("chatReplyText") && ($("chatReplyText").textContent = "");
+    return;
+  }
+  box.classList.remove("hidden");
+  $("chatReplyName") && ($("chatReplyName").textContent = chatReplyTo.name || "");
+  $("chatReplyText") && ($("chatReplyText").textContent = chatReplyTo.text || "");
+}
+
+async function reactToChatMessage(messageId, emoji) {
+  const message = chatMessagesCache.find(item => item.id === messageId);
+  if (!message || !currentUser) return;
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase não está ligado.");
+
+  try {
+    const { doc, updateDoc } = firebaseApi;
+    if (typeof updateDoc !== "function") return toast("Esta versão do Firebase não permite reações.");
+    const next = { ...(message.reactions || {}) };
+    if (next[currentUser.uid] === emoji) delete next[currentUser.uid];
+    else next[currentUser.uid] = emoji;
+    await updateDoc(doc(db, chatCollectionRef(message.room || chatCurrentRoom), messageId), { reactions: next });
+  } catch (error) {
+    console.error("Falhou reação:", error);
+    toast("Não consegui guardar a reação.");
+  }
+}
+
+function setChatRoom(room) {
+  if (room === "admin" && !isChatAdmin()) {
+    toast("Só Admin pode usar o chat Admin.");
+    room = "general";
+  }
+  if (chatCurrentRoom === room) return;
+  chatCurrentRoom = room;
+  localStorage.setItem("mundial_chat_room", chatCurrentRoom);
+  chatMessagesCache = [];
+  clearChatReply();
+  closeChatActionMenu();
+  stopChatListenerSafe();
+  startChatListenerSafe();
+  stopPinnedChatListenerSafe();
+  startPinnedChatListenerSafe();
+  stopChatTypingListenerSafe();
+  startChatTypingListenerSafe();
+  renderChatTabs();
+  renderChatMessages();
+}
+
+function renderChatTabs() {
+  $("chatGeneralTab")?.classList.toggle("active", chatCurrentRoom === "general");
+  $("chatAdminTab")?.classList.toggle("active", chatCurrentRoom === "admin");
+  $("chatAdminTab")?.classList.toggle("hidden", !isChatAdmin());
+  const subtitle = $("chatSubtitle");
+  if (subtitle) subtitle.textContent = chatCurrentRoom === "admin" ? "Conversa privada dos admins" : "Conversa geral dos users";
+}
+
+async function sendSystemChatMessage(text, room = "general") {
+  if (!db || !firebaseApi || storageMode !== "firebase") return;
+  if (room === "admin" && !isChatAdmin()) return;
+  try {
+    const { collection, addDoc, serverTimestamp } = firebaseApi;
+    await addDoc(collection(db, chatCollectionRef(room)), {
+      uid: "system",
+      email: "",
+      name: chatSystemName(),
+      text: String(text || "").slice(0, 500),
+      type: "system",
+      room,
+      createdAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString(),
+      createdAtLocal: new Date().toISOString()
+    });
+  } catch (error) {
+    console.warn("Mensagem automática não enviada:", error);
+  }
+}
+
+function playChatNotification(message) {
+  if (!message || message.uid === currentUser?.uid || isSystemChatMessage(message)) return;
+  if (message.id === chatLastNotifiedId) return;
+  chatLastNotifiedId = message.id;
+  localStorage.setItem("mundial_chat_last_notified_id", message.id || "");
+
+  if (navigator.vibrate) {
+    try { navigator.vibrate(25); } catch {}
+  }
+
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 660;
+    gain.gain.value = 0.035;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    setTimeout(() => {
+      osc.stop();
+      audioCtx.close?.();
+    }, 90);
+  } catch {}
+}
+
+function renderTypingBox(names = []) {
+  const box = $("chatTypingBox");
+  if (!box) return;
+  const clean = names.filter(Boolean).slice(0, 3);
+  if (!clean.length) {
+    box.classList.add("hidden");
+    box.textContent = "";
+    return;
+  }
+  box.classList.remove("hidden");
+  box.textContent = clean.length === 1 ? `${clean[0]} está a escrever...` : `${clean.join(", ")} estão a escrever...`;
+}
+
+async function updateChatTyping(isTyping) {
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) return;
+  try {
+    const { doc, setDoc } = firebaseApi;
+    await setDoc(doc(db, "chatTyping", chatTypingDocId()), {
+      uid: currentUser.uid,
+      email: normalizeEmail(currentUser.email),
+      name: chatUserName(),
+      room: chatCurrentRoom,
+      typing: Boolean(isTyping),
+      updatedAt: Date.now()
+    }, { merge: true });
+  } catch (error) {
+    console.warn("Typing não atualizado:", error);
+  }
+}
+
+function startChatTypingListenerSafe() {
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) return;
+  if (chatTypingUnsubscribe) return;
+  try {
+    const { collection, query, onSnapshot } = firebaseApi;
+    if (typeof onSnapshot !== "function") return;
+    const q = query(collection(db, "chatTyping"));
+    chatTypingUnsubscribe = onSnapshot(q, snap => {
+      const now = Date.now();
+      const names = snap.docs
+        .map(docSnap => docSnap.data() || {})
+        .filter(item => item.room === chatCurrentRoom && item.typing && item.uid !== currentUser.uid && now - Number(item.updatedAt || 0) < 5000)
+        .map(item => item.name || displayNameFromEmail(item.email || ""));
+      renderTypingBox(names);
+    }, error => {
+      console.warn("Typing listener falhou:", error);
+      chatTypingUnsubscribe = null;
+    });
+  } catch (error) {
+    console.warn("Typing listener não iniciou:", error);
+  }
+}
+
+function stopChatTypingListenerSafe() {
+  try {
+    if (typeof chatTypingUnsubscribe === "function") chatTypingUnsubscribe();
+  } catch {}
+  chatTypingUnsubscribe = null;
+  renderTypingBox([]);
+}
+
+async function sendChatImage(file) {
+  if (!file) return;
+  if (!file.type?.startsWith("image/")) return toast("Escolhe uma imagem.");
+  if (file.size > 900 * 1024) return toast("Imagem demasiado grande. Usa uma imagem até 900 KB.");
+
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const data = String(reader.result || "");
+    await sendChatMessage("", data);
+  };
+  reader.onerror = () => toast("Não consegui ler a imagem.");
+  reader.readAsDataURL(file);
+}
+
 function renderChatMessages() {
   const box = $("chatMessages");
   if (!box) return;
+  renderChatTabs();
+
   if (!currentUser) {
     box.innerHTML = `<div class="empty small-empty">Faz login para usar o chat.</div>`;
     return;
   }
-  if (!chatMessagesCache.length) {
-    box.innerHTML = `<div class="empty small-empty">Ainda não há mensagens. Escreve a primeira 🙂</div>`;
+
+  const visibleMessages = chatMessagesCache.filter(chatMessageMatchesSearch);
+
+  if (!visibleMessages.length) {
+    box.innerHTML = `<div class="empty small-empty">${chatSearchTerm ? "Nenhuma mensagem encontrada." : "Ainda não há mensagens. Escreve a primeira 🙂"}</div>`;
     updateChatUnreadBadge();
     chatNotifyNewMessages();
     renderChatPinnedMessage();
@@ -2264,16 +2556,30 @@ function renderChatMessages() {
 
   const stick = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
 
-  box.innerHTML = chatMessagesCache.map(message => {
+  box.innerHTML = visibleMessages.map(message => {
     const mine = message.uid === currentUser?.uid;
+    const system = isSystemChatMessage(message);
     const name = message.name || displayNameFromEmail(message.email || "");
+
+    if (system) {
+      return `
+        <div class="chat-message-row system" data-chat-message="${escapeHtml(message.id)}">
+          <div class="chat-bubble system-bubble" data-chat-message="${escapeHtml(message.id)}">
+            <p>${escapeHtml(String(message.text || ""))}</p>
+            <span>${escapeHtml(chatTimeLabel(message.createdAt || message.createdAtLocal))}</span>
+          </div>
+        </div>`;
+    }
 
     return `
       <div class="chat-message-row ${mine ? "mine" : "theirs"}" data-chat-message="${escapeHtml(message.id)}">
         <div class="chat-bubble" data-chat-message="${escapeHtml(message.id)}">
           ${mine ? "" : `<strong>${escapeHtml(name)}</strong>`}
-          <p>${escapeHtml(String(message.text || ""))}</p>
+          ${chatReplyMarkup(message)}
+          ${message.text ? `<p>${escapeHtml(String(message.text || ""))}</p>` : ""}
+          ${chatImageMarkup(message)}
           <span>${escapeHtml(chatTimeLabel(message.createdAt || message.createdAtLocal))}</span>
+          ${chatReactionsMarkup(message)}
         </div>
       </div>`;
   }).join("");
@@ -2288,11 +2594,13 @@ function renderChatMessages() {
 
 async function loadChatMessagesOnce() {
   if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) return;
+  if (!canUseChatRoom()) return;
+
   try {
     const { collection, getDocs, query, orderBy, limit } = firebaseApi;
-    const q = query(collection(db, CHAT_COLLECTION), orderBy("createdAt", "asc"), limit(CHAT_LIMIT));
+    const q = query(collection(db, chatCollectionRef()), orderBy("createdAt", "asc"), limit(CHAT_LIMIT));
     const snap = await withTimeout(getDocs(q), 10000, "ler chat");
-    chatMessagesCache = snap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+    chatMessagesCache = snap.docs.map(docSnap => ({ id: docSnap.id, room: chatCurrentRoom, ...(docSnap.data() || {}) }));
     renderChatMessages();
   } catch (error) {
     console.warn("Chat não carregou:", error);
@@ -2303,17 +2611,24 @@ async function loadChatMessagesOnce() {
 
 function startChatListenerSafe() {
   if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) return;
+  if (!canUseChatRoom()) return;
   if (chatUnsubscribe) return;
+
   try {
     const { collection, query, orderBy, limit, onSnapshot } = firebaseApi;
     if (typeof onSnapshot !== "function") {
       loadChatMessagesOnce();
       return;
     }
-    const q = query(collection(db, CHAT_COLLECTION), orderBy("createdAt", "asc"), limit(CHAT_LIMIT));
+
+    const q = query(collection(db, chatCollectionRef()), orderBy("createdAt", "asc"), limit(CHAT_LIMIT));
     chatUnsubscribe = onSnapshot(q, snap => {
-      chatMessagesCache = snap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+      const previousLast = chatMessagesCache.at?.(-1)?.id || "";
+      chatMessagesCache = snap.docs.map(docSnap => ({ id: docSnap.id, room: chatCurrentRoom, ...(docSnap.data() || {}) }));
       renderChatMessages();
+      const latest = chatMessagesCache.at?.(-1);
+      const panelOpen = !$("chatPanel")?.classList.contains("hidden");
+      if (latest && latest.id !== previousLast && !panelOpen) playChatNotification(latest);
     }, error => {
       console.warn("Chat em tempo real falhou:", error);
       chatUnsubscribe = null;
@@ -2330,21 +2645,32 @@ function stopChatListenerSafe() {
   chatUnsubscribe = null;
 }
 
-async function sendChatMessage(text) {
+async function sendChatMessage(text, imageData = "") {
   const clean = String(text || "").trim();
-  if (!clean) return;
+  const image = String(imageData || "");
+  if (!clean && !image) return;
   if (!currentUser) return toast("Faz login para escrever no chat.");
+  if (!canUseChatRoom()) return toast("Não tens acesso a este chat.");
   if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase não está ligado.");
+
   try {
     const { collection, addDoc, serverTimestamp } = firebaseApi;
-    await addDoc(collection(db, CHAT_COLLECTION), {
+    await addDoc(collection(db, chatCollectionRef()), {
       uid: currentUser.uid,
       email: normalizeEmail(currentUser.email),
       name: chatUserName(),
       text: clean.slice(0, 500),
+      imageData: image,
+      replyTo: chatReplyTo?.id || "",
+      replyName: chatReplyTo?.name || "",
+      replyText: chatReplyTo?.text || "",
+      reactions: {},
+      room: chatCurrentRoom,
       createdAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString(),
       createdAtLocal: new Date().toISOString()
     });
+    clearChatReply();
+    updateChatTyping(false);
   } catch (error) {
     console.error("Falhou enviar mensagem:", error);
     toast("Não consegui enviar a mensagem.");
@@ -2356,14 +2682,72 @@ function setupChatUi() {
   const closeBtn = $("chatCloseBtn");
   const form = $("chatForm");
   const input = $("chatInput");
+  const imageBtn = $("chatImageBtn");
+  const imageInput = $("chatImageInput");
+  const replyCancel = $("chatReplyCancelBtn");
+  const searchInput = $("chatSearchInput");
+  const generalTab = $("chatGeneralTab");
+  const adminTab = $("chatAdminTab");
+
+  setupChatMessageActions();
+  renderChatTabs();
+
   if (openBtn && openBtn.dataset.bound !== "1") {
     openBtn.dataset.bound = "1";
     openBtn.addEventListener("click", () => openChatPanel());
   }
+
   if (closeBtn && closeBtn.dataset.bound !== "1") {
     closeBtn.dataset.bound = "1";
     closeBtn.addEventListener("click", () => closeChatPanel());
   }
+
+  if (generalTab && generalTab.dataset.bound !== "1") {
+    generalTab.dataset.bound = "1";
+    generalTab.addEventListener("click", () => setChatRoom("general"));
+  }
+
+  if (adminTab && adminTab.dataset.bound !== "1") {
+    adminTab.dataset.bound = "1";
+    adminTab.addEventListener("click", () => setChatRoom("admin"));
+  }
+
+  if (replyCancel && replyCancel.dataset.bound !== "1") {
+    replyCancel.dataset.bound = "1";
+    replyCancel.addEventListener("click", clearChatReply);
+  }
+
+  if (searchInput && searchInput.dataset.bound !== "1") {
+    searchInput.dataset.bound = "1";
+    searchInput.addEventListener("input", () => {
+      chatSearchTerm = searchInput.value || "";
+      renderChatMessages();
+    });
+  }
+
+  if (imageBtn && imageBtn.dataset.bound !== "1") {
+    imageBtn.dataset.bound = "1";
+    imageBtn.addEventListener("click", () => imageInput?.click());
+  }
+
+  if (imageInput && imageInput.dataset.bound !== "1") {
+    imageInput.dataset.bound = "1";
+    imageInput.addEventListener("change", async () => {
+      const file = imageInput.files?.[0];
+      imageInput.value = "";
+      await sendChatImage(file);
+    });
+  }
+
+  if (input && input.dataset.typingBound !== "1") {
+    input.dataset.typingBound = "1";
+    input.addEventListener("input", () => {
+      updateChatTyping(true);
+      if (chatTypingTimer) clearTimeout(chatTypingTimer);
+      chatTypingTimer = setTimeout(() => updateChatTyping(false), 2500);
+    });
+  }
+
   if (form && form.dataset.bound !== "1") {
     form.dataset.bound = "1";
     form.addEventListener("submit", async event => {

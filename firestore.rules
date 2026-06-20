@@ -39,19 +39,24 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.text is string
-        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() >= 0
         && request.resource.data.text.size() <= 500;
+      allow update: if signedIn();
       allow delete: if signedIn() && (
         resource.data.uid == request.auth.uid ||
         request.auth.token.email in ["pica.fern@gmail.com"]
       );
-      allow update: if false;
     }
 
     match /chatSettings/{settingId} {
       allow read: if signedIn();
       allow create, update, delete: if signedIn()
         && request.auth.token.email in ["pica.fern@gmail.com"];
+    }
+
+    match /chatTyping/{userId} {
+      allow read: if signedIn();
+      allow create, update, delete: if signedIn() && request.auth.uid == userId;
     }
 
     match /{document=**} {

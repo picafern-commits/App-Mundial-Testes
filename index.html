@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Mundial Pontos 2026 · Chat Long Press</title>
+  <title>Mundial Pontos 2026 · Chat Completo</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Mundial 2026" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -445,21 +445,56 @@
 
       <div id="chatPanel" class="chat-panel hidden">
         <div class="chat-header">
-          <div><strong>Chat Mundial</strong><span>Conversa geral dos users</span></div>
+          <div>
+            <strong>Chat Mundial</strong>
+            <span id="chatSubtitle">Conversa geral dos users</span>
+          </div>
           <button id="chatCloseBtn" class="chat-close-btn" type="button" aria-label="Fechar chat">×</button>
         </div>
+
+        <div class="chat-tabs">
+          <button id="chatGeneralTab" class="chat-tab active" type="button" data-chat-room="general">Geral</button>
+          <button id="chatAdminTab" class="chat-tab admin-chat-tab hidden" type="button" data-chat-room="admin">Admin</button>
+        </div>
+
+        <div class="chat-search-wrap">
+          <input id="chatSearchInput" type="search" autocomplete="off" placeholder="Pesquisar no chat..." />
+        </div>
+
         <div id="chatPinnedBox" class="chat-pinned-box hidden"></div>
+        <div id="chatTypingBox" class="chat-typing-box hidden"></div>
+
         <div id="chatMessages" class="chat-messages">
           <div class="empty small-empty">A carregar chat...</div>
         </div>
+
+        <div id="chatReplyPreview" class="chat-reply-preview hidden">
+          <div>
+            <span>A responder a <strong id="chatReplyName"></strong></span>
+            <p id="chatReplyText"></p>
+          </div>
+          <button id="chatReplyCancelBtn" type="button" aria-label="Cancelar resposta">×</button>
+        </div>
+
         <form id="chatForm" class="chat-form">
+          <button id="chatImageBtn" class="chat-attach-btn" type="button" aria-label="Enviar imagem">＋</button>
+          <input id="chatImageInput" type="file" accept="image/*" class="hidden" />
           <input id="chatInput" type="text" maxlength="500" autocomplete="off" placeholder="Escrever mensagem..." />
           <button id="chatSendBtn" class="primary" type="submit">Enviar</button>
         </form>
       </div>
       <div id="chatActionMenu" class="chat-action-menu hidden">
+        <button id="chatActionReplyBtn" type="button">Responder</button>
         <button id="chatActionPinBtn" type="button">Fixar</button>
         <button id="chatActionDeleteBtn" type="button">Apagar</button>
+        <div class="chat-reaction-bar" id="chatReactionBar">
+          <button type="button" data-chat-reaction="😂">😂</button>
+          <button type="button" data-chat-reaction="⚽">⚽</button>
+          <button type="button" data-chat-reaction="🏆">🏆</button>
+          <button type="button" data-chat-reaction="🔥">🔥</button>
+          <button type="button" data-chat-reaction="👀">👀</button>
+          <button type="button" data-chat-reaction="👍">👍</button>
+        </div>
       </div>
 </body>
 </html>
