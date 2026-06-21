@@ -6833,3 +6833,94 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("click", () => {
   setTimeout(polishVisualSafeV109, 120);
 });
+
+
+// v110 — Visual por páginas seguro: só aplica classes e não altera dados/Firebase.
+function polishPagesVisualV110() {
+  try {
+    const pageIds = [
+      "calendarTab", "scoreTab", "betsTab", "knockoutTab", "adminTab", "chatPanel",
+      "gamesList", "scoreTable", "scoreList", "scoreBoard", "adminPanel", "adminContent",
+      "knockoutBracket", "knockoutList", "userBetsModal", "betsModal", "gameBetsModal"
+    ];
+
+    pageIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add(`page-polish-${id}`);
+    });
+
+    const calendar = document.getElementById("calendarTab") || document.getElementById("gamesList")?.closest(".tab-panel");
+    if (calendar) calendar.classList.add("page-calendar-v110");
+
+    const score = document.getElementById("scoreTab") || document.getElementById("scoreTable")?.closest(".tab-panel");
+    if (score) score.classList.add("page-score-v110");
+
+    const knockout = document.getElementById("knockoutTab") || document.getElementById("knockoutBracket")?.closest(".tab-panel");
+    if (knockout) knockout.classList.add("page-knockout-v110");
+
+    const admin = document.getElementById("adminTab") || document.getElementById("adminPanel") || document.getElementById("adminContent");
+    if (admin) admin.classList.add("page-admin-v110");
+
+    const chat = document.getElementById("chatPanel");
+    if (chat) chat.classList.add("page-chat-v110");
+
+    const filters = document.querySelector(".copy-actions");
+    if (filters) filters.classList.add("v110-filter-bar");
+
+    document.querySelectorAll(".day-block").forEach((block, index) => {
+      block.classList.add("v110-day-block");
+      block.style.setProperty("--day-index", index % 6);
+    });
+
+    document.querySelectorAll(".match-card, .game-card, .jogo-card, .fixture-card, [data-game-id]").forEach(card => {
+      card.classList.add("v110-game-card");
+    });
+
+    // Pontuação: visual premium sem destacar utilizador logado.
+    const scoreRoot = document.getElementById("scoreTable") || document.getElementById("scoreList") || document.getElementById("scoreBoard") || document.querySelector(".score-table, .score-list, .ranking-list");
+    if (scoreRoot) {
+      scoreRoot.classList.add("v110-score-root");
+      scoreRoot.querySelectorAll("tr, .score-row, .ranking-row, .player-row, .score-card").forEach((row, index) => {
+        if (index === 0 && row.tagName === "TR" && row.querySelector("th")) return;
+        row.classList.add("v110-score-row");
+        row.classList.remove("current-user", "me", "logged-user", "user-current");
+        if (index <= 3) row.classList.add(`v110-score-rank-${index}`);
+      });
+    }
+
+    // Apostas / Ver apostas.
+    document.querySelectorAll(".bets-modal, #betsModal, #gameBetsModal, #userBetsModal, .bets-list, .bets-summary").forEach(el => {
+      el.classList.add("v110-bets-view");
+    });
+    document.querySelectorAll(".bet-row, .bet-card, .bets-row, [data-bet-id]").forEach(el => {
+      el.classList.add("v110-bet-card");
+    });
+
+    // Admin.
+    document.querySelectorAll("#adminTab section, #adminTab .card, #adminPanel .card, #adminContent .card, .admin-card").forEach(el => {
+      el.classList.add("v110-admin-card");
+    });
+    document.querySelectorAll("#adminTab button, #adminPanel button, #adminContent button").forEach(btn => {
+      btn.classList.add("v110-admin-button");
+      const t = String(btn.textContent || "").toLowerCase();
+      if (t.includes("apagar") || t.includes("limpar") || t.includes("remover")) btn.classList.add("v110-danger-button");
+    });
+
+    // Chat.
+    document.querySelectorAll("#chatPanel .chat-message, #chatPanel .message, #chatPanel [data-message-id]").forEach(msg => {
+      msg.classList.add("v110-chat-message");
+    });
+    document.querySelectorAll("#chatPanel input, #chatPanel textarea").forEach(input => input.classList.add("v110-chat-input"));
+  } catch (error) {
+    console.warn("Visual por páginas v110 falhou:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  polishPagesVisualV110();
+  setTimeout(polishPagesVisualV110, 500);
+  setTimeout(polishPagesVisualV110, 1400);
+});
+
+document.addEventListener("click", () => setTimeout(polishPagesVisualV110, 140));
+document.addEventListener("input", () => setTimeout(polishPagesVisualV110, 180));
