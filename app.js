@@ -3993,95 +3993,25 @@ function renderCalendar() {
 
   renderCalendarFilterState();
 }
-
-
-function gameVisualStatusV108(game) {
-  if (hasResult(game)) return { key: "played", label: "Já jogado", icon: "✅" };
-
-  const kickoff = new Date(game.matchDate || game.date || game.data || game.startTime || "").getTime();
-  const now = Date.now();
-
-  if (Number.isFinite(kickoff)) {
-    if (now >= kickoff && now <= kickoff + 2.25 * 60 * 60 * 1000) {
-      return { key: "live", label: "A decorrer", icon: "🔴" };
-    }
-
-    if (now > kickoff + 2.25 * 60 * 60 * 1000) {
-      return { key: "missing", label: "Falta resultado", icon: "⚠️" };
-    }
-  }
-
-  return { key: "scheduled", label: "Por jogar", icon: "🗓️" };
-}
-
-function gameResultTextV108(game) {
-  if (!hasResult(game)) return "—";
-  return `${Number(game.homeScore)}-${Number(game.awayScore)}`;
-}
-
-function polishTopbarFiltersV108() {
-  const actions = document.querySelector(".copy-actions");
-  if (actions) actions.classList.add("calendar-filter-chips-v108");
-
-  ["calendarMissingResultsBtn", "calendarPlayedGamesBtn", "calendarAllGamesBtn"].forEach(id => {
-    const btn = $(id);
-    if (btn) btn.classList.add("calendar-filter-chip");
-  });
-}
-
-function polishScoreVisualV108() {
-  const scoreRoot = $("scoreTable") || $("scoreList") || $("scoreBoard") || $("scoreTab") || document.querySelector(".score-table, .score-list, .ranking-list, .classification-list");
-  if (!scoreRoot) return;
-
-  const rows = scoreRoot.querySelectorAll("tr, .score-row, .ranking-row, .player-row");
-  rows.forEach((row, index) => {
-    if (index === 0 && row.tagName === "TR" && row.querySelector("th")) return;
-    row.classList.add("score-premium-row");
-    if (index <= 3) row.classList.add(`score-rank-${index}`);
-  });
-}
-
-function polishResultModalV108() {
-  const modal = $("resultModal") || document.querySelector(".result-modal, [data-result-modal]");
-  if (!modal) return;
-  modal.classList.add("premium-result-modal");
-
-  modal.querySelectorAll("input[type='number']").forEach(input => {
-    input.classList.add("score-input-premium");
-  });
-
-  const saveBtn = $("saveResultBtn") || modal.querySelector(".primary");
-  if (saveBtn) saveBtn.classList.add("save-result-premium");
-}
-
 function renderMatchRow(game) {
-  const status = gameVisualStatusV108(game);
-  const result = gameResultTextV108(game);
-  const hasGameResult = hasResult(game);
-  const gameId = escapeHtml(game.id);
+  const status = statusOf(game);
+  const scoreText = hasResult(game) ? `${game.homeScore}-${game.awayScore}` : "VS";
+  const gameBets = betsForGame(game.id);
+  const settledText = hasResult(game) ? `${gameBets.length} apostas · pontos atribuídos` : `${gameBets.length} apostas importadas`;
+  const resultButtonText = hasResult(game) ? "Editar resultado" : "Adicionar resultado";
 
   return `
-    <article class="match-card premium-match-card match-status-${escapeHtml(status.key)}" data-game-id="${gameId}">
-      <div class="match-card-main">
-        <div class="match-card-meta">
-          <span class="match-group-pill">${escapeHtml(game.group || "Jogo")}</span>
-          <span class="match-date-pill">${escapeHtml(timePortugal(game.matchDate))}</span>
-          <span class="match-status-pill">${status.icon} ${escapeHtml(status.label)}</span>
-        </div>
-
-        <div class="match-scoreboard">
-          <div class="match-team home"><span class="team-name">${escapeHtml(game.homeTeam || "")}</span></div>
-          <div class="match-result-box ${hasGameResult ? "has-result" : "no-result"}">
-            <strong>${escapeHtml(result)}</strong>
-            <span>${hasGameResult ? "Resultado" : "Sem resultado"}</span>
-          </div>
-          <div class="match-team away"><span class="team-name">${escapeHtml(game.awayTeam || "")}</span></div>
-        </div>
-      </div>
-
-      <div class="match-card-actions">
-        <button class="secondary small" type="button" onclick="showGameBets('${gameId}')">Ver apostas</button>
-        ${isAdmin ? `<button class="${hasGameResult ? "secondary" : "primary"} small" type="button" onclick="openResultModal('${gameId}')">${hasGameResult ? "Editar resultado" : "Colocar resultado"}</button>` : ""}
+    <article class="match-row ${status.className}">
+      <div class="group-pill">${escapeHtml(game.group)}</div>
+      <div class="team home"><strong>${escapeHtml(game.homeTeam)}</strong></div>
+      <div class="score-vs">${escapeHtml(scoreText)}</div>
+      <div class="team away"><strong>${escapeHtml(game.awayTeam)}</strong></div>
+      <div class="time">${timePortugal(game.matchDate)}</div>
+      <div class="state ${status.className}">${status.text}</div>
+      <div class="bet-note">${escapeHtml(settledText)}</div>
+      <div class="calendar-actions">
+        <button class="primary small" type="button" data-result-game="${escapeHtml(game.id)}">${resultButtonText}</button>
+        <button class="secondary small" type="button" data-bets-game="${escapeHtml(game.id)}">Ver apostas</button>
       </div>
     </article>`;
 }
@@ -4172,8 +4102,6 @@ function renderScore() {
         `;
       }).join("")}
     </div>`;
-
-  setTimeout(polishScoreVisualV108, 0);
 }
 
 function blankTeam(team) { return { team, played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, gd: 0, points: 0 }; }
@@ -5238,8 +5166,6 @@ function openResultModal(gameId) {
   updateResultPreview();
   $("resultModal").classList.remove("hidden");
   setTimeout(() => $("modalHomeScoreInput")?.focus(), 80);
-
-  setTimeout(polishResultModalV108, 0);
 }
 
 function closeResultModal() {
@@ -6858,8 +6784,52 @@ window.firestoreReadsOptimizerInfo = function firestoreReadsOptimizerInfo() {
 };
 
 
+// v109 — polish visual seguro: não altera dados, Firebase nem render principal.
+function polishVisualSafeV109() {
+  try {
+    const filters = document.querySelector(".copy-actions");
+    if (filters) filters.classList.add("safe-filter-chips-v109");
+
+    ["calendarMissingResultsBtn", "calendarPlayedGamesBtn", "calendarAllGamesBtn"].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.classList.add("safe-filter-chip-v109");
+    });
+
+    document.querySelectorAll(".match-card, .game-card, .jogo-card, .fixture-card, [data-game-id]").forEach(card => {
+      card.classList.add("safe-match-card-v109");
+
+      const text = String(card.textContent || "").toLowerCase();
+
+      card.classList.toggle("safe-played-v109", /\b\d+\s*[-:]\s*\d+\b/.test(text) || text.includes("resultado"));
+      card.classList.toggle("safe-missing-v109", text.includes("sem resultado") || text.includes("colocar resultado") || text.includes("falta resultado"));
+    });
+
+    const modal = document.getElementById("resultModal") || document.querySelector(".result-modal, [data-result-modal]");
+    if (modal) {
+      modal.classList.add("safe-result-modal-v109");
+      modal.querySelectorAll("input[type='number']").forEach(input => input.classList.add("safe-score-input-v109"));
+    }
+
+    const scoreRoot = document.getElementById("scoreTable") || document.getElementById("scoreList") || document.getElementById("scoreBoard") || document.getElementById("scoreTab") || document.querySelector(".score-table, .score-list, .ranking-list");
+    if (scoreRoot) {
+      scoreRoot.classList.add("safe-score-root-v109");
+      scoreRoot.querySelectorAll("tr, .score-row, .ranking-row, .player-row").forEach((row, index) => {
+        if (index === 0 && row.tagName === "TR" && row.querySelector("th")) return;
+        row.classList.add("safe-score-row-v109");
+        if (index <= 3) row.classList.add(`safe-score-rank-${index}`);
+      });
+    }
+  } catch (error) {
+    console.warn("Polish visual v109 falhou:", error);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  polishTopbarFiltersV108();
-  setTimeout(polishTopbarFiltersV108, 400);
-  setTimeout(polishScoreVisualV108, 700);
+  polishVisualSafeV109();
+  setTimeout(polishVisualSafeV109, 500);
+  setTimeout(polishVisualSafeV109, 1200);
+});
+
+document.addEventListener("click", () => {
+  setTimeout(polishVisualSafeV109, 120);
 });

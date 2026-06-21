@@ -7103,276 +7103,125 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
 }
 
 
-/* v108 — Visual premium: filtros */
-.copy-actions.calendar-filter-chips-v108{
+/* v109 — Visual seguro, sem mexer na ligação Firebase */
+
+/* filtros em chips */
+.safe-filter-chips-v109{
   display:flex!important;
-  gap:8px!important;
   align-items:center!important;
+  gap:8px!important;
   flex-wrap:wrap!important;
 }
 
-.calendar-filter-chip{
+.safe-filter-chip-v109{
   border-radius:999px!important;
   min-height:38px!important;
   padding:9px 13px!important;
   border:1px solid rgba(255,255,255,.14)!important;
   background:rgba(255,255,255,.07)!important;
   box-shadow:0 10px 24px rgba(0,0,0,.16)!important;
+  white-space:nowrap!important;
 }
 
-.calendar-filter-chip.active-filter{
+.safe-filter-chip-v109.active-filter{
   background:linear-gradient(135deg,rgba(32,214,185,.22),rgba(41,128,255,.20))!important;
   border-color:rgba(79,221,200,.42)!important;
 }
 
-/* v108 — Cards dos jogos */
-.premium-match-card{
+/* cards de jogos: só decoração, sem alterar HTML interno */
+.safe-match-card-v109{
   position:relative!important;
   overflow:hidden!important;
+  border-radius:22px!important;
   border:1px solid rgba(255,255,255,.10)!important;
   background:linear-gradient(180deg,rgba(16,23,36,.92),rgba(8,12,20,.94))!important;
-  border-radius:22px!important;
-  padding:15px!important;
-  box-shadow:0 18px 44px rgba(0,0,0,.24)!important;
+  box-shadow:0 18px 44px rgba(0,0,0,.22)!important;
 }
 
-.premium-match-card::before{
+.safe-match-card-v109::before{
   content:""!important;
   position:absolute!important;
   left:0!important;
   top:0!important;
   bottom:0!important;
   width:5px!important;
-  background:rgba(116,130,155,.7)!important;
+  background:rgba(116,130,155,.70)!important;
 }
 
-.premium-match-card.match-status-played::before{
+.safe-match-card-v109.safe-played-v109::before{
   background:linear-gradient(180deg,#34d399,#10b981)!important;
 }
 
-.premium-match-card.match-status-missing::before{
+.safe-match-card-v109.safe-missing-v109::before{
   background:linear-gradient(180deg,#fbbf24,#f97316)!important;
 }
 
-.premium-match-card.match-status-live::before{
-  background:linear-gradient(180deg,#fb7185,#ef4444)!important;
-}
-
-.match-card-main{
-  display:flex!important;
-  flex-direction:column!important;
-  gap:12px!important;
-}
-
-.match-card-meta{
-  display:flex!important;
-  align-items:center!important;
-  flex-wrap:wrap!important;
-  gap:8px!important;
-}
-
-.match-group-pill,
-.match-date-pill,
-.match-status-pill{
-  display:inline-flex!important;
-  align-items:center!important;
-  gap:5px!important;
+/* botões dentro dos cards */
+.safe-match-card-v109 button{
   border-radius:999px!important;
-  padding:6px 9px!important;
-  font-size:12px!important;
-  font-weight:900!important;
-  background:rgba(255,255,255,.07)!important;
-  color:rgba(255,255,255,.84)!important;
-  border:1px solid rgba(255,255,255,.08)!important;
-}
-
-.match-status-played .match-status-pill{
-  background:rgba(16,185,129,.14)!important;
-  color:#baf7da!important;
-}
-
-.match-status-missing .match-status-pill{
-  background:rgba(251,191,36,.14)!important;
-  color:#ffe6a8!important;
-}
-
-.match-status-live .match-status-pill{
-  background:rgba(239,68,68,.15)!important;
-  color:#ffd0d0!important;
-}
-
-.match-scoreboard{
-  display:grid!important;
-  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
-  align-items:center!important;
-  gap:12px!important;
-}
-
-.match-team{
-  min-width:0!important;
-  display:flex!important;
-  align-items:center!important;
-}
-
-.match-team.away{
-  justify-content:flex-end!important;
-  text-align:right!important;
-}
-
-.team-name{
-  font-size:16px!important;
-  font-weight:950!important;
-  color:#fff!important;
-  line-height:1.15!important;
-  overflow:hidden!important;
-  text-overflow:ellipsis!important;
-}
-
-.match-result-box{
-  min-width:82px!important;
-  border-radius:18px!important;
-  padding:8px 12px!important;
-  text-align:center!important;
-  border:1px solid rgba(255,255,255,.12)!important;
-  background:rgba(255,255,255,.07)!important;
-}
-
-.match-result-box strong{
-  display:block!important;
-  font-size:24px!important;
-  line-height:1!important;
-  letter-spacing:.5px!important;
-  color:#fff!important;
-}
-
-.match-result-box span{
-  display:block!important;
-  margin-top:4px!important;
-  font-size:10px!important;
-  text-transform:uppercase!important;
-  letter-spacing:.08em!important;
-  color:rgba(255,255,255,.58)!important;
-}
-
-.match-result-box.has-result{
-  background:linear-gradient(135deg,rgba(16,185,129,.20),rgba(20,184,166,.14))!important;
-  border-color:rgba(52,211,153,.32)!important;
-}
-
-.match-card-actions{
-  display:flex!important;
-  justify-content:flex-end!important;
-  flex-wrap:wrap!important;
-  gap:8px!important;
-  margin-top:12px!important;
-}
-
-.match-card-actions button{
-  border-radius:999px!important;
-  min-height:34px!important;
   font-weight:900!important;
 }
 
-/* v108 — Pontuação */
-.score-premium-row{
+/* pontuação premium suave */
+.safe-score-row-v109{
   transition:transform .18s ease, background .18s ease!important;
 }
 
-.score-premium-row:hover{
+.safe-score-row-v109:hover{
   transform:translateY(-1px)!important;
 }
 
-.score-rank-1{
-  background:linear-gradient(90deg,rgba(255,215,0,.13),transparent)!important;
+.safe-score-rank-1{
+  background:linear-gradient(90deg,rgba(255,215,0,.12),transparent)!important;
 }
 
-.score-rank-2{
-  background:linear-gradient(90deg,rgba(192,192,192,.11),transparent)!important;
+.safe-score-rank-2{
+  background:linear-gradient(90deg,rgba(192,192,192,.10),transparent)!important;
 }
 
-.score-rank-3{
-  background:linear-gradient(90deg,rgba(205,127,50,.12),transparent)!important;
+.safe-score-rank-3{
+  background:linear-gradient(90deg,rgba(205,127,50,.11),transparent)!important;
 }
 
-/* v108 — Modal resultado */
-.premium-result-modal .modal-card,
-.premium-result-modal .dialog-card,
-.premium-result-modal > div{
+/* modal resultado: só visual */
+.safe-result-modal-v109 .modal-card,
+.safe-result-modal-v109 .dialog-card,
+.safe-result-modal-v109 > div{
   border-radius:24px!important;
   border:1px solid rgba(255,255,255,.14)!important;
   box-shadow:0 28px 90px rgba(0,0,0,.46)!important;
 }
 
-.score-input-premium{
-  min-height:56px!important;
+.safe-score-input-v109{
+  min-height:54px!important;
   border-radius:18px!important;
   text-align:center!important;
-  font-size:26px!important;
+  font-size:25px!important;
   font-weight:950!important;
 }
 
-.save-result-premium{
-  border-radius:999px!important;
-  min-height:44px!important;
-  font-weight:950!important;
-}
-
-/* v108 — Mobile mais app */
+/* mobile: filtros em scroll horizontal */
 @media(max-width:760px){
-  .copy-actions.calendar-filter-chips-v108{
+  .safe-filter-chips-v109{
     display:flex!important;
     flex-wrap:nowrap!important;
     overflow-x:auto!important;
     -webkit-overflow-scrolling:touch!important;
     padding:6px 2px 8px!important;
-    gap:8px!important;
     scrollbar-width:none!important;
   }
 
-  .copy-actions.calendar-filter-chips-v108::-webkit-scrollbar{
+  .safe-filter-chips-v109::-webkit-scrollbar{
     display:none!important;
   }
 
-  .calendar-filter-chip{
+  .safe-filter-chip-v109{
     flex:0 0 auto!important;
     min-height:42px!important;
     padding:10px 14px!important;
   }
 
-  .premium-match-card{
+  .safe-match-card-v109{
     border-radius:20px!important;
-    padding:14px!important;
-  }
-
-  .match-scoreboard{
-    grid-template-columns:1fr!important;
-    gap:8px!important;
-  }
-
-  .match-team,
-  .match-team.away{
-    justify-content:center!important;
-    text-align:center!important;
-  }
-
-  .team-name{
-    font-size:18px!important;
-  }
-
-  .match-result-box{
-    width:min(150px,80%)!important;
-    margin:2px auto!important;
-  }
-
-  .match-result-box strong{
-    font-size:30px!important;
-  }
-
-  .match-card-actions{
-    justify-content:center!important;
-  }
-
-  .match-card-actions button{
-    flex:1 1 150px!important;
   }
 }
