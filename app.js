@@ -6924,3 +6924,62 @@ document.addEventListener("DOMContentLoaded", () => {
 
 document.addEventListener("click", () => setTimeout(polishPagesVisualV110, 140));
 document.addEventListener("input", () => setTimeout(polishPagesVisualV110, 180));
+
+
+// v111 — classes visuais visíveis, sem alterar Firebase/dados.
+function applyVisibleVisualV111() {
+  try {
+    document.body.classList.add("v111-visual");
+
+    const activePanel = document.querySelector(".tab-panel.active");
+    if (activePanel?.id) {
+      document.body.dataset.activePanel = activePanel.id;
+    }
+
+    const filterBar = document.querySelector(".copy-actions");
+    if (filterBar) filterBar.classList.add("v111-filter-bar");
+
+    ["calendarMissingResultsBtn","calendarPlayedGamesBtn","calendarAllGamesBtn","chatOpenBtn","chatAdminToggleBtn"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add("v111-pill-button");
+    });
+
+    document.querySelectorAll(".day-block").forEach(el => el.classList.add("v111-day"));
+    document.querySelectorAll(".match-row,.match-card,.match-item,.game-row,.game-card,[data-game-id]").forEach(el => el.classList.add("v111-match"));
+    document.querySelectorAll(".match-list").forEach(el => el.classList.add("v111-match-list"));
+
+    document.querySelectorAll("#scoreTab table, #scoreTab .card, #scoreTab .score-card, #scoreTab .ranking-card").forEach(el => el.classList.add("v111-score-card"));
+    document.querySelectorAll("#scoreTab tr, #scoreTab .score-row, #scoreTab .ranking-row").forEach((el, i) => {
+      el.classList.add("v111-score-row");
+      if (!(el.tagName === "TR" && el.querySelector("th"))) {
+        el.classList.add(`v111-rank-${Math.min(i,3)}`);
+      }
+    });
+
+    document.querySelectorAll("#adminTab .card, #adminTab section, #adminTab details, #adminTab .admin-section").forEach(el => el.classList.add("v111-admin-block"));
+    document.querySelectorAll("#adminTab button").forEach(btn => {
+      btn.classList.add("v111-admin-btn");
+      const t = String(btn.textContent || "").toLowerCase();
+      if (t.includes("apagar") || t.includes("limpar") || t.includes("remover")) btn.classList.add("v111-danger");
+    });
+
+    document.querySelectorAll(".modal,.modal-card,.dialog,.dialog-card,#resultModal,#betsModal,#gameBetsModal,#userBetsModal").forEach(el => el.classList.add("v111-modal"));
+    document.querySelectorAll("#resultModal input[type='number'], .modal input[type='number']").forEach(el => el.classList.add("v111-score-input"));
+
+    document.querySelectorAll("#chatPanel,.chat-panel").forEach(el => el.classList.add("v111-chat"));
+    document.querySelectorAll("#chatPanel .message,#chatPanel .chat-message,#chatPanel [data-message-id]").forEach(el => el.classList.add("v111-chat-bubble"));
+
+    document.querySelectorAll("#knockoutTab .card,#knockoutTab .knockout-match,#knockoutTab .ko-match,#knockoutTab .round-card").forEach(el => el.classList.add("v111-ko-mobile-card"));
+  } catch (error) {
+    console.warn("Visual v111 falhou:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  applyVisibleVisualV111();
+  setTimeout(applyVisibleVisualV111, 300);
+  setTimeout(applyVisibleVisualV111, 900);
+  setTimeout(applyVisibleVisualV111, 1800);
+});
+document.addEventListener("click", () => setTimeout(applyVisibleVisualV111, 80));
+document.addEventListener("input", () => setTimeout(applyVisibleVisualV111, 120));
