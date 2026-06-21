@@ -7795,3 +7795,78 @@ body.v111-visual{
     min-height:42px!important;
   }
 }
+
+
+/* v112 — janela Users sempre por cima */
+#onlineUsersPanel,
+.online-users-panel,
+.users-popup-front-v112{
+  position:relative!important;
+  z-index:2147483000!important;
+  isolation:isolate!important;
+  overflow:visible!important;
+}
+
+#onlineUsersPanel[open],
+.online-users-panel[open],
+.users-popup-front-v112[open]{
+  z-index:2147483200!important;
+}
+
+#onlineUsersPanel summary,
+.online-users-trigger,
+.users-popup-trigger-front-v112{
+  position:relative!important;
+  z-index:2147483201!important;
+}
+
+#onlineUsersList,
+.online-users-list,
+.users-popup-list-front-v112{
+  position:absolute!important;
+  z-index:2147483300!important;
+  top:calc(100% + 10px)!important;
+  right:0!important;
+  left:auto!important;
+  min-width:280px!important;
+  max-width:min(420px, calc(100vw - 24px))!important;
+  max-height:min(520px, calc(100vh - 140px))!important;
+  overflow:auto!important;
+  background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(3,7,18,.98))!important;
+  border:1px solid rgba(255,255,255,.16)!important;
+  box-shadow:0 34px 110px rgba(0,0,0,.62)!important;
+  border-radius:22px!important;
+  backdrop-filter:blur(22px)!important;
+}
+
+body.users-popup-open-v112 .day-block,
+body.users-popup-open-v112 .match-card,
+body.users-popup-open-v112 .match-row,
+body.users-popup-open-v112 [data-game-id],
+body.users-popup-open-v112 .v111-match,
+body.users-popup-open-v112 .v111-day{
+  z-index:1!important;
+}
+
+@media(max-width:760px){
+  #onlineUsersPanel,
+  .online-users-panel,
+  .users-popup-front-v112{
+    position:static!important;
+    z-index:2147483000!important;
+  }
+
+  #onlineUsersList,
+  .online-users-list,
+  .users-popup-list-front-v112{
+    position:fixed!important;
+    top:calc(env(safe-area-inset-top, 0px) + 82px)!important;
+    left:12px!important;
+    right:12px!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    max-height:calc(100vh - 120px - env(safe-area-inset-bottom, 0px))!important;
+    z-index:2147483300!important;
+  }
+}

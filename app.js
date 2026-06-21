@@ -6983,3 +6983,30 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 document.addEventListener("click", () => setTimeout(applyVisibleVisualV111, 80));
 document.addEventListener("input", () => setTimeout(applyVisibleVisualV111, 120));
+
+
+// v112 — garantir que a janela Users fica sempre por cima.
+function fixOnlineUsersPopupLayerV112() {
+  try {
+    const panel = document.getElementById("onlineUsersPanel");
+    const list = document.getElementById("onlineUsersList");
+    const trigger = document.querySelector(".online-users-trigger");
+
+    if (panel) panel.classList.add("users-popup-front-v112");
+    if (list) list.classList.add("users-popup-list-front-v112");
+    if (trigger) trigger.classList.add("users-popup-trigger-front-v112");
+
+    if (panel && panel.open) document.body.classList.add("users-popup-open-v112");
+    else document.body.classList.remove("users-popup-open-v112");
+  } catch (error) {
+    console.warn("Users popup layer v112 falhou:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  fixOnlineUsersPopupLayerV112();
+  setTimeout(fixOnlineUsersPopupLayerV112, 400);
+  setTimeout(fixOnlineUsersPopupLayerV112, 1200);
+});
+
+document.addEventListener("click", () => setTimeout(fixOnlineUsersPopupLayerV112, 60));
