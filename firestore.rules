@@ -85,25 +85,6 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
-    match /notificationTokens/{tokenId} {
-      allow read: if signedIn() && (resource.data.uid == request.auth.uid || chatAdminUser());
-      allow create, update: if signedIn()
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.token is string
-        && request.resource.data.token.size() > 20;
-      allow delete: if signedIn() && (resource.data.uid == request.auth.uid || chatAdminUser());
-    }
-
-    match /notificationPrefs/{userId} {
-      allow read, create, update, delete: if signedIn() && request.auth.uid == userId;
-    }
-
-    match /notificationTests/{testId} {
-      allow read: if signedIn() && (resource.data.uid == request.auth.uid || chatAdminUser());
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if chatAdminUser();
-    }
-
     match /{document=**} {
       allow read: if true;
       allow write: if false;
