@@ -7845,3 +7845,14 @@ summary:focus-visible{
   }
 }
 
+
+
+/* v139 — botão football-data */
+#syncFootballDataBtn{
+  background:linear-gradient(135deg,rgba(16,185,129,.95),rgba(34,197,94,.82))!important;
+  border-color:rgba(52,211,153,.45)!important;
+}
+#syncFootballDataBtn:disabled{
+  opacity:.65!important;
+  cursor:wait!important;
+}

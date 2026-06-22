@@ -1,7 +1,10 @@
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
+const { getAuth } = require("firebase-admin/auth");
 const { setGlobalOptions } = require("firebase-functions/v2");
+const { onRequest } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
 const { onDocumentCreated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const logger = require("firebase-functions/logger");
 
@@ -10,7 +13,9 @@ setGlobalOptions({ region: "europe-west1", maxInstances: 10 });
 
 const db = getFirestore();
 const messaging = getMessaging();
+const auth = getAuth();
 const ADMIN_EMAILS = new Set(["pica.fern@gmail.com"]);
+const FOOTBALL_DATA_TOKEN = defineSecret("FOOTBALL_DATA_TOKEN");
 
 function cleanString(value, fallback = "") {
   return String(value || fallback).trim();
@@ -234,4 +239,353 @@ exports.notifyTestNotification = onDocumentCreated("notificationTests/{testId}",
     checkedAt: FieldValue.serverTimestamp()
   }, { merge: true });
   logger.info("Notificacao de teste enviada", { testId: event.params.testId, sent });
+});
+
+
+
+const FOOTBALL_TEAM_ALIASES = {
+  "mexico": "mexico",
+  "south africa": "africa do sul",
+  "korea republic": "coreia do sul",
+  "south korea": "coreia do sul",
+  "czechia": "chequia",
+  "czech republic": "chequia",
+  "canada": "canada",
+  "bosnia and herzegovina": "bosnia",
+  "bosnia-herzegovina": "bosnia",
+  "bosnia": "bosnia",
+  "qatar": "qatar",
+  "switzerland": "suica",
+  "brazil": "brasil",
+  "morocco": "marrocos",
+  "haiti": "haiti",
+  "scotland": "escocia",
+  "australia": "australia",
+  "turkiye": "turquia",
+  "turkey": "turquia",
+  "germany": "alemanha",
+  "curacao": "curacao",
+  "curaçao": "curacao",
+  "netherlands": "paises baixos",
+  "japan": "japao",
+  "cote divoire": "costa do marfim",
+  "cote d ivoire": "costa do marfim",
+  "côte divoire": "costa do marfim",
+  "ivory coast": "costa do marfim",
+  "ecuador": "equador",
+  "sweden": "suecia",
+  "tunisia": "tunisia",
+  "spain": "espanha",
+  "cape verde": "cabo verde",
+  "belgium": "belgica",
+  "egypt": "egito",
+  "saudi arabia": "arabia saudita",
+  "uruguay": "uruguai",
+  "iran": "irao",
+  "new zealand": "nova zelandia",
+  "france": "franca",
+  "senegal": "senegal",
+  "iraq": "iraque",
+  "norway": "noruega",
+  "argentina": "argentina",
+  "algeria": "argelia",
+  "austria": "austria",
+  "jordan": "jordania",
+  "dr congo": "rd congo",
+  "democratic republic of congo": "rd congo",
+  "congo dr": "rd congo",
+  "england": "inglaterra",
+  "croatia": "croacia",
+  "ghana": "gana",
+  "panama": "panama",
+  "uzbekistan": "uzbequistao",
+  "colombia": "colombia",
+  "united states": "estados unidos",
+  "usa": "estados unidos",
+  "paraguay": "paraguai"
+};
+
+function footballNormalize(value) {
+  return cleanString(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’']/g, " ")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function footballTeamKey(value) {
+  const base = footballNormalize(value);
+  return FOOTBALL_TEAM_ALIASES[base] || base;
+}
+
+function footballApiTeamName(team) {
+  return cleanString(team?.name || team?.shortName || team?.tla || "");
+}
+
+function footballApiScore(match) {
+  const full = match?.score?.fullTime || {};
+  const regular = match?.score?.regularTime || {};
+  const penalties = match?.score?.penalties || {};
+
+  const home = full.home ?? regular.home;
+  const away = full.away ?? regular.away;
+
+  if (home === null || home === undefined || away === null || away === undefined) return null;
+
+  return {
+    homeScore: Number(home),
+    awayScore: Number(away),
+    homePenalties: penalties.home === null || penalties.home === undefined ? null : Number(penalties.home),
+    awayPenalties: penalties.away === null || penalties.away === undefined ? null : Number(penalties.away)
+  };
+}
+
+function footballMatchDateMillis(value) {
+  const millis = new Date(value || "").getTime();
+  return Number.isFinite(millis) ? millis : 0;
+}
+
+function footballSamePair(apiMatch, localMatch) {
+  const apiHome = footballTeamKey(footballApiTeamName(apiMatch.homeTeam));
+  const apiAway = footballTeamKey(footballApiTeamName(apiMatch.awayTeam));
+  const localHome = footballTeamKey(localMatch.homeTeam);
+  const localAway = footballTeamKey(localMatch.awayTeam);
+  return apiHome && apiAway && apiHome === localHome && apiAway === localAway;
+}
+
+function footballFindLocalMatch(apiMatch, localMatches) {
+  const apiId = String(apiMatch.id || "");
+  if (apiId) {
+    const byExternal = localMatches.find(match => String(match.footballDataId || match.externalId || "") === apiId);
+    if (byExternal) return byExternal;
+  }
+
+  const sameTeams = localMatches.filter(match => footballSamePair(apiMatch, match));
+  if (!sameTeams.length) return null;
+  if (sameTeams.length === 1) return sameTeams[0];
+
+  const apiDate = footballMatchDateMillis(apiMatch.utcDate);
+  if (!apiDate) return sameTeams[0];
+
+  return sameTeams
+    .map(match => ({ match, diff: Math.abs(footballMatchDateMillis(match.matchDate || match.utcDate || match.date) - apiDate) }))
+    .sort((a, b) => a.diff - b.diff)[0]?.match || sameTeams[0];
+}
+
+async function assertFootballDataAdmin(req) {
+  const header = req.headers.authorization || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+  if (!token) {
+    const err = new Error("Login Firebase em falta.");
+    err.status = 401;
+    throw err;
+  }
+
+  const decoded = await auth.verifyIdToken(token);
+  const email = normalizeEmail(decoded.email || "");
+  if (!email) {
+    const err = new Error("Email Firebase em falta.");
+    err.status = 403;
+    throw err;
+  }
+
+  if (ADMIN_EMAILS.has(email)) return { uid: decoded.uid, email };
+
+  const profileSnap = await db.collection("users").doc(email).get();
+  const profile = profileSnap.data() || {};
+  const canEdit = profile.active !== false && (profile.role === "admin" || profile.permissions?.editResults === true);
+  if (!canEdit) {
+    const err = new Error("Sem permissão para atualizar resultados.");
+    err.status = 403;
+    throw err;
+  }
+
+  return { uid: decoded.uid, email };
+}
+
+exports.syncFootballDataWorldCup = onRequest({
+  region: "europe-west1",
+  timeoutSeconds: 90,
+  memory: "256MiB",
+  secrets: [FOOTBALL_DATA_TOKEN]
+}, async (req, res) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+
+  if (req.method !== "POST") {
+    res.status(405).json({ ok: false, error: "Usa POST." });
+    return;
+  }
+
+  try {
+    const actor = await assertFootballDataAdmin(req);
+
+    const token = cleanString(FOOTBALL_DATA_TOKEN.value() || process.env.FOOTBALL_DATA_TOKEN || process.env.FOOTBALL_DATA_API_KEY);
+    if (!token) {
+      res.status(500).json({
+        ok: false,
+        error: "FOOTBALL_DATA_TOKEN não está configurado nas Firebase Functions."
+      });
+      return;
+    }
+
+    const competition = cleanString(req.body?.competition || "WC");
+    const season = cleanString(req.body?.season || "2026");
+
+    const url = new URL(`https://api.football-data.org/v4/competitions/${encodeURIComponent(competition)}/matches`);
+    if (season) url.searchParams.set("season", season);
+
+    const apiResponse = await fetch(url, {
+      headers: {
+        "X-Auth-Token": token,
+        "Accept": "application/json"
+      }
+    });
+
+    const apiText = await apiResponse.text();
+    let apiData = {};
+    try { apiData = JSON.parse(apiText); } catch {}
+
+    if (!apiResponse.ok) {
+      logger.error("football-data respondeu com erro", { status: apiResponse.status, body: apiText.slice(0, 500) });
+      res.status(apiResponse.status).json({
+        ok: false,
+        error: apiData.message || apiData.error || `football-data HTTP ${apiResponse.status}`
+      });
+      return;
+    }
+
+    const matches = Array.isArray(apiData.matches) ? apiData.matches : [];
+    const finished = matches.filter(match => ["FINISHED", "AWARDED"].includes(String(match.status || "").toUpperCase()) && footballApiScore(match));
+
+    const gamesSnap = await db.collection("games").get();
+    const localGames = gamesSnap.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
+
+    const settingsRef = db.collection("settings").doc("main");
+    const settingsSnap = await settingsRef.get();
+    const settings = settingsSnap.data() || {};
+    const knockoutMatches = Array.isArray(settings.knockout?.matches) ? settings.knockout.matches : [];
+
+    const batch = db.batch();
+    const updatedGames = [];
+    const updatedKnockoutMatches = [];
+    let writes = 0;
+
+    finished.forEach(apiMatch => {
+      const score = footballApiScore(apiMatch);
+      if (!score) return;
+
+      const isGroupStage = String(apiMatch.stage || "").toUpperCase() === "GROUP_STAGE";
+      const groupTarget = footballFindLocalMatch(apiMatch, localGames);
+      const knockoutTarget = !isGroupStage ? footballFindLocalMatch(apiMatch, knockoutMatches) : null;
+
+      if (groupTarget) {
+        const payload = {
+          footballDataId: String(apiMatch.id || ""),
+          footballDataStatus: cleanString(apiMatch.status),
+          footballDataStage: cleanString(apiMatch.stage),
+          footballDataUpdatedBy: actor.email,
+          source: "football-data.org",
+          homeScore: score.homeScore,
+          awayScore: score.awayScore,
+          updatedAt: new Date().toISOString(),
+          firebaseUpdatedAt: FieldValue.serverTimestamp()
+        };
+
+        batch.set(db.collection("games").doc(groupTarget.id), payload, { merge: true });
+        writes += 1;
+        updatedGames.push({
+          id: groupTarget.id,
+          homeTeam: groupTarget.homeTeam,
+          awayTeam: groupTarget.awayTeam,
+          ...payload,
+          firebaseUpdatedAt: null
+        });
+      }
+
+      if (knockoutTarget) {
+        knockoutTarget.footballDataId = String(apiMatch.id || "");
+        knockoutTarget.footballDataStatus = cleanString(apiMatch.status);
+        knockoutTarget.footballDataStage = cleanString(apiMatch.stage);
+        knockoutTarget.source = "football-data.org";
+        knockoutTarget.homeScore = score.homeScore;
+        knockoutTarget.awayScore = score.awayScore;
+        knockoutTarget.homePenalties = score.homePenalties;
+        knockoutTarget.awayPenalties = score.awayPenalties;
+        knockoutTarget.updatedAt = new Date().toISOString();
+
+        updatedKnockoutMatches.push({
+          id: knockoutTarget.id,
+          homeTeam: knockoutTarget.homeTeam,
+          awayTeam: knockoutTarget.awayTeam,
+          footballDataId: knockoutTarget.footballDataId,
+          footballDataStatus: knockoutTarget.footballDataStatus,
+          footballDataStage: knockoutTarget.footballDataStage,
+          source: knockoutTarget.source,
+          homeScore: knockoutTarget.homeScore,
+          awayScore: knockoutTarget.awayScore,
+          homePenalties: knockoutTarget.homePenalties,
+          awayPenalties: knockoutTarget.awayPenalties,
+          updatedAt: knockoutTarget.updatedAt
+        });
+      }
+    });
+
+    if (updatedKnockoutMatches.length) {
+      const nextSettings = {
+        ...settings,
+        knockout: {
+          ...(settings.knockout || {}),
+          matches: knockoutMatches
+        },
+        footballDataLastSyncAt: FieldValue.serverTimestamp(),
+        footballDataLastSyncBy: actor.email
+      };
+      batch.set(settingsRef, nextSettings, { merge: true });
+      writes += 1;
+    }
+
+    if (writes > 0) {
+      await batch.commit();
+    }
+
+    await db.collection("systemLogs").add({
+      action: "Football-data sync",
+      detail: `Atualizados ${updatedGames.length} jogo(s) e ${updatedKnockoutMatches.length} jogo(s) da fase final.`,
+      createdAt: FieldValue.serverTimestamp(),
+      createdBy: actor.email,
+      meta: {
+        competition,
+        season,
+        apiMatches: matches.length,
+        finished: finished.length,
+        updatedGames: updatedGames.length,
+        updatedKnockoutMatches: updatedKnockoutMatches.length
+      }
+    });
+
+    res.json({
+      ok: true,
+      competition,
+      season,
+      apiMatches: matches.length,
+      finished: finished.length,
+      updatedGames,
+      updatedKnockoutMatches
+    });
+  } catch (error) {
+    logger.error("syncFootballDataWorldCup falhou", error);
+    res.status(error.status || 500).json({
+      ok: false,
+      error: error.message || "Erro ao atualizar football-data."
+    });
+  }
 });

@@ -1,3 +1,4 @@
+// v139 football-data resultados automaticos via Firebase Function
 ﻿const APP_CONFIG = window.MUNDIAL_CONFIG || {};
 const ADMIN_PIN = APP_CONFIG.adminPin || "1234";
 const STORAGE_KEY = "mundial_pontos_2026_import_id_jogo_v32";
@@ -1833,6 +1834,7 @@ function applyPermissionsToUi() {
 
   $("openExcelModalBtn")?.classList.toggle("hidden", !hasPermission("importExcel"));
   $("exportResultadosBtn")?.classList.toggle("hidden", !hasPermission("importExcel"));
+  $("syncFootballDataBtn")?.classList.toggle("hidden", !hasPermission("editResults"));
   $("addUserBtn")?.classList.toggle("hidden", !hasPermission("editUsers"));
   $("savePointsSettingsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
   $("saveExtraResultsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
@@ -6318,6 +6320,7 @@ $("copyScoreBtn")?.addEventListener("click", () => copyText(scoreText(), "Classi
 $("addUserBtn")?.addEventListener("click", addUser);
 $("newUserNameInput")?.addEventListener("keydown", event => { if (event.key === "Enter") addUser(); });
 $("exportResultadosBtn")?.addEventListener("click", exportResultadosExcel);
+$("syncFootballDataBtn")?.addEventListener("click", syncFootballDataResultsV139);
 $("openExcelModalBtn")?.addEventListener("click", () => { setImportStatus("idle", "Aguardando ficheiro Excel", "Escolhe o Excel Resultados para importar."); $("excelModal").classList.remove("hidden"); });
 $("closeExcelModalBtn")?.addEventListener("click", () => $("excelModal").classList.add("hidden"));
 $("excelModal")?.addEventListener("click", event => { if (event.target.id === "excelModal") $("excelModal").classList.add("hidden"); });
@@ -7944,3 +7947,170 @@ document.addEventListener("click", event => {
 
 window.addEventListener("resize", () => setTimeout(syncKnockoutMobilePageV137, 120));
 window.addEventListener("orientationchange", () => setTimeout(syncKnockoutMobilePageV137, 260));
+
+
+// v139 — resultados automáticos via football-data.org + Firebase Function.
+function footballDataFunctionUrlV139() {
+  const projectId = APP_CONFIG?.firebase?.projectId || "";
+  return projectId ? `https://europe-west1-${projectId}.cloudfunctions.net/syncFootballDataWorldCup` : "";
+}
+
+function mergeFootballDataGameUpdatesV139(updatedGames = []) {
+  if (!Array.isArray(updatedGames) || !updatedGames.length) return 0;
+
+  let changed = 0;
+  updatedGames.forEach(update => {
+    const game = games.find(item => item.id === update.id);
+    if (!game) return;
+
+    const home = update.homeScore === "" || update.homeScore === undefined ? null : update.homeScore;
+    const away = update.awayScore === "" || update.awayScore === undefined ? null : update.awayScore;
+
+    if (String(game.homeScore ?? "") !== String(home ?? "") || String(game.awayScore ?? "") !== String(away ?? "")) {
+      changed += 1;
+    }
+
+    Object.assign(game, {
+      footballDataId: update.footballDataId || game.footballDataId || "",
+      footballDataStatus: update.status || game.footballDataStatus || "",
+      footballDataStage: update.stage || game.footballDataStage || "",
+      homeScore: home,
+      awayScore: away,
+      updatedAt: update.updatedAt || new Date().toISOString()
+    });
+
+    if (typeof clearPendingGame === "function") clearPendingGame(game.id);
+  });
+
+  return changed;
+}
+
+function mergeFootballDataKnockoutV139(knockoutMatches = []) {
+  if (!Array.isArray(knockoutMatches) || !knockoutMatches.length) return 0;
+  if (!appSettings.knockout) appSettings.knockout = {};
+
+  const current = Array.isArray(appSettings.knockout.matches) ? appSettings.knockout.matches : [];
+  const byId = new Map(current.map(match => [match.id, match]));
+  let changed = 0;
+
+  knockoutMatches.forEach(update => {
+    if (!update?.id) return;
+    const existing = byId.get(update.id);
+    if (!existing) return;
+
+    const before = JSON.stringify({
+      homeScore: existing.homeScore ?? null,
+      awayScore: existing.awayScore ?? null,
+      homePenalties: existing.homePenalties ?? null,
+      awayPenalties: existing.awayPenalties ?? null
+    });
+
+    Object.assign(existing, {
+      footballDataId: update.footballDataId || existing.footballDataId || "",
+      footballDataStatus: update.status || existing.footballDataStatus || "",
+      footballDataStage: update.stage || existing.footballDataStage || "",
+      homeScore: update.homeScore ?? existing.homeScore ?? null,
+      awayScore: update.awayScore ?? existing.awayScore ?? null,
+      homePenalties: update.homePenalties ?? existing.homePenalties ?? null,
+      awayPenalties: update.awayPenalties ?? existing.awayPenalties ?? null,
+      updatedAt: update.updatedAt || new Date().toISOString()
+    });
+
+    const after = JSON.stringify({
+      homeScore: existing.homeScore ?? null,
+      awayScore: existing.awayScore ?? null,
+      homePenalties: existing.homePenalties ?? null,
+      awayPenalties: existing.awayPenalties ?? null
+    });
+
+    if (before !== after) changed += 1;
+  });
+
+  try {
+    if (changed && typeof propagateKnockoutWinners === "function") propagateKnockoutWinners(false);
+  } catch (error) {
+    console.warn("Não consegui propagar vencedores depois do football-data.", error);
+  }
+
+  return changed;
+}
+
+async function syncFootballDataResultsV139() {
+  if (!hasPermission("editResults")) {
+    toast("Sem permissão para atualizar resultados.");
+    return;
+  }
+
+  if (!currentUser || !firebaseAuth) {
+    toast("Tens de estar com login feito para atualizar resultados.");
+    return;
+  }
+
+  const url = footballDataFunctionUrlV139();
+  if (!url) {
+    toast("Projeto Firebase em falta no config.js.");
+    return;
+  }
+
+  const btn = $("syncFootballDataBtn");
+  const oldText = btn?.textContent || "";
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A atualizar...";
+  }
+
+  try {
+    setFirebaseStatus("loading", "Football-data: a procurar resultados...");
+    const token = await currentUser.getIdToken(true);
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        competition: "WC",
+        season: "2026"
+      })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    const changedGames = mergeFootballDataGameUpdatesV139(data.updatedGames || []);
+    const changedKo = mergeFootballDataKnockoutV139(data.updatedKnockoutMatches || []);
+
+    saveLocalData("football-data resultados atualizados");
+    if (typeof renderAll === "function") renderAll();
+
+    const total = Number(data.updatedGames?.length || 0) + Number(data.updatedKnockoutMatches?.length || 0);
+    const changed = changedGames + changedKo;
+    const msg = total
+      ? `Football-data: ${total} resultado(s) encontrado(s), ${changed} alterado(s).`
+      : "Football-data: nenhum resultado novo encontrado.";
+
+    setFirebaseStatus("success", msg);
+    toast(msg);
+  } catch (error) {
+    console.error("Football-data falhou:", error);
+    setFirebaseStatus("error", `Football-data: ${error.message || "erro"}`);
+    toast(`Football-data falhou: ${error.message || "erro"}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = oldText || "Atualizar resultados automáticos";
+    }
+  }
+}
+
+function setupFootballDataButtonV139() {
+  const btn = $("syncFootballDataBtn");
+  if (!btn || btn.dataset.footballDataReady === "1") return;
+  btn.dataset.footballDataReady = "1";
+  btn.addEventListener("click", syncFootballDataResultsV139);
+}
+document.addEventListener("DOMContentLoaded", () => setTimeout(setupFootballDataButtonV139, 300));
+document.addEventListener("click", () => setTimeout(setupFootballDataButtonV139, 100));
