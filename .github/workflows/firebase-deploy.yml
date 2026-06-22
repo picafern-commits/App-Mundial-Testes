@@ -44,6 +44,6 @@ jobs:
         run: node --check functions/index.js
 
       - name: Deploy Firebase
-        run: firebase deploy --only hosting,functions,firestore:rules --project "${{ vars.FIREBASE_PROJECT_ID }}" --non-interactive
+        run: firebase deploy --only functions --project "${{ vars.FIREBASE_PROJECT_ID }}" --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
