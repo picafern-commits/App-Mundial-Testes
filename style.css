@@ -13,7 +13,6 @@
   --shadow: 0 18px 50px rgba(0, 0, 0, .26);
 }
 
-/* v54 Fase Final como cartaz da referencia */
 #knockoutBracket.knockout-bracket{
   display:block!important;
   overflow:auto!important;
@@ -894,8 +893,6 @@ h2 {
   }
 }
 
-
-/* v16 Excel import + multiuser leaderboard */
 .admin-stack { display: grid; gap: 12px; }
 .admin-card { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: var(--shadow); padding: 14px; }
 .points-settings-grid, .modal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
@@ -924,8 +921,6 @@ h2 {
 .match-row { grid-template-columns: 78px minmax(130px, 1fr) 58px minmax(130px, 1fr) 70px 86px minmax(120px, 1fr) 106px; }
 @media (max-width: 820px) { .leaderboard-table { overflow-x: auto; } .leaderboard-row { min-width: 760px; } .modal-card { padding: 14px; } .modal-actions { display: grid; } }
 
-
-/* v17 users + calendario sem pesquisa */
 .toolbar{display:none!important}
 .user-add-row{
   display:grid;
@@ -973,19 +968,12 @@ h2 {
   .user-pill-row{align-items:flex-start;flex-direction:column}
 }
 
-
-/* v18 sem vencedor/empate certo */
 .points-settings-grid{
   grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
 }
 
-
-
-/* v20 resultados manuais */
 .manual-flow-note{ color:var(--muted); }
 
-
-/* v21 modal de resultados por jogo */
 .modal-result-actions{
   justify-content:flex-end;
 }
@@ -1093,8 +1081,6 @@ h2 {
   }
 }
 
-
-/* v22 botões de resultado no calendário */
 .match-row{
   grid-template-columns:78px minmax(130px,1fr) 58px minmax(130px,1fr) 70px 86px minmax(130px,1fr) 190px!important;
 }
@@ -1119,8 +1105,6 @@ h2 {
   }
 }
 
-
-/* v23 sem bandeiras + total vindo do Excel */
 .team span,
 .result-team span{
   display:none!important;
@@ -1143,8 +1127,6 @@ h2 {
   }
 }
 
-
-/* v24 import robusto */
 .excel-preview details summary{
   cursor:pointer;
   color:var(--gold);
@@ -1154,8 +1136,6 @@ h2 {
   margin:4px 0;
 }
 
-
-/* v25 admin colapsável + filtro calendário */
 .admin-accordion{
   gap:10px;
 }
@@ -1216,8 +1196,6 @@ h2 {
   white-space:nowrap;
 }
 
-
-/* v26 sem Grupos + Pontuação simples */
 .simple-score-table .leaderboard-row,
 .leaderboard-row{
   grid-template-columns:44px minmax(180px,1fr) 100px!important;
@@ -1236,8 +1214,6 @@ h2 {
   }
 }
 
-
-/* v27 filtros calendário + pontos corrigidos */
 #searchInput::placeholder{
   color:transparent!important;
 }
@@ -1251,8 +1227,6 @@ h2 {
   white-space:nowrap;
 }
 
-
-/* v28 admin limpo */
 #copyTodayBtn{display:none!important}
 .admin-accordion > .section-head{
   display:none!important;
@@ -1264,8 +1238,6 @@ h2 {
   margin:0 14px 14px;
 }
 
-
-/* v29 export/import resultados */
 .collapse-actions{
   display:flex;
   flex-wrap:wrap;
@@ -1275,8 +1247,6 @@ h2 {
   border-color:rgba(255,216,87,.35);
 }
 
-
-/* v30 editar apostas por utilizador */
 .user-editor-toolbar{
   display:flex;
   gap:12px;
@@ -1381,28 +1351,20 @@ h2 {
   }
 }
 
-
-/* v31 corrigido: Resultados dos jogos dentro da própria aba */
 .admin-collapse #adminGamesList{
   display:grid!important;
   margin:0 14px 14px;
 }
 
-
-/* v32 import por ID do jogo */
 .excel-preview strong{
   color:var(--gold);
 }
 
-
-/* v33 persistência apostas */
 .save-hint{
   color:var(--gold);
   font-weight:900;
 }
 
-
-/* v34 estado da importação */
 .import-status-box{
   margin:0 0 12px;
   padding:12px 14px;
@@ -1445,8 +1407,6 @@ h2 {
   color:#ff9a9a;
 }
 
-
-/* v35 refresh/apostas corrigido */
 .import-status-box.success strong::before{
   content:"✓ ";
 }
@@ -1454,8 +1414,6 @@ h2 {
   content:"⚠ ";
 }
 
-
-/* v36 Firebase total */
 .firebase-status-box{
   padding:12px 14px;
   border-radius:12px;
@@ -1483,26 +1441,18 @@ button:disabled{
   cursor:not-allowed;
 }
 
-
-/* v37 guardar rápido */
 .firebase-status-box.error{
   white-space:normal;
 }
 
-
-/* v38 refresh seguro */
 .firebase-status-box.success::after{
   content:"";
 }
 
-
-/* v39 Firebase load robusto */
 .firebase-status-box{
   overflow-wrap:anywhere;
 }
 
-
-/* v40 Firebase estável */
 .firebase-status-box{
   padding:12px 14px;
   border-radius:12px;
@@ -1527,8 +1477,6 @@ button:disabled{
   background:rgba(255,98,98,.08);
 }
 
-
-/* v41 Firebase save confirmado */
 .firebase-status-box.error{
   font-weight:950;
 }
@@ -1537,16 +1485,12 @@ button:disabled{
   cursor:not-allowed;
 }
 
-
-/* v42 regras pontuação certas */
 .total-highlight{
   color:var(--gold)!important;
   font-size:20px;
   font-weight:950;
 }
 
-
-/* v43 Pontuação detalhada por jogador */
 .score-detail-list{
   display:grid;
   gap:12px;
@@ -1696,8 +1640,6 @@ button:disabled{
   }
 }
 
-
-/* v44 Fase Final bloqueada + eliminatórias */
 .knockout-entry-card{
   display:flex;
   align-items:center;
@@ -1890,8 +1832,6 @@ button:disabled{
   }
 }
 
-
-/* v47 Fase Final estilo foto/bracket */
 #knockoutTab{
   overflow:hidden;
 }
@@ -2119,8 +2059,6 @@ button:disabled{
   }
 }
 
-
-/* v48 — app ocupa o ecrã todo e adapta ao tamanho */
 html{
   width:100%;
   min-height:100%;
@@ -2192,7 +2130,6 @@ main{
   width:min(820px, calc(100vw - 28px))!important;
 }
 
-/* Calendário aproveita melhor monitores grandes */
 @media(min-width:1280px){
   .match-row{
     grid-template-columns:86px minmax(180px,1fr) 64px minmax(180px,1fr) 82px 96px minmax(180px,1fr) 210px!important;
@@ -2208,7 +2145,6 @@ main{
   }
 }
 
-/* Admin em ecrãs grandes fica mais confortável */
 @media(min-width:1180px){
   .admin-row{
     grid-template-columns:minmax(360px,1fr) auto;
@@ -2218,7 +2154,6 @@ main{
   }
 }
 
-/* Bracket usa o ecrã inteiro e reduz o scroll quando há espaço */
 #knockoutBracket.knockout-bracket{
   width:100%;
 }
@@ -2246,7 +2181,6 @@ main{
   }
 }
 
-/* Em tablets/telemóveis, mantém ecrã inteiro mas com scroll horizontal só onde precisa */
 @media(max-width:980px){
   .app-shell{
     padding-inline:max(10px, env(safe-area-inset-left), env(safe-area-inset-right))!important;
@@ -2272,7 +2206,6 @@ main{
   }
 }
 
-/* Em PC baixo, reduz um pouco espaços para caber melhor */
 @media(max-height:760px) and (min-width:900px){
   .app-shell{
     padding-top:10px!important;
@@ -2301,7 +2234,6 @@ main{
   }
 }
 
-/* Remove limites antigos que comprimiam tabelas */
 @media(max-width:820px){
   .simple-score-table .leaderboard-row,
   .leaderboard-row{
@@ -2312,8 +2244,6 @@ main{
   }
 }
 
-
-/* v49 PWA Edge */
 .install-btn{
   border-color:rgba(255,216,87,.4)!important;
   background:rgba(255,216,87,.12)!important;
@@ -2324,8 +2254,6 @@ main{
   }
 }
 
-
-/* v50 — Fase Final: primeira ronda manual, restantes automáticas */
 .ko-admin-note strong{
   color:var(--gold);
 }
@@ -2350,8 +2278,6 @@ main{
   opacity:.55;
 }
 
-
-/* v51 — Penáltis na Fase Final */
 .ko-admin-row-penalties{
   grid-template-columns:110px minmax(140px,1fr) auto minmax(140px,1fr) minmax(150px,180px) minmax(150px,180px) auto!important;
 }
@@ -2405,8 +2331,6 @@ main{
   }
 }
 
-
-/* v52 — Fase Final: cards alinhados em frente a cada 2 jogos */
 #knockoutBracket.knockout-bracket{
   overflow-x:auto;
   overflow-y:auto;
@@ -2434,7 +2358,6 @@ main{
   min-height:1320px!important;
 }
 
-/* Medida base: card compacto para conseguir alinhar o bracket todo */
 .bracket-photo-grid .knockout-match{
   min-height:72px!important;
   height:72px!important;
@@ -2470,14 +2393,6 @@ main{
   font-size:10px!important;
 }
 
-/*
-  Alinhamento real:
-  - 16 avos: todos seguidos
-  - Oitavos: 1 card centrado entre cada 2 dos 16 avos
-  - Quartos: 1 card centrado entre cada 2 dos oitavos
-  - Meias: 1 card centrado entre cada 2 quartos
-  - Final: centrada entre as 2 meias
-*/
 .round-r32 .bracket-photo-matches{
   padding-top:0!important;
   gap:8px!important;
@@ -2499,7 +2414,6 @@ main{
   gap:0!important;
 }
 
-/* Linhas de ligação redesenhadas para os novos alinhamentos */
 .bracket-photo-round:not(.round-final) .knockout-match::after{
   content:""!important;
   position:absolute!important;
@@ -2517,7 +2431,6 @@ main{
   border-right:2px solid rgba(255,212,90,.30)!important;
 }
 
-/* altura vertical entre cada par, ajustada para os gaps da ronda */
 .round-r32 .knockout-match:nth-child(odd)::before{ top:50%!important; height:80px!important; }
 .round-r32 .knockout-match:nth-child(even)::before{ bottom:50%!important; height:80px!important; }
 
@@ -2536,7 +2449,6 @@ main{
   min-height:132px!important;
 }
 
-/* Em ecrãs grandes mantém proporcional sem esmagar o alinhamento */
 @media(min-width:1600px){
   .bracket-photo-shell{
     min-width:1520px!important;
@@ -2554,8 +2466,6 @@ main{
   }
 }
 
-
-/* v53 — Login + permissões */
 .auth-hidden{
   display:none!important;
 }
@@ -2750,8 +2660,6 @@ main{
   }
 }
 
-
-/* v54 — iPhone: modo app verdadeira ao adicionar ao Ecrã Principal */
 html,
 body{
   width:100%;
@@ -2770,7 +2678,7 @@ input,
 select,
 textarea,
 button{
-  font-size:16px!important; /* evita zoom automático do iPhone ao focar inputs */
+  font-size:16px!important; 
 }
 .ios-device body,
 .ios-device .app-shell,
@@ -2818,8 +2726,6 @@ button{
   }
 }
 
-
-/* v55 — Modal bonito para Ver Apostas */
 .bets-modal-card{
   width:min(980px, calc(100vw - 28px))!important;
 }
@@ -2982,8 +2888,6 @@ button{
   }
 }
 
-
-/* v56 — Memorizar conta no login */
 .remember-account-row{
   display:flex!important;
   align-items:center;
@@ -3000,8 +2904,6 @@ button{
   accent-color:#ffd45a;
 }
 
-
-/* v57 — Correção visual do modal Ver Apostas */
 #betsModal{
   padding:16px!important;
   align-items:center!important;
@@ -3131,7 +3033,6 @@ button{
   white-space:nowrap!important;
 }
 
-/* Tablet / janelas médias */
 @media(max-width:900px){
   #betsModal .bets-game-summary{
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
@@ -3146,7 +3047,6 @@ button{
   }
 }
 
-/* iPhone/mobile: cada aposta vira card vertical, nada sai fora */
 @media(max-width:650px){
   #betsModal{
     padding:max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom))!important;
@@ -3233,7 +3133,6 @@ button{
   }
 }
 
-/* v54 override final: manter bracket espelhado no fim da cascata */
 #knockoutBracket .bracket-photo-grid-split{
   display:grid!important;
   grid-template-columns:190px 190px 190px 190px 240px 190px 190px 190px 190px!important;
@@ -3382,7 +3281,6 @@ button{
   content:none!important;
 }
 
-/* v55 Fase Final: caber no ecra, sem sair para a direita */
 #knockoutTab{
   overflow:hidden!important;
 }
@@ -3576,7 +3474,6 @@ button{
   }
 }
 
-/* v56 Fase Final: tudo dentro do ecra e texto dentro dos cartoes */
 html,
 body,
 .app-shell,
@@ -3639,7 +3536,6 @@ main,
   }
 }
 
-/* v57 Fase Final: cards iguais a referencia enviada */
 #knockoutBracket.knockout-bracket{
   overflow-x:hidden!important;
   overflow-y:visible!important;
@@ -3823,7 +3719,6 @@ main,
   }
 }
 
-/* v58: scroll normal na app; Fase Final cabe no primeiro ecra */
 html,
 body{
   height:auto!important;
@@ -4034,7 +3929,6 @@ main,
   margin-top:12px!important;
 }
 
-/* v59: scroll corrigido e cabecalhos da Fase Final uniformes */
 body:not(.knockout-layout-active){
   height:auto!important;
   min-height:100dvh!important;
@@ -4102,7 +3996,6 @@ body.knockout-layout-active #knockoutBracket.knockout-bracket{
   min-height:12px!important;
 }
 
-/* v60: cards centrados nas barras e scroll utilizavel no conteudo */
 body:not(.knockout-layout-active),
 body:not(.knockout-layout-active) .app-shell,
 body:not(.knockout-layout-active) main,
@@ -4165,7 +4058,6 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
   left:calc(-3% - 8px)!important;
 }
 
-/* v61: editor admin para posicao dos cards da Fase Final */
 #knockoutBracket .bracket-photo-round .bracket-photo-matches{
   transform:translateY(var(--ko-column-offset, 0px))!important;
 }
@@ -4265,7 +4157,6 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
   }
 }
 
-/* v62: editor de posicao dentro da pagina Fase Final, so Admin */
 #knockoutBracket .bracket-photo-shell{
   position:relative!important;
 }
@@ -4345,8 +4236,6 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
   font-size:11px;
 }
 
-
-/* v58 — Estabilização dos ajustes da Fase Final */
 #knockoutBracket [data-ko-layout]{
   --ko-column-offset: var(--ko-column-offset, 0px);
   --ko-match-offset: var(--ko-match-offset, 0px);
@@ -4372,8 +4261,6 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
   accent-color:#ffd45a;
 }
 
-
-/* v59 — Admin Fase Final: 16 avos manuais, restantes automáticos */
 .ko-admin-row.auto-round{
   opacity:.92;
 }
@@ -4395,8 +4282,6 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
   opacity:.58;
 }
 
-
-/* v63 — Utilizadores online */
 .online-users-panel{
   margin:0 0 14px;
   border:1px solid var(--line);
@@ -4534,8 +4419,6 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
   }
 }
 
-
-/* v64 — Nomes visíveis dos users + jogos a decorrer */
 .match-row.live{
   border-color:rgba(255,212,90,.34);
   background:linear-gradient(135deg,rgba(255,212,90,.10),rgba(255,255,255,.03));
@@ -4595,8 +4478,6 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
   }
 }
 
-
-/* v65 — Users Online no lugar do botão Copiar pontuação */
 .topbar .topbar-online-users{
   position:relative!important;
   margin:0!important;
@@ -4704,8 +4585,6 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
   }
 }
 
-
-/* v66 — Botão Ajustar cards na barra da Fase Final */
 .knockout-top-actions{
   display:flex;
   justify-content:flex-end;
@@ -4738,8 +4617,6 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
   display:block!important;
 }
 
-
-/* v67 — Corrigir dropdown Users Online no telemóvel */
 @media(max-width:760px){
   .topbar .topbar-online-users{
     position:static!important;
@@ -4794,8 +4671,6 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
   }
 }
 
-
-/* v68 — Fechar janela Users Online */
 .online-users-popup-head{
   display:flex;
   align-items:center;
@@ -4852,8 +4727,6 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
   }
 }
 
-
-/* v69 — X dos Users Online sempre visível no iPhone */
 .topbar .topbar-online-users .online-users-list{
   padding:10px!important;
 }
@@ -4926,8 +4799,6 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
   }
 }
 
-
-/* v70 — garantir que o X recebe clique no iPhone */
 .topbar .topbar-online-users .online-users-close{
   pointer-events:auto!important;
   touch-action:manipulation!important;
@@ -4942,8 +4813,6 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
   z-index:99998!important;
 }
 
-
-/* v71 — Android scroll fix */
 html,
 body{
   overflow-x:hidden;
@@ -4954,7 +4823,6 @@ body{
   touch-action:pan-y;
 }
 
-/* A app pode rolar normalmente em Android */
 .app,
 .app-shell,
 main,
@@ -4965,7 +4833,6 @@ main,
   touch-action:pan-y!important;
 }
 
-/* A janela dos users tem o seu próprio scroll e não bloqueia a página */
 .topbar .topbar-online-users .online-users-list{
   overflow-y:auto!important;
   overflow-x:hidden!important;
@@ -4974,14 +4841,12 @@ main,
   touch-action:pan-y!important;
 }
 
-/* Linhas/tabela dentro dos users também deixam arrastar verticalmente */
 .topbar .topbar-online-users .online-users-table,
 .topbar .topbar-online-users .online-users-row,
 .topbar .topbar-online-users .online-users-popup-head{
   touch-action:pan-y!important;
 }
 
-/* Só o X usa toque de botão; o resto pode fazer scroll */
 .topbar .topbar-online-users .online-users-close{
   touch-action:manipulation!important;
 }
@@ -4998,8 +4863,6 @@ main,
   }
 }
 
-
-/* v72 — Pesquisa de resultados só Admin */
 .search-results-admin-btn{
   min-height:40px!important;
   height:40px!important;
@@ -5031,8 +4894,6 @@ main,
   display:none!important;
 }
 
-
-/* v73 — Chat estilo WhatsApp */
 .chat-open-btn{position:relative;min-height:40px!important;height:40px!important;box-sizing:border-box!important;border-radius:8px!important;padding:9px 13px!important;font-size:14px!important;font-weight:850!important;white-space:nowrap!important}
 .chat-unread-badge{position:absolute;top:-7px;right:-7px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:#ff4d6d;color:white;font-size:10px;font-weight:1000;border:2px solid rgba(7,11,19,.95)}
 .chat-unread-badge.hidden{display:none!important}
@@ -5059,8 +4920,6 @@ main,
 @media(max-width:760px){.chat-panel{left:8px;right:8px;bottom:8px;width:auto;height:min(620px,calc(100dvh - 16px));border-radius:20px}.chat-messages{padding:12px 10px}.chat-bubble{max-width:88%}}
 @media(max-width:420px){.chat-panel{left:0;right:0;bottom:0;height:calc(100dvh - 10px);border-radius:18px 18px 0 0}}
 
-
-/* v74 — Melhorias do chat */
 .chat-open-btn.has-chat-unread{
   animation:chatPulse 1.25s ease-in-out infinite;
   border-color:rgba(255,77,109,.55)!important;
@@ -5152,8 +5011,6 @@ main,
   .chat-pinned-content{ align-items:flex-start; }
 }
 
-
-/* v75 — Chat estilo WhatsApp: ações só ao carregar na mensagem */
 .chat-actions{
   display:none!important;
 }
@@ -5221,8 +5078,6 @@ main,
   }
 }
 
-
-/* v76 — Chat completo */
 .chat-tabs{
   display:flex;
   gap:8px;
@@ -5442,8 +5297,6 @@ main,
   .chat-form button#chatSendBtn{padding:0 12px!important}
 }
 
-
-/* v77 — Chat visual corrigido / estilo WhatsApp */
 .chat-panel{
   height:min(640px, calc(100dvh - 18px))!important;
   max-height:calc(100dvh - 18px)!important;
@@ -5451,7 +5304,6 @@ main,
   border-radius:20px!important;
 }
 
-/* Cabeçalho mais compacto */
 .chat-header{
   min-height:56px!important;
   padding:10px 14px!important;
@@ -5475,7 +5327,6 @@ main,
   border-radius:14px!important;
 }
 
-/* Corrige os separadores que estavam gigantes */
 .chat-panel .chat-tabs{
   display:flex!important;
   align-items:center!important;
@@ -5529,7 +5380,6 @@ main,
   box-shadow:0 0 0 3px rgba(38,194,129,.08)!important;
 }
 
-/* Pesquisa mais limpa */
 .chat-search-wrap{
   padding:8px 10px!important;
   background:rgba(7,11,19,.88)!important;
@@ -5543,7 +5393,6 @@ main,
   font-size:13px!important;
 }
 
-/* Mais área útil para mensagens */
 .chat-messages{
   padding:12px 10px!important;
   min-height:0!important;
@@ -5582,7 +5431,6 @@ main,
   margin-top:4px!important;
 }
 
-/* Caixa de resposta / input mais WhatsApp */
 .chat-reply-preview{
   padding:7px 10px!important;
 }
@@ -5619,7 +5467,6 @@ main,
   font-weight:950!important;
 }
 
-/* Mensagem fixada e typing compactos */
 .chat-pinned-box{
   padding:7px 10px!important;
 }
@@ -5629,13 +5476,11 @@ main,
   font-size:12px!important;
 }
 
-/* Imagens não rebentam o mobile */
 .chat-image{
   max-height:200px!important;
   border-radius:12px!important;
 }
 
-/* Menu long press mais elegante */
 .chat-action-menu{
   max-width:min(330px, calc(100vw - 20px))!important;
   padding:7px!important;
@@ -5660,7 +5505,6 @@ main,
   min-height:34px!important;
 }
 
-/* iPhone / Android */
 @media(max-width:760px){
   .chat-panel{
     left:8px!important;
@@ -5762,15 +5606,11 @@ main,
   }
 }
 
-/* Garante que regras globais de botões/cards nunca transformam tabs em círculos */
 .chat-panel .chat-tabs .chat-tab{
   clip-path:none!important;
   border-radius:999px!important;
 }
 
-
-/* v78 — Correção REAL dos separadores Geral/Admin do chat */
-/* Usar classes novas para fugir dos estilos globais da app que estavam a fazer círculos */
 #chatPanel .chat-room-switch{
   all:unset!important;
   box-sizing:border-box!important;
@@ -5853,13 +5693,11 @@ main,
   display:none!important;
 }
 
-/* Anular definitivamente qualquer regra antiga .chat-tabs/.chat-tab que ainda exista */
 #chatPanel .chat-tabs,
 #chatPanel .chat-tab{
   all:unset!important;
 }
 
-/* Melhor ajuste do chat completo */
 #chatPanel.chat-panel{
   grid-template-rows:auto auto auto auto auto 1fr auto auto!important;
 }
@@ -5883,8 +5721,6 @@ main,
   }
 }
 
-
-/* v79 — Chat fullscreen no mobile */
 @media(max-width:760px){
   body.chat-fullscreen-open{
     overflow:hidden!important;
@@ -6078,8 +5914,6 @@ main,
   }
 }
 
-
-/* v80 — Chat mobile até ao fundo do ecrã */
 @media(max-width:760px){
   #chatPanel.chat-panel{
     display:flex!important;
@@ -6135,7 +5969,6 @@ main,
   }
 }
 
-/* fallback para browsers que ainda mexem mal com 100dvh */
 @supports(height:100svh){
   @media(max-width:760px){
     #chatPanel.chat-panel{
@@ -6146,8 +5979,6 @@ main,
   }
 }
 
-
-/* v81 — botão sair/fechar chat robusto */
 #chatCloseBtn.chat-close-btn{
   pointer-events:auto!important;
   touch-action:manipulation!important;
@@ -6165,8 +5996,6 @@ body:not(.chat-fullscreen-open) #chatPanel.hidden{
   pointer-events:none!important;
 }
 
-
-/* v82 — Mobile: chat como página separada; PC: janela */
 body.chat-mobile-page-open{
   overflow:hidden!important;
   background:rgba(7,11,19,1)!important;
@@ -6189,7 +6018,6 @@ body.chat-mobile-page-open{
   }
 }
 
-/* No mobile deixa de parecer popup: é uma página */
 @media(max-width:760px){
   body.chat-mobile-page-open > *:not(#chatPanel):not(#chatActionMenu):not(script):not(style){
     visibility:hidden!important;
@@ -6284,8 +6112,6 @@ body.chat-mobile-page-open{
   }
 }
 
-
-/* v85 — Safari mobile chat fix */
 #chatPanel.chat-panel.hidden{
   display:none!important;
   pointer-events:none!important;
@@ -6358,7 +6184,6 @@ body.chat-mobile-page-open{
   }
 }
 
-/* fallback especial Safari iOS */
 @supports(-webkit-touch-callout:none){
   @media(max-width:760px){
     body.chat-mobile-page-open #chatPanel.chat-panel:not(.hidden){
@@ -6369,8 +6194,6 @@ body.chat-mobile-page-open{
   }
 }
 
-
-/* v86 — imagens do chat mais robustas */
 .chat-image{
   display:block!important;
   width:auto!important;
@@ -6382,8 +6205,6 @@ body.chat-mobile-page-open{
   background:rgba(255,255,255,.06)!important;
 }
 
-
-/* v89 — Chat mobile limpo */
 #chatPanel.chat-panel.hidden,
 .chat-image-viewer.hidden{
   display:none!important;
@@ -6468,7 +6289,6 @@ body.chat-mobile-page-open{
   }
 }
 
-/* Viewer imagem */
 .chat-image-viewer{
   position:fixed!important;
   inset:0!important;
@@ -6502,8 +6322,6 @@ body.chat-mobile-page-open{
   z-index:2147483500!important;
 }
 
-
-/* v91 — imagem por cima do chat + menu por toque */
 .chat-image-button{
   display:block!important;
   border:0!important;
@@ -6574,14 +6392,11 @@ body.chat-mobile-page-open{
   touch-action:manipulation!important;
 }
 
-/* menu de ações também por cima de tudo */
 #chatActionMenu.chat-action-menu{
   z-index:2147483550!important;
   pointer-events:auto!important;
 }
 
-
-/* v92 — o visualizador de imagem fica por cima do chat mobile */
 body.chat-mobile-page-open > #chatImageViewer,
 body.chat-fullscreen-open > #chatImageViewer,
 html.chat-image-viewer-open body > #chatImageViewer,
@@ -6632,7 +6447,6 @@ body.chat-image-viewer-open > #chatImageViewer.hidden{
   z-index:2147483647!important;
 }
 
-/* Garante que a regra antiga que escondia tudo por trás do chat não esconde o viewer */
 @media(max-width:760px){
   body.chat-mobile-page-open > #chatImageViewer{
     visibility:visible!important;
@@ -6645,8 +6459,6 @@ body.chat-image-viewer-open > #chatImageViewer.hidden{
   }
 }
 
-
-/* v93 — mostrar mesmo a foto no visualizador, por cima do chat */
 .chat-image-button{
   display:block!important;
   border:0!important;
@@ -6725,8 +6537,6 @@ body.chat-image-viewer-open > #chatImageViewer.hidden{
   }
 }
 
-
-/* v94 - chat de grupo tipo WhatsApp para 18 users */
 #chatPanel.chat-panel{
   background:#0b141a!important;
   border-color:rgba(255,255,255,.12)!important;
@@ -6947,8 +6757,6 @@ body.chat-image-viewer-open > #chatImageViewer.hidden{
   }
 }
 
-
-/* v103 - garante que o chat aberto recebe sempre toques */
 #chatPanel.chat-panel:not(.hidden){
   pointer-events:auto!important;
   visibility:visible!important;
@@ -6978,8 +6786,6 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
   display:none!important;
 }
 
-
-/* v104 - botao atualizar app */
 .refresh-app-btn{
   border-color:rgba(255,212,90,.40)!important;
   color:#ffd45a!important;
@@ -7003,8 +6809,6 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
   50%{ transform:translateY(-1px); }
 }
 
-
-/* v98 — botão admin para ativar/desativar chat */
 .chat-admin-toggle{
   border:1px solid rgba(255,255,255,.16)!important;
   background:rgba(255,255,255,.08)!important;
@@ -7028,8 +6832,6 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
   display:none!important;
 }
 
-
-/* v104 — filtros do calendário mais claros */
 #calendarMissingResultsBtn,
 #calendarAllGamesBtn{
   display:inline-flex!important;
@@ -7069,8 +6871,6 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
   box-shadow:0 0 0 2px rgba(255,255,255,.10) inset, 0 12px 30px rgba(0,0,0,.20)!important;
 }
 
-
-/* v105 — filtro Já jogaram */
 #calendarPlayedGamesBtn{
   display:inline-flex!important;
   align-items:center!important;
@@ -7102,16 +6902,12 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
   box-shadow:0 0 0 2px rgba(255,255,255,.10) inset, 0 12px 30px rgba(0,0,0,.20)!important;
 }
 
-
-/* v114 — indicador discreto do modo económico Firebase */
 .firebase-status-box::after{
   content:" · modo económico";
   opacity:.68;
   font-weight:700;
 }
 
-
-/* v115 — botão Pesquisar visível para todos */
 .search-result-btn,
 .search-result-btn-v115{
   display:inline-flex!important;
@@ -7131,8 +6927,6 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
   font-size:.95em;
 }
 
-
-/* v116 — barra de pesquisa funcional, sem persistir texto */
 input[type="search"],
 input[placeholder*="Pesquisar" i],
 input[placeholder*="Procurar" i]{
@@ -7144,8 +6938,6 @@ input[data-no-persist-v116]{
   border-radius:999px!important;
 }
 
-
-/* v117 — botão Pesquisar em cada jogo */
 .search-game-result-btn,
 .search-result-btn-v117{
   display:inline-flex!important;
@@ -7171,8 +6963,6 @@ input[data-no-persist-v116]{
   display:inline-flex!important;
 }
 
-
-/* v118 — Pontuação: detalhes por user mostram jogos já jogados recentes primeiro */
 #scoreTab .score-game-row,
 #scoreTab .player-game-row,
 #scoreTab .bet-row{
@@ -7185,20 +6975,14 @@ input[data-no-persist-v116]{
   border-top-color:rgba(52,211,153,.35)!important;
 }
 
-
-/* v119 — Pontuação corrigida: só jogos com resultado real */
 #scoreTab .player-games-table .player-game-row:not(.head){
   display:grid!important;
 }
 
-
-/* v120 — Pontuação: apostas recuperadas nos jogos com resultado */
 #scoreTab .player-game-row:not(.head) span:nth-child(2){
   font-weight:900!important;
 }
 
-
-/* v121 — Fase Final mobile por rondas. PC mantém layout original. */
 .knockout-mobile-v121{
   display:none;
 }
@@ -7208,7 +6992,7 @@ input[data-no-persist-v116]{
     display:block!important;
   }
 
-  /* Esconde o bracket/listagem original só no mobile, mantendo o PC intacto */
+  
   #knockoutTab .knockout-bracket,
   #knockoutTab .ko-bracket,
   #knockoutTab .bracket,
@@ -7443,8 +7227,6 @@ input[data-no-persist-v116]{
   }
 }
 
-
-/* v137 — Fase Final mobile limpa: lista vertical completa com scroll normal da página. */
 @media(max-width:760px){
   body:not(.knockout-mobile-page-v137) #knockoutMobileV121,
   #adminTab #knockoutMobileV121,
@@ -7588,7 +7370,6 @@ input[data-no-persist-v116]{
   }
 }
 
-/* v143 — Card mostra só botão; registo abre em modal real. */
 .points-settings-separator{
   margin:18px 0 12px!important;
   padding-top:16px!important;
@@ -7607,6 +7388,59 @@ input[data-no-persist-v116]{
   color:var(--muted)!important;
   font-size:13px!important;
   font-weight:750!important;
+}
+
+.system-logs-list{
+  display:grid!important;
+  gap:10px!important;
+  max-height:520px!important;
+  overflow:auto!important;
+  padding-right:4px!important;
+}
+
+.system-log-row{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(160px,220px)!important;
+  gap:12px!important;
+  align-items:start!important;
+  padding:12px!important;
+  border:1px solid var(--line)!important;
+  border-radius:10px!important;
+  background:rgba(255,255,255,.045)!important;
+}
+
+.system-log-main,
+.system-log-actor{
+  min-width:0!important;
+}
+
+.system-log-main span,
+.system-log-actor span{
+  display:block!important;
+  color:var(--muted)!important;
+  font-size:12px!important;
+  font-weight:800!important;
+}
+
+.system-log-main strong,
+.system-log-actor strong{
+  display:block!important;
+  color:var(--text)!important;
+  font-size:14px!important;
+  font-weight:1000!important;
+  overflow-wrap:anywhere!important;
+}
+
+.system-log-main p{
+  margin:4px 0 0!important;
+  color:var(--muted)!important;
+  font-size:13px!important;
+  font-weight:750!important;
+  overflow-wrap:anywhere!important;
+}
+
+.system-log-actor{
+  text-align:right!important;
 }
 
 body.ko-record-modal-open{
@@ -7770,4 +7604,187 @@ body.ko-record-modal-open .app-shell{
   .knockout-record-card .ko-card-editor-teams{
     grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
   }
+
+  .system-log-row{
+    grid-template-columns:1fr!important;
+  }
+
+  .system-log-actor{
+    text-align:left!important;
+  }
 }
+
+:root{
+  --surface-clean:rgba(13,21,34,.86);
+  --surface-clean-strong:rgba(17,28,44,.94);
+  --line-clean:rgba(255,255,255,.115);
+  --focus-clean:rgba(124,92,255,.42);
+}
+
+body{
+  background:
+    linear-gradient(180deg,#070b13 0%,#0a1020 52%,#070b13 100%)!important;
+}
+
+.app-shell{
+  max-width:1440px!important;
+}
+
+.topbar{
+  display:grid!important;
+  grid-template-columns:minmax(220px,1fr) auto auto auto!important;
+  gap:12px!important;
+  align-items:center!important;
+  padding:14px!important;
+  border:1px solid var(--line-clean)!important;
+  border-radius:10px!important;
+  background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(8,13,23,.92))!important;
+  box-shadow:0 14px 42px rgba(0,0,0,.24)!important;
+}
+
+.topbar h1{
+  margin:0!important;
+  font-size:clamp(22px,3vw,36px)!important;
+  line-height:1.05!important;
+}
+
+.topbar .eyebrow,
+.login-brand .eyebrow{
+  letter-spacing:0!important;
+}
+
+.copy-actions{
+  grid-column:1 / -1!important;
+  display:flex!important;
+  flex-wrap:wrap!important;
+  justify-content:flex-end!important;
+  gap:8px!important;
+}
+
+.tabs{
+  position:sticky!important;
+  top:8px!important;
+  z-index:30!important;
+  gap:6px!important;
+  padding:6px!important;
+  border-radius:10px!important;
+  background:rgba(7,11,19,.88)!important;
+  backdrop-filter:blur(14px)!important;
+}
+
+.tab{
+  min-height:42px!important;
+  border-radius:8px!important;
+  font-weight:950!important;
+}
+
+.tab.active{
+  background:linear-gradient(135deg,#2563eb,#7c3aed)!important;
+  box-shadow:0 10px 24px rgba(37,99,235,.22)!important;
+}
+
+.section-head,
+.admin-card,
+.match-row,
+.player-score-card,
+.ko-mobile-card,
+.knockout-lock-notice,
+.knockout-entry-card{
+  border-color:var(--line-clean)!important;
+  background:var(--surface-clean)!important;
+  box-shadow:0 12px 34px rgba(0,0,0,.18)!important;
+}
+
+.admin-card{
+  padding:16px!important;
+}
+
+.admin-card summary{
+  border-radius:8px!important;
+}
+
+.admin-card[open]{
+  background:var(--surface-clean-strong)!important;
+}
+
+.section-head h2,
+.admin-card h2{
+  letter-spacing:0!important;
+}
+
+button,
+input,
+select,
+textarea,
+summary{
+  outline:none!important;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible{
+  box-shadow:0 0 0 3px var(--focus-clean)!important;
+  border-color:rgba(124,92,255,.62)!important;
+}
+
+.primary{
+  background:linear-gradient(135deg,#2563eb,#7c3aed)!important;
+  border-color:rgba(255,255,255,.10)!important;
+}
+
+.secondary{
+  background:rgba(255,255,255,.075)!important;
+  border-color:var(--line-clean)!important;
+}
+
+.danger-soft{
+  color:#fecaca!important;
+  border-color:rgba(248,113,113,.30)!important;
+  background:rgba(127,29,29,.24)!important;
+}
+
+.empty,
+.import-summary,
+.firebase-status-box,
+.login-status{
+  border-color:var(--line-clean)!important;
+  background:rgba(255,255,255,.045)!important;
+}
+
+.system-logs-list{
+  scrollbar-width:thin!important;
+  scrollbar-color:rgba(124,92,255,.55) transparent!important;
+}
+
+.system-log-row{
+  background:rgba(255,255,255,.052)!important;
+}
+
+@media(max-width:760px){
+  .topbar{
+    grid-template-columns:1fr!important;
+    padding:12px!important;
+  }
+
+  .copy-actions{
+    justify-content:stretch!important;
+  }
+
+  .copy-actions > *,
+  .copy-actions button{
+    min-width:0!important;
+  }
+
+  .tabs{
+    top:0!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+
+  .section-head,
+  .admin-card{
+    padding:13px!important;
+  }
+}
+

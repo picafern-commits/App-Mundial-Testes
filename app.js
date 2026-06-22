@@ -7,6 +7,7 @@ const PENDING_DELETE_BETS_KEY = `${STORAGE_KEY}_pending_delete_bets_v1`;
 const PENDING_BETS_KEY = `${STORAGE_KEY}_pending_bets_v1`;
 const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
+const MAX_SYSTEM_LOGS = 200;
 
 let db = null;
 let firebaseApi = null;
@@ -225,6 +226,7 @@ function defaultSettings() {
     importedPoints: {},
     users: [],
     knockout: { adminUnlocked: false, matches: [] },
+    logs: [],
     lastImport: null
   };
 }
@@ -282,6 +284,7 @@ function mergeSettings(input = {}) {
     extraResults: { ...base.extraResults, ...(input.extraResults || {}) },
     extraPredictions: { ...(input.extraPredictions || {}) },
     importedPoints: { ...(input.importedPoints || {}) },
+    logs: Array.isArray(input.logs) ? input.logs.slice(-MAX_SYSTEM_LOGS) : [],
     knockout: {
       ...base.knockout,
       ...(input.knockout || {}),
@@ -289,6 +292,47 @@ function mergeSettings(input = {}) {
     },
     users: Array.isArray(input.users) ? input.users : []
   };
+}
+
+function logActor() {
+  const email = normalizeEmail(currentUser?.email || currentProfile?.email || "");
+  const name = String(currentProfile?.name || "").trim() || displayNameFromEmail(email) || email || "Sistema";
+  return { name, email };
+}
+
+function addSystemLog(action, detail = "", meta = {}, options = {}) {
+  if (!appSettings) appSettings = defaultSettings();
+  const actor = logActor();
+  const entry = {
+    id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    at: new Date().toISOString(),
+    action: String(action || "Ação").trim(),
+    detail: String(detail || "").trim(),
+    actorName: actor.name,
+    actorEmail: actor.email,
+    meta: meta && typeof meta === "object" ? meta : {}
+  };
+
+  appSettings.logs = [entry, ...(appSettings.logs || [])].slice(0, MAX_SYSTEM_LOGS);
+  markSettingsPending();
+  saveLocalData(`log ${entry.action}`);
+
+  if (options.sync) scheduleFullSync(`log ${entry.action}`, 500);
+  return entry;
+}
+
+function systemLogs() {
+  return Array.isArray(appSettings?.logs) ? appSettings.logs : [];
+}
+
+function formatLogTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" });
+}
+
+function csvEscape(value) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
 
 function getLocalData() {
@@ -1696,6 +1740,7 @@ async function savePermissionUser(email) {
     }
   }
 
+  addSystemLog("Utilizador guardado", `${visibleName} (${normalized}) ficou como ${role}${active ? "" : " bloqueado"}.`, { email: normalized, role, active }, { sync: true });
   toast("Utilizador guardado.");
   await loadPermissionsUsers();
   renderPermissionsUsers();
@@ -3340,6 +3385,7 @@ function setupAuthGate() {
       setLoginStatus("Login efetuado.", "success");
       startChatSafe();
       startOnlineFeaturesSafe();
+      addSystemLog("Sessão iniciada", `${currentProfile.name || currentUser.email} entrou na app.`, { email: currentUser.email }, { sync: true });
     } catch (error) {
       console.error("Erro no arranque com login:", error);
       setLoginStatus("Erro ao carregar permissões.", "error");
@@ -3350,6 +3396,7 @@ function setupAuthGate() {
 
 async function logout() {
   if (!firebaseAuthApi || !firebaseAuth) return;
+  addSystemLog("Sessão terminada", `${currentProfile?.name || currentUser?.email || "User"} saiu da app.`, { email: currentUser?.email || "" }, { sync: true });
   await firebaseAuthApi.signOut(firebaseAuth);
   toast("Sessão terminada.");
 }
@@ -4300,6 +4347,7 @@ async function saveKnockoutUnlock() {
 
   ensureKnockoutSettings();
   appSettings.knockout.adminUnlocked = Boolean($("adminKnockoutUnlockedInput")?.checked);
+  addSystemLog("Bloqueio Fase Final", appSettings.knockout.adminUnlocked ? "Fase Final desbloqueada pelo Admin." : "Fase Final voltou a ficar bloqueada até acabarem os grupos.", { unlocked: appSettings.knockout.adminUnlocked });
   await persistSettings();
   renderAll();
   toast(appSettings.knockout.adminUnlocked ? "Fase Final desbloqueada para Admin." : "Fase Final volta a bloquear até acabarem os grupos.");
@@ -4358,6 +4406,7 @@ async function saveKnockoutLayoutFromAdmin(reset = false) {
   }
 
   appSettings.knockout.layout = nextLayout;
+  addSystemLog(reset ? "Layout Fase Final reposto" : "Layout Fase Final guardado", reset ? "As posições dos cards foram repostas." : "As posições dos cards foram atualizadas.", { layout: nextLayout });
   markSettingsPending();
   saveLocalData(reset ? "posições fase final repostas" : "posições fase final guardadas");
 
@@ -4461,6 +4510,7 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
   match.updatedAt = new Date().toISOString();
 
   propagateKnockoutWinners(false);
+  addSystemLog("Jogo Fase Final guardado", `${match.roundLabel} ${match.index}: ${match.homeTeam} ${match.homeScore}-${match.awayScore} ${match.awayTeam}${match.homePenalties !== null && match.awayPenalties !== null ? ` · pen. ${match.homePenalties}-${match.awayPenalties}` : ""}`, { matchId: match.id, round: match.round, index: match.index });
   markSettingsPending();
   saveLocalData("fase final jogo guardado");
 
@@ -4509,7 +4559,7 @@ function renderAll() {
   setupSearchResultsAdminButton();
   setTimeout(addSearchButtonsToResultCards, 0);
   setupOnlineUsersCloseControls();
-  setupKnockoutAdjustTopButton(); renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); updateActiveAppSection(); 
+  setupKnockoutAdjustTopButton(); renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSystemLogs(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); updateActiveAppSection(); 
   setTimeout(addSearchButtonsToResultCards, 250);
 }
 
@@ -5159,6 +5209,7 @@ async function saveEditedUserBets() {
   markBetsPending(newPlayerBets.map(bet => bet.id));
   markBetsForDelete(removedPlayerBetIds);
   markSettingsPending();
+  addSystemLog("Apostas do utilizador editadas", `Apostas de ${playerName} atualizadas no Admin.`, { playerName, bets: newPlayerBets.length, removed: removedPlayerBetIds.length });
 
   saveLocalData("editar apostas utilizador local");
   renderAll();
@@ -5199,6 +5250,71 @@ function renderAdmin() {
     </article>`).join("");
 }
 
+function renderSystemLogs() {
+  const container = $("systemLogsList");
+  if (!container) return;
+
+  const logs = systemLogs();
+  if (!logs.length) {
+    container.innerHTML = `<div class="empty small-empty">Ainda não há logs registados.</div>`;
+    return;
+  }
+
+  container.innerHTML = logs.slice(0, MAX_SYSTEM_LOGS).map(log => `
+    <article class="system-log-row">
+      <div class="system-log-main">
+        <span>${escapeHtml(formatLogTime(log.at))}</span>
+        <strong>${escapeHtml(log.action || "Ação")}</strong>
+        <p>${escapeHtml(log.detail || "")}</p>
+      </div>
+      <div class="system-log-actor">
+        <strong>${escapeHtml(log.actorName || "Sistema")}</strong>
+        <span>${escapeHtml(log.actorEmail || "")}</span>
+      </div>
+    </article>
+  `).join("");
+}
+
+function exportSystemLogsCsv() {
+  const logs = systemLogs();
+  if (!logs.length) return toast("Ainda não há logs para exportar.");
+
+  const rows = [
+    ["Data", "Ação", "Detalhe", "Utilizador", "Email", "Dados"],
+    ...logs.map(log => [
+      formatLogTime(log.at),
+      log.action || "",
+      log.detail || "",
+      log.actorName || "",
+      log.actorEmail || "",
+      JSON.stringify(log.meta || {})
+    ])
+  ];
+
+  const csv = rows.map(row => row.map(csvEscape).join(";")).join("\r\n");
+  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `logs-mundial-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  toast("Logs exportados.");
+}
+
+async function clearSystemLogs() {
+  if (!hasPermission("admin")) { toast("Sem permissão."); return; }
+  if (!confirm("Limpar todos os logs do sistema?")) return;
+
+  appSettings.logs = [];
+  addSystemLog("Logs limpos", "O histórico de logs foi limpo pelo Admin.");
+  await persistSettings();
+  renderSystemLogs();
+  toast("Logs limpos.");
+}
+
 async function saveBet(gameId, homeGuess, awayGuess, playerName = "Manual") {
   const game = games.find(item => item.id === gameId);
   if (!game) return;
@@ -5228,6 +5344,7 @@ async function setResult(gameId, homeScore, awayScore) {
   game.awayScore = Number(awayScore);
   stampGame(game, "resultado guardado");
   markGamePending(game.id);
+  addSystemLog("Resultado guardado", `${game.homeTeam} ${game.homeScore}-${game.awayScore} ${game.awayTeam}`, { gameId: game.id, group: game.group }, { sync: true });
 
   saveLocalData("resultado editado local antes firebase");
   renderAll();
@@ -5256,6 +5373,7 @@ async function clearResult(gameId) {
   game.awayScore = null;
   stampGame(game, "resultado limpo");
   markGamePending(game.id);
+  addSystemLog("Resultado limpo", `${game.homeTeam} vs ${game.awayTeam}`, { gameId: game.id, group: game.group }, { sync: true });
 
   saveLocalData("resultado limpo local antes firebase");
   renderAll();
@@ -5587,6 +5705,7 @@ async function confirmExcelImport() {
   appSettings.users = [...importedUsers].filter(Boolean).sort((a, b) => a.localeCompare(b));
   appSettings.lastImport = { at: new Date().toISOString(), bets: pendingExcelImport.bets.length, players: new Set(pendingExcelImport.bets.map(bet => bet.playerName)).size, results: pendingExcelImport.results.length };
   const importResult = pendingExcelImport;
+  addSystemLog("Excel importado", `${importResult.bets.length} apostas, ${new Set(importResult.bets.map(bet => bet.playerName)).size} users e ${importResult.results.length} resultados importados.`, { bets: importResult.bets.length, players: new Set(importResult.bets.map(bet => bet.playerName)).size, results: importResult.results.length, replace });
   await persistAllBets(importResult.bets, replace);
   await persistAllGames();
   await persistSettings();
@@ -5616,12 +5735,14 @@ async function savePointsSettings() {
     topScorer: Number($("knockoutPointsTopScorerInput")?.value ?? appSettings.knockoutPoints?.topScorer ?? 5) || 0,
     champion: Number($("knockoutPointsChampionInput")?.value ?? appSettings.knockoutPoints?.champion ?? 10) || 0
   };
+  addSystemLog("Sistema de pontos atualizado", "Os pontos da fase de grupos e da Fase Final foram atualizados.", { points: appSettings.points, knockoutPoints: appSettings.knockoutPoints });
   await persistSettings(); renderAll(); toast("Sistema de pontos atualizado.");
 }
 async function saveExtraResults() {
   if (!hasPermission("editPoints")) { toast("Sem permissão."); return; }
 
   appSettings.extraResults = { mvp: $("finalMvpInput").value.trim(), topScorer: $("finalTopScorerInput").value.trim(), champion: $("finalChampionInput").value.trim() };
+  addSystemLog("Resultados especiais guardados", `MVP: ${appSettings.extraResults.mvp || "-"} · Marcador: ${appSettings.extraResults.topScorer || "-"} · Campeão: ${appSettings.extraResults.champion || "-"}`, appSettings.extraResults);
   await persistSettings(); renderAll(); toast("Resultados especiais guardados.");
 }
 
@@ -5635,6 +5756,7 @@ async function addUser() {
   users.add(name);
   appSettings.users = [...users].filter(Boolean).sort((a, b) => a.localeCompare(b));
   input.value = "";
+  addSystemLog("User adicionado", `${name} foi adicionado aos users do jogo.`, { name });
   await persistSettings();
   renderAll();
   toast("User adicionado.");
@@ -5645,6 +5767,7 @@ async function removeUser(name) {
 
   if (!confirm(`Remover ${name} da lista de users? As apostas importadas não são apagadas.`)) return;
   appSettings.users = (appSettings.users || []).filter(user => user !== name);
+  addSystemLog("User removido", `${name} foi removido da lista de users.`, { name });
   await persistSettings();
   renderAll();
   toast("User removido da lista.");
@@ -6134,6 +6257,8 @@ $("confirmExcelImportBtn")?.addEventListener("click", confirmExcelImport);
 $("savePointsSettingsBtn")?.addEventListener("click", savePointsSettings);
 $("saveExtraResultsBtn")?.addEventListener("click", saveExtraResults);
 $("exportPontosBtn")?.addEventListener("click", exportPontosExcel);
+$("exportLogsBtn")?.addEventListener("click", exportSystemLogsCsv);
+$("clearLogsBtn")?.addEventListener("click", clearSystemLogs);
 $("saveKnockoutUnlockBtn")?.addEventListener("click", saveKnockoutUnlock);
 
 

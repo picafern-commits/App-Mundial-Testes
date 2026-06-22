@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Mundial Pontos 2026 · Fase Final Mobile v143</title>
+  <title>Mundial Pontos 2026 · Clean v145</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Mundial 2026" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -14,13 +14,9 @@
   <link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png" />
   <link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-
-
   <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#070b13" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="application-name" content="Mundial Pontos 2026" />
-  <meta name="msapplication-TileColor" content="#070b13" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -69,25 +65,30 @@
         <p class="eyebrow">Calendário da Fase de Grupos</p>
         <h1>Mundial Pontos 2026</h1>
       </div>
-      
-          <button id="chatAdminToggleBtn" class="topbar-btn chat-admin-toggle hidden" type="button" title="Ativar/desativar chat">
-            Chat: <span id="chatAdminToggleLabel">...</span>
-          </button>
-<button id="chatOpenBtn" class="secondary chat-open-btn" type="button">Chat <span id="chatUnreadBadge" class="chat-unread-badge hidden">0</span></button>
-        <div id="sessionBox" class="session-box hidden">
+
+      <button id="chatAdminToggleBtn" class="topbar-btn chat-admin-toggle hidden" type="button" title="Ativar/desativar chat">
+        Chat: <span id="chatAdminToggleLabel">...</span>
+      </button>
+
+      <button id="chatOpenBtn" class="secondary chat-open-btn" type="button">
+        Chat <span id="chatUnreadBadge" class="chat-unread-badge hidden">0</span>
+      </button>
+
+      <div id="sessionBox" class="session-box hidden">
         <span id="sessionUserLabel">Sem login</span>
         <button id="logoutBtn" class="secondary small" type="button">Sair</button>
       </div>
+
       <div class="copy-actions" aria-label="Copiar para WhatsApp">
         <button id="calendarMissingResultsBtn" class="primary" type="button">Faltam resultados</button>
-            <button id="calendarPlayedGamesBtn" class="secondary" type="button">Já jogaram</button>
-            <button id="calendarAllGamesBtn" class="secondary" type="button">Todos os jogos</button>
+        <button id="calendarPlayedGamesBtn" class="secondary" type="button">Já jogaram</button>
+        <button id="calendarAllGamesBtn" class="secondary" type="button">Todos os jogos</button>
         <details id="onlineUsersPanel" class="online-users-panel topbar-online-users">
           <summary class="secondary online-users-trigger">
             <span class="online-users-trigger-label">Users</span>
             <span id="onlineUsersBadge" class="online-users-badge">0 online</span>
           </summary>
-<div id="onlineUsersList" class="online-users-list">
+          <div id="onlineUsersList" class="online-users-list">
             <div class="online-users-popup-head">
               <strong>Utilizadores online</strong>
               <button id="closeOnlineUsersBtn" class="online-users-close" type="button" aria-label="Fechar utilizadores online" onclick="return window.closeOnlineUsersPanelNow(event)">×</button>
@@ -235,6 +236,21 @@
             <div class="collapse-actions">
               <button id="exportPontosBtn" class="primary" type="button">Exportar Pontos Excel</button>
             </div>
+          </details>
+
+          <details class="admin-card admin-collapse">
+            <summary>
+              <div>
+                <h2>Logs do sistema</h2>
+                <p>Consulta as ações importantes feitas na app, com data, utilizador e detalhe.</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+            <div class="collapse-actions">
+              <button id="exportLogsBtn" class="secondary" type="button">Exportar logs</button>
+              <button id="clearLogsBtn" class="secondary danger-soft" type="button">Limpar logs</button>
+            </div>
+            <div id="systemLogsList" class="system-logs-list"></div>
           </details>
 
 <details class="admin-card admin-collapse">
