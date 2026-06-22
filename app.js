@@ -8926,3 +8926,98 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(footballRealtimeSyncStartV156, 3500);
 });
 document.addEventListener("click", () => setTimeout(footballRealtimeSyncStartV156, 180));
+
+
+// v157 — transforma a zona Football-data em modo automático/clean.
+function setupAutomaticSyncVisualV157() {
+  try {
+    const activePanel = document.querySelector(".tab-panel.active") || document.querySelector("main") || document.body;
+
+    // Esconde a caixa antiga do botão manual para não parecer que é preciso carregar.
+    const oldManualBox = document.getElementById("footballDataAdminFixedBoxV143");
+    if (oldManualBox) {
+      oldManualBox.classList.add("football-manual-hidden-v157");
+      oldManualBox.setAttribute("aria-hidden", "true");
+    }
+
+    // Esconde também o bloco antigo da v149 quando estiver duplicado.
+    const oldFreeBox = document.getElementById("footballFreeStatusBoxV149");
+    if (oldFreeBox) {
+      oldFreeBox.classList.add("football-free-legacy-hidden-v157");
+      oldFreeBox.setAttribute("aria-hidden", "true");
+    }
+
+    // Garante a caixa nova em tempo real.
+    if (typeof footballRealtimeSyncEnsureBoxV156 === "function") {
+      const box = footballRealtimeSyncEnsureBoxV156();
+      box.classList.add("football-automatic-main-v157");
+
+      // Move para o topo do Admin se estivermos no Admin.
+      const adminPanel =
+        document.getElementById("adminTab") ||
+        document.querySelector('[data-tab="admin"].active') ||
+        activePanel;
+
+      const target =
+        adminPanel?.querySelector?.(".admin-section, .admin-card, .panel, .card") ||
+        adminPanel;
+
+      if (target && box.parentElement !== target.parentElement) {
+        const firstGood =
+          target.querySelector?.(".football-realtime-sync-box-v156") ||
+          target.firstElementChild;
+        if (firstGood?.insertAdjacentElement) firstGood.insertAdjacentElement("beforebegin", box);
+        else target.prepend(box);
+      }
+
+      const title = box.querySelector(".football-realtime-sync-top-v156 strong");
+      if (title) title.textContent = "Sync automática 24/7";
+
+      const gridLabels = box.querySelectorAll(".football-realtime-sync-grid-v156 span");
+      if (gridLabels?.length >= 4) {
+        gridLabels[0].textContent = "Última execução";
+        gridLabels[1].textContent = "Jogos lidos";
+        gridLabels[2].textContent = "Terminados";
+        gridLabels[3].textContent = "Alterações";
+      }
+    }
+
+    // Fallback manual discreto, só para emergência.
+    let fallback = document.getElementById("footballManualFallbackV157");
+    if (!fallback) {
+      fallback = document.createElement("details");
+      fallback.id = "footballManualFallbackV157";
+      fallback.className = "football-manual-fallback-v157";
+      fallback.innerHTML = `
+        <summary>Opções avançadas</summary>
+        <button type="button" id="footballManualForceBtnV157">Forçar sync agora</button>
+        <small>A sync normal corre automaticamente no servidor minuto a minuto.</small>
+      `;
+
+      const box = document.getElementById("footballRealtimeSyncBoxV156");
+      if (box?.insertAdjacentElement) box.insertAdjacentElement("afterend", fallback);
+      else activePanel.appendChild(fallback);
+
+      const btn = fallback.querySelector("#footballManualForceBtnV157");
+      btn?.addEventListener("click", event => {
+        event.preventDefault();
+        if (typeof syncFootballDataResultsFreeV149 === "function") {
+          syncFootballDataResultsFreeV149("manual");
+        } else if (typeof syncFootballDataResultsV139 === "function") {
+          syncFootballDataResultsV139();
+        } else {
+          toast?.("Sync manual não disponível nesta versão.");
+        }
+      });
+    }
+  } catch (error) {
+    console.warn("setupAutomaticSyncVisualV157 falhou:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(setupAutomaticSyncVisualV157, 500);
+  setTimeout(setupAutomaticSyncVisualV157, 1600);
+  setTimeout(setupAutomaticSyncVisualV157, 3200);
+});
+document.addEventListener("click", () => setTimeout(setupAutomaticSyncVisualV157, 160));
