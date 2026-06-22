@@ -8091,3 +8091,78 @@ summary:focus-visible{
     box-sizing:border-box!important;
   }
 }
+
+
+/* v148 — PC ecrã todo imediato, sem esperar pelo JavaScript */
+@media(min-width:900px){
+  html,
+  body,
+  html.desktop-fullscreen-instant-v148,
+  body.desktop-fullscreen-instant-v148{
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    margin:0!important;
+    padding-left:0!important;
+    padding-right:0!important;
+    overflow-x:hidden!important;
+  }
+
+  body > *,
+  #app,
+  .app,
+  .app-shell,
+  .shell,
+  .page-shell,
+  .container,
+  .main-container,
+  .layout,
+  .layout-shell,
+  .workspace,
+  main,
+  .main,
+  .content,
+  .app-content,
+  .page-content,
+  .tab-content,
+  .tabs-content,
+  .tab-panel,
+  .tab-panel.active,
+  .view,
+  .views{
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    margin-left:0!important;
+    margin-right:0!important;
+    box-sizing:border-box!important;
+  }
+
+  main,
+  .main,
+  .content,
+  .app-content,
+  .page-content,
+  .tab-content,
+  .tab-panel.active{
+    padding-left:16px!important;
+    padding-right:16px!important;
+  }
+
+  header,
+  .topbar,
+  .tabs,
+  .tabbar,
+  .nav,
+  .panel,
+  .card,
+  .admin-section,
+  .admin-card,
+  .day-block,
+  .leaderboard-table,
+  #footballDataAdminFixedBoxV143{
+    width:100%!important;
+    max-width:none!important;
+    box-sizing:border-box!important;
+  }
+}
