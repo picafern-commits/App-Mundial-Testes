@@ -535,8 +535,9 @@ function setFirebaseStatus(type, message) {
 
 
 
-// v113 — Modo económico Firebase: reduz listeners de snapshot.
-const FIRESTORE_ECONOMY_V113 = {
+// v114 — Modo económico Firebase oficial.
+// Reduz listeners de snapshot trocando onSnapshot permanentes por leitura inicial + polling lento.
+const FIRESTORE_ECONOMY_V114 = {
   installed: false,
   pollers: new Set(),
   normalPollMs: 150000,
@@ -544,17 +545,24 @@ const FIRESTORE_ECONOMY_V113 = {
   settingsPollMs: 180000
 };
 
-function economySnapshotDelayV113(target) {
+function economySnapshotDelayV114(target) {
   try {
-    const path = String(target?.path || target?._query?.path?.canonicalString?.() || target?._query?.path?.segments?.join?.("/") || target?._path?.canonicalString?.() || "").toLowerCase();
-    if (path.includes("chat")) return FIRESTORE_ECONOMY_V113.chatPollMs;
-    if (path.includes("settings") || path.includes("appsettings")) return FIRESTORE_ECONOMY_V113.settingsPollMs;
+    const path = String(
+      target?.path ||
+      target?._query?.path?.canonicalString?.() ||
+      target?._query?.path?.segments?.join?.("/") ||
+      target?._path?.canonicalString?.() ||
+      ""
+    ).toLowerCase();
+
+    if (path.includes("chat")) return FIRESTORE_ECONOMY_V114.chatPollMs;
+    if (path.includes("settings") || path.includes("appsettings")) return FIRESTORE_ECONOMY_V114.settingsPollMs;
     if (path.includes("presence")) return 180000;
   } catch {}
-  return FIRESTORE_ECONOMY_V113.normalPollMs;
+  return FIRESTORE_ECONOMY_V114.normalPollMs;
 }
 
-function isDocRefV113(target) {
+function isDocRefV114(target) {
   try {
     if (target?.type === "document") return true;
     if (target?.path && !target?._query) return true;
@@ -565,15 +573,15 @@ function isDocRefV113(target) {
   }
 }
 
-function installFirestoreEconomyModeV113() {
-  if (FIRESTORE_ECONOMY_V113.installed) return;
+function installFirestoreEconomyModeV114() {
+  if (FIRESTORE_ECONOMY_V114.installed) return;
   if (!firebaseApi || typeof firebaseApi.onSnapshot !== "function") return;
   if (typeof firebaseApi.getDoc !== "function" || typeof firebaseApi.getDocs !== "function") return;
 
   const originalOnSnapshot = firebaseApi.onSnapshot;
-  firebaseApi.__originalOnSnapshotV113 = firebaseApi.__originalOnSnapshotV113 || originalOnSnapshot;
+  firebaseApi.__originalOnSnapshotV114 = firebaseApi.__originalOnSnapshotV114 || originalOnSnapshot;
 
-  firebaseApi.onSnapshot = function economyOnSnapshotV113(target, ...args) {
+  firebaseApi.onSnapshot = function economyOnSnapshotV114(target, ...args) {
     let next = null;
     let errorCb = null;
 
@@ -586,23 +594,24 @@ function installFirestoreEconomyModeV113() {
       }
     }
 
-    if (!next) return firebaseApi.__originalOnSnapshotV113.call(this, target, ...args);
+    if (!next) return firebaseApi.__originalOnSnapshotV114.call(this, target, ...args);
 
     let stopped = false;
     let running = false;
     let timer = null;
-    const delay = economySnapshotDelayV113(target);
+    const delay = economySnapshotDelayV114(target);
 
     const run = async () => {
       if (stopped || running) return;
       running = true;
+
       try {
-        const isDoc = isDocRefV113(target);
+        const isDoc = isDocRefV114(target);
         const snap = isDoc ? await firebaseApi.getDoc(target) : await firebaseApi.getDocs(target);
         if (!stopped) next(snap);
       } catch (error) {
         if (typeof errorCb === "function") errorCb(error);
-        else console.warn("Firestore económico v113:", error);
+        else console.warn("Firestore económico v114:", error);
       } finally {
         running = false;
         if (!stopped) timer = setTimeout(run, delay);
@@ -614,36 +623,36 @@ function installFirestoreEconomyModeV113() {
     const unsubscribe = () => {
       stopped = true;
       if (timer) clearTimeout(timer);
-      FIRESTORE_ECONOMY_V113.pollers.delete(unsubscribe);
+      FIRESTORE_ECONOMY_V114.pollers.delete(unsubscribe);
     };
 
-    FIRESTORE_ECONOMY_V113.pollers.add(unsubscribe);
+    FIRESTORE_ECONOMY_V114.pollers.add(unsubscribe);
     return unsubscribe;
   };
 
-  FIRESTORE_ECONOMY_V113.installed = true;
-  console.info("Firestore modo económico v113 ativo.");
+  FIRESTORE_ECONOMY_V114.installed = true;
+  console.info("Firestore modo económico v114 ativo.");
 }
 
-function stopFirestoreEconomyPollersV113() {
-  FIRESTORE_ECONOMY_V113.pollers.forEach(unsub => {
+function stopFirestoreEconomyPollersV114() {
+  FIRESTORE_ECONOMY_V114.pollers.forEach(unsub => {
     try { unsub(); } catch {}
   });
-  FIRESTORE_ECONOMY_V113.pollers.clear();
+  FIRESTORE_ECONOMY_V114.pollers.clear();
 }
 
-window.firestoreEconomyInfoV113 = function firestoreEconomyInfoV113() {
+window.firestoreEconomyInfoV114 = function firestoreEconomyInfoV114() {
   return {
-    installed: FIRESTORE_ECONOMY_V113.installed,
-    activePollers: FIRESTORE_ECONOMY_V113.pollers.size,
-    normalPollMs: FIRESTORE_ECONOMY_V113.normalPollMs,
-    chatPollMs: FIRESTORE_ECONOMY_V113.chatPollMs,
-    settingsPollMs: FIRESTORE_ECONOMY_V113.settingsPollMs
+    installed: FIRESTORE_ECONOMY_V114.installed,
+    activePollers: FIRESTORE_ECONOMY_V114.pollers.size,
+    normalPollMs: FIRESTORE_ECONOMY_V114.normalPollMs,
+    chatPollMs: FIRESTORE_ECONOMY_V114.chatPollMs,
+    settingsPollMs: FIRESTORE_ECONOMY_V114.settingsPollMs
   };
 };
 
 async function initFirebase() {
-  setTimeout(installFirestoreEconomyModeV113, 0);
+  setTimeout(installFirestoreEconomyModeV114, 0);
   const config = APP_CONFIG.firebase || {};
 
   if (!config.apiKey || !config.projectId) {
@@ -6893,234 +6902,6 @@ window.firestoreReadsOptimizerInfo = function firestoreReadsOptimizerInfo() {
   };
 };
 
-
-// v109 — polish visual seguro: não altera dados, Firebase nem render principal.
-function polishVisualSafeV109() {
-  try {
-    const filters = document.querySelector(".copy-actions");
-    if (filters) filters.classList.add("safe-filter-chips-v109");
-
-    ["calendarMissingResultsBtn", "calendarPlayedGamesBtn", "calendarAllGamesBtn"].forEach(id => {
-      const btn = document.getElementById(id);
-      if (btn) btn.classList.add("safe-filter-chip-v109");
-    });
-
-    document.querySelectorAll(".match-card, .game-card, .jogo-card, .fixture-card, [data-game-id]").forEach(card => {
-      card.classList.add("safe-match-card-v109");
-
-      const text = String(card.textContent || "").toLowerCase();
-
-      card.classList.toggle("safe-played-v109", /\b\d+\s*[-:]\s*\d+\b/.test(text) || text.includes("resultado"));
-      card.classList.toggle("safe-missing-v109", text.includes("sem resultado") || text.includes("colocar resultado") || text.includes("falta resultado"));
-    });
-
-    const modal = document.getElementById("resultModal") || document.querySelector(".result-modal, [data-result-modal]");
-    if (modal) {
-      modal.classList.add("safe-result-modal-v109");
-      modal.querySelectorAll("input[type='number']").forEach(input => input.classList.add("safe-score-input-v109"));
-    }
-
-    const scoreRoot = document.getElementById("scoreTable") || document.getElementById("scoreList") || document.getElementById("scoreBoard") || document.getElementById("scoreTab") || document.querySelector(".score-table, .score-list, .ranking-list");
-    if (scoreRoot) {
-      scoreRoot.classList.add("safe-score-root-v109");
-      scoreRoot.querySelectorAll("tr, .score-row, .ranking-row, .player-row").forEach((row, index) => {
-        if (index === 0 && row.tagName === "TR" && row.querySelector("th")) return;
-        row.classList.add("safe-score-row-v109");
-        if (index <= 3) row.classList.add(`safe-score-rank-${index}`);
-      });
-    }
-  } catch (error) {
-    console.warn("Polish visual v109 falhou:", error);
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  polishVisualSafeV109();
-  setTimeout(polishVisualSafeV109, 500);
-  setTimeout(polishVisualSafeV109, 1200);
-});
-
-document.addEventListener("click", () => {
-  setTimeout(polishVisualSafeV109, 120);
-});
-
-
-// v110 — Visual por páginas seguro: só aplica classes e não altera dados/Firebase.
-function polishPagesVisualV110() {
-  try {
-    const pageIds = [
-      "calendarTab", "scoreTab", "betsTab", "knockoutTab", "adminTab", "chatPanel",
-      "gamesList", "scoreTable", "scoreList", "scoreBoard", "adminPanel", "adminContent",
-      "knockoutBracket", "knockoutList", "userBetsModal", "betsModal", "gameBetsModal"
-    ];
-
-    pageIds.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.classList.add(`page-polish-${id}`);
-    });
-
-    const calendar = document.getElementById("calendarTab") || document.getElementById("gamesList")?.closest(".tab-panel");
-    if (calendar) calendar.classList.add("page-calendar-v110");
-
-    const score = document.getElementById("scoreTab") || document.getElementById("scoreTable")?.closest(".tab-panel");
-    if (score) score.classList.add("page-score-v110");
-
-    const knockout = document.getElementById("knockoutTab") || document.getElementById("knockoutBracket")?.closest(".tab-panel");
-    if (knockout) knockout.classList.add("page-knockout-v110");
-
-    const admin = document.getElementById("adminTab") || document.getElementById("adminPanel") || document.getElementById("adminContent");
-    if (admin) admin.classList.add("page-admin-v110");
-
-    const chat = document.getElementById("chatPanel");
-    if (chat) chat.classList.add("page-chat-v110");
-
-    const filters = document.querySelector(".copy-actions");
-    if (filters) filters.classList.add("v110-filter-bar");
-
-    document.querySelectorAll(".day-block").forEach((block, index) => {
-      block.classList.add("v110-day-block");
-      block.style.setProperty("--day-index", index % 6);
-    });
-
-    document.querySelectorAll(".match-card, .game-card, .jogo-card, .fixture-card, [data-game-id]").forEach(card => {
-      card.classList.add("v110-game-card");
-    });
-
-    // Pontuação: visual premium sem destacar utilizador logado.
-    const scoreRoot = document.getElementById("scoreTable") || document.getElementById("scoreList") || document.getElementById("scoreBoard") || document.querySelector(".score-table, .score-list, .ranking-list");
-    if (scoreRoot) {
-      scoreRoot.classList.add("v110-score-root");
-      scoreRoot.querySelectorAll("tr, .score-row, .ranking-row, .player-row, .score-card").forEach((row, index) => {
-        if (index === 0 && row.tagName === "TR" && row.querySelector("th")) return;
-        row.classList.add("v110-score-row");
-        row.classList.remove("current-user", "me", "logged-user", "user-current");
-        if (index <= 3) row.classList.add(`v110-score-rank-${index}`);
-      });
-    }
-
-    // Apostas / Ver apostas.
-    document.querySelectorAll(".bets-modal, #betsModal, #gameBetsModal, #userBetsModal, .bets-list, .bets-summary").forEach(el => {
-      el.classList.add("v110-bets-view");
-    });
-    document.querySelectorAll(".bet-row, .bet-card, .bets-row, [data-bet-id]").forEach(el => {
-      el.classList.add("v110-bet-card");
-    });
-
-    // Admin.
-    document.querySelectorAll("#adminTab section, #adminTab .card, #adminPanel .card, #adminContent .card, .admin-card").forEach(el => {
-      el.classList.add("v110-admin-card");
-    });
-    document.querySelectorAll("#adminTab button, #adminPanel button, #adminContent button").forEach(btn => {
-      btn.classList.add("v110-admin-button");
-      const t = String(btn.textContent || "").toLowerCase();
-      if (t.includes("apagar") || t.includes("limpar") || t.includes("remover")) btn.classList.add("v110-danger-button");
-    });
-
-    // Chat.
-    document.querySelectorAll("#chatPanel .chat-message, #chatPanel .message, #chatPanel [data-message-id]").forEach(msg => {
-      msg.classList.add("v110-chat-message");
-    });
-    document.querySelectorAll("#chatPanel input, #chatPanel textarea").forEach(input => input.classList.add("v110-chat-input"));
-  } catch (error) {
-    console.warn("Visual por páginas v110 falhou:", error);
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  polishPagesVisualV110();
-  setTimeout(polishPagesVisualV110, 500);
-  setTimeout(polishPagesVisualV110, 1400);
-});
-
-document.addEventListener("click", () => setTimeout(polishPagesVisualV110, 140));
-document.addEventListener("input", () => setTimeout(polishPagesVisualV110, 180));
-
-
-// v111 — classes visuais visíveis, sem alterar Firebase/dados.
-function applyVisibleVisualV111() {
-  try {
-    document.body.classList.add("v111-visual");
-
-    const activePanel = document.querySelector(".tab-panel.active");
-    if (activePanel?.id) {
-      document.body.dataset.activePanel = activePanel.id;
-    }
-
-    const filterBar = document.querySelector(".copy-actions");
-    if (filterBar) filterBar.classList.add("v111-filter-bar");
-
-    ["calendarMissingResultsBtn","calendarPlayedGamesBtn","calendarAllGamesBtn","chatOpenBtn","chatAdminToggleBtn"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.classList.add("v111-pill-button");
-    });
-
-    document.querySelectorAll(".day-block").forEach(el => el.classList.add("v111-day"));
-    document.querySelectorAll(".match-row,.match-card,.match-item,.game-row,.game-card,[data-game-id]").forEach(el => el.classList.add("v111-match"));
-    document.querySelectorAll(".match-list").forEach(el => el.classList.add("v111-match-list"));
-
-    document.querySelectorAll("#scoreTab table, #scoreTab .card, #scoreTab .score-card, #scoreTab .ranking-card").forEach(el => el.classList.add("v111-score-card"));
-    document.querySelectorAll("#scoreTab tr, #scoreTab .score-row, #scoreTab .ranking-row").forEach((el, i) => {
-      el.classList.add("v111-score-row");
-      if (!(el.tagName === "TR" && el.querySelector("th"))) {
-        el.classList.add(`v111-rank-${Math.min(i,3)}`);
-      }
-    });
-
-    document.querySelectorAll("#adminTab .card, #adminTab section, #adminTab details, #adminTab .admin-section").forEach(el => el.classList.add("v111-admin-block"));
-    document.querySelectorAll("#adminTab button").forEach(btn => {
-      btn.classList.add("v111-admin-btn");
-      const t = String(btn.textContent || "").toLowerCase();
-      if (t.includes("apagar") || t.includes("limpar") || t.includes("remover")) btn.classList.add("v111-danger");
-    });
-
-    document.querySelectorAll(".modal,.modal-card,.dialog,.dialog-card,#resultModal,#betsModal,#gameBetsModal,#userBetsModal").forEach(el => el.classList.add("v111-modal"));
-    document.querySelectorAll("#resultModal input[type='number'], .modal input[type='number']").forEach(el => el.classList.add("v111-score-input"));
-
-    document.querySelectorAll("#chatPanel,.chat-panel").forEach(el => el.classList.add("v111-chat"));
-    document.querySelectorAll("#chatPanel .message,#chatPanel .chat-message,#chatPanel [data-message-id]").forEach(el => el.classList.add("v111-chat-bubble"));
-
-    document.querySelectorAll("#knockoutTab .card,#knockoutTab .knockout-match,#knockoutTab .ko-match,#knockoutTab .round-card").forEach(el => el.classList.add("v111-ko-mobile-card"));
-  } catch (error) {
-    console.warn("Visual v111 falhou:", error);
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  applyVisibleVisualV111();
-  setTimeout(applyVisibleVisualV111, 300);
-  setTimeout(applyVisibleVisualV111, 900);
-  setTimeout(applyVisibleVisualV111, 1800);
-});
-document.addEventListener("click", () => setTimeout(applyVisibleVisualV111, 80));
-document.addEventListener("input", () => setTimeout(applyVisibleVisualV111, 120));
-
-
-// v112 — garantir que a janela Users fica sempre por cima.
-function fixOnlineUsersPopupLayerV112() {
-  try {
-    const panel = document.getElementById("onlineUsersPanel");
-    const list = document.getElementById("onlineUsersList");
-    const trigger = document.querySelector(".online-users-trigger");
-
-    if (panel) panel.classList.add("users-popup-front-v112");
-    if (list) list.classList.add("users-popup-list-front-v112");
-    if (trigger) trigger.classList.add("users-popup-trigger-front-v112");
-
-    if (panel && panel.open) document.body.classList.add("users-popup-open-v112");
-    else document.body.classList.remove("users-popup-open-v112");
-  } catch (error) {
-    console.warn("Users popup layer v112 falhou:", error);
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  fixOnlineUsersPopupLayerV112();
-  setTimeout(fixOnlineUsersPopupLayerV112, 400);
-  setTimeout(fixOnlineUsersPopupLayerV112, 1200);
-});
-
-document.addEventListener("click", () => setTimeout(fixOnlineUsersPopupLayerV112, 60));
-
-setTimeout(installFirestoreEconomyModeV113, 800);
-setTimeout(installFirestoreEconomyModeV113, 1800);
-setTimeout(installFirestoreEconomyModeV113, 3500);
+setTimeout(installFirestoreEconomyModeV114, 800);
+setTimeout(installFirestoreEconomyModeV114, 1800);
+setTimeout(installFirestoreEconomyModeV114, 3500);
