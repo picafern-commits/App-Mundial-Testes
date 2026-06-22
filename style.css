@@ -7196,3 +7196,249 @@ input[data-no-persist-v116]{
 #scoreTab .player-game-row:not(.head) span:nth-child(2){
   font-weight:900!important;
 }
+
+
+/* v121 — Fase Final mobile por rondas. PC mantém layout original. */
+.knockout-mobile-v121{
+  display:none;
+}
+
+@media(max-width:760px){
+  #knockoutTab .knockout-mobile-v121{
+    display:block!important;
+  }
+
+  /* Esconde o bracket/listagem original só no mobile, mantendo o PC intacto */
+  #knockoutTab .knockout-bracket,
+  #knockoutTab .ko-bracket,
+  #knockoutTab .bracket,
+  #knockoutTab .knockout-rounds,
+  #knockoutTab .rounds-grid,
+  #knockoutTab .knockout-board,
+  #knockoutTab .knockout-grid{
+    display:none!important;
+  }
+
+  .ko-mobile-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:14px;
+    border-radius:22px;
+    background:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.035));
+    border:1px solid rgba(255,255,255,.12);
+    box-shadow:0 16px 40px rgba(0,0,0,.22);
+    margin-bottom:12px;
+  }
+
+  .ko-mobile-header span{
+    display:block;
+    font-size:12px;
+    font-weight:900;
+    color:rgba(255,255,255,.62);
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+
+  .ko-mobile-header strong{
+    display:block;
+    margin-top:3px;
+    font-size:21px;
+    line-height:1.1;
+    color:#fff;
+  }
+
+  .ko-mobile-header small{
+    flex:0 0 auto;
+    border-radius:999px;
+    padding:7px 10px;
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.10);
+    color:rgba(255,255,255,.78);
+    font-weight:900;
+  }
+
+  .ko-mobile-tabs{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    padding:4px 2px 12px;
+    margin-bottom:4px;
+  }
+
+  .ko-mobile-tabs::-webkit-scrollbar{
+    display:none;
+  }
+
+  .ko-mobile-chip{
+    flex:0 0 auto;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    min-height:40px;
+    padding:9px 13px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.13);
+    background:rgba(255,255,255,.065);
+    color:#fff;
+    font-weight:950;
+  }
+
+  .ko-mobile-chip span{
+    display:inline-flex;
+    min-width:22px;
+    height:22px;
+    align-items:center;
+    justify-content:center;
+    border-radius:999px;
+    background:rgba(255,255,255,.11);
+    color:rgba(255,255,255,.85);
+    font-size:12px;
+  }
+
+  .ko-mobile-chip.active{
+    background:linear-gradient(135deg,rgba(34,211,238,.28),rgba(16,185,129,.22));
+    border-color:rgba(125,255,231,.42);
+    box-shadow:0 14px 32px rgba(16,185,129,.16);
+  }
+
+  .ko-mobile-list{
+    display:grid;
+    gap:12px;
+  }
+
+  .ko-mobile-card{
+    border-radius:24px;
+    padding:14px;
+    border:1px solid rgba(255,255,255,.12);
+    background:
+      linear-gradient(90deg,rgba(34,211,238,.10),transparent 38%),
+      linear-gradient(180deg,rgba(15,23,42,.95),rgba(3,7,18,.96));
+    box-shadow:0 18px 44px rgba(0,0,0,.28);
+  }
+
+  .ko-mobile-card-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:12px;
+    color:rgba(255,255,255,.65);
+    font-size:12px;
+    font-weight:900;
+  }
+
+  .ko-mobile-card-head strong{
+    color:rgba(255,255,255,.86);
+  }
+
+  .ko-mobile-team{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:center;
+    gap:12px;
+    padding:12px;
+    border-radius:18px;
+    background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.08);
+  }
+
+  .ko-mobile-team span{
+    min-width:0;
+    font-size:17px;
+    font-weight:950;
+    color:#fff;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .ko-mobile-team b{
+    min-width:42px;
+    height:42px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:15px;
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    font-size:22px;
+    font-weight:1000;
+  }
+
+  .ko-mobile-team.winner{
+    background:rgba(16,185,129,.13);
+    border-color:rgba(52,211,153,.34);
+  }
+
+  .ko-mobile-team.winner b{
+    background:rgba(16,185,129,.22);
+  }
+
+  .ko-mobile-versus{
+    text-align:center;
+    margin:7px 0;
+    color:rgba(255,255,255,.52);
+    font-weight:950;
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+  }
+
+  .ko-mobile-pens{
+    margin-top:10px;
+    border-radius:16px;
+    padding:9px 11px;
+    background:rgba(250,204,21,.10);
+    border:1px solid rgba(250,204,21,.22);
+    color:#ffe58a;
+    font-weight:900;
+  }
+
+  .ko-mobile-status{
+    margin-top:10px;
+    border-radius:16px;
+    padding:10px 11px;
+    font-weight:900;
+    background:rgba(255,255,255,.055);
+    border:1px solid rgba(255,255,255,.09);
+    color:rgba(255,255,255,.76);
+  }
+
+  .ko-mobile-status.done{
+    background:rgba(16,185,129,.12);
+    border-color:rgba(52,211,153,.25);
+    color:#c9ffe6;
+  }
+
+  .ko-mobile-edit{
+    width:100%;
+    margin-top:10px;
+    border-radius:999px!important;
+  }
+
+  .ko-mobile-empty{
+    padding:18px;
+    border-radius:22px;
+    background:rgba(255,255,255,.045);
+    border:1px dashed rgba(255,255,255,.16);
+    color:rgba(255,255,255,.70);
+    text-align:center;
+    font-weight:900;
+  }
+
+  .ko-mobile-nav{
+    display:flex;
+    gap:10px;
+    margin-top:14px;
+  }
+
+  .ko-mobile-nav button{
+    flex:1 1 0;
+    border-radius:999px!important;
+    min-height:44px!important;
+    font-weight:950!important;
+  }
+}
