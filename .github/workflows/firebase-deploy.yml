@@ -8,34 +8,42 @@ on:
 
 jobs:
   deploy:
+    name: Deploy hosting, functions and rules
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install Firebase Tools
+      - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      - name: Install Functions Dependencies
+      - name: Create Firebase service account file
+        run: |
+          cat > "$RUNNER_TEMP/firebase-service-account.json" <<'EOF'
+          ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          EOF
+
+      - name: Create functions env file
+        run: |
+          printf "FOOTBALL_DATA_TOKEN=%s\n" "${{ secrets.FOOTBALL_DATA_TOKEN }}" > functions/.env
+
+      - name: Install functions dependencies
         run: npm install
         working-directory: functions
 
-      - name: Create Service Account File
-        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service-account.json
+      - name: Validate app JavaScript
+        run: node --input-type=module --check < app.js
 
-      - name: Set football-data secret
-        run: |
-          echo "${{ secrets.FOOTBALL_DATA_TOKEN }}" | firebase functions:secrets:set FOOTBALL_DATA_TOKEN --project ${{ vars.FIREBASE_PROJECT_ID }} --force
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: service-account.json
+      - name: Validate functions JavaScript
+        run: node --check functions/index.js
 
       - name: Deploy Firebase
-        run: firebase deploy --only hosting,functions,firestore:rules --project ${{ vars.FIREBASE_PROJECT_ID }}
+        run: firebase deploy --only hosting,functions,firestore:rules --project "${{ vars.FIREBASE_PROJECT_ID }}" --non-interactive
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: service-account.json
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
