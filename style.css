@@ -8123,3 +8123,86 @@ input[data-no-persist-v116]{
     font-weight:1000!important;
   }
 }
+
+
+/* v133 — força mobile a mostrar 1 jogo de cada vez */
+@media(max-width:760px){
+  body.ko-mobile-force-one-v133-active{
+    overflow-y:auto!important;
+    height:auto!important;
+    min-height:100%!important;
+  }
+
+  #knockoutMobileV121.ko-mobile-force-one-v133 .ko-mobile-list,
+  #knockoutMobileV121 .ko-mobile-list{
+    display:block!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    padding-bottom:18px!important;
+  }
+
+  #knockoutMobileV121 .ko-force-hidden-v133{
+    display:none!important;
+    visibility:hidden!important;
+    height:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+  }
+
+  #knockoutMobileV121 .ko-force-active-v133{
+    display:block!important;
+    visibility:visible!important;
+    height:auto!important;
+    min-height:auto!important;
+    overflow:visible!important;
+  }
+
+  #koMobileForcedControlsV133{
+    display:grid!important;
+    grid-template-columns:1fr auto 1fr!important;
+    gap:8px!important;
+    align-items:center!important;
+    margin:8px 0 12px!important;
+  }
+
+  #koMobileForcedControlsV133 button{
+    min-height:44px!important;
+    border-radius:16px!important;
+    padding:8px 10px!important;
+    font-weight:1000!important;
+    font-size:13px!important;
+  }
+
+  #koMobileForcedControlsV133 button[disabled]{
+    opacity:.35!important;
+    pointer-events:none!important;
+  }
+
+  #koMobileForcedControlsV133 strong{
+    white-space:nowrap!important;
+    color:rgba(255,255,255,.72)!important;
+    font-weight:1000!important;
+    font-size:12px!important;
+  }
+
+  #knockoutTab.active{
+    height:auto!important;
+    min-height:100vh!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+    padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))!important;
+  }
+
+  #knockoutMobileV121{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))!important;
+  }
+}
