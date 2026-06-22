@@ -1,0 +1,41 @@
+name: Deploy Firebase
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Firebase Tools
+        run: npm install -g firebase-tools
+
+      - name: Install Functions Dependencies
+        run: npm install
+        working-directory: functions
+
+      - name: Create Service Account File
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service-account.json
+
+      - name: Set football-data secret
+        run: |
+          echo "${{ secrets.FOOTBALL_DATA_TOKEN }}" | firebase functions:secrets:set FOOTBALL_DATA_TOKEN --project ${{ vars.FIREBASE_PROJECT_ID }} --force
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: service-account.json
+
+      - name: Deploy Firebase
+        run: firebase deploy --only hosting,functions,firestore:rules --project ${{ vars.FIREBASE_PROJECT_ID }}
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: service-account.json
