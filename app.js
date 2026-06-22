@@ -272,31 +272,19 @@ function timePortugal(value) {
   return new Intl.DateTimeFormat("pt-PT", { timeZone: PORTUGAL_TZ, hour: "2-digit", minute: "2-digit" }).format(parsePortugalDate(value));
 }
 function statusOf(game) {
+  if (game?.manualStatus === "SUSPENDED" || game?.manualSuspended === true) {
+    return { text: "Suspenso", className: "suspended" };
+  }
+
   const apiStatus = String(game?.footballDataStatus || game?.statusApi || "").toUpperCase();
   const hasApiStatus = Boolean(apiStatus);
 
-  if (["IN_PLAY", "PAUSED", "LIVE"].includes(apiStatus)) {
-    return { text: "A Decorrer", className: "live" };
-  }
+  if (["IN_PLAY", "PAUSED", "LIVE"].includes(apiStatus)) return { text: "A Decorrer", className: "live" };
+  if (["SUSPENDED"].includes(apiStatus)) return { text: "Suspenso", className: "suspended" };
+  if (["POSTPONED", "CANCELLED"].includes(apiStatus)) return { text: "Adiado", className: "locked" };
+  if (["FINISHED", "AWARDED"].includes(apiStatus)) return { text: "Jogado", className: "played" };
 
-  if (["SUSPENDED"].includes(apiStatus)) {
-    return { text: "Suspenso", className: "live" };
-  }
-
-  if (["POSTPONED", "CANCELLED"].includes(apiStatus)) {
-    return { text: "Adiado", className: "locked" };
-  }
-
-  if (["FINISHED", "AWARDED"].includes(apiStatus)) {
-    return { text: "Jogado", className: "played" };
-  }
-
-  // Se existe estado vindo da API e não está terminado, nunca marcar como Jogado só por haver marcador.
-  if (hasApiStatus && game?.footballDataLocked === true) {
-    return { text: "A Decorrer", className: "live" };
-  }
-
-  // Fallback antigo para jogos manuais sem API.
+  if (hasApiStatus && game?.footballDataLocked === true) return { text: "A Decorrer", className: "live" };
   if (!hasApiStatus && hasResult(game)) return { text: "Jogado", className: "played" };
 
   if (parsePortugalDate(game.matchDate).getTime() <= Date.now()) return { text: "A Decorrer", className: "live" };
@@ -9043,3 +9031,172 @@ function getDisplayScoreV158(game) {
   if (hasResult(game)) return `${game.homeScore} - ${game.awayScore}`;
   return "";
 }
+
+
+// v159 — Admin: marcar/remover jogo suspenso manualmente.
+function getAllEditableGamesV159() {
+  try {
+    const list = [];
+    if (Array.isArray(games)) {
+      games.forEach(game => {
+        if (!game) return;
+        list.push({
+          type: "group",
+          id: String(game.id || game.gameId || ""),
+          label: `${game.matchDate || ""} · ${game.homeTeam || "—"} vs ${game.awayTeam || "—"}`,
+          game
+        });
+      });
+    }
+
+    const koMatches =
+      state?.knockout?.matches ||
+      state?.settings?.knockout?.matches ||
+      settings?.knockout?.matches ||
+      [];
+
+    if (Array.isArray(koMatches)) {
+      koMatches.forEach(game => {
+        if (!game) return;
+        list.push({
+          type: "knockout",
+          id: String(game.id || game.gameId || ""),
+          label: `${game.round || "Fase final"} · ${game.homeTeam || "—"} vs ${game.awayTeam || "—"}`,
+          game
+        });
+      });
+    }
+
+    return list.filter(item => item.id);
+  } catch (error) {
+    console.warn("getAllEditableGamesV159 falhou:", error);
+    return [];
+  }
+}
+
+function renderSuspendedGameAdminV159() {
+  try {
+    const isAdminPanel = document.querySelector(".tab-panel.active")?.id === "adminTab" || document.body.textContent.includes("Permissões de utilizadores");
+    if (!isAdminPanel) return;
+
+    const adminPanel =
+      document.getElementById("adminTab") ||
+      document.querySelector(".tab-panel.active") ||
+      document.querySelector("main") ||
+      document.body;
+
+    let box = document.getElementById("suspendedGameAdminBoxV159");
+    if (!box) {
+      box = document.createElement("section");
+      box.id = "suspendedGameAdminBoxV159";
+      box.className = "suspended-game-admin-box-v159";
+      box.innerHTML = `
+        <div class="suspended-game-admin-head-v159">
+          <div>
+            <strong>Jogo suspenso</strong>
+            <span>Marca um jogo como suspenso sem o fechar como jogado.</span>
+          </div>
+        </div>
+        <div class="suspended-game-admin-row-v159">
+          <select id="suspendedGameSelectV159"></select>
+          <button type="button" id="markSuspendedBtnV159">Marcar suspenso</button>
+          <button type="button" id="clearSuspendedBtnV159">Remover suspensão</button>
+        </div>
+        <p class="suspended-game-admin-note-v159">O jogo fica em Faltam Resultados, mostra Suspenso e só passa para Jogado quando houver resultado final.</p>
+      `;
+
+      const anchor =
+        document.getElementById("footballRealtimeSyncBoxV156") ||
+        document.getElementById("footballManualFallbackV157") ||
+        adminPanel.querySelector(".admin-section, .admin-card, .panel, .card");
+
+      if (anchor?.insertAdjacentElement) anchor.insertAdjacentElement("afterend", box);
+      else adminPanel.prepend(box);
+
+      box.querySelector("#markSuspendedBtnV159")?.addEventListener("click", () => setSuspendedGameV159(true));
+      box.querySelector("#clearSuspendedBtnV159")?.addEventListener("click", () => setSuspendedGameV159(false));
+    }
+
+    const select = document.getElementById("suspendedGameSelectV159");
+    if (!select) return;
+
+    const current = select.value;
+    const allGames = getAllEditableGamesV159();
+
+    select.innerHTML = allGames.map(item => {
+      const st = statusOf(item.game);
+      const suspended = item.game?.manualStatus === "SUSPENDED" || item.game?.manualSuspended === true || item.game?.footballDataStatus === "SUSPENDED";
+      const suffix = suspended ? " · SUSPENSO" : st?.text ? ` · ${st.text}` : "";
+      return `<option value="${escapeHtml(`${item.type}::${item.id}`)}">${escapeHtml(item.label + suffix)}</option>`;
+    }).join("");
+
+    if (current && [...select.options].some(opt => opt.value === current)) select.value = current;
+  } catch (error) {
+    console.warn("renderSuspendedGameAdminV159 falhou:", error);
+  }
+}
+
+async function setSuspendedGameV159(isSuspended) {
+  try {
+    if (typeof hasPermission === "function" && !hasPermission("editResults")) {
+      toast("Sem permissão para alterar jogos.");
+      return;
+    }
+
+    const select = document.getElementById("suspendedGameSelectV159");
+    const value = select?.value || "";
+    const [type, id] = value.split("::");
+    if (!type || !id) {
+      toast("Escolhe um jogo primeiro.");
+      return;
+    }
+
+    const item = getAllEditableGamesV159().find(entry => entry.type === type && entry.id === id);
+    if (!item) {
+      toast("Jogo não encontrado.");
+      return;
+    }
+
+    const payload = isSuspended ? {
+      manualStatus: "SUSPENDED",
+      manualSuspended: true,
+      footballDataStatus: "SUSPENDED",
+      footballDataLocked: true,
+      suspendedAt: new Date().toISOString(),
+      suspendedBy: currentUser?.email || "admin"
+    } : {
+      manualStatus: "",
+      manualSuspended: false,
+      footballDataStatus: "",
+      footballDataLocked: false,
+      suspendedAt: "",
+      suspendedBy: "",
+      updatedAt: new Date().toISOString()
+    };
+
+    Object.assign(item.game, payload);
+
+    const firestoreDb = typeof db !== "undefined" ? db : window.db;
+    if (type === "group" && firestoreDb?.collection) {
+      await firestoreDb.collection("games").doc(id).set(payload, { merge: true });
+    } else {
+      if (typeof saveSettings === "function") await saveSettings();
+      else if (typeof saveLocalData === "function") saveLocalData("jogo suspenso fase final");
+    }
+
+    if (typeof saveLocalData === "function") saveLocalData("jogo suspenso");
+    if (typeof renderAll === "function") renderAll();
+    renderSuspendedGameAdminV159();
+    toast(isSuspended ? "Jogo marcado como suspenso." : "Suspensão removida.");
+  } catch (error) {
+    console.error("setSuspendedGameV159 falhou:", error);
+    toast(`Erro ao alterar suspensão: ${error.message || "erro"}`);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(renderSuspendedGameAdminV159, 700);
+  setTimeout(renderSuspendedGameAdminV159, 1800);
+  setTimeout(renderSuspendedGameAdminV159, 3500);
+});
+document.addEventListener("click", () => setTimeout(renderSuspendedGameAdminV159, 180));

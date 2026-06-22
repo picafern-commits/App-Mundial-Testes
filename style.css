@@ -8527,3 +8527,68 @@ summary:focus-visible{
   color:#83ffbf!important;
   border-color:rgba(52,211,153,.35)!important;
 }
+
+
+/* v159 — Admin jogo suspenso */
+.suspended-game-admin-box-v159{
+  width:100%!important;
+  max-width:760px!important;
+  margin:12px 0 18px!important;
+  padding:14px!important;
+  border-radius:18px!important;
+  border:1px solid rgba(255,212,90,.22)!important;
+  background:radial-gradient(circle at top left,rgba(255,212,90,.10),transparent 32%),linear-gradient(180deg,rgba(13,21,34,.98),rgba(7,11,19,.98))!important;
+  box-shadow:0 16px 38px rgba(0,0,0,.24)!important;
+  color:#fff!important;
+}
+.suspended-game-admin-head-v159{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;margin-bottom:12px!important}
+.suspended-game-admin-head-v159 strong{display:block!important;font-size:15px!important;font-weight:950!important;color:#fff!important}
+.suspended-game-admin-head-v159 span{display:block!important;margin-top:3px!important;font-size:12px!important;color:rgba(255,255,255,.58)!important}
+.suspended-game-admin-row-v159{display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;gap:8px!important}
+.suspended-game-admin-row-v159 select{min-width:0!important;width:100%!important;border-radius:12px!important;border:1px solid rgba(255,255,255,.12)!important;background:#0b1320!important;color:#fff!important;padding:10px 12px!important}
+.suspended-game-admin-row-v159 button{border-radius:12px!important;border:1px solid rgba(255,255,255,.12)!important;padding:10px 12px!important;font-weight:950!important;cursor:pointer!important}
+#markSuspendedBtnV159{background:rgba(255,212,90,.14)!important;color:#ffe390!important;border-color:rgba(255,212,90,.34)!important}
+#clearSuspendedBtnV159{background:rgba(255,255,255,.06)!important;color:#fff!important}
+.suspended-game-admin-note-v159{margin:10px 0 0!important;font-size:12px!important;color:rgba(255,255,255,.55)!important}
+.status.suspended,.badge.suspended,.pill.suspended,.match-status.suspended{background:rgba(255,212,90,.11)!important;color:#ffe390!important;border-color:rgba(255,212,90,.38)!important}
+@media(max-width:760px){.suspended-game-admin-row-v159{grid-template-columns:1fr!important}}
+
+/* v160 — manter cores dos botões da app normal após importar tudo dos testes. */
+.tab,
+.primary,
+.secondary{
+  min-height:40px!important;
+  border-radius:8px!important;
+  padding:9px 13px!important;
+  color:var(--text)!important;
+  font-weight:850!important;
+}
+
+.tab{
+  background:transparent!important;
+  color:var(--muted)!important;
+}
+
+.tab.active{
+  color:#07111d!important;
+  background:var(--gold)!important;
+  box-shadow:none!important;
+}
+
+.primary{
+  color:var(--text)!important;
+  background:linear-gradient(135deg,#1fbf89,#139dc2)!important;
+  border-color:rgba(255,255,255,.10)!important;
+}
+
+.secondary{
+  color:var(--text)!important;
+  border:1px solid rgba(34,184,207,.35)!important;
+  background:rgba(34,184,207,.13)!important;
+}
+
+.danger-soft{
+  color:#ffc0c0!important;
+  border-color:rgba(255,98,98,.42)!important;
+  background:rgba(255,98,98,.10)!important;
+}
