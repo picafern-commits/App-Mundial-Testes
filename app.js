@@ -8737,3 +8737,192 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(updateFootball247LabelV151, 2600);
 });
 document.addEventListener("click", () => setTimeout(updateFootball247LabelV151, 220));
+
+
+// v156 — indicador em tempo real da sync 24/7 via Firestore.
+let footballRealtimeSyncUnsubV156 = null;
+let footballRealtimeSyncLastDataV156 = null;
+let footballRealtimeSyncTimerV156 = null;
+
+function footballRealtimeSyncFormatV156(value) {
+  if (!value) return "—";
+  let date = null;
+
+  try {
+    if (value?.toDate) date = value.toDate();
+    else if (typeof value === "string") date = new Date(value);
+    else if (value instanceof Date) date = value;
+  } catch {}
+
+  if (!date || Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleString("pt-PT", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+}
+
+function footballRealtimeSyncAgeV156(value) {
+  let date = null;
+  try {
+    if (value?.toDate) date = value.toDate();
+    else if (typeof value === "string") date = new Date(value);
+    else if (value instanceof Date) date = value;
+  } catch {}
+
+  if (!date || Number.isNaN(date.getTime())) return { text: "sem dados", state: "unknown" };
+
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (seconds < 75) return { text: `há ${seconds}s`, state: "online" };
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 5) return { text: `há ${minutes}min`, state: "warning" };
+  return { text: `há ${minutes}min`, state: "error" };
+}
+
+function footballRealtimeSyncEnsureBoxV156() {
+  let box = document.getElementById("footballRealtimeSyncBoxV156");
+  if (box) return box;
+
+  box = document.createElement("section");
+  box.id = "footballRealtimeSyncBoxV156";
+  box.className = "football-realtime-sync-box-v156";
+  box.innerHTML = `
+    <div class="football-realtime-sync-top-v156">
+      <div>
+        <strong>Sync API em tempo real</strong>
+        <span id="footballRealtimeSyncSubV156">A ligar ao Firestore...</span>
+      </div>
+      <div class="football-realtime-sync-pill-v156 unknown" id="footballRealtimeSyncPillV156">
+        <i></i><span>A verificar</span>
+      </div>
+    </div>
+    <div class="football-realtime-sync-grid-v156">
+      <div><b id="footballRealtimeSyncLastV156">—</b><span>Última sync</span></div>
+      <div><b id="footballRealtimeSyncMatchesV156">—</b><span>Jogos API</span></div>
+      <div><b id="footballRealtimeSyncFinishedV156">—</b><span>Terminados</span></div>
+      <div><b id="footballRealtimeSyncUpdatedV156">—</b><span>Atualizados</span></div>
+    </div>
+  `;
+
+  const target =
+    document.querySelector("#dashboardTab") ||
+    document.querySelector(".tab-panel.active") ||
+    document.querySelector("main") ||
+    document.querySelector(".app-content") ||
+    document.body;
+
+  const afterHeader =
+    target.querySelector?.(".page-title, .section-title, h1, h2") ||
+    target.firstElementChild;
+
+  if (afterHeader?.insertAdjacentElement) afterHeader.insertAdjacentElement("afterend", box);
+  else target.prepend(box);
+
+  return box;
+}
+
+function footballRealtimeSyncRenderV156(data = null) {
+  try {
+    footballRealtimeSyncLastDataV156 = data || footballRealtimeSyncLastDataV156 || {};
+    const current = footballRealtimeSyncLastDataV156 || {};
+    const box = footballRealtimeSyncEnsureBoxV156();
+
+    const lastValue = current.lastSyncIso || current.lastSyncAt || "";
+    const age = footballRealtimeSyncAgeV156(lastValue);
+
+    const pill = document.getElementById("footballRealtimeSyncPillV156");
+    const sub = document.getElementById("footballRealtimeSyncSubV156");
+    const last = document.getElementById("footballRealtimeSyncLastV156");
+    const matches = document.getElementById("footballRealtimeSyncMatchesV156");
+    const finished = document.getElementById("footballRealtimeSyncFinishedV156");
+    const updated = document.getElementById("footballRealtimeSyncUpdatedV156");
+
+    if (pill) {
+      pill.className = `football-realtime-sync-pill-v156 ${age.state}`;
+      const label =
+        age.state === "online" ? "Online" :
+        age.state === "warning" ? "Atrasada" :
+        age.state === "error" ? "Sem sync recente" :
+        "Sem dados";
+      pill.querySelector("span").textContent = label;
+    }
+
+    if (sub) {
+      const mode = current.mode || "24/7 minuto a minuto";
+      const by = current.lastSyncBy ? ` · ${current.lastSyncBy}` : "";
+      sub.textContent = `${mode} · ${age.text}${by}`;
+    }
+
+    if (last) last.textContent = footballRealtimeSyncFormatV156(lastValue);
+    if (matches) matches.textContent = current.apiMatches ?? "0";
+    if (finished) finished.textContent = current.finished ?? "0";
+
+    const totalUpdated =
+      Number(current.updatedGames || 0) +
+      Number(current.updatedKnockoutMatches || 0) +
+      Number(current.matchedGamesStatus || 0);
+
+    if (updated) updated.textContent = String(totalUpdated);
+
+    if (box) box.dataset.state = age.state;
+  } catch (error) {
+    console.warn("footballRealtimeSyncRenderV156 falhou:", error);
+  }
+}
+
+function footballRealtimeSyncStartV156() {
+  try {
+    footballRealtimeSyncEnsureBoxV156();
+    footballRealtimeSyncRenderV156();
+
+    if (!window.db && typeof db === "undefined") {
+      setTimeout(footballRealtimeSyncStartV156, 800);
+      return;
+    }
+
+    const firestoreDb = typeof db !== "undefined" ? db : window.db;
+    if (!firestoreDb?.collection) {
+      setTimeout(footballRealtimeSyncStartV156, 800);
+      return;
+    }
+
+    if (footballRealtimeSyncUnsubV156) return;
+
+    footballRealtimeSyncUnsubV156 = firestoreDb
+      .collection("settings")
+      .doc("footballData")
+      .onSnapshot(snapshot => {
+        const data = snapshot.exists ? (snapshot.data() || {}) : {};
+        footballRealtimeSyncRenderV156(data);
+      }, error => {
+        console.warn("Sync tempo real indisponível:", error);
+        const box = footballRealtimeSyncEnsureBoxV156();
+        const pill = document.getElementById("footballRealtimeSyncPillV156");
+        const sub = document.getElementById("footballRealtimeSyncSubV156");
+        if (pill) {
+          pill.className = "football-realtime-sync-pill-v156 error";
+          pill.querySelector("span").textContent = "Erro";
+        }
+        if (sub) sub.textContent = "Não foi possível ler settings/footballData";
+        if (box) box.dataset.state = "error";
+      });
+
+    if (!footballRealtimeSyncTimerV156) {
+      footballRealtimeSyncTimerV156 = setInterval(() => {
+        footballRealtimeSyncRenderV156();
+      }, 10000);
+    }
+  } catch (error) {
+    console.warn("footballRealtimeSyncStartV156 falhou:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(footballRealtimeSyncStartV156, 500);
+  setTimeout(footballRealtimeSyncStartV156, 1800);
+  setTimeout(footballRealtimeSyncStartV156, 3500);
+});
+document.addEventListener("click", () => setTimeout(footballRealtimeSyncStartV156, 180));
