@@ -4,7 +4,6 @@ const { getMessaging } = require("firebase-admin/messaging");
 const { getAuth } = require("firebase-admin/auth");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const { onRequest } = require("firebase-functions/v2/https");
-const { defineSecret } = require("firebase-functions/params");
 const { onDocumentCreated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const logger = require("firebase-functions/logger");
 
@@ -15,8 +14,6 @@ const db = getFirestore();
 const messaging = getMessaging();
 const auth = getAuth();
 const ADMIN_EMAILS = new Set(["pica.fern@gmail.com"]);
-const FOOTBALL_DATA_TOKEN = defineSecret("FOOTBALL_DATA_TOKEN");
-
 function cleanString(value, fallback = "") {
   return String(value || fallback).trim();
 }
@@ -409,8 +406,7 @@ exports.syncFootballDataWorldCup = onRequest({
   region: "europe-west1",
   timeoutSeconds: 90,
   memory: "256MiB",
-  secrets: [FOOTBALL_DATA_TOKEN]
-}, async (req, res) => {
+  }, async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
   res.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
   res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -428,11 +424,11 @@ exports.syncFootballDataWorldCup = onRequest({
   try {
     const actor = await assertFootballDataAdmin(req);
 
-    const token = cleanString(FOOTBALL_DATA_TOKEN.value() || process.env.FOOTBALL_DATA_TOKEN || process.env.FOOTBALL_DATA_API_KEY);
+    const token = cleanString(process.env.FOOTBALL_DATA_TOKEN || process.env.FOOTBALL_DATA_API_KEY);
     if (!token) {
       res.status(500).json({
         ok: false,
-        error: "FOOTBALL_DATA_TOKEN não está configurado nas Firebase Functions."
+        error: "FOOTBALL_DATA_TOKEN não está configurado no GitHub Secret / functions .env."
       });
       return;
     }
