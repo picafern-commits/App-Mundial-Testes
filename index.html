@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Mundial Pontos 2026 · Clean v145</title>
+  <title>Mundial Pontos 2026 · Logs PIN v146</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Mundial 2026" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -106,6 +106,7 @@
       <button class="tab active" type="button" data-tab="calendarTab">Calendário</button>
       <button class="tab" type="button" data-tab="scoreTab">Pontuação</button>
       <button class="tab" type="button" data-tab="knockoutTab">Fase Final</button>
+      <button class="tab" type="button" data-tab="logsTab">Logs</button>
       <button class="tab" type="button" data-tab="adminTab">Admin</button>
     </nav>
 
@@ -140,6 +141,39 @@
         </div>
         <div id="knockoutLockNotice" class="knockout-lock-notice"></div>
         <div id="knockoutBracket" class="knockout-bracket"></div>
+      </section>
+
+      <section id="logsTab" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <h2>Logs do sistema</h2>
+            <p>Histórico em tempo real das ações importantes feitas na app.</p>
+          </div>
+        </div>
+
+        <div id="logsLockedPanel" class="logs-lock-card">
+          <h3>Aba protegida</h3>
+          <p>Introduz o PIN para consultar os logs desta sessão.</p>
+          <div class="pin-row">
+            <input id="logsPinInput" type="password" inputmode="numeric" placeholder="PIN dos logs" />
+            <button id="unlockLogsBtn" class="primary" type="button">Abrir logs</button>
+          </div>
+        </div>
+
+        <div id="logsUnlockedPanel" class="logs-live-panel hidden">
+          <div class="logs-toolbar">
+            <div>
+              <strong>Logs em tempo real</strong>
+              <span>Atualiza automaticamente quando a app sincroniza.</span>
+            </div>
+            <div class="collapse-actions">
+              <button id="exportLogsBtn" class="secondary" type="button">Exportar logs</button>
+              <button id="clearLogsBtn" class="secondary danger-soft" type="button">Limpar logs</button>
+              <button id="lockLogsBtn" class="secondary" type="button">Bloquear</button>
+            </div>
+          </div>
+          <div id="systemLogsList" class="system-logs-list"></div>
+        </div>
       </section>
 
       <section id="adminTab" class="tab-panel">
@@ -236,21 +270,6 @@
             <div class="collapse-actions">
               <button id="exportPontosBtn" class="primary" type="button">Exportar Pontos Excel</button>
             </div>
-          </details>
-
-          <details class="admin-card admin-collapse">
-            <summary>
-              <div>
-                <h2>Logs do sistema</h2>
-                <p>Consulta as ações importantes feitas na app, com data, utilizador e detalhe.</p>
-              </div>
-              <span class="collapse-icon">⌄</span>
-            </summary>
-            <div class="collapse-actions">
-              <button id="exportLogsBtn" class="secondary" type="button">Exportar logs</button>
-              <button id="clearLogsBtn" class="secondary danger-soft" type="button">Limpar logs</button>
-            </div>
-            <div id="systemLogsList" class="system-logs-list"></div>
           </details>
 
 <details class="admin-card admin-collapse">

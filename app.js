@@ -8,6 +8,7 @@ const PENDING_BETS_KEY = `${STORAGE_KEY}_pending_bets_v1`;
 const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
+const LOGS_PIN = "25959";
 
 let db = null;
 let firebaseApi = null;
@@ -44,6 +45,7 @@ let chatUnsubscribe = null;
 let chatOpenedOnce = false;
 let chatLastSeenAt = Number(localStorage.getItem('mundial_chat_last_seen_at') || '0');
 let presenceIntervalId = null;
+let logsUnlocked = sessionStorage.getItem("mundial_logs_unlocked_v146") === "1";
 let onlineUsersIntervalId = null;
 
 const MATCH_ROWS = [
@@ -318,11 +320,24 @@ function addSystemLog(action, detail = "", meta = {}, options = {}) {
   saveLocalData(`log ${entry.action}`);
 
   if (options.sync) scheduleFullSync(`log ${entry.action}`, 500);
+  setTimeout(renderSystemLogs, 0);
   return entry;
 }
 
 function systemLogs() {
   return Array.isArray(appSettings?.logs) ? appSettings.logs : [];
+}
+
+function mergeSystemLogs(localLogs = [], remoteLogs = []) {
+  const byId = new Map();
+  [...remoteLogs, ...localLogs].forEach(log => {
+    if (!log) return;
+    const id = log.id || `${log.at || ""}_${log.action || ""}_${log.detail || ""}`;
+    byId.set(id, { ...log, id });
+  });
+  return [...byId.values()]
+    .sort((a, b) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime())
+    .slice(0, MAX_SYSTEM_LOGS);
 }
 
 function formatLogTime(value) {
@@ -333,6 +348,16 @@ function formatLogTime(value) {
 
 function csvEscape(value) {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
+function isLogsUnlocked() {
+  return logsUnlocked || sessionStorage.getItem("mundial_logs_unlocked_v146") === "1";
+}
+
+function setLogsUnlocked(value) {
+  logsUnlocked = Boolean(value);
+  if (logsUnlocked) sessionStorage.setItem("mundial_logs_unlocked_v146", "1");
+  else sessionStorage.removeItem("mundial_logs_unlocked_v146");
 }
 
 function getLocalData() {
@@ -921,8 +946,14 @@ function setupRealtimeSync() {
   }, error => console.warn("Realtime apostas falhou:", error)));
 
   realtimeUnsubscribers.push(onSnapshot(doc(db, "settings", "main"), snap => {
-    if (!snap.exists() || hasSettingsPending()) return;
-    appSettings = mergeSettings(snap.data() || {});
+    if (!snap.exists()) return;
+    const remoteSettings = snap.data() || {};
+    if (hasSettingsPending()) {
+      appSettings.logs = mergeSystemLogs(appSettings.logs || [], remoteSettings.logs || []);
+      renderSystemLogs();
+      return;
+    }
+    appSettings = mergeSettings(remoteSettings);
     queueRealtimeRender("firebase realtime configurações");
   }, error => console.warn("Realtime configurações falhou:", error)));
 
@@ -1770,6 +1801,7 @@ function permissionTabAllowed(tabId) {
   if (tabId === "scoreTab") return hasPermission("score");
   if (tabId === "knockoutTab") return hasPermission("knockout");
   if (tabId === "adminTab") return hasPermission("admin");
+  if (tabId === "logsTab") return true;
   return true;
 }
 
@@ -1788,6 +1820,7 @@ function applyPermissionsToUi() {
   document.querySelector('[data-tab="calendarTab"]')?.classList.toggle("hidden", !hasPermission("calendar"));
   document.querySelector('[data-tab="scoreTab"]')?.classList.toggle("hidden", !hasPermission("score"));
   document.querySelector('[data-tab="knockoutTab"]')?.classList.toggle("hidden", !hasPermission("knockout"));
+  document.querySelector('[data-tab="logsTab"]')?.classList.toggle("hidden", false);
   document.querySelector('[data-tab="adminTab"]')?.classList.toggle("hidden", !hasPermission("admin"));
 
   $("adminTab")?.classList.toggle("no-access", !hasPermission("admin"));
@@ -5252,7 +5285,17 @@ function renderAdmin() {
 
 function renderSystemLogs() {
   const container = $("systemLogsList");
-  if (!container) return;
+  const lockedPanel = $("logsLockedPanel");
+  const unlockedPanel = $("logsUnlockedPanel");
+  const unlocked = isLogsUnlocked();
+
+  lockedPanel?.classList.toggle("hidden", unlocked);
+  unlockedPanel?.classList.toggle("hidden", !unlocked);
+
+  if (!container || !unlocked) {
+    if (container) container.innerHTML = "";
+    return;
+  }
 
   const logs = systemLogs();
   if (!logs.length) {
@@ -5275,7 +5318,31 @@ function renderSystemLogs() {
   `).join("");
 }
 
+function unlockLogsTab() {
+  const input = $("logsPinInput");
+  const pin = String(input?.value || "").trim();
+
+  if (pin !== LOGS_PIN) {
+    toast("PIN dos logs errado.");
+    input?.focus();
+    return;
+  }
+
+  if (input) input.value = "";
+  setLogsUnlocked(true);
+  addSystemLog("Aba logs aberta", "Os logs foram desbloqueados com PIN.", {}, { sync: true });
+  renderSystemLogs();
+  toast("Logs desbloqueados.");
+}
+
+function lockLogsTab() {
+  setLogsUnlocked(false);
+  renderSystemLogs();
+  toast("Logs bloqueados.");
+}
+
 function exportSystemLogsCsv() {
+  if (!isLogsUnlocked()) return toast("Desbloqueia os logs com PIN.");
   const logs = systemLogs();
   if (!logs.length) return toast("Ainda não há logs para exportar.");
 
@@ -5305,6 +5372,7 @@ function exportSystemLogsCsv() {
 }
 
 async function clearSystemLogs() {
+  if (!isLogsUnlocked()) { toast("Desbloqueia os logs com PIN."); return; }
   if (!hasPermission("admin")) { toast("Sem permissão."); return; }
   if (!confirm("Limpar todos os logs do sistema?")) return;
 
@@ -6220,6 +6288,7 @@ document.querySelectorAll(".tab").forEach(button => {
     $(button.dataset.tab).classList.add("active");
     updateActiveAppSection();
     if (button.dataset.tab === "knockoutTab") renderKnockout();
+    if (button.dataset.tab === "logsTab") renderSystemLogs();
   });
 });
 $("unlockAdminBtn").addEventListener("click", () => {
@@ -6259,6 +6328,9 @@ $("saveExtraResultsBtn")?.addEventListener("click", saveExtraResults);
 $("exportPontosBtn")?.addEventListener("click", exportPontosExcel);
 $("exportLogsBtn")?.addEventListener("click", exportSystemLogsCsv);
 $("clearLogsBtn")?.addEventListener("click", clearSystemLogs);
+$("unlockLogsBtn")?.addEventListener("click", unlockLogsTab);
+$("lockLogsBtn")?.addEventListener("click", lockLogsTab);
+$("logsPinInput")?.addEventListener("keydown", event => { if (event.key === "Enter") unlockLogsTab(); });
 $("saveKnockoutUnlockBtn")?.addEventListener("click", saveKnockoutUnlock);
 
 
