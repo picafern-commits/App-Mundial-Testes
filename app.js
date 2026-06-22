@@ -3247,27 +3247,34 @@ async function logout() {
 }
 
 const KNOCKOUT_ROUNDS = [
-  { key: "16 avos", label: "16 avos", count: 16, next: "Oitavos" },
-  { key: "Oitavos", label: "Oitavos", count: 8, next: "Quartos" },
-  { key: "Quartos", label: "Quartos", count: 4, next: "Meias" },
-  { key: "Meias", label: "Meias-finais", count: 2, next: "final" },
+  { key: "r32", label: "16 avos de final", count: 16, next: "r16" },
+  { key: "r16", label: "Oitavos de final", count: 8, next: "qf" },
+  { key: "qf", label: "Quartos de final", count: 4, next: "sf" },
+  { key: "sf", label: "Meias-finais", count: 2, next: "final" },
   { key: "final", label: "Final", count: 1, next: "" }
 ];
 
+const KNOCKOUT_ROUND_LABELS = Object.fromEntries(KNOCKOUT_ROUNDS.map(round => [round.key, round.label]));
+
+function knockoutRoundLabel(round) {
+  const key = String(round || "").trim().toLowerCase();
+  return KNOCKOUT_ROUND_LABELS[key] || String(round || "Fase Final").trim() || "Fase Final";
+}
+
 const KNOCKOUT_LAYOUT_KEYS = [
-  ["r32_left", "Segunda fase esquerda"],
-  ["r16_left", "Oitavos esquerda"],
+  ["r32_left", "16 avos esquerda"],
+  ["r16_left", "Oitavos de final esquerda"],
   ["r16_left_pair_1", "Oitavos esquerda 1-2"],
   ["r16_left_pair_2", "Oitavos esquerda 3-4"],
-  ["qf_left", "Quartos esquerda"],
+  ["qf_left", "Quartos de final esquerda"],
   ["sf_left", "Meia-final esquerda"],
   ["center", "Final"],
   ["sf_right", "Meia-final direita"],
-  ["qf_right", "Quartos direita"],
-  ["r16_right", "Oitavos direita"],
+  ["qf_right", "Quartos de final direita"],
+  ["r16_right", "Oitavos de final direita"],
   ["r16_right_pair_1", "Oitavos direita 5-6"],
   ["r16_right_pair_2", "Oitavos direita 7-8"],
-  ["r32_right", "Segunda fase direita"]
+  ["r32_right", "16 avos direita"]
 ];
 
 
@@ -3361,7 +3368,7 @@ function knockoutAvailable() {
 
 
 function isFirstKnockoutRound(match) {
-  return match?.round === "16 avos";
+  return match?.round === "r32";
 }
 
 function resetAutoKnockoutTeams() {
@@ -3592,7 +3599,7 @@ function renderKnockout() {
 
   const finalMatch = knockoutMatches().find(match => match.round === "final");
   const champion = knockoutWinner(finalMatch);
-  const semiMatches = knockoutMatches().filter(match => match.round === "Meias");
+  const semiMatches = knockoutMatches().filter(match => match.round === "sf");
   const thirdPlaceTeams = semiMatches.map(knockoutLoser).filter(Boolean);
 
   if (notice) notice.innerHTML = "";
@@ -3640,12 +3647,12 @@ let knockoutMobileSelectedRoundV121 = localStorage.getItem("mundial_ko_mobile_ro
 
 function knockoutRoundsForMobileV121() {
   const matches = Array.isArray(appSettings?.knockout?.matches) ? appSettings.knockout.matches : [];
-  const fallbackNames = ["16 avos", "Oitavos", "Quartos", "Meias", "Final"];
+  const fallbackNames = ["16 avos de final", "Oitavos de final", "Quartos de final", "Meias-finais", "Final"];
   const roundMap = new Map();
 
   matches.forEach((match, index) => {
     const rawRound = String(match.round || match.stage || match.phase || match.ronda || "").trim();
-    const round = rawRound || fallbackNames[Math.min(Math.floor(index / 16), fallbackNames.length - 1)] || "Fase Final";
+    const round = knockoutRoundLabel(rawRound || fallbackNames[Math.min(Math.floor(index / 16), fallbackNames.length - 1)] || "Fase Final");
     if (!roundMap.has(round)) roundMap.set(round, []);
     roundMap.get(round).push({ ...match, __index: index });
   });
@@ -3884,33 +3891,33 @@ function knockoutLoser(match) {
 function buildKnockoutPhotoColumns() {
   const byRound = key => knockoutMatches().filter(match => match.round === key);
   const labels = {
-    r32: "Segunda fase",
+    r32: "16 avos de final",
     r16: "Oitavos de final",
     qf: "Quartos de final",
-    sf: "Meia-final"
+    sf: "Meias-finais"
   };
   const split = key => {
     const list = byRound(key);
     const half = Math.ceil(list.length / 2);
     return [list.slice(0, half), list.slice(half)];
   };
-  const [r32Left, r32Right] = split("16 avos");
-  const [r16Left, r16Right] = split("Oitavos");
-  const [qfLeft, qfRight] = split("Quartos");
-  const [sfLeft, sfRight] = split("Meias");
+  const [r32Left, r32Right] = split("r32");
+  const [r16Left, r16Right] = split("r16");
+  const [qfLeft, qfRight] = split("qf");
+  const [sfLeft, sfRight] = split("sf");
 
   return {
     left: [
-      { key: "16 avos", side: "left", label: labels.r32, matches: r32Left },
-      { key: "Oitavos", side: "left", label: labels.r16, matches: r16Left },
-      { key: "Quartos", side: "left", label: labels.qf, matches: qfLeft },
-      { key: "Meias", side: "left", label: labels.sf, matches: sfLeft }
+      { key: "r32", side: "left", label: labels.r32, matches: r32Left },
+      { key: "r16", side: "left", label: labels.r16, matches: r16Left },
+      { key: "qf", side: "left", label: labels.qf, matches: qfLeft },
+      { key: "sf", side: "left", label: labels.sf, matches: sfLeft }
     ],
     right: [
-      { key: "Meias", side: "right", label: labels.sf, matches: sfRight },
-      { key: "Quartos", side: "right", label: labels.qf, matches: qfRight },
-      { key: "Oitavos", side: "right", label: labels.r16, matches: r16Right },
-      { key: "16 avos", side: "right", label: labels.r32, matches: r32Right }
+      { key: "sf", side: "right", label: labels.sf, matches: sfRight },
+      { key: "qf", side: "right", label: labels.qf, matches: qfRight },
+      { key: "r16", side: "right", label: labels.r16, matches: r16Right },
+      { key: "r32", side: "right", label: labels.r32, matches: r32Right }
     ]
   };
 }
@@ -3927,7 +3934,7 @@ function renderKnockoutPhotoColumn(column) {
 }
 
 function knockoutMatchLayoutKey(column, index) {
-  if (column.key !== "Oitavos") return "";
+  if (column.key !== "r16") return "";
   return `r16_${column.side}_pair_${Math.floor(index / 2) + 1}`;
 }
 
@@ -7418,65 +7425,3 @@ document.addEventListener("click", event => {
 
 window.addEventListener("resize", () => setTimeout(syncKnockoutMobilePageV137, 120));
 window.addEventListener("orientationchange", () => setTimeout(syncKnockoutMobilePageV137, 260));
-
-
-// v137 — nomes oficiais das rondas, sem alterar chaves internas.
-function roundDisplayNameV137(value) {
-  const raw = String(value || "").trim();
-  const clean = raw.toLowerCase().replace(/\s+/g, "").replace("-", "");
-
-  const map = {
-    r32: "16 avos",
-    "32": "16 avos",
-    "16avos": "16 avos",
-    "16avosdefinal": "16 avos",
-    r16: "Oitavos",
-    oitavos: "Oitavos",
-    "oitavosdefinal": "Oitavos",
-    qf: "Quartos",
-    quartos: "Quartos",
-    "quartosdefinal": "Quartos",
-    sf: "Meias",
-    st: "Meias",
-    meias: "Meias",
-    "meiasfinais": "Meias",
-    semifinal: "Meias",
-    semifinais: "Meias",
-    final: "Final"
-  };
-
-  return map[clean] || raw;
-}
-
-function applyRoundDisplayNamesV137(root = document) {
-  try {
-    root.querySelectorAll("#knockoutMobileV121 .ko-mobile-chip").forEach(chip => {
-      const count = chip.querySelector("span")?.outerHTML || "";
-      const textOnly = Array.from(chip.childNodes)
-        .filter(node => node.nodeType === Node.TEXT_NODE)
-        .map(node => node.textContent)
-        .join("")
-        .trim();
-
-      const newName = roundDisplayNameV137(textOnly || chip.dataset.koMobileRound || chip.textContent);
-      const badge = chip.querySelector("span");
-      chip.childNodes.forEach(node => {
-        if (node.nodeType === Node.TEXT_NODE) node.remove();
-      });
-      chip.insertBefore(document.createTextNode(newName + " "), badge || null);
-    });
-
-    root.querySelectorAll("#knockoutMobileV121 .ko-mobile-header strong, #knockoutMobileV121 .ko-mobile-card-head span").forEach(el => {
-      el.textContent = roundDisplayNameV137(el.textContent);
-    });
-  } catch (error) {
-    console.warn("Nomes rondas v137 falhou:", error);
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(applyRoundDisplayNamesV137, 300);
-  setTimeout(applyRoundDisplayNamesV137, 1000);
-  setTimeout(applyRoundDisplayNamesV137, 1800);
-});
-document.addEventListener("click", () => setTimeout(applyRoundDisplayNamesV137, 120));

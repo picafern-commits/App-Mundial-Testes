@@ -7587,15 +7587,3 @@ input[data-no-persist-v116]{
     overflow:visible!important;
   }
 }
-
-
-/* v137 — nomes maiores das rondas no mobile */
-@media(max-width:760px){
-  #knockoutMobileV121 .ko-mobile-chip{
-    min-width:max-content!important;
-    white-space:nowrap!important;
-    font-size:14px!important;
-    padding-left:13px!important;
-    padding-right:13px!important;
-  }
-}
