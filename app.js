@@ -208,9 +208,18 @@ const normalizeComparable = value => normalizeKey(value);
 const canonicalTeam = value => TEAM_ALIASES[normalizeKey(value)] || String(value ?? "").trim();
 const playerIdFromName = name => `player_${normalizeKey(name).replace(/\s+/g, "_") || "sem_nome"}`;
 
+function defaultPointSettings() {
+  return { exact: 3, winner: 1, mvp: 5, topScorer: 5, champion: 10 };
+}
+
+function defaultKnockoutPointSettings() {
+  return { ...defaultPointSettings(), penalties: 2 };
+}
+
 function defaultSettings() {
   return {
-    points: { exact: 3, winner: 1, mvp: 5, topScorer: 5, champion: 10 },
+    points: defaultPointSettings(),
+    knockoutPoints: defaultKnockoutPointSettings(),
     extraResults: { mvp: "", topScorer: "", champion: "" },
     extraPredictions: {},
     importedPoints: {},
@@ -269,6 +278,7 @@ function mergeSettings(input = {}) {
   return {
     ...base, ...input,
     points: { ...base.points, ...(input.points || {}) },
+    knockoutPoints: { ...base.knockoutPoints, ...(input.knockoutPoints || {}) },
     extraResults: { ...base.extraResults, ...(input.extraResults || {}) },
     extraPredictions: { ...(input.extraPredictions || {}) },
     importedPoints: { ...(input.importedPoints || {}) },
@@ -997,6 +1007,85 @@ function pointsForBet(bet, game) {
 
   return 0;
 }
+
+function knockoutMatchHasResult(match) {
+  return Boolean(match?.homeTeam && match?.awayTeam) &&
+    match.homeScore !== null && match.homeScore !== undefined && match.homeScore !== "" &&
+    match.awayScore !== null && match.awayScore !== undefined && match.awayScore !== "";
+}
+
+function firstNumberFromKeys(source, keys) {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (value === "" || value === null || value === undefined) continue;
+    const number = Number(value);
+    if (Number.isFinite(number)) return number;
+  }
+  return null;
+}
+
+function knockoutBetPenaltyPair(bet) {
+  const home = firstNumberFromKeys(bet, ["homePenalties", "homePenaltyGuess", "penaltiesHome", "penaltyHome", "homePens", "pensHome", "penHomeGuess", "penA"]);
+  const away = firstNumberFromKeys(bet, ["awayPenalties", "awayPenaltyGuess", "penaltiesAway", "penaltyAway", "awayPens", "pensAway", "penAwayGuess", "penB"]);
+  return home === null || away === null ? null : { home, away };
+}
+
+function knockoutBetScorePair(bet) {
+  const home = firstNumberFromKeys(bet, ["homeGuess", "homeScore", "scoreHome", "teamAScore", "scoreA"]);
+  const away = firstNumberFromKeys(bet, ["awayGuess", "awayScore", "scoreAway", "teamBScore", "scoreB"]);
+  return home === null || away === null ? null : { home, away };
+}
+
+function isExactKnockoutBet(bet, match) {
+  if (!bet || !knockoutMatchHasResult(match)) return false;
+  const score = knockoutBetScorePair(bet);
+  return Boolean(score) && score.home === Number(match.homeScore) && score.away === Number(match.awayScore);
+}
+
+function isExactKnockoutPenaltyBet(bet, match) {
+  if (!bet || !knockoutMatchHasResult(match)) return false;
+  const actual = knockoutPenaltiesV121(match);
+  const predicted = knockoutBetPenaltyPair(bet);
+  return Boolean(actual && predicted) && predicted.home === actual.home && predicted.away === actual.away;
+}
+
+function knockoutBetWinnerName(bet, match) {
+  if (!bet || !match?.homeTeam || !match?.awayTeam) return "";
+
+  const directWinner = bet.winner || bet.winnerTeam || bet.predictedWinner || bet.teamWinner || bet.champion;
+  if (directWinner) return canonicalTeam(directWinner);
+
+  const score = knockoutBetScorePair(bet);
+  if (!score) return "";
+
+  if (score.home > score.away) return match.homeTeam;
+  if (score.away > score.home) return match.awayTeam;
+
+  const pens = knockoutBetPenaltyPair(bet);
+  if (!pens || pens.home === pens.away) return "";
+  return pens.home > pens.away ? match.homeTeam : match.awayTeam;
+}
+
+function isWinnerKnockoutBet(bet, match) {
+  const actualWinner = knockoutWinner(match);
+  const predictedWinner = knockoutBetWinnerName(bet, match);
+  return Boolean(actualWinner && predictedWinner && normalizeComparable(actualWinner) === normalizeComparable(predictedWinner));
+}
+
+function pointsForKnockoutBet(bet, match) {
+  if (!bet || !knockoutMatchHasResult(match)) return 0;
+
+  const points = { ...defaultKnockoutPointSettings(), ...(appSettings?.knockoutPoints || {}) };
+  let total = 0;
+
+  if (isExactKnockoutBet(bet, match)) total += Number(points.exact) || 0;
+  else if (isWinnerKnockoutBet(bet, match)) total += Number(points.winner) || 0;
+
+  if (isExactKnockoutPenaltyBet(bet, match)) total += Number(points.penalties) || 0;
+
+  return total;
+}
+
 function extraPointsForPlayer(playerName) {
   const predictions = appSettings.extraPredictions?.[playerName] || {};
   const results = appSettings.extraResults || {};
@@ -1021,12 +1110,14 @@ function playerStats(playerName) {
     playerName,
     points: 0,
     gamePoints: 0,
+    knockoutPoints: 0,
     extraPoints: 0,
     importedPoints: appSettings.importedPoints?.[playerName] ?? null,
     totalBets: playerBets.length,
     settled: 0,
     exact: 0,
     winner: 0,
+    penalties: 0,
     misses: 0,
     mvp: 0,
     topScorer: 0,
@@ -1035,7 +1126,24 @@ function playerStats(playerName) {
 
   playerBets.forEach(bet => {
     const game = games.find(item => item.id === bet.gameId);
-    if (!game || !hasResult(game)) return;
+    if (!game) {
+      const knockoutMatch = knockoutMatchById(bet.gameId);
+      if (!knockoutMatch || !knockoutMatchHasResult(knockoutMatch)) return;
+
+      const points = pointsForKnockoutBet(bet, knockoutMatch);
+      stats.gamePoints += points;
+      stats.knockoutPoints += points;
+      stats.settled += 1;
+
+      if (isExactKnockoutBet(bet, knockoutMatch)) stats.exact += 1;
+      else if (isWinnerKnockoutBet(bet, knockoutMatch)) stats.winner += 1;
+      else stats.misses += 1;
+
+      if (isExactKnockoutPenaltyBet(bet, knockoutMatch)) stats.penalties += 1;
+      return;
+    }
+
+    if (!hasResult(game)) return;
 
     const points = pointsForBet(bet, game);
     stats.gamePoints += points;
@@ -3800,6 +3908,12 @@ function renderKnockoutRecordForm(match) {
 
 function closeKnockoutRecordModal() {
   document.getElementById("knockoutRecordModal")?.remove();
+  document.body.classList.remove("ko-record-modal-open");
+  document.removeEventListener("keydown", handleKnockoutRecordModalKeydown);
+}
+
+function handleKnockoutRecordModalKeydown(event) {
+  if (event.key === "Escape") closeKnockoutRecordModal();
 }
 
 function openKnockoutRecordModal(matchId) {
@@ -3819,6 +3933,9 @@ function openKnockoutRecordModal(matchId) {
   const modal = document.createElement("div");
   modal.id = "knockoutRecordModal";
   modal.className = "modal knockout-record-modal";
+  modal.setAttribute("role", "dialog");
+  modal.setAttribute("aria-modal", "true");
+  modal.setAttribute("aria-label", "Adicionar registo da Fase Final");
   modal.innerHTML = `
     <div class="modal-card knockout-record-card">
       <div class="modal-head">
@@ -3831,7 +3948,15 @@ function openKnockoutRecordModal(matchId) {
       ${renderKnockoutRecordForm(match)}
     </div>
   `;
+  modal.addEventListener("click", event => {
+    if (event.target === modal || event.target.closest("[data-ko-record-close]")) {
+      event.preventDefault();
+      closeKnockoutRecordModal();
+    }
+  });
+  document.body.classList.add("ko-record-modal-open");
   document.body.appendChild(modal);
+  document.addEventListener("keydown", handleKnockoutRecordModalKeydown);
   modal.querySelector("select, input")?.focus();
 }
 
@@ -4569,7 +4694,7 @@ function betForPlayerGameV120(playerName, gameId) {
 
 
 function playerGameRows(playerName) {
-  return playedGamesNewestFirstV119().map(game => {
+  const groupRows = playedGamesNewestFirstV119().map(game => {
     const bet = betForPlayerGameV120(playerName, game.id);
     const points = bet ? pointsForBet(bet, game) : 0;
 
@@ -4581,6 +4706,66 @@ function playerGameRows(playerName) {
       className: bet ? betResultClass(bet, game) : "miss"
     };
   });
+
+  const playerId = playerIdFromName(playerName);
+  const knockoutRows = (appSettings.knockout?.matches || [])
+    .filter(knockoutMatchHasResult)
+    .map(match => {
+      const bet = bets.find(item => item.gameId === match.id && (
+        item.playerId === playerId ||
+        playerIdFromName(item.playerName || "") === playerId ||
+        String(item.playerName || "").trim().toLowerCase() === String(playerName || "").trim().toLowerCase()
+      ));
+      const points = bet ? pointsForKnockoutBet(bet, match) : 0;
+      return {
+        game: { ...match, phase: "Fase Final" },
+        bet,
+        points,
+        label: bet ? knockoutBetResultLabel(bet, match) : "Sem aposta",
+        className: bet ? knockoutBetResultClass(bet, match) : "miss",
+        knockout: true
+      };
+    });
+
+  return [...groupRows, ...knockoutRows];
+}
+
+function knockoutBetResultLabel(bet, match) {
+  const labels = [];
+  if (isExactKnockoutBet(bet, match)) labels.push("Resultado exato");
+  else if (isWinnerKnockoutBet(bet, match)) labels.push("Vencedor");
+  if (isExactKnockoutPenaltyBet(bet, match)) labels.push("Penáltis");
+  return labels.length ? labels.join(" + ") : "Falhou";
+}
+
+function knockoutBetResultClass(bet, match) {
+  if (isExactKnockoutBet(bet, match)) return "exact";
+  if (isWinnerKnockoutBet(bet, match) || isExactKnockoutPenaltyBet(bet, match)) return "winner";
+  return "miss";
+}
+
+function knockoutBetDisplay(bet) {
+  if (!bet) return "-";
+  const score = knockoutBetScorePair(bet);
+  const pens = knockoutBetPenaltyPair(bet);
+  const base = score ? `${score.home}-${score.away}` : "-";
+  return pens ? `${base} pen. ${pens.home}-${pens.away}` : base;
+}
+
+function scoreRowMeta(game, knockout = false) {
+  if (knockout) return `${escapeHtml(game.roundLabel || knockoutRoundLabel(game.round))} · Jogo ${escapeHtml(game.index)}`;
+  return `${escapeHtml(game.group)} · ${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}`;
+}
+
+function scoreRowResult(game, knockout = false) {
+  if (!knockout) {
+    const [h, a] = gameScorePairV119(game);
+    return h === null ? "-" : `${h}-${a}`;
+  }
+
+  const base = knockoutMatchHasResult(game) ? `${game.homeScore}-${game.awayScore}` : "-";
+  const pens = knockoutPenaltiesV121(game);
+  return pens ? `${base} pen. ${pens.home}-${pens.away}` : base;
 }
 
 
@@ -4609,7 +4794,7 @@ function renderScore() {
               <div class="player-rank">${index + 1}</div>
               <div class="player-score-main">
                 <strong>${escapeHtml(row.playerName)}</strong>
-                <span>${row.exact} exatos · ${row.winner} vencedor/empate · ${settled} jogos com resultado · ${withBets} apostas</span>
+                <span>${row.exact} exatos · ${row.winner} vencedor · ${row.penalties || 0} penáltis · ${settled} jogos com resultado · ${withBets} apostas</span>
               </div>
               <div class="player-total">${row.points} pts</div>
               <div class="player-arrow">⌄</div>
@@ -4623,14 +4808,14 @@ function renderScore() {
                 <span>Tipo</span>
                 <span>Pontos</span>
               </div>
-              ${gameRows.map(({ game, bet, points, label, className }) => `
+              ${gameRows.map(({ game, bet, points, label, className, knockout }) => `
                 <div class="player-game-row ${className}">
                   <span>
                     <b>${escapeHtml(game.homeTeam)} - ${escapeHtml(game.awayTeam)}</b>
-                    <small>${escapeHtml(game.group)} · ${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}</small>
+                    <small>${scoreRowMeta(game, knockout)}</small>
                   </span>
-                  <span>${bet ? `${bet.homeGuess}-${bet.awayGuess}` : "-"}</span>
-                  <span>${(() => { const [h,a] = gameScorePairV119(game); return h === null ? "-" : `${h}-${a}`; })()}</span>
+                  <span>${knockout ? knockoutBetDisplay(bet) : (bet ? `${bet.homeGuess}-${bet.awayGuess}` : "-")}</span>
+                  <span>${scoreRowResult(game, knockout)}</span>
                   <span><em>${escapeHtml(label)}</em></span>
                   <strong>${points}</strong>
                 </div>
@@ -4811,6 +4996,13 @@ function renderSettingsForm() {
   $("pointsMvpInput").value = appSettings.points.mvp;
   $("pointsTopScorerInput").value = appSettings.points.topScorer;
   $("pointsChampionInput").value = appSettings.points.champion;
+  const knockoutPoints = { ...defaultKnockoutPointSettings(), ...(appSettings.knockoutPoints || {}) };
+  if ($("knockoutPointsExactInput")) $("knockoutPointsExactInput").value = knockoutPoints.exact;
+  if ($("knockoutPointsWinnerInput")) $("knockoutPointsWinnerInput").value = knockoutPoints.winner;
+  if ($("knockoutPointsPenaltiesInput")) $("knockoutPointsPenaltiesInput").value = knockoutPoints.penalties;
+  if ($("knockoutPointsMvpInput")) $("knockoutPointsMvpInput").value = knockoutPoints.mvp;
+  if ($("knockoutPointsTopScorerInput")) $("knockoutPointsTopScorerInput").value = knockoutPoints.topScorer;
+  if ($("knockoutPointsChampionInput")) $("knockoutPointsChampionInput").value = knockoutPoints.champion;
   $("finalMvpInput").value = appSettings.extraResults.mvp || "";
   $("finalTopScorerInput").value = appSettings.extraResults.topScorer || "";
   $("finalChampionInput").value = appSettings.extraResults.champion || "";
@@ -5415,6 +5607,14 @@ async function savePointsSettings() {
     mvp: Number($("pointsMvpInput").value) || 0,
     topScorer: Number($("pointsTopScorerInput").value) || 0,
     champion: Number($("pointsChampionInput").value) || 0
+  };
+  appSettings.knockoutPoints = {
+    exact: Number($("knockoutPointsExactInput")?.value ?? appSettings.knockoutPoints?.exact ?? 3) || 0,
+    winner: Number($("knockoutPointsWinnerInput")?.value ?? appSettings.knockoutPoints?.winner ?? 1) || 0,
+    penalties: Number($("knockoutPointsPenaltiesInput")?.value ?? appSettings.knockoutPoints?.penalties ?? 2) || 0,
+    mvp: Number($("knockoutPointsMvpInput")?.value ?? appSettings.knockoutPoints?.mvp ?? 5) || 0,
+    topScorer: Number($("knockoutPointsTopScorerInput")?.value ?? appSettings.knockoutPoints?.topScorer ?? 5) || 0,
+    champion: Number($("knockoutPointsChampionInput")?.value ?? appSettings.knockoutPoints?.champion ?? 10) || 0
   };
   await persistSettings(); renderAll(); toast("Sistema de pontos atualizado.");
 }
