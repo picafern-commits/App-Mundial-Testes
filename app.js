@@ -273,10 +273,7 @@ function timePortugal(value) {
 }
 function statusOf(game) {
   const apiStatus = String(game?.footballDataStatus || game?.statusApi || "").toUpperCase();
-
-  if (["FINISHED", "AWARDED"].includes(apiStatus) || hasResult(game)) {
-    return { text: "Jogado", className: "played" };
-  }
+  const hasApiStatus = Boolean(apiStatus);
 
   if (["IN_PLAY", "PAUSED", "LIVE"].includes(apiStatus)) {
     return { text: "A Decorrer", className: "live" };
@@ -290,9 +287,17 @@ function statusOf(game) {
     return { text: "Adiado", className: "locked" };
   }
 
-  if (game?.footballDataLocked === true) {
+  if (["FINISHED", "AWARDED"].includes(apiStatus)) {
+    return { text: "Jogado", className: "played" };
+  }
+
+  // Se existe estado vindo da API e não está terminado, nunca marcar como Jogado só por haver marcador.
+  if (hasApiStatus && game?.footballDataLocked === true) {
     return { text: "A Decorrer", className: "live" };
   }
+
+  // Fallback antigo para jogos manuais sem API.
+  if (!hasApiStatus && hasResult(game)) return { text: "Jogado", className: "played" };
 
   if (parsePortugalDate(game.matchDate).getTime() <= Date.now()) return { text: "A Decorrer", className: "live" };
   return { text: "Por jogar", className: "open" };
@@ -7997,6 +8002,8 @@ function mergeFootballDataGameUpdatesV139(updatedGames = []) {
       footballDataStage: update.footballDataStage || update.stage || game.footballDataStage || "",
       footballDataLocked: update.footballDataLocked === undefined ? game.footballDataLocked : update.footballDataLocked,
       footballDataUtcDate: update.footballDataUtcDate || game.footballDataUtcDate || "",
+      liveHomeScore: update.liveHomeScore ?? game.liveHomeScore ?? null,
+      liveAwayScore: update.liveAwayScore ?? game.liveAwayScore ?? null,
       homeScore: home,
       awayScore: away,
       updatedAt: update.updatedAt || new Date().toISOString()
@@ -8034,6 +8041,8 @@ function mergeFootballDataKnockoutV139(knockoutMatches = []) {
       footballDataStage: update.footballDataStage || update.stage || existing.footballDataStage || "",
       footballDataLocked: update.footballDataLocked === undefined ? existing.footballDataLocked : update.footballDataLocked,
       footballDataUtcDate: update.footballDataUtcDate || existing.footballDataUtcDate || "",
+      liveHomeScore: update.liveHomeScore ?? existing.liveHomeScore ?? null,
+      liveAwayScore: update.liveAwayScore ?? existing.liveAwayScore ?? null,
       homeScore: update.homeScore ?? existing.homeScore ?? null,
       awayScore: update.awayScore ?? existing.awayScore ?? null,
       homePenalties: update.homePenalties ?? existing.homePenalties ?? null,
@@ -9021,3 +9030,16 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(setupAutomaticSyncVisualV157, 3200);
 });
 document.addEventListener("click", () => setTimeout(setupAutomaticSyncVisualV157, 160));
+
+
+// v158 — marcador parcial separado do resultado final.
+function getDisplayScoreV158(game) {
+  const apiStatus = String(game?.footballDataStatus || "").toUpperCase();
+  if (["IN_PLAY", "PAUSED", "LIVE"].includes(apiStatus)) {
+    if (game.liveHomeScore !== null && game.liveHomeScore !== undefined && game.liveAwayScore !== null && game.liveAwayScore !== undefined) {
+      return `${game.liveHomeScore} - ${game.liveAwayScore}`;
+    }
+  }
+  if (hasResult(game)) return `${game.homeScore} - ${game.awayScore}`;
+  return "";
+}

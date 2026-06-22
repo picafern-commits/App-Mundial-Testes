@@ -8518,3 +8518,12 @@ summary:focus-visible{
   margin-top:8px!important;
   color:rgba(255,255,255,.50)!important;
 }
+
+
+/* v158-live-score — marcador parcial não conta como Jogado */
+.live-score,
+.score-live,
+.partial-score{
+  color:#83ffbf!important;
+  border-color:rgba(52,211,153,.35)!important;
+}

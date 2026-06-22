@@ -529,6 +529,40 @@ function footballMatchPayloadV153(apiMatch, actor, score = null) {
   return payload;
 }
 
+
+function footballMatchPayloadV158(apiMatch, actor, score = null) {
+  const apiStatus = String(apiMatch?.status || "").toUpperCase();
+  const isFinished = ["FINISHED", "AWARDED"].includes(apiStatus);
+
+  const payload = {
+    footballDataId: String(apiMatch.id || ""),
+    footballDataStatus: cleanString(apiMatch.status),
+    footballDataStage: cleanString(apiMatch.stage),
+    footballDataGroup: cleanString(apiMatch.group),
+    footballDataUtcDate: cleanString(apiMatch.utcDate),
+    footballDataLocked: footballShouldLockMatch(apiMatch),
+    footballDataUpdatedBy: actor.email,
+    source: "football-data.org",
+    updatedAt: new Date().toISOString(),
+    firebaseUpdatedAt: FieldValue.serverTimestamp()
+  };
+
+  if (score && isFinished) {
+    payload.homeScore = score.homeScore;
+    payload.awayScore = score.awayScore;
+    payload.liveHomeScore = FieldValue.delete();
+    payload.liveAwayScore = FieldValue.delete();
+    if (score.homePenalties !== null && score.homePenalties !== undefined) payload.homePenalties = score.homePenalties;
+    if (score.awayPenalties !== null && score.awayPenalties !== undefined) payload.awayPenalties = score.awayPenalties;
+  } else if (score) {
+    payload.liveHomeScore = score.homeScore;
+    payload.liveAwayScore = score.awayScore;
+    payload.liveUpdatedAt = new Date().toISOString();
+  }
+
+  return payload;
+}
+
 async function runFootballDataSyncCoreV151(options = {}) {
   const actor = options.actor || FOOTBALL_SYSTEM_ACTOR_V151;
   const competition = cleanString(options.competition || "WC");
@@ -599,7 +633,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
     const knockoutTarget = !isGroupStage ? footballFindLocalMatch(apiMatch, knockoutMatches) : null;
 
     if (groupTarget) {
-      const payload = footballMatchPayloadV153(apiMatch, actor, score);
+      const payload = footballMatchPayloadV158(apiMatch, actor, score);
       batch.set(db.collection("games").doc(groupTarget.id), payload, { merge: true });
       writes += 1;
 
@@ -621,7 +655,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
     }
 
     if (knockoutTarget) {
-      const payload = footballMatchPayloadV153(apiMatch, actor, score);
+      const payload = footballMatchPayloadV158(apiMatch, actor, score);
       Object.assign(knockoutTarget, {
         footballDataId: payload.footballDataId,
         footballDataStatus: payload.footballDataStatus,
@@ -633,11 +667,17 @@ async function runFootballDataSyncCoreV151(options = {}) {
         updatedAt: payload.updatedAt
       });
 
-      if (score) {
+      if (score && footballIsFinishedV153(apiMatch)) {
         knockoutTarget.homeScore = score.homeScore;
         knockoutTarget.awayScore = score.awayScore;
+        knockoutTarget.liveHomeScore = null;
+        knockoutTarget.liveAwayScore = null;
         knockoutTarget.homePenalties = score.homePenalties;
         knockoutTarget.awayPenalties = score.awayPenalties;
+      } else if (score) {
+        knockoutTarget.liveHomeScore = score.homeScore;
+        knockoutTarget.liveAwayScore = score.awayScore;
+        knockoutTarget.liveUpdatedAt = new Date().toISOString();
       }
 
       updatedKnockoutMatches.push({
@@ -653,6 +693,8 @@ async function runFootballDataSyncCoreV151(options = {}) {
         source: knockoutTarget.source,
         homeScore: knockoutTarget.homeScore ?? null,
         awayScore: knockoutTarget.awayScore ?? null,
+        liveHomeScore: knockoutTarget.liveHomeScore ?? null,
+        liveAwayScore: knockoutTarget.liveAwayScore ?? null,
         homePenalties: knockoutTarget.homePenalties ?? null,
         awayPenalties: knockoutTarget.awayPenalties ?? null,
         updatedAt: knockoutTarget.updatedAt,
