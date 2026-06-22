@@ -8027,3 +8027,99 @@ input[data-no-persist-v116]{
     padding:0!important;
   }
 }
+
+
+/* v132 — Fase Final mobile: um jogo de cada vez, sem scroll preso */
+@media(max-width:760px){
+  body.ko-mobile-v131-active{
+    overflow-y:auto!important;
+    height:auto!important;
+    min-height:100%!important;
+  }
+
+  #knockoutTab.active,
+  #knockoutTab.ko-mobile-v131-active{
+    display:block!important;
+    height:auto!important;
+    min-height:100vh!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+    padding:8px 10px calc(115px + env(safe-area-inset-bottom,0px))!important;
+  }
+
+  #knockoutMobileV121.ko-mobile-single-v132,
+  #knockoutMobileV121{
+    display:block!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    padding-bottom:calc(70px + env(safe-area-inset-bottom,0px))!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-header-v132{
+    position:static!important;
+    margin-bottom:8px!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-tabs{
+    position:static!important;
+    margin-bottom:8px!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-game-controls-v132{
+    display:grid!important;
+    grid-template-columns:1fr auto 1fr!important;
+    align-items:center!important;
+    gap:8px!important;
+    margin:6px 0 10px!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-game-controls-v132 button{
+    min-height:42px!important;
+    border-radius:16px!important;
+    font-size:13px!important;
+    font-weight:1000!important;
+    padding:8px 10px!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-game-controls-v132 button[disabled]{
+    opacity:.36!important;
+    pointer-events:none!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-game-controls-v132 strong{
+    white-space:nowrap!important;
+    font-size:12px!important;
+    color:rgba(255,255,255,.68)!important;
+    font-weight:1000!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-single-list-v132,
+  #knockoutMobileV121 .ko-mobile-list{
+    display:block!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+    padding:0 0 10px!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-single-card-v132{
+    margin:0!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-round-nav-v132{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:8px!important;
+    margin-top:10px!important;
+    margin-bottom:calc(30px + env(safe-area-inset-bottom,0px))!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-round-nav-v132 button{
+    min-height:44px!important;
+    border-radius:16px!important;
+    font-size:13px!important;
+    font-weight:1000!important;
+  }
+}
