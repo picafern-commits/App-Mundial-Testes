@@ -7103,14 +7103,6 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
 }
 
 
-/* v114 — indicador discreto do modo económico Firebase */
-.firebase-status-box::after{
-  content:" · modo económico";
-  opacity:.68;
-  font-weight:700;
-}
-
-
 /* v115 — botão Pesquisar visível para todos */
 .search-result-btn,
 .search-result-btn-v115{
@@ -7517,5 +7509,93 @@ input[data-no-persist-v116]{
   .tab-panel.active{
     max-height:none!important;
     overflow-y:visible!important;
+  }
+}
+
+
+/* v123 — Fase Final mobile: scroll interno real para R32/R16/QF */
+@media(max-width:760px){
+  #knockoutTab.ko-mobile-real-scroll-page-v123,
+  #knockoutTab{
+    height:calc(100dvh - 86px)!important;
+    min-height:0!important;
+    max-height:calc(100dvh - 86px)!important;
+    overflow:hidden!important;
+    padding-bottom:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+
+  #knockoutMobileV121,
+  #knockoutMobileV121.ko-mobile-real-scroll-host-v123,
+  .knockout-mobile-v121{
+    display:flex!important;
+    flex-direction:column!important;
+    flex:1 1 auto!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior:contain!important;
+    touch-action:pan-y!important;
+    padding:0 0 calc(96px + env(safe-area-inset-bottom, 0px)) 0!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-header{
+    flex:0 0 auto!important;
+    position:sticky!important;
+    top:0!important;
+    z-index:20!important;
+    backdrop-filter:blur(18px)!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-tabs{
+    flex:0 0 auto!important;
+    position:sticky!important;
+    top:76px!important;
+    z-index:19!important;
+    background:linear-gradient(180deg,rgba(7,17,31,.98),rgba(7,17,31,.88))!important;
+    border-radius:0 0 18px 18px!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-list,
+  #knockoutMobileV121 .ko-mobile-real-scroll-list-v123,
+  .ko-mobile-list{
+    display:grid!important;
+    gap:12px!important;
+    flex:0 0 auto!important;
+    height:auto!important;
+    min-height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+    padding:4px 0 28px 0!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-card,
+  .ko-mobile-card{
+    flex:0 0 auto!important;
+    min-height:auto!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-nav,
+  .ko-mobile-nav{
+    flex:0 0 auto!important;
+    position:static!important;
+    bottom:auto!important;
+    margin-bottom:calc(34px + env(safe-area-inset-bottom, 0px))!important;
+  }
+
+  /* Evitar que contentores gerais bloqueiem o scroll interno da Fase Final */
+  body[data-active-panel="knockoutTab"] .app,
+  body[data-active-panel="knockoutTab"] .app-shell,
+  body[data-active-panel="knockoutTab"] main,
+  body[data-active-panel="knockoutTab"] .main,
+  body[data-active-panel="knockoutTab"] .content,
+  body[data-active-panel="knockoutTab"] .tab-content,
+  body[data-active-panel="knockoutTab"] .tab-panel.active{
+    min-height:0!important;
+    overflow:hidden!important;
   }
 }

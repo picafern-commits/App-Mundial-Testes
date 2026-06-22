@@ -535,125 +535,9 @@ function setFirebaseStatus(type, message) {
 
 
 
-// v114 — Modo económico Firebase oficial.
-// Reduz listeners de snapshot trocando onSnapshot permanentes por leitura inicial + polling lento.
-const FIRESTORE_ECONOMY_V114 = {
-  installed: false,
-  pollers: new Set(),
-  normalPollMs: 150000,
-  chatPollMs: 120000,
-  settingsPollMs: 180000
-};
-
-function economySnapshotDelayV114(target) {
-  try {
-    const path = String(
-      target?.path ||
-      target?._query?.path?.canonicalString?.() ||
-      target?._query?.path?.segments?.join?.("/") ||
-      target?._path?.canonicalString?.() ||
-      ""
-    ).toLowerCase();
-
-    if (path.includes("chat")) return FIRESTORE_ECONOMY_V114.chatPollMs;
-    if (path.includes("settings") || path.includes("appsettings")) return FIRESTORE_ECONOMY_V114.settingsPollMs;
-    if (path.includes("presence")) return 180000;
-  } catch {}
-  return FIRESTORE_ECONOMY_V114.normalPollMs;
-}
-
-function isDocRefV114(target) {
-  try {
-    if (target?.type === "document") return true;
-    if (target?.path && !target?._query) return true;
-    const segments = target?._key?.path?.segments || target?._path?.segments || [];
-    return Array.isArray(segments) && segments.length > 0 && segments.length % 2 === 0;
-  } catch {
-    return false;
-  }
-}
-
-function installFirestoreEconomyModeV114() {
-  if (FIRESTORE_ECONOMY_V114.installed) return;
-  if (!firebaseApi || typeof firebaseApi.onSnapshot !== "function") return;
-  if (typeof firebaseApi.getDoc !== "function" || typeof firebaseApi.getDocs !== "function") return;
-
-  const originalOnSnapshot = firebaseApi.onSnapshot;
-  firebaseApi.__originalOnSnapshotV114 = firebaseApi.__originalOnSnapshotV114 || originalOnSnapshot;
-
-  firebaseApi.onSnapshot = function economyOnSnapshotV114(target, ...args) {
-    let next = null;
-    let errorCb = null;
-
-    for (const arg of args) {
-      if (typeof arg === "function" && !next) next = arg;
-      else if (typeof arg === "function" && !errorCb) errorCb = arg;
-      else if (arg && typeof arg.next === "function") {
-        next = arg.next.bind(arg);
-        if (typeof arg.error === "function") errorCb = arg.error.bind(arg);
-      }
-    }
-
-    if (!next) return firebaseApi.__originalOnSnapshotV114.call(this, target, ...args);
-
-    let stopped = false;
-    let running = false;
-    let timer = null;
-    const delay = economySnapshotDelayV114(target);
-
-    const run = async () => {
-      if (stopped || running) return;
-      running = true;
-
-      try {
-        const isDoc = isDocRefV114(target);
-        const snap = isDoc ? await firebaseApi.getDoc(target) : await firebaseApi.getDocs(target);
-        if (!stopped) next(snap);
-      } catch (error) {
-        if (typeof errorCb === "function") errorCb(error);
-        else console.warn("Firestore económico v114:", error);
-      } finally {
-        running = false;
-        if (!stopped) timer = setTimeout(run, delay);
-      }
-    };
-
-    timer = setTimeout(run, 300);
-
-    const unsubscribe = () => {
-      stopped = true;
-      if (timer) clearTimeout(timer);
-      FIRESTORE_ECONOMY_V114.pollers.delete(unsubscribe);
-    };
-
-    FIRESTORE_ECONOMY_V114.pollers.add(unsubscribe);
-    return unsubscribe;
-  };
-
-  FIRESTORE_ECONOMY_V114.installed = true;
-  console.info("Firestore modo económico v114 ativo.");
-}
-
-function stopFirestoreEconomyPollersV114() {
-  FIRESTORE_ECONOMY_V114.pollers.forEach(unsub => {
-    try { unsub(); } catch {}
-  });
-  FIRESTORE_ECONOMY_V114.pollers.clear();
-}
-
-window.firestoreEconomyInfoV114 = function firestoreEconomyInfoV114() {
-  return {
-    installed: FIRESTORE_ECONOMY_V114.installed,
-    activePollers: FIRESTORE_ECONOMY_V114.pollers.size,
-    normalPollMs: FIRESTORE_ECONOMY_V114.normalPollMs,
-    chatPollMs: FIRESTORE_ECONOMY_V114.chatPollMs,
-    settingsPollMs: FIRESTORE_ECONOMY_V114.settingsPollMs
-  };
-};
 
 async function initFirebase() {
-  setTimeout(installFirestoreEconomyModeV114, 0);
-  const config = APP_CONFIG.firebase || {};
+const config = APP_CONFIG.firebase || {};
 
   if (!config.apiKey || !config.projectId) {
     db = null;
@@ -7265,11 +7149,6 @@ window.firestoreReadsOptimizerInfo = function firestoreReadsOptimizerInfo() {
     chatLimit: typeof CHAT_LIMIT !== "undefined" ? CHAT_LIMIT : null
   };
 };
-
-setTimeout(installFirestoreEconomyModeV114, 800);
-setTimeout(installFirestoreEconomyModeV114, 1800);
-setTimeout(installFirestoreEconomyModeV114, 3500);
-
 let v115PesquisarTodosInterval = null;
 document.addEventListener("DOMContentLoaded", () => {
   if (!v115PesquisarTodosInterval && typeof addSearchButtonsToResultCards === "function") {
@@ -7376,3 +7255,31 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 document.addEventListener("click", () => setTimeout(fixKnockoutMobileScrollV122, 120));
+
+
+// v123 — Scroll interno real para rondas grandes da Fase Final mobile.
+function forceKnockoutMobileRealScrollV123() {
+  try {
+    const tab = document.getElementById("knockoutTab");
+    const host = document.getElementById("knockoutMobileV121");
+    const list = document.querySelector("#knockoutMobileV121 .ko-mobile-list");
+
+    if (tab) tab.classList.add("ko-mobile-real-scroll-page-v123");
+    if (host) {
+      host.classList.add("ko-mobile-real-scroll-host-v123");
+      host.style.overflowY = "auto";
+      host.style.webkitOverflowScrolling = "touch";
+    }
+    if (list) list.classList.add("ko-mobile-real-scroll-list-v123");
+  } catch (error) {
+    console.warn("Scroll real KO mobile v123 falhou:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(forceKnockoutMobileRealScrollV123, 300);
+  setTimeout(forceKnockoutMobileRealScrollV123, 1000);
+  setTimeout(forceKnockoutMobileRealScrollV123, 2000);
+});
+document.addEventListener("click", () => setTimeout(forceKnockoutMobileRealScrollV123, 120));
+document.addEventListener("touchstart", () => setTimeout(forceKnockoutMobileRealScrollV123, 120), { passive: true });
