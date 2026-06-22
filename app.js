@@ -1,4 +1,4 @@
-const APP_CONFIG = window.MUNDIAL_CONFIG || {};
+﻿const APP_CONFIG = window.MUNDIAL_CONFIG || {};
 const ADMIN_PIN = APP_CONFIG.adminPin || "1234";
 const STORAGE_KEY = "mundial_pontos_2026_import_id_jogo_v32";
 const PENDING_FIREBASE_KEY = `${STORAGE_KEY}_pending_games_v1`;
@@ -1380,8 +1380,9 @@ function showAppScreen() {
 function updateActiveAppSection() {
   const activeTabId = document.querySelector(".tab-panel.active")?.id || "calendarTab";
   const isKnockout = activeTabId === "knockoutTab";
-  document.body.classList.toggle("knockout-layout-active", isKnockout);
-  $("appShell")?.classList.toggle("knockout-screen-active", isKnockout);
+  const mobileKnockout = isKnockout && window.matchMedia("(max-width: 760px)").matches;
+  document.body.classList.toggle("knockout-layout-active", isKnockout && !mobileKnockout);
+  $("appShell")?.classList.toggle("knockout-screen-active", isKnockout && !mobileKnockout);
 }
 
 function updateSessionBox() {
@@ -3745,7 +3746,7 @@ function renderKnockoutMobileV121() {
   if (!host) {
     host = document.createElement("section");
     host.id = "knockoutMobileV121";
-    host.className = "knockout-mobile-v121 ko-mobile-list-page-v135";
+    host.className = "knockout-mobile-v121 knockout-mobile-clean-v137";
     tab.prepend(host);
   }
 
@@ -3755,7 +3756,8 @@ function renderKnockoutMobileV121() {
   }
 
   const selected = rounds.find(round => round.name === knockoutMobileSelectedRoundV121) || rounds[0] || { name: "Fase Final", games: [] };
-  const selectedIndex = Math.max(0, rounds.findIndex(round => round.name === selected.name));
+  const prevRound = null;
+  const nextRound = null;
 
   const roundTabs = rounds.map(round => `
     <button type="button" class="ko-mobile-chip ${round.name === selected.name ? "active" : ""}" data-ko-mobile-round="${escapeHtml(round.name)}">
@@ -3804,11 +3806,8 @@ function renderKnockoutMobileV121() {
       }).join("")
     : `<div class="ko-mobile-empty">Ainda não há jogos nesta ronda.</div>`;
 
-  const nextRound = rounds[selectedIndex + 1];
-  const prevRound = rounds[selectedIndex - 1];
-
   host.innerHTML = `
-    <div class="ko-mobile-header ko-mobile-header-v135">
+    <div class="ko-mobile-header ko-mobile-header-v137">
       <div>
         <span>Fase Final</span>
         <strong>${escapeHtml(selected.name)}</strong>
@@ -3818,9 +3817,9 @@ function renderKnockoutMobileV121() {
 
     <div class="ko-mobile-tabs">${roundTabs}</div>
 
-    <div class="ko-mobile-list ko-mobile-list-page-v135">${cards}</div>
+    <div class="ko-mobile-list ko-mobile-list-page-v137">${cards}</div>
 
-    <div class="ko-mobile-nav ko-mobile-round-nav-v135">
+    <div class="ko-mobile-nav ko-mobile-round-nav-v137">
       ${prevRound ? `<button type="button" class="secondary" data-ko-mobile-round="${escapeHtml(prevRound.name)}">← ${escapeHtml(prevRound.name)}</button>` : ""}
       ${nextRound ? `<button type="button" class="primary" data-ko-mobile-round="${escapeHtml(nextRound.name)}">${escapeHtml(nextRound.name)} →</button>` : ""}
     </div>
@@ -7350,274 +7349,72 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("click", () => setTimeout(addSearchButtonsToResultCards, 150));
 
 
-// v122 — Ajuda scroll da Fase Final mobile.
-function fixKnockoutMobileScrollV122() {
-  try {
-    const tab = document.getElementById("knockoutTab");
-    const host = document.getElementById("knockoutMobileV121");
-    const list = document.querySelector("#knockoutMobileV121 .ko-mobile-list");
+// v137 — Fase Final mobile limpa: lista completa da ronda e scroll normal do documento.
+function cleanupKnockoutMobileLegacyClassesV137() {
+  const legacyClasses = [
+    "ko-mobile-scroll-page-v122",
+    "ko-mobile-scroll-host-v122",
+    "ko-mobile-scroll-list-v122",
+    "knockout-scroll-active-v129",
+    "ko-mobile-v131-active",
+    "ko-mobile-v131-host",
+    "ko-mobile-v131-list",
+    "ko-round-page-scroll-v134",
+    "ko-mobile-list-page-v135",
+    "ko-true-scroll-v136"
+  ];
 
-    if (tab) tab.classList.add("ko-mobile-scroll-page-v122");
-    if (host) host.classList.add("ko-mobile-scroll-host-v122");
-    if (list) list.classList.add("ko-mobile-scroll-list-v122");
-  } catch (error) {
-    console.warn("Fase final mobile scroll v122 falhou:", error);
+  [
+    document.documentElement,
+    document.body,
+    document.getElementById("knockoutTab"),
+    document.getElementById("knockoutMobileV121"),
+    document.querySelector("#knockoutMobileV121 .ko-mobile-list")
+  ].filter(Boolean).forEach(element => {
+    legacyClasses.forEach(className => element.classList.remove(className));
+    ["height", "maxHeight", "overflow", "overflowY", "position"].forEach(prop => {
+      element.style[prop] = "";
+    });
+  });
+}
+
+function syncKnockoutMobilePageV137() {
+  updateActiveAppSection();
+  const activePanel = document.querySelector(".tab-panel.active");
+  const isKnockout = activePanel?.id === "knockoutTab";
+
+  document.body.classList.toggle("knockout-mobile-page-v137", isKnockout);
+  document.documentElement.classList.toggle("knockout-mobile-page-v137", isKnockout);
+
+  if (!isKnockout) {
+    document.getElementById("knockoutMobileV121")?.remove();
+    cleanupKnockoutMobileLegacyClassesV137();
+    return;
   }
+
+  cleanupKnockoutMobileLegacyClassesV137();
+  renderKnockoutMobileV121();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(fixKnockoutMobileScrollV122, 400);
-  setTimeout(fixKnockoutMobileScrollV122, 1200);
+  setTimeout(syncKnockoutMobilePageV137, 300);
+  setTimeout(syncKnockoutMobilePageV137, 1000);
 });
-
-document.addEventListener("click", () => setTimeout(fixKnockoutMobileScrollV122, 120));
-
-
-// v124 — impede que a vista mobile da Fase Final apareça noutras páginas.
-function isolateKnockoutMobileFromAdminV124() {
-  try {
-    const koTab = document.getElementById("knockoutTab");
-    const adminTab = document.getElementById("adminTab");
-    const mobile = document.getElementById("knockoutMobileV121");
-
-    const koVisible = koTab && (koTab.classList.contains("active") || getComputedStyle(koTab).display !== "none");
-    const adminVisible = adminTab && (adminTab.classList.contains("active") || getComputedStyle(adminTab).display !== "none");
-
-    if (mobile && (!koVisible || adminVisible)) {
-      mobile.remove();
-    }
-
-    if (koVisible && !adminVisible && typeof renderKnockoutMobileV121 === "function") {
-      const existing = document.getElementById("knockoutMobileV121");
-      if (!existing) renderKnockoutMobileV121();
-    }
-  } catch (error) {
-    console.warn("isolate KO mobile v124 falhou:", error);
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(isolateKnockoutMobileFromAdminV124, 300);
-  setTimeout(isolateKnockoutMobileFromAdminV124, 1200);
-});
-document.addEventListener("click", () => setTimeout(isolateKnockoutMobileFromAdminV124, 120));
-
-
-// v128 — render mobile da Fase Final só quando a aba Fase Final está ativa.
-function cleanupKnockoutMobileOutsidePageV128() {
-  const mobile = document.getElementById("knockoutMobileV121");
-  const activePanel = document.querySelector(".tab-panel.active");
-  if (mobile && activePanel?.id !== "knockoutTab") mobile.remove();
-}
-
-function renderKnockoutMobileIfActiveV128() {
-  const activePanel = document.querySelector(".tab-panel.active");
-  if (activePanel?.id === "knockoutTab" && typeof renderKnockoutMobileV121 === "function") {
-    renderKnockoutMobileV121();
-  } else {
-    cleanupKnockoutMobileOutsidePageV128();
-  }
-}
 
 document.addEventListener("click", event => {
-  const tabButton = event.target.closest('[data-tab]');
-  if (!tabButton) {
-    setTimeout(cleanupKnockoutMobileOutsidePageV128, 120);
+  const tabButton = event.target.closest("[data-tab]");
+  const roundButton = event.target.closest("[data-ko-mobile-round]");
+  if (tabButton || roundButton) {
+    setTimeout(syncKnockoutMobilePageV137, 120);
     return;
   }
 
   setTimeout(() => {
-    if (tabButton.dataset.tab === "knockoutTab") {
-      renderKnockoutMobileIfActiveV128();
-    } else {
-      cleanupKnockoutMobileOutsidePageV128();
+    if (document.querySelector(".tab-panel.active")?.id !== "knockoutTab") {
+      syncKnockoutMobilePageV137();
     }
-  }, 180);
+  }, 120);
 });
 
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(cleanupKnockoutMobileOutsidePageV128, 400);
-  setTimeout(renderKnockoutMobileIfActiveV128, 1200);
-});
-
-
-// v129 — ativa scroll normal só na página Fase Final.
-function updateKnockoutScrollClassV129() {
-  try {
-    const activePanel = document.querySelector(".tab-panel.active");
-    const isKnockout = activePanel?.id === "knockoutTab";
-    document.body.classList.toggle("knockout-scroll-active-v129", !!isKnockout);
-
-    const ko = document.getElementById("knockoutTab");
-    if (ko) ko.classList.toggle("knockout-scroll-active-v129", !!isKnockout);
-  } catch (error) {
-    console.warn("KO scroll v129 falhou:", error);
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(updateKnockoutScrollClassV129, 250);
-  setTimeout(updateKnockoutScrollClassV129, 1000);
-});
-document.addEventListener("click", () => setTimeout(updateKnockoutScrollClassV129, 120));
-
-
-// v130 — acabamento visual seguro da Fase Final mobile.
-function enhanceKnockoutMobileCardsV130() {
-  try {
-    const activePanel = document.querySelector(".tab-panel.active");
-    if (activePanel?.id !== "knockoutTab") return;
-    document.querySelectorAll("#knockoutMobileV121 .ko-mobile-card").forEach((card, index) => {
-      card.classList.add("ko-mobile-card-premium-v130");
-      card.style.setProperty("--ko-index", String(index));
-      const status = card.querySelector(".ko-mobile-status");
-      card.classList.toggle("is-done-v130", !!status?.classList.contains("done"));
-      card.classList.toggle("is-waiting-v130", !status?.classList.contains("done"));
-    });
-    document.querySelectorAll("#knockoutMobileV121 .ko-mobile-chip").forEach(chip => chip.classList.add("ko-mobile-chip-premium-v130"));
-  } catch (error) {
-    console.warn("KO mobile premium v130 falhou:", error);
-  }
-}
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(enhanceKnockoutMobileCardsV130, 500);
-  setTimeout(enhanceKnockoutMobileCardsV130, 1400);
-});
-document.addEventListener("click", () => setTimeout(enhanceKnockoutMobileCardsV130, 140));
-
-
-// v131 — scroll real e limpo na Fase Final mobile.
-function fixKnockoutMobileScrollV131() {
-  try {
-    const activePanel = document.querySelector(".tab-panel.active");
-    const isKo = activePanel?.id === "knockoutTab";
-    document.body.classList.toggle("ko-mobile-v131-active", !!isKo);
-
-    const koTab = document.getElementById("knockoutTab");
-    const host = document.getElementById("knockoutMobileV121");
-    const list = document.querySelector("#knockoutMobileV121 .ko-mobile-list");
-
-    if (koTab) koTab.classList.toggle("ko-mobile-v131-active", !!isKo);
-    if (host) host.classList.toggle("ko-mobile-v131-host", !!isKo);
-    if (list) list.classList.toggle("ko-mobile-v131-list", !!isKo);
-  } catch (error) {
-    console.warn("KO mobile v131 scroll falhou:", error);
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(fixKnockoutMobileScrollV131, 300);
-  setTimeout(fixKnockoutMobileScrollV131, 1000);
-  setTimeout(fixKnockoutMobileScrollV131, 1800);
-});
-document.addEventListener("click", () => setTimeout(fixKnockoutMobileScrollV131, 120));
-document.addEventListener("touchstart", () => setTimeout(fixKnockoutMobileScrollV131, 120), { passive: true });
-
-
-// v134 — Fase Final mobile em página longa com scroll normal.
-function enableKnockoutRoundPageScrollV134() {
-  try {
-    const activePanel = document.querySelector(".tab-panel.active");
-    const isKo = activePanel?.id === "knockoutTab";
-    document.body.classList.toggle("ko-round-page-scroll-v134", !!isKo);
-
-    const koTab = document.getElementById("knockoutTab");
-    const host = document.getElementById("knockoutMobileV121");
-    const list = document.querySelector("#knockoutMobileV121 .ko-mobile-list");
-
-    if (koTab) koTab.classList.toggle("ko-round-page-scroll-v134", !!isKo);
-    if (host) host.classList.toggle("ko-round-page-scroll-v134", !!isKo);
-    if (list) list.classList.toggle("ko-round-page-scroll-v134", !!isKo);
-  } catch (error) {
-    console.warn("KO ronda scroll v134 falhou:", error);
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(enableKnockoutRoundPageScrollV134, 300);
-  setTimeout(enableKnockoutRoundPageScrollV134, 1000);
-  setTimeout(enableKnockoutRoundPageScrollV134, 1800);
-});
-document.addEventListener("click", () => setTimeout(enableKnockoutRoundPageScrollV134, 120));
-document.addEventListener("touchstart", () => setTimeout(enableKnockoutRoundPageScrollV134, 120), { passive: true });
-
-function renderKnockoutMobileListPageV135() {
-  const activePanel = document.querySelector(".tab-panel.active");
-  if (activePanel?.id === "knockoutTab" && typeof renderKnockoutMobileV121 === "function") {
-    renderKnockoutMobileV121();
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(renderKnockoutMobileListPageV135, 500);
-  setTimeout(renderKnockoutMobileListPageV135, 1500);
-});
-document.addEventListener("click", () => setTimeout(renderKnockoutMobileListPageV135, 140));
-
-
-// v136 — scroll real da Fase Final mobile: liberta os contentores pais que cortam a lista.
-function setMobileViewportV136() {
-  try {
-    document.documentElement.style.setProperty("--real-vh-v136", `${window.innerHeight * 0.01}px`);
-  } catch {}
-}
-
-function enableKnockoutTruePageScrollV136() {
-  try {
-    setMobileViewportV136();
-
-    const activePanel = document.querySelector(".tab-panel.active");
-    const isKo = activePanel?.id === "knockoutTab";
-    document.body.classList.toggle("ko-true-scroll-v136", !!isKo);
-    document.documentElement.classList.toggle("ko-true-scroll-v136", !!isKo);
-
-    const ko = document.getElementById("knockoutTab");
-    const host = document.getElementById("knockoutMobileV121");
-    const list = document.querySelector("#knockoutMobileV121 .ko-mobile-list");
-
-    if (ko) ko.classList.toggle("ko-true-scroll-v136", !!isKo);
-    if (host) host.classList.toggle("ko-true-scroll-v136", !!isKo);
-    if (list) list.classList.toggle("ko-true-scroll-v136", !!isKo);
-
-    // Remove inline restrictions that can come from older mobile fixes.
-    if (isKo) {
-      [document.body, document.documentElement, ko, host, list].filter(Boolean).forEach(el => {
-        el.style.maxHeight = "none";
-        el.style.height = "auto";
-      });
-      if (ko) {
-        ko.style.overflow = "visible";
-        ko.style.overflowY = "visible";
-      }
-      if (host) {
-        host.style.overflow = "visible";
-        host.style.overflowY = "visible";
-      }
-      if (list) {
-        list.style.overflow = "visible";
-        list.style.overflowY = "visible";
-      }
-    }
-  } catch (error) {
-    console.warn("KO true scroll v136 falhou:", error);
-  }
-}
-
-window.addEventListener("resize", setMobileViewportV136);
-window.addEventListener("orientationchange", () => setTimeout(enableKnockoutTruePageScrollV136, 250));
-
-document.addEventListener("DOMContentLoaded", () => {
-  setMobileViewportV136();
-  setTimeout(enableKnockoutTruePageScrollV136, 250);
-  setTimeout(enableKnockoutTruePageScrollV136, 900);
-  setTimeout(enableKnockoutTruePageScrollV136, 1800);
-});
-
-document.addEventListener("click", () => {
-  setTimeout(enableKnockoutTruePageScrollV136, 80);
-  setTimeout(enableKnockoutTruePageScrollV136, 350);
-});
-
-document.addEventListener("touchmove", () => {
-  if (document.body.classList.contains("ko-true-scroll-v136")) enableKnockoutTruePageScrollV136();
-}, { passive: true });
+window.addEventListener("resize", () => setTimeout(syncKnockoutMobilePageV137, 120));
+window.addEventListener("orientationchange", () => setTimeout(syncKnockoutMobilePageV137, 260));

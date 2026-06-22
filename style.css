@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #070b13;
   --panel: #0d1522;
   --panel-soft: #111c2c;
@@ -7444,98 +7444,12 @@ input[data-no-persist-v116]{
 }
 
 
-/* v122 — Fase Final mobile: corrigir scroll das rondas grandes */
+/* v137 — Fase Final mobile limpa: lista vertical completa com scroll normal da página. */
 @media(max-width:760px){
-  html,
-  body{
-    height:auto!important;
-    min-height:100%!important;
-    overflow-y:auto!important;
-    overscroll-behavior-y:auto!important;
-  }
-
-  body{
-    position:relative!important;
-    overflow-x:hidden!important;
-    overflow-y:auto!important;
-    -webkit-overflow-scrolling:touch!important;
-  }
-
-  #knockoutTab,
-  #knockoutTab.ko-mobile-scroll-page-v122{
-    height:auto!important;
-    min-height:100vh!important;
-    max-height:none!important;
-    overflow:visible!important;
-    overflow-y:visible!important;
-    padding-bottom:calc(120px + env(safe-area-inset-bottom, 0px))!important;
-  }
-
-  #knockoutMobileV121,
-  #knockoutMobileV121.ko-mobile-scroll-host-v122,
-  .knockout-mobile-v121{
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    overflow:visible!important;
-    overflow-y:visible!important;
-    padding-bottom:calc(90px + env(safe-area-inset-bottom, 0px))!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-list,
-  #knockoutMobileV121 .ko-mobile-scroll-list-v122,
-  .ko-mobile-list{
-    display:grid!important;
-    gap:12px!important;
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    overflow:visible!important;
-    overflow-y:visible!important;
-    padding-bottom:24px!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-card,
-  .ko-mobile-card{
-    flex:0 0 auto!important;
-    min-height:auto!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-nav,
-  .ko-mobile-nav{
-    position:static!important;
-    bottom:auto!important;
-    padding-bottom:calc(24px + env(safe-area-inset-bottom, 0px))!important;
-  }
-
-  .app,
-  .app-shell,
-  .main,
-  main,
-  .content,
-  .tab-content,
-  .tab-panel.active{
-    max-height:none!important;
-    overflow-y:visible!important;
-  }
-}
-
-
-
-
-
-/* v128 — KO mobile isolado: só dentro da aba Fase Final */
-@media(max-width:760px){
-  body:not(:has(#knockoutTab.active)) #knockoutMobileV121{
-    display:none!important;
-    visibility:hidden!important;
-    pointer-events:none!important;
-  }
-
+  body:not(.knockout-mobile-page-v137) #knockoutMobileV121,
   #adminTab #knockoutMobileV121,
-  #dashboardTab #knockoutMobileV121,
-  #calendarTab #knockoutMobileV121,
   #scoreTab #knockoutMobileV121,
+  #calendarTab #knockoutMobileV121,
   #betsTab #knockoutMobileV121,
   #settingsTab #knockoutMobileV121,
   #usersTab #knockoutMobileV121{
@@ -7544,495 +7458,8 @@ input[data-no-persist-v116]{
     pointer-events:none!important;
   }
 
-  #knockoutTab.active #knockoutMobileV121{
-    display:block!important;
-    visibility:visible!important;
-    pointer-events:auto!important;
-    height:auto!important;
-    max-height:none!important;
-    overflow:visible!important;
-    padding-bottom:calc(100px + env(safe-area-inset-bottom, 0px))!important;
-  }
-
-  #knockoutTab.active{
-    height:auto!important;
-    min-height:100vh!important;
-    overflow-y:auto!important;
-    -webkit-overflow-scrolling:touch!important;
-    padding-bottom:calc(120px + env(safe-area-inset-bottom, 0px))!important;
-  }
-
-  #knockoutTab.active #knockoutMobileV121 .ko-mobile-list{
-    height:auto!important;
-    max-height:none!important;
-    overflow:visible!important;
-    padding-bottom:36px!important;
-  }
-}
-
-
-/* v129 — Fase Final mobile com scroll normal, sem tocar no login */
-@media(max-width:760px){
-  body.knockout-scroll-active-v129{
-    overflow-y:auto!important;
-    height:auto!important;
-    min-height:100%!important;
-    position:relative!important;
-    touch-action:pan-y!important;
-  }
-
-  body.knockout-scroll-active-v129 .app,
-  body.knockout-scroll-active-v129 .app-shell,
-  body.knockout-scroll-active-v129 main,
-  body.knockout-scroll-active-v129 .main,
-  body.knockout-scroll-active-v129 .content,
-  body.knockout-scroll-active-v129 .tab-content{
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    overflow:visible!important;
-  }
-
-  #knockoutTab.knockout-scroll-active-v129,
-  body.knockout-scroll-active-v129 #knockoutTab.active{
-    display:block!important;
-    height:auto!important;
-    min-height:100vh!important;
-    max-height:none!important;
-    overflow-y:visible!important;
-    overflow-x:hidden!important;
-    -webkit-overflow-scrolling:touch!important;
-    padding-bottom:calc(140px + env(safe-area-inset-bottom, 0px))!important;
-  }
-
-  body.knockout-scroll-active-v129 #knockoutMobileV121,
-  body.knockout-scroll-active-v129 #knockoutTab.active #knockoutMobileV121{
-    display:block!important;
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    overflow:visible!important;
-    padding-bottom:calc(110px + env(safe-area-inset-bottom, 0px))!important;
-  }
-
-  body.knockout-scroll-active-v129 #knockoutMobileV121 .ko-mobile-list,
-  body.knockout-scroll-active-v129 #knockoutTab.active #knockoutMobileV121 .ko-mobile-list{
-    display:grid!important;
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    overflow:visible!important;
-    padding-bottom:42px!important;
-  }
-
-  body.knockout-scroll-active-v129 #knockoutMobileV121 .ko-mobile-card{
-    min-height:auto!important;
-    flex:0 0 auto!important;
-  }
-
-  body.knockout-scroll-active-v129 #knockoutMobileV121 .ko-mobile-nav{
-    position:static!important;
-    bottom:auto!important;
-    margin-bottom:calc(36px + env(safe-area-inset-bottom, 0px))!important;
-  }
-}
-
-
-/* v130 — Fase Final mobile premium. PC intacto. */
-@media(max-width:760px){
-  #knockoutTab.active{
-    background:radial-gradient(circle at top left,rgba(34,211,238,.16),transparent 30%),
-               radial-gradient(circle at top right,rgba(16,185,129,.13),transparent 28%),
-               linear-gradient(180deg,rgba(7,17,31,.98),rgba(2,6,23,.99))!important;
-    padding:10px 10px calc(140px + env(safe-area-inset-bottom,0px))!important;
-  }
-
-  #knockoutTab.active #knockoutMobileV121{
-    padding-bottom:calc(105px + env(safe-area-inset-bottom,0px))!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-header{
-    position:sticky!important;
-    top:0!important;
-    z-index:30!important;
-    margin:0 0 10px!important;
-    padding:14px 15px!important;
-    border-radius:24px!important;
-    background:linear-gradient(135deg,rgba(15,23,42,.97),rgba(2,6,23,.94))!important;
-    border:1px solid rgba(125,255,231,.18)!important;
-    box-shadow:0 18px 44px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.08)!important;
-    backdrop-filter:blur(18px)!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-header span{
-    color:rgba(125,255,231,.82)!important;
-    font-size:11px!important;
-    letter-spacing:.14em!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-header strong{
-    font-size:23px!important;
-    letter-spacing:-.04em!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-header small{
-    background:rgba(34,211,238,.10)!important;
-    border-color:rgba(34,211,238,.24)!important;
-    color:#d8fbff!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-tabs{
-    position:sticky!important;
-    top:78px!important;
-    z-index:29!important;
-    margin:0 -10px 8px!important;
-    padding:8px 10px 12px!important;
-    background:linear-gradient(180deg,rgba(7,17,31,.98),rgba(7,17,31,.82),transparent)!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-chip{
-    min-height:44px!important;
-    padding:10px 14px!important;
-    border-radius:16px!important;
-    background:rgba(255,255,255,.06)!important;
-    border:1px solid rgba(255,255,255,.11)!important;
-    color:rgba(255,255,255,.88)!important;
-    box-shadow:0 10px 24px rgba(0,0,0,.16)!important;
-    font-weight:1000!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-chip.active{
-    background:linear-gradient(135deg,rgba(34,211,238,.28),rgba(16,185,129,.24))!important;
-    border-color:rgba(125,255,231,.48)!important;
-    color:#fff!important;
-    box-shadow:0 14px 32px rgba(16,185,129,.22), inset 0 1px 0 rgba(255,255,255,.10)!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-chip span{
-    min-width:24px!important;
-    height:24px!important;
-    background:rgba(255,255,255,.13)!important;
-    font-weight:1000!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-list{
-    gap:10px!important;
-    padding-bottom:52px!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-card{
-    position:relative!important;
-    overflow:hidden!important;
-    border-radius:22px!important;
-    padding:12px!important;
-    background:linear-gradient(135deg,rgba(15,23,42,.96),rgba(2,6,23,.96))!important;
-    border:1px solid rgba(255,255,255,.105)!important;
-    box-shadow:0 14px 34px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.05)!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-card::before{
-    content:""!important;
-    position:absolute!important;
-    inset:0 auto 0 0!important;
-    width:4px!important;
-    background:linear-gradient(180deg,rgba(34,211,238,.9),rgba(16,185,129,.55))!important;
-    opacity:.62!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-card.is-done-v130::before{
-    background:linear-gradient(180deg,rgba(52,211,153,.95),rgba(250,204,21,.65))!important;
-    opacity:.9!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-card-head{
-    margin:0 0 10px 4px!important;
-    padding-bottom:8px!important;
-    border-bottom:1px solid rgba(255,255,255,.075)!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-card-head span{
-    color:rgba(125,255,231,.75)!important;
-    text-transform:uppercase!important;
-    letter-spacing:.12em!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-card-head strong{
-    padding:5px 9px!important;
-    border-radius:999px!important;
-    background:rgba(255,255,255,.075)!important;
-    color:rgba(255,255,255,.86)!important;
-    font-size:12px!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-team{
-    grid-template-columns:minmax(0,1fr) 48px!important;
-    padding:11px 11px 11px 13px!important;
-    border-radius:18px!important;
-    background:rgba(255,255,255,.055)!important;
-    border:1px solid rgba(255,255,255,.085)!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-team span{
-    font-size:16px!important;
-    line-height:1.15!important;
-    letter-spacing:-.02em!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-team b{
-    width:46px!important;
-    height:44px!important;
-    border-radius:16px!important;
-    background:rgba(255,255,255,.09)!important;
-    font-size:22px!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-team.winner{
-    background:linear-gradient(135deg,rgba(16,185,129,.20),rgba(34,211,238,.08))!important;
-    border-color:rgba(52,211,153,.42)!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-team.winner span::before{
-    content:"🏆 ";
-  }
-
-  #knockoutMobileV121 .ko-mobile-team.winner b{
-    background:linear-gradient(135deg,rgba(16,185,129,.36),rgba(34,211,238,.16))!important;
-    color:#dcffef!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-versus{
-    margin:5px 0!important;
-    font-size:10px!important;
-    opacity:.7!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-status,
-  #knockoutMobileV121 .ko-mobile-pens{
-    margin-top:9px!important;
-    padding:9px 10px!important;
-    border-radius:15px!important;
-    font-size:13px!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-status.done{
-    background:rgba(16,185,129,.14)!important;
-    border-color:rgba(52,211,153,.30)!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-edit,
-  #knockoutMobileV121 .ko-mobile-nav button{
-    min-height:44px!important;
-    border-radius:16px!important;
-    font-weight:1000!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-nav{
-    display:grid!important;
-    grid-template-columns:1fr 1fr!important;
-    gap:10px!important;
-    margin-top:12px!important;
-    margin-bottom:calc(34px + env(safe-area-inset-bottom,0px))!important;
-  }
-}
-
-
-/* v131 — Fase Final mobile clean + scroll corrigido */
-@media(max-width:760px){
-  body.ko-mobile-v131-active{
-    overflow:hidden!important;
-    height:100dvh!important;
-    min-height:100dvh!important;
-    position:relative!important;
-    touch-action:pan-y!important;
-  }
-
-  body.ko-mobile-v131-active .app,
-  body.ko-mobile-v131-active .app-shell,
-  body.ko-mobile-v131-active main,
-  body.ko-mobile-v131-active .main,
-  body.ko-mobile-v131-active .content,
-  body.ko-mobile-v131-active .tab-content{
-    height:100%!important;
-    min-height:0!important;
-    max-height:none!important;
-    overflow:hidden!important;
-  }
-
-  #knockoutTab.active,
-  #knockoutTab.ko-mobile-v131-active{
-    display:flex!important;
-    flex-direction:column!important;
-    height:calc(100dvh - 74px)!important;
-    min-height:0!important;
-    max-height:calc(100dvh - 74px)!important;
-    overflow:hidden!important;
-    padding:8px 10px 0!important;
-    background:linear-gradient(180deg,rgba(7,17,31,.98),rgba(2,6,23,.99))!important;
-  }
-
-  /* sem glow azul */
-  #knockoutTab.active,
-  #knockoutMobileV121 .ko-mobile-header,
-  #knockoutMobileV121 .ko-mobile-card{
-    box-shadow:0 12px 28px rgba(0,0,0,.24)!important;
-  }
-
-  #knockoutMobileV121,
-  #knockoutMobileV121.ko-mobile-v131-host,
-  #knockoutTab.active #knockoutMobileV121{
-    display:flex!important;
-    flex-direction:column!important;
-    flex:1 1 auto!important;
-    min-height:0!important;
-    height:100%!important;
-    max-height:none!important;
-    overflow:hidden!important;
-    padding:0!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-header{
-    position:static!important;
-    flex:0 0 auto!important;
-    top:auto!important;
-    z-index:auto!important;
-    margin:0 0 8px!important;
-    padding:12px 14px!important;
-    border-radius:20px!important;
-    background:linear-gradient(135deg,rgba(15,23,42,.96),rgba(8,13,28,.96))!important;
-    border:1px solid rgba(255,255,255,.12)!important;
-    backdrop-filter:none!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-header span{
-    color:rgba(255,255,255,.62)!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-header small{
-    background:rgba(255,255,255,.07)!important;
-    border-color:rgba(255,255,255,.12)!important;
-    color:rgba(255,255,255,.82)!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-tabs{
-    position:static!important;
-    flex:0 0 auto!important;
-    top:auto!important;
-    z-index:auto!important;
-    margin:0 -2px 8px!important;
-    padding:4px 2px 8px!important;
-    background:transparent!important;
-    border-radius:0!important;
-    overflow-x:auto!important;
-    overflow-y:hidden!important;
-    -webkit-overflow-scrolling:touch!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-chip{
-    min-height:42px!important;
-    padding:9px 13px!important;
-    border-radius:14px!important;
-    background:rgba(255,255,255,.055)!important;
-    border:1px solid rgba(255,255,255,.115)!important;
-    color:rgba(255,255,255,.84)!important;
-    box-shadow:none!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-chip.active{
-    background:linear-gradient(135deg,rgba(16,185,129,.22),rgba(245,158,11,.13))!important;
-    border-color:rgba(52,211,153,.34)!important;
-    color:#fff!important;
-    box-shadow:none!important;
-  }
-
-  /* a lista é que faz scroll — resolve R32/R16/QF */
-  #knockoutMobileV121 .ko-mobile-list,
-  #knockoutMobileV121 .ko-mobile-v131-list,
-  #knockoutTab.active #knockoutMobileV121 .ko-mobile-list{
-    flex:1 1 auto!important;
-    min-height:0!important;
-    height:auto!important;
-    max-height:none!important;
-    overflow-y:auto!important;
-    overflow-x:hidden!important;
-    -webkit-overflow-scrolling:touch!important;
-    overscroll-behavior:contain!important;
-    touch-action:pan-y!important;
-    display:grid!important;
-    gap:10px!important;
-    padding:2px 0 calc(120px + env(safe-area-inset-bottom,0px))!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-card{
-    flex:0 0 auto!important;
-    min-height:auto!important;
-    border-radius:20px!important;
-    padding:11px!important;
-    background:linear-gradient(135deg,rgba(15,23,42,.96),rgba(4,9,22,.96))!important;
-    border:1px solid rgba(255,255,255,.105)!important;
-    box-shadow:0 10px 24px rgba(0,0,0,.22)!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-card::before{
-    background:linear-gradient(180deg,rgba(16,185,129,.78),rgba(245,158,11,.42))!important;
-    opacity:.58!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-card.is-done-v130::before{
-    background:linear-gradient(180deg,rgba(52,211,153,.92),rgba(245,158,11,.62))!important;
-    opacity:.85!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-card-head{
-    margin:0 0 8px 4px!important;
-    padding-bottom:7px!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-card-head span{
-    color:rgba(255,255,255,.60)!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-team{
-    grid-template-columns:minmax(0,1fr) 44px!important;
-    padding:10px 10px 10px 12px!important;
-    border-radius:16px!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-team span{
-    font-size:15px!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-team b{
-    width:42px!important;
-    height:40px!important;
-    min-width:42px!important;
-    border-radius:14px!important;
-    font-size:20px!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-team.winner{
-    background:linear-gradient(135deg,rgba(16,185,129,.18),rgba(245,158,11,.08))!important;
-    border-color:rgba(52,211,153,.34)!important;
-    box-shadow:none!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-team.winner b{
-    background:rgba(16,185,129,.24)!important;
-    color:#dcffef!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-nav{
-    flex:0 0 auto!important;
-    position:static!important;
-    margin:8px 0 calc(14px + env(safe-area-inset-bottom,0px))!important;
-    padding:0!important;
-  }
-}
-
-
-/* v134 — Fase Final mobile: cada ronda é uma página com scroll normal */
-@media(max-width:760px){
-  html,
-  body{
+  html.knockout-mobile-page-v137,
+  body.knockout-mobile-page-v137{
     height:auto!important;
     min-height:100%!important;
     max-height:none!important;
@@ -8043,254 +7470,17 @@ input[data-no-persist-v116]{
     -webkit-overflow-scrolling:touch!important;
   }
 
-  body.ko-mobile-v131-active,
-  body.ko-round-page-scroll-v134{
-    height:auto!important;
-    min-height:100%!important;
-    max-height:none!important;
-    overflow-y:auto!important;
-    overflow-x:hidden!important;
-    position:static!important;
-    touch-action:pan-y!important;
-  }
-
-  body.ko-round-page-scroll-v134 .app,
-  body.ko-round-page-scroll-v134 .app-shell,
-  body.ko-round-page-scroll-v134 main,
-  body.ko-round-page-scroll-v134 .main,
-  body.ko-round-page-scroll-v134 .content,
-  body.ko-round-page-scroll-v134 .tab-content,
-  body.ko-round-page-scroll-v134 .tab-panel.active{
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    overflow:visible!important;
-    overflow-y:visible!important;
-    position:static!important;
-  }
-
-  #knockoutTab.active,
-  #knockoutTab.ko-mobile-v131-active,
-  #knockoutTab.ko-round-page-scroll-v134{
-    display:block!important;
-    height:auto!important;
-    min-height:100vh!important;
-    max-height:none!important;
-    overflow:visible!important;
-    overflow-y:visible!important;
-    overflow-x:hidden!important;
-    position:static!important;
-    padding:8px 10px calc(160px + env(safe-area-inset-bottom,0px))!important;
-    background:linear-gradient(180deg,rgba(7,17,31,.98),rgba(2,6,23,.99))!important;
-  }
-
-  #knockoutMobileV121,
-  #knockoutMobileV121.ko-mobile-v131-host,
-  #knockoutMobileV121.ko-round-page-scroll-v134,
-  #knockoutTab.active #knockoutMobileV121{
-    display:block!important;
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    overflow:visible!important;
-    overflow-y:visible!important;
-    overflow-x:hidden!important;
-    position:static!important;
-    padding:0 0 calc(120px + env(safe-area-inset-bottom,0px))!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-header{
-    position:static!important;
-    top:auto!important;
-    z-index:auto!important;
-    margin:0 0 8px!important;
-    backdrop-filter:none!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-tabs{
-    position:static!important;
-    top:auto!important;
-    z-index:auto!important;
-    margin:0 -2px 8px!important;
-    padding:4px 2px 10px!important;
-    overflow-x:auto!important;
-    overflow-y:hidden!important;
-    background:transparent!important;
-    -webkit-overflow-scrolling:touch!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-list,
-  #knockoutMobileV121 .ko-mobile-v131-list,
-  #knockoutMobileV121 .ko-round-page-scroll-v134,
-  #knockoutTab.active #knockoutMobileV121 .ko-mobile-list{
-    display:grid!important;
-    grid-template-columns:1fr!important;
-    gap:10px!important;
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    overflow:visible!important;
-    overflow-y:visible!important;
-    overflow-x:hidden!important;
-    position:static!important;
-    padding:2px 0 calc(140px + env(safe-area-inset-bottom,0px))!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-card{
-    display:block!important;
-    visibility:visible!important;
-    height:auto!important;
-    min-height:auto!important;
-    max-height:none!important;
-    overflow:visible!important;
-    position:relative!important;
-    flex:0 0 auto!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-nav{
-    position:static!important;
-    bottom:auto!important;
-    margin:10px 0 calc(80px + env(safe-area-inset-bottom,0px))!important;
-    padding-bottom:40px!important;
-  }
-
-  /* remove qualquer tentativa antiga de scroll interno */
-  #knockoutMobileV121 .ko-mobile-list::-webkit-scrollbar{
-    width:0!important;
-    height:0!important;
-  }
-}
-
-
-/* v135 — Fase Final mobile: lista inteira da ronda, sem botões Anterior/Próximo */
-@media(max-width:760px){
-  #koMobileForcedControlsV133,
-  #knockoutMobileV121 .ko-mobile-game-controls-v132{
-    display:none!important;
-    visibility:hidden!important;
-    pointer-events:none!important;
-  }
-
-  #knockoutMobileV121 .ko-force-hidden-v133,
-  #knockoutMobileV121 .ko-force-active-v133,
-  #knockoutMobileV121 .ko-mobile-card{
-    display:block!important;
-    visibility:visible!important;
-    height:auto!important;
-    min-height:auto!important;
-    max-height:none!important;
-    overflow:visible!important;
-    margin-bottom:10px!important;
-  }
-
-  html,
-  body{
-    height:auto!important;
-    min-height:100%!important;
-    max-height:none!important;
-    overflow-y:auto!important;
-    overflow-x:hidden!important;
-    position:static!important;
-    touch-action:pan-y!important;
-    -webkit-overflow-scrolling:touch!important;
-  }
-
-  #knockoutTab.active{
-    display:block!important;
-    height:auto!important;
-    min-height:100vh!important;
-    max-height:none!important;
-    overflow:visible!important;
-    overflow-y:visible!important;
-    overflow-x:hidden!important;
-    position:static!important;
-    padding:8px 10px calc(170px + env(safe-area-inset-bottom,0px))!important;
-  }
-
-  #knockoutMobileV121,
-  #knockoutMobileV121.ko-mobile-list-page-v135{
-    display:block!important;
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    overflow:visible!important;
-    overflow-y:visible!important;
-    padding-bottom:calc(130px + env(safe-area-inset-bottom,0px))!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-header{
-    position:static!important;
-    top:auto!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-tabs{
-    position:static!important;
-    top:auto!important;
-    overflow-x:auto!important;
-    overflow-y:hidden!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-list,
-  #knockoutMobileV121 .ko-mobile-list-page-v135{
-    display:grid!important;
-    grid-template-columns:1fr!important;
-    gap:10px!important;
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    overflow:visible!important;
-    overflow-y:visible!important;
-    padding:2px 0 calc(150px + env(safe-area-inset-bottom,0px))!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-round-nav-v135,
-  #knockoutMobileV121 .ko-mobile-nav{
-    position:static!important;
-    bottom:auto!important;
-    margin:10px 0 calc(90px + env(safe-area-inset-bottom,0px))!important;
-  }
-}
-
-
-/* v136 — correção real do scroll iPhone na Fase Final mobile */
-@media(max-width:760px){
-  html.ko-true-scroll-v136,
-  body.ko-true-scroll-v136{
-    height:auto!important;
-    min-height:100%!important;
-    max-height:none!important;
-    overflow-y:auto!important;
-    overflow-x:hidden!important;
-    position:static!important;
-    touch-action:auto!important;
-    -webkit-overflow-scrolling:touch!important;
-  }
-
-  body.ko-true-scroll-v136{
-    padding-bottom:calc(180px + env(safe-area-inset-bottom,0px))!important;
-  }
-
-  /* Estes são os contentores que normalmente estavam a cortar a lista */
-  html.ko-true-scroll-v136 body,
-  body.ko-true-scroll-v136 .app,
-  body.ko-true-scroll-v136 .app-shell,
-  body.ko-true-scroll-v136 #app,
-  body.ko-true-scroll-v136 .shell,
-  body.ko-true-scroll-v136 .page,
-  body.ko-true-scroll-v136 .screen,
-  body.ko-true-scroll-v136 main,
-  body.ko-true-scroll-v136 .main,
-  body.ko-true-scroll-v136 .content,
-  body.ko-true-scroll-v136 .app-content,
-  body.ko-true-scroll-v136 .tab-content,
-  body.ko-true-scroll-v136 .tabs-content,
-  body.ko-true-scroll-v136 .tab-panel,
-  body.ko-true-scroll-v136 .tab-panel.active,
-  body.ko-true-scroll-v136 .view,
-  body.ko-true-scroll-v136 .views,
-  body.ko-true-scroll-v136 .dashboard,
-  body.ko-true-scroll-v136 .container,
-  body.ko-true-scroll-v136 .page-shell{
+  body.knockout-mobile-page-v137 .app,
+  body.knockout-mobile-page-v137 .app-shell,
+  body.knockout-mobile-page-v137 #app,
+  body.knockout-mobile-page-v137 main,
+  body.knockout-mobile-page-v137 .main,
+  body.knockout-mobile-page-v137 .content,
+  body.knockout-mobile-page-v137 .app-content,
+  body.knockout-mobile-page-v137 .tab-content,
+  body.knockout-mobile-page-v137 .tabs-content,
+  body.knockout-mobile-page-v137 .tab-panel,
+  body.knockout-mobile-page-v137 .tab-panel.active{
     height:auto!important;
     min-height:0!important;
     max-height:none!important;
@@ -8302,51 +7492,62 @@ input[data-no-persist-v116]{
     contain:none!important;
   }
 
-  #knockoutTab.active,
-  #knockoutTab.ko-true-scroll-v136{
-    display:block!important;
-    height:auto!important;
-    min-height:calc(var(--real-vh-v136, 1vh) * 100)!important;
-    max-height:none!important;
-    overflow:visible!important;
-    overflow-y:visible!important;
-    overflow-x:hidden!important;
-    position:relative!important;
-    padding:8px 10px calc(220px + env(safe-area-inset-bottom,0px))!important;
-  }
-
-  #knockoutMobileV121,
-  #knockoutMobileV121.ko-true-scroll-v136,
-  #knockoutTab.active #knockoutMobileV121{
-    display:block!important;
+  body.knockout-mobile-page-v137 .app-shell:has(#knockoutTab.active),
+  body.knockout-mobile-page-v137 .app-shell.knockout-screen-active{
     height:auto!important;
     min-height:0!important;
     max-height:none!important;
     overflow:visible!important;
     overflow-y:visible!important;
     overflow-x:hidden!important;
-    position:relative!important;
-    padding:0 0 calc(200px + env(safe-area-inset-bottom,0px))!important;
+    position:static!important;
+    padding-top:max(14px, env(safe-area-inset-top))!important;
+    padding-bottom:max(28px, env(safe-area-inset-bottom))!important;
   }
 
-  #knockoutMobileV121 .ko-mobile-header{
-    position:relative!important;
-    top:auto!important;
-    z-index:1!important;
+  body.knockout-mobile-page-v137 #knockoutTab.active{
+    display:block!important;
+    height:auto!important;
+    min-height:100vh!important;
+    max-height:none!important;
+    overflow:visible!important;
+    overflow-y:visible!important;
+    overflow-x:hidden!important;
+    position:static!important;
+    padding:8px 10px calc(72px + env(safe-area-inset-bottom,0px))!important;
+    background:linear-gradient(180deg,rgba(7,17,31,.98),rgba(2,6,23,.99))!important;
   }
 
-  #knockoutMobileV121 .ko-mobile-tabs{
-    position:relative!important;
+  body.knockout-mobile-page-v137 #knockoutMobileV121,
+  body.knockout-mobile-page-v137 #knockoutTab.active #knockoutMobileV121{
+    display:block!important;
+    visibility:visible!important;
+    pointer-events:auto!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    overflow-y:visible!important;
+    overflow-x:hidden!important;
+    position:static!important;
+    padding:0 0 calc(36px + env(safe-area-inset-bottom,0px))!important;
+  }
+
+  body.knockout-mobile-page-v137 #knockoutMobileV121 .ko-mobile-header,
+  body.knockout-mobile-page-v137 #knockoutMobileV121 .ko-mobile-tabs{
+    position:static!important;
     top:auto!important;
-    z-index:1!important;
+    z-index:auto!important;
+  }
+
+  body.knockout-mobile-page-v137 #knockoutMobileV121 .ko-mobile-tabs{
     overflow-x:auto!important;
     overflow-y:hidden!important;
     -webkit-overflow-scrolling:touch!important;
   }
 
-  #knockoutMobileV121 .ko-mobile-list,
-  #knockoutMobileV121 .ko-mobile-list.ko-true-scroll-v136,
-  #knockoutTab.active #knockoutMobileV121 .ko-mobile-list{
+  body.knockout-mobile-page-v137 #knockoutMobileV121 .ko-mobile-list,
+  body.knockout-mobile-page-v137 #knockoutTab.active #knockoutMobileV121 .ko-mobile-list{
     display:grid!important;
     grid-template-columns:1fr!important;
     gap:10px!important;
@@ -8356,33 +7557,29 @@ input[data-no-persist-v116]{
     overflow:visible!important;
     overflow-y:visible!important;
     overflow-x:hidden!important;
-    position:relative!important;
-    padding:2px 0 calc(220px + env(safe-area-inset-bottom,0px))!important;
+    position:static!important;
+    padding:2px 0 32px!important;
   }
 
-  #knockoutMobileV121 .ko-mobile-card{
+  body.knockout-mobile-page-v137 #knockoutMobileV121 .ko-mobile-card{
     display:block!important;
     visibility:visible!important;
     opacity:1!important;
     height:auto!important;
     min-height:auto!important;
     max-height:none!important;
-    overflow:visible!important;
+    overflow:hidden!important;
     position:relative!important;
-    margin-bottom:10px!important;
     flex:none!important;
+    margin:0 0 10px!important;
   }
 
-  #knockoutMobileV121 .ko-mobile-nav{
-    position:relative!important;
-    bottom:auto!important;
-    margin:12px 0 calc(180px + env(safe-area-inset-bottom,0px))!important;
-    padding-bottom:80px!important;
+  body.knockout-mobile-page-v137 #knockoutMobileV121 .ko-mobile-nav:empty{
+    display:none!important;
   }
 
-  /* Garantia extra: nenhuma regra antiga pode esconder os cards depois do Jogo 3 */
-  #knockoutMobileV121 .ko-force-hidden-v133,
-  #knockoutMobileV121 .ko-force-active-v133{
+  body.knockout-mobile-page-v137 #knockoutMobileV121 .ko-force-hidden-v133,
+  body.knockout-mobile-page-v137 #knockoutMobileV121 .ko-force-active-v133{
     display:block!important;
     visibility:visible!important;
     height:auto!important;
