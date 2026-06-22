@@ -475,6 +475,60 @@ function footballReadableSyncMode(mode) {
 }
 
 
+
+function footballApiAnyScoreV153(match) {
+  const score = match?.score || {};
+  const candidates = [
+    score.fullTime,
+    score.regularTime,
+    score.halfTime
+  ].filter(Boolean);
+
+  for (const item of candidates) {
+    const home = item.home;
+    const away = item.away;
+    if (home !== null && home !== undefined && away !== null && away !== undefined) {
+      const penalties = score.penalties || {};
+      return {
+        homeScore: Number(home),
+        awayScore: Number(away),
+        homePenalties: penalties.home === null || penalties.home === undefined ? null : Number(penalties.home),
+        awayPenalties: penalties.away === null || penalties.away === undefined ? null : Number(penalties.away)
+      };
+    }
+  }
+
+  return null;
+}
+
+function footballIsFinishedV153(match) {
+  return ["FINISHED", "AWARDED"].includes(String(match?.status || "").toUpperCase());
+}
+
+function footballMatchPayloadV153(apiMatch, actor, score = null) {
+  const payload = {
+    footballDataId: String(apiMatch.id || ""),
+    footballDataStatus: cleanString(apiMatch.status),
+    footballDataStage: cleanString(apiMatch.stage),
+    footballDataGroup: cleanString(apiMatch.group),
+    footballDataUtcDate: cleanString(apiMatch.utcDate),
+    footballDataLocked: footballShouldLockMatch(apiMatch),
+    footballDataUpdatedBy: actor.email,
+    source: "football-data.org",
+    updatedAt: new Date().toISOString(),
+    firebaseUpdatedAt: FieldValue.serverTimestamp()
+  };
+
+  if (score) {
+    payload.homeScore = score.homeScore;
+    payload.awayScore = score.awayScore;
+    if (score.homePenalties !== null && score.homePenalties !== undefined) payload.homePenalties = score.homePenalties;
+    if (score.awayPenalties !== null && score.awayPenalties !== undefined) payload.awayPenalties = score.awayPenalties;
+  }
+
+  return payload;
+}
+
 async function runFootballDataSyncCoreV151(options = {}) {
   const actor = options.actor || FOOTBALL_SYSTEM_ACTOR_V151;
   const competition = cleanString(options.competition || "WC");
@@ -536,49 +590,55 @@ async function runFootballDataSyncCoreV151(options = {}) {
   const updatedKnockoutMatches = [];
   let writes = 0;
 
-  finished.forEach(apiMatch => {
-    const score = footballApiScore(apiMatch);
-    if (!score) return;
+  const matchedGamesStatusV153 = [];
 
+  matches.forEach(apiMatch => {
+    const score = footballApiAnyScoreV153(apiMatch);
     const isGroupStage = String(apiMatch.stage || "").toUpperCase() === "GROUP_STAGE";
     const groupTarget = footballFindLocalMatch(apiMatch, localGames);
     const knockoutTarget = !isGroupStage ? footballFindLocalMatch(apiMatch, knockoutMatches) : null;
 
     if (groupTarget) {
-      const payload = {
-        footballDataId: String(apiMatch.id || ""),
-        footballDataStatus: cleanString(apiMatch.status),
-        footballDataStage: cleanString(apiMatch.stage),
-        footballDataLocked: footballShouldLockMatch(apiMatch),
-        footballDataUpdatedBy: actor.email,
-        source: "football-data.org",
-        homeScore: score.homeScore,
-        awayScore: score.awayScore,
-        updatedAt: new Date().toISOString(),
-        firebaseUpdatedAt: FieldValue.serverTimestamp()
-      };
-
+      const payload = footballMatchPayloadV153(apiMatch, actor, score);
       batch.set(db.collection("games").doc(groupTarget.id), payload, { merge: true });
       writes += 1;
-      updatedGames.push({
+
+      const updatePayload = {
         id: groupTarget.id,
         homeTeam: groupTarget.homeTeam,
         awayTeam: groupTarget.awayTeam,
         ...payload,
+        status: payload.footballDataStatus,
+        stage: payload.footballDataStage,
         firebaseUpdatedAt: null
-      });
+      };
+
+      matchedGamesStatusV153.push(updatePayload);
+
+      if (score && footballIsFinishedV153(apiMatch)) {
+        updatedGames.push(updatePayload);
+      }
     }
 
     if (knockoutTarget) {
-      knockoutTarget.footballDataId = String(apiMatch.id || "");
-      knockoutTarget.footballDataStatus = cleanString(apiMatch.status);
-      knockoutTarget.footballDataStage = cleanString(apiMatch.stage);
-      knockoutTarget.source = "football-data.org";
-      knockoutTarget.homeScore = score.homeScore;
-      knockoutTarget.awayScore = score.awayScore;
-      knockoutTarget.homePenalties = score.homePenalties;
-      knockoutTarget.awayPenalties = score.awayPenalties;
-      knockoutTarget.updatedAt = new Date().toISOString();
+      const payload = footballMatchPayloadV153(apiMatch, actor, score);
+      Object.assign(knockoutTarget, {
+        footballDataId: payload.footballDataId,
+        footballDataStatus: payload.footballDataStatus,
+        footballDataStage: payload.footballDataStage,
+        footballDataGroup: payload.footballDataGroup,
+        footballDataUtcDate: payload.footballDataUtcDate,
+        footballDataLocked: payload.footballDataLocked,
+        source: payload.source,
+        updatedAt: payload.updatedAt
+      });
+
+      if (score) {
+        knockoutTarget.homeScore = score.homeScore;
+        knockoutTarget.awayScore = score.awayScore;
+        knockoutTarget.homePenalties = score.homePenalties;
+        knockoutTarget.awayPenalties = score.awayPenalties;
+      }
 
       updatedKnockoutMatches.push({
         id: knockoutTarget.id,
@@ -587,12 +647,17 @@ async function runFootballDataSyncCoreV151(options = {}) {
         footballDataId: knockoutTarget.footballDataId,
         footballDataStatus: knockoutTarget.footballDataStatus,
         footballDataStage: knockoutTarget.footballDataStage,
+        footballDataGroup: knockoutTarget.footballDataGroup,
+        footballDataUtcDate: knockoutTarget.footballDataUtcDate,
+        footballDataLocked: knockoutTarget.footballDataLocked,
         source: knockoutTarget.source,
-        homeScore: knockoutTarget.homeScore,
-        awayScore: knockoutTarget.awayScore,
-        homePenalties: knockoutTarget.homePenalties,
-        awayPenalties: knockoutTarget.awayPenalties,
-        updatedAt: knockoutTarget.updatedAt
+        homeScore: knockoutTarget.homeScore ?? null,
+        awayScore: knockoutTarget.awayScore ?? null,
+        homePenalties: knockoutTarget.homePenalties ?? null,
+        awayPenalties: knockoutTarget.awayPenalties ?? null,
+        updatedAt: knockoutTarget.updatedAt,
+        status: knockoutTarget.footballDataStatus,
+        stage: knockoutTarget.footballDataStage
       });
     }
   });
@@ -610,6 +675,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
     apiMatches: matches.length,
     finished: finished.length,
     updatedGames: updatedGames.length,
+    matchedGamesStatus: matchedGamesStatusV153.length,
     updatedKnockoutMatches: updatedKnockoutMatches.length,
     upcoming,
     liveOrLocked
@@ -644,6 +710,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
       apiMatches: matches.length,
       finished: finished.length,
       updatedGames: updatedGames.length,
+      matchedGamesStatus: matchedGamesStatusV153.length,
       updatedKnockoutMatches: updatedKnockoutMatches.length
     }
   });
@@ -656,6 +723,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
     apiMatches: matches.length,
     finished: finished.length,
     updatedGames,
+    matchedGamesStatus: matchedGamesStatusV153,
     updatedKnockoutMatches,
     upcoming,
     liveOrLocked,
@@ -704,7 +772,7 @@ exports.syncFootballDataWorldCup = onRequest({
 
 
 exports.syncFootballDataWorldCupScheduled = onSchedule({
-  schedule: "every 1 minutes",
+  schedule: "* * * * *",
   region: "europe-west1",
   timeZone: "Europe/Lisbon",
   timeoutSeconds: 90,

@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #070b13;
   --panel: #0d1522;
   --panel-soft: #111c2c;
@@ -8333,4 +8333,21 @@ summary:focus-visible{
   color:#d1fae5!important;
   font-size:11px!important;
   font-weight:900!important;
+}
+
+
+/* v153 — estados vindos da API */
+.status.live,
+.badge.live,
+.match-status.live{
+  box-shadow:0 0 0 1px rgba(34,197,94,.28), 0 0 18px rgba(34,197,94,.16)!important;
+}
+
+
+/* v155-sync-final-badge */
+.football-247-badge-v151,
+.sync-247-badge-v155{
+  background: rgba(69,255,156,.08) !important;
+  border: 1px solid rgba(69,255,156,.35) !important;
+  color: #83ffbf !important;
 }

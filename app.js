@@ -272,7 +272,28 @@ function timePortugal(value) {
   return new Intl.DateTimeFormat("pt-PT", { timeZone: PORTUGAL_TZ, hour: "2-digit", minute: "2-digit" }).format(parsePortugalDate(value));
 }
 function statusOf(game) {
-  if (hasResult(game)) return { text: "Jogado", className: "played" };
+  const apiStatus = String(game?.footballDataStatus || game?.statusApi || "").toUpperCase();
+
+  if (["FINISHED", "AWARDED"].includes(apiStatus) || hasResult(game)) {
+    return { text: "Jogado", className: "played" };
+  }
+
+  if (["IN_PLAY", "PAUSED", "LIVE"].includes(apiStatus)) {
+    return { text: "A Decorrer", className: "live" };
+  }
+
+  if (["SUSPENDED"].includes(apiStatus)) {
+    return { text: "Suspenso", className: "live" };
+  }
+
+  if (["POSTPONED", "CANCELLED"].includes(apiStatus)) {
+    return { text: "Adiado", className: "locked" };
+  }
+
+  if (game?.footballDataLocked === true) {
+    return { text: "A Decorrer", className: "live" };
+  }
+
   if (parsePortugalDate(game.matchDate).getTime() <= Date.now()) return { text: "A Decorrer", className: "live" };
   return { text: "Por jogar", className: "open" };
 }
@@ -7972,8 +7993,10 @@ function mergeFootballDataGameUpdatesV139(updatedGames = []) {
 
     Object.assign(game, {
       footballDataId: update.footballDataId || game.footballDataId || "",
-      footballDataStatus: update.status || game.footballDataStatus || "",
-      footballDataStage: update.stage || game.footballDataStage || "",
+      footballDataStatus: update.footballDataStatus || update.status || game.footballDataStatus || "",
+      footballDataStage: update.footballDataStage || update.stage || game.footballDataStage || "",
+      footballDataLocked: update.footballDataLocked === undefined ? game.footballDataLocked : update.footballDataLocked,
+      footballDataUtcDate: update.footballDataUtcDate || game.footballDataUtcDate || "",
       homeScore: home,
       awayScore: away,
       updatedAt: update.updatedAt || new Date().toISOString()
@@ -8007,8 +8030,10 @@ function mergeFootballDataKnockoutV139(knockoutMatches = []) {
 
     Object.assign(existing, {
       footballDataId: update.footballDataId || existing.footballDataId || "",
-      footballDataStatus: update.status || existing.footballDataStatus || "",
-      footballDataStage: update.stage || existing.footballDataStage || "",
+      footballDataStatus: update.footballDataStatus || update.status || existing.footballDataStatus || "",
+      footballDataStage: update.footballDataStage || update.stage || existing.footballDataStage || "",
+      footballDataLocked: update.footballDataLocked === undefined ? existing.footballDataLocked : update.footballDataLocked,
+      footballDataUtcDate: update.footballDataUtcDate || existing.footballDataUtcDate || "",
       homeScore: update.homeScore ?? existing.homeScore ?? null,
       awayScore: update.awayScore ?? existing.awayScore ?? null,
       homePenalties: update.homePenalties ?? existing.homePenalties ?? null,
@@ -8080,7 +8105,7 @@ async function syncFootballDataResultsV139() {
       throw new Error(data.error || `HTTP ${response.status}`);
     }
 
-    const changedGames = mergeFootballDataGameUpdatesV139(data.updatedGames || []);
+    const changedGames = mergeFootballDataGameUpdatesV139([...(data.matchedGamesStatus || []), ...(data.updatedGames || [])]);
     const changedKo = mergeFootballDataKnockoutV139(data.updatedKnockoutMatches || []);
 
     saveLocalData("football-data resultados atualizados");
@@ -8484,7 +8509,7 @@ async function syncFootballDataResultsFreeV149(mode = "manual") {
       throw new Error(data.error || `HTTP ${response.status}`);
     }
 
-    const changedGames = mergeFootballDataGameUpdatesV139(data.updatedGames || []);
+    const changedGames = mergeFootballDataGameUpdatesV139([...(data.matchedGamesStatus || []), ...(data.updatedGames || [])]);
     const changedKo = mergeFootballDataKnockoutV139(data.updatedKnockoutMatches || []);
 
     localStorage.setItem("mundial_football_free_last_sync_iso_v149", data.lastSyncIso || new Date().toISOString());
