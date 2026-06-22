@@ -8544,3 +8544,171 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(setupFootballFreeAutoV149, 2200);
 });
 document.addEventListener("click", () => setTimeout(setupFootballFreeAutoV149, 180));
+
+
+// v150 — desbloqueia e fecha modais/abas presas na Fase Final mobile.
+function closeStuckFinalPhaseModalV150(reason = "") {
+  try {
+    const selectors = [
+      ".modal.show",
+      ".modal.open",
+      ".modal.active",
+      ".dialog.show",
+      ".dialog.open",
+      ".dialog.active",
+      ".popup.show",
+      ".popup.open",
+      ".popup.active",
+      ".drawer.show",
+      ".drawer.open",
+      ".drawer.active",
+      ".sheet.show",
+      ".sheet.open",
+      ".sheet.active",
+      ".bottom-sheet.show",
+      ".bottom-sheet.open",
+      ".bottom-sheet.active",
+      ".overlay.show",
+      ".overlay.open",
+      ".overlay.active",
+      ".modal-backdrop",
+      ".backdrop",
+      ".drawer-backdrop"
+    ];
+
+    document.querySelectorAll(selectors.join(",")).forEach(el => {
+      const text = (el.textContent || "").toLowerCase();
+      const idClass = `${el.id || ""} ${el.className || ""}`.toLowerCase();
+      const looksRelated =
+        idClass.includes("knockout") ||
+        idClass.includes("final") ||
+        idClass.includes("match") ||
+        idClass.includes("resultado") ||
+        idClass.includes("registo") ||
+        text.includes("adicionar registo") ||
+        text.includes("guardar") ||
+        text.includes("resultado") ||
+        text.includes("fase final");
+
+      if (!looksRelated && !el.className?.toString?.().toLowerCase?.().includes("backdrop")) return;
+
+      el.classList.remove("show", "open", "active", "visible", "is-open", "is-active");
+      el.setAttribute("aria-hidden", "true");
+      el.hidden = true;
+      el.style.display = "none";
+      el.style.pointerEvents = "none";
+    });
+
+    document.body.classList.remove("modal-open", "drawer-open", "sheet-open", "overflow-hidden", "no-scroll", "lock-scroll");
+    document.documentElement.classList.remove("modal-open", "drawer-open", "sheet-open", "overflow-hidden", "no-scroll", "lock-scroll");
+    document.body.style.overflow = "";
+    document.body.style.pointerEvents = "";
+    document.documentElement.style.overflow = "";
+
+    const koTab = document.getElementById("knockoutTab");
+    const koMobile = document.getElementById("knockoutMobileV121");
+    if (koTab) {
+      koTab.style.pointerEvents = "";
+      koTab.style.overflow = "";
+    }
+    if (koMobile) {
+      koMobile.style.pointerEvents = "";
+      koMobile.style.overflow = "";
+    }
+
+    if (typeof renderKnockoutMobileV121 === "function") {
+      setTimeout(() => {
+        try {
+          const activePanel = document.querySelector(".tab-panel.active");
+          if (activePanel?.id === "knockoutTab") renderKnockoutMobileV121();
+        } catch {}
+      }, 120);
+    }
+
+    console.info("Modal Fase Final mobile fechado/desbloqueado v150", reason);
+  } catch (error) {
+    console.warn("closeStuckFinalPhaseModalV150 falhou:", error);
+  }
+}
+
+function installFinalPhaseModalCloseFixV150() {
+  try {
+    if (document.body.dataset.finalPhaseModalFixV150 === "1") return;
+    document.body.dataset.finalPhaseModalFixV150 = "1";
+
+    document.addEventListener("click", event => {
+      const target = event.target;
+      const closeBtn = target.closest?.(
+        "[data-close], [data-dismiss], .modal-close, .close-modal, .close, .btn-close, .sheet-close, .drawer-close, .popup-close, .toast-close, .x-close"
+      );
+
+      if (closeBtn) {
+        setTimeout(() => closeStuckFinalPhaseModalV150("close button"), 40);
+        setTimeout(() => closeStuckFinalPhaseModalV150("close button delayed"), 250);
+        return;
+      }
+
+      const addOrSave = target.closest?.("button, .button, [role='button']");
+      const label = (addOrSave?.textContent || "").toLowerCase().trim();
+      if (
+        label.includes("adicionar registo") ||
+        label.includes("guardar") ||
+        label.includes("adicionar") ||
+        label.includes("confirmar")
+      ) {
+        const inKnockout = !!target.closest?.("#knockoutTab, #knockoutMobileV121, .knockout-mobile-v121");
+        if (inKnockout || document.querySelector(".tab-panel.active")?.id === "knockoutTab") {
+          setTimeout(() => closeStuckFinalPhaseModalV150("after add/save"), 450);
+          setTimeout(() => closeStuckFinalPhaseModalV150("after add/save delayed"), 1200);
+        }
+      }
+
+      const backdrop = target.closest?.(".modal-backdrop, .backdrop, .drawer-backdrop, .overlay");
+      if (backdrop && target === backdrop) {
+        setTimeout(() => closeStuckFinalPhaseModalV150("backdrop"), 30);
+      }
+    }, true);
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") {
+        closeStuckFinalPhaseModalV150("escape");
+      }
+    });
+
+    document.addEventListener("touchend", event => {
+      const target = event.target;
+      const closeBtn = target.closest?.(
+        "[data-close], [data-dismiss], .modal-close, .close-modal, .close, .btn-close, .sheet-close, .drawer-close, .popup-close, .x-close"
+      );
+      if (closeBtn) {
+        setTimeout(() => closeStuckFinalPhaseModalV150("touch close"), 50);
+      }
+    }, { passive: true });
+  } catch (error) {
+    console.warn("installFinalPhaseModalCloseFixV150 falhou:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(installFinalPhaseModalCloseFixV150, 250);
+  setTimeout(installFinalPhaseModalCloseFixV150, 1000);
+});
+document.addEventListener("click", () => setTimeout(installFinalPhaseModalCloseFixV150, 80));
+
+
+// v151 — aviso visual discreto da sync 24/7.
+function updateFootball247LabelV151() {
+  try {
+    const box = document.getElementById("footballFreeStatusBoxV149");
+    if (!box || box.querySelector(".football-247-badge-v151")) return;
+    const badge = document.createElement("div");
+    badge.className = "football-247-badge-v151";
+    badge.textContent = "Sync 24/7 ativa · minuto a minuto";
+    box.appendChild(badge);
+  } catch {}
+}
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(updateFootball247LabelV151, 1200);
+  setTimeout(updateFootball247LabelV151, 2600);
+});
+document.addEventListener("click", () => setTimeout(updateFootball247LabelV151, 220));

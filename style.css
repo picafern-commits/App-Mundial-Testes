@@ -8266,3 +8266,71 @@ summary:focus-visible{
     text-align:left!important;
   }
 }
+
+
+/* v150 — Fase Final mobile: fechar modal/aba sempre clicável */
+@media(max-width:760px){
+  .modal,
+  .dialog,
+  .popup,
+  .drawer,
+  .sheet,
+  .bottom-sheet{
+    max-height:calc(100dvh - 18px)!important;
+    overflow:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+
+  .modal .close,
+  .modal .btn-close,
+  .modal-close,
+  .close-modal,
+  .sheet-close,
+  .drawer-close,
+  .popup-close,
+  [data-close],
+  [data-dismiss]{
+    position:relative!important;
+    z-index:2147483647!important;
+    pointer-events:auto!important;
+    touch-action:manipulation!important;
+  }
+
+  .modal-backdrop,
+  .backdrop,
+  .drawer-backdrop,
+  .overlay{
+    touch-action:manipulation!important;
+  }
+
+  body:not(.modal-open) #knockoutTab,
+  body:not(.modal-open) #knockoutMobileV121{
+    pointer-events:auto!important;
+  }
+
+  #knockoutTab .modal,
+  #knockoutMobileV121 .modal,
+  #knockoutTab .popup,
+  #knockoutMobileV121 .popup,
+  #knockoutTab .sheet,
+  #knockoutMobileV121 .sheet{
+    z-index:999999!important;
+  }
+}
+
+
+/* v151 — badge sync 24/7 */
+.football-247-badge-v151{
+  margin-top:10px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  width:max-content!important;
+  max-width:100%!important;
+  padding:7px 10px!important;
+  border-radius:999px!important;
+  background:rgba(16,185,129,.14)!important;
+  border:1px solid rgba(52,211,153,.26)!important;
+  color:#d1fae5!important;
+  font-size:11px!important;
+  font-weight:900!important;
+}
