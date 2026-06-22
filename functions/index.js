@@ -18,6 +18,11 @@ function cleanString(value, fallback = "") {
   return String(value || fallback).trim();
 }
 
+function normalizeEmail(value) {
+  return cleanString(value).toLowerCase().trim();
+}
+
+
 function shortText(value, max = 120) {
   const text = cleanString(value).replace(/\s+/g, " ");
   return text.length > max ? `${text.slice(0, max - 3)}...` : text;
@@ -371,7 +376,7 @@ function footballFindLocalMatch(apiMatch, localMatches) {
     .sort((a, b) => a.diff - b.diff)[0]?.match || sameTeams[0];
 }
 
-async function assertFootballDataAdmin(req) {
+async function assertFootballDataAdminV147(req) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
   if (!token) {
@@ -390,9 +395,33 @@ async function assertFootballDataAdmin(req) {
 
   if (ADMIN_EMAILS.has(email)) return { uid: decoded.uid, email };
 
-  const profileSnap = await db.collection("users").doc(email).get();
-  const profile = profileSnap.data() || {};
-  const canEdit = profile.active !== false && (profile.role === "admin" || profile.permissions?.editResults === true);
+  let profile = {};
+  try {
+    const byEmail = await db.collection("users").doc(email).get();
+    if (byEmail.exists) profile = byEmail.data() || {};
+  } catch {}
+
+  try {
+    if (!Object.keys(profile).length && decoded.uid) {
+      const byUid = await db.collection("users").doc(decoded.uid).get();
+      if (byUid.exists) profile = byUid.data() || {};
+    }
+  } catch {}
+
+  const role = cleanString(profile.role || profile.tipo || "").toLowerCase();
+  const permissions = profile.permissions || profile.permissoes || {};
+  const canEdit =
+    profile.active !== false &&
+    profile.ativo !== false &&
+    (
+      role === "admin" ||
+      role === "administrador" ||
+      role === "master" ||
+      permissions.editResults === true ||
+      permissions.editarResultados === true ||
+      permissions.admin === true
+    );
+
   if (!canEdit) {
     const err = new Error("Sem permissão para atualizar resultados.");
     err.status = 403;
@@ -422,7 +451,7 @@ exports.syncFootballDataWorldCup = onRequest({
   }
 
   try {
-    const actor = await assertFootballDataAdmin(req);
+    const actor = await assertFootballDataAdminV147(req);
 
     const token = cleanString(process.env.FOOTBALL_DATA_TOKEN || process.env.FOOTBALL_DATA_API_KEY);
     if (!token) {

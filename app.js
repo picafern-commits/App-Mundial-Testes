@@ -8326,3 +8326,38 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(enablePcFullWidthV144, 400);
   setTimeout(enablePcFullWidthV144, 1200);
 });
+
+
+// v147 — força ecrã todo no PC/GitHub Pages, mesmo com wrappers antigos.
+function forceDesktopFullscreenV147() {
+  try {
+    const desktop = window.innerWidth >= 900;
+    document.documentElement.classList.toggle("desktop-fullscreen-v147", desktop);
+    document.body.classList.toggle("desktop-fullscreen-v147", desktop);
+
+    if (!desktop) return;
+
+    const selectors = [
+      "body", "#app", ".app", ".app-shell", ".shell", ".page-shell", ".container",
+      ".main-container", "main", ".main", ".content", ".app-content",
+      ".tab-content", ".tab-panel.active", ".panel", ".card"
+    ];
+
+    selectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(el => {
+        el.style.maxWidth = "none";
+        el.style.width = "100%";
+        el.style.boxSizing = "border-box";
+      });
+    });
+  } catch (error) {
+    console.warn("fullscreen v147 falhou:", error);
+  }
+}
+window.addEventListener("resize", forceDesktopFullscreenV147);
+document.addEventListener("DOMContentLoaded", () => {
+  forceDesktopFullscreenV147();
+  setTimeout(forceDesktopFullscreenV147, 300);
+  setTimeout(forceDesktopFullscreenV147, 1200);
+});
+document.addEventListener("click", () => setTimeout(forceDesktopFullscreenV147, 120));

@@ -8030,3 +8030,64 @@ summary:focus-visible{
     max-width:none!important;
   }
 }
+
+
+/* v147 — GitHub Pages / PC: ocupar o ecrã todo de verdade */
+@media(min-width:900px){
+  html.desktop-fullscreen-v147,
+  body.desktop-fullscreen-v147,
+  html,
+  body{
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding-left:0!important;
+    padding-right:0!important;
+    overflow-x:hidden!important;
+  }
+
+  body.desktop-fullscreen-v147 > *,
+  body.desktop-fullscreen-v147 #app,
+  body.desktop-fullscreen-v147 .app,
+  body.desktop-fullscreen-v147 .app-shell,
+  body.desktop-fullscreen-v147 .shell,
+  body.desktop-fullscreen-v147 .page-shell,
+  body.desktop-fullscreen-v147 .container,
+  body.desktop-fullscreen-v147 .main-container,
+  body.desktop-fullscreen-v147 main,
+  body.desktop-fullscreen-v147 .main,
+  body.desktop-fullscreen-v147 .content,
+  body.desktop-fullscreen-v147 .app-content,
+  body.desktop-fullscreen-v147 .tab-content,
+  body.desktop-fullscreen-v147 .tab-panel,
+  body.desktop-fullscreen-v147 .tab-panel.active{
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    margin-left:0!important;
+    margin-right:0!important;
+    box-sizing:border-box!important;
+  }
+
+  body.desktop-fullscreen-v147 main,
+  body.desktop-fullscreen-v147 .main,
+  body.desktop-fullscreen-v147 .content,
+  body.desktop-fullscreen-v147 .app-content,
+  body.desktop-fullscreen-v147 .tab-panel.active{
+    padding-left:16px!important;
+    padding-right:16px!important;
+  }
+
+  body.desktop-fullscreen-v147 .card,
+  body.desktop-fullscreen-v147 .panel,
+  body.desktop-fullscreen-v147 .admin-section,
+  body.desktop-fullscreen-v147 .admin-card,
+  body.desktop-fullscreen-v147 .day-block,
+  body.desktop-fullscreen-v147 .leaderboard-table,
+  body.desktop-fullscreen-v147 .football-data-admin-fixed-box-v143,
+  body.desktop-fullscreen-v147 #footballDataAdminFixedBoxV143{
+    width:100%!important;
+    max-width:none!important;
+    box-sizing:border-box!important;
+  }
+}
