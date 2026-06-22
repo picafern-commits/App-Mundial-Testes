@@ -7572,3 +7572,31 @@ input[data-no-persist-v116]{
     padding-bottom:32px!important;
   }
 }
+
+
+/* v127 — proteção: Fase Final mobile nunca aparece fora da página Fase Final */
+@media(max-width:760px){
+  #adminTab #knockoutMobileV121,
+  #dashboardTab #knockoutMobileV121,
+  #calendarTab #knockoutMobileV121,
+  #scoreTab #knockoutMobileV121,
+  #betsTab #knockoutMobileV121,
+  #settingsTab #knockoutMobileV121,
+  #usersTab #knockoutMobileV121{
+    display:none!important;
+    visibility:hidden!important;
+    pointer-events:none!important;
+  }
+
+  #knockoutTab #knockoutMobileV121{
+    max-height:none!important;
+    overflow:visible!important;
+    padding-bottom:calc(90px + env(safe-area-inset-bottom, 0px))!important;
+  }
+
+  #knockoutTab #knockoutMobileV121 .ko-mobile-list{
+    max-height:none!important;
+    overflow:visible!important;
+    padding-bottom:36px!important;
+  }
+}

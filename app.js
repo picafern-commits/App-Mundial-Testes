@@ -3822,6 +3822,15 @@ function knockoutMatchIdV121(match) {
 
 function renderKnockoutMobileV121() {
 
+  const koTabForGuardV127 = document.getElementById("knockoutTab");
+  const activePanelForGuardV127 = document.querySelector(".app-section.active, .tab-panel.active, .page.active, section.active");
+  if (activePanelForGuardV127 && activePanelForGuardV127.id && activePanelForGuardV127.id !== "knockoutTab") {
+    document.getElementById("knockoutMobileV121")?.remove();
+    return;
+  }
+  if (!koTabForGuardV127) return;
+
+
   if (typeof canRenderKnockoutMobileV125 === "function" && !canRenderKnockoutMobileV125()) {
     document.getElementById("knockoutMobileV121")?.remove();
     return;
@@ -3948,3 +3957,37 @@ function setupKnockoutMobileV121() {
   renderKnockoutMobileV121();
 }
 
+
+
+// v127 — limpeza segura: Fase Final mobile só dentro da página Fase Final.
+function cleanupKnockoutMobileOutsidePageV127() {
+  try {
+    const koTab = document.getElementById("knockoutTab");
+    const mobile = document.getElementById("knockoutMobileV121");
+    if (!mobile) return;
+
+    if (!koTab || mobile.parentElement !== koTab) {
+      mobile.remove();
+      return;
+    }
+
+    const activePanel = document.querySelector(".app-section.active, .tab-panel.active, .page.active, section.active");
+    if (activePanel && activePanel.id && activePanel.id !== "knockoutTab") {
+      mobile.remove();
+      return;
+    }
+
+    if (koTab.classList && !koTab.classList.contains("active")) {
+      const style = getComputedStyle(koTab);
+      if (style.display === "none" || style.visibility === "hidden") mobile.remove();
+    }
+  } catch (error) {
+    console.warn("cleanup KO mobile v127 falhou:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(cleanupKnockoutMobileOutsidePageV127, 300);
+  setTimeout(cleanupKnockoutMobileOutsidePageV127, 1200);
+});
+document.addEventListener("click", () => setTimeout(cleanupKnockoutMobileOutsidePageV127, 120));
