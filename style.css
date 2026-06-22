@@ -8029,180 +8029,134 @@ input[data-no-persist-v116]{
 }
 
 
-/* v132 — Fase Final mobile: um jogo de cada vez, sem scroll preso */
+/* v134 — Fase Final mobile: cada ronda é uma página com scroll normal */
 @media(max-width:760px){
-  body.ko-mobile-v131-active{
-    overflow-y:auto!important;
+  html,
+  body{
     height:auto!important;
     min-height:100%!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    position:static!important;
+    touch-action:pan-y!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+
+  body.ko-mobile-v131-active,
+  body.ko-round-page-scroll-v134{
+    height:auto!important;
+    min-height:100%!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    position:static!important;
+    touch-action:pan-y!important;
+  }
+
+  body.ko-round-page-scroll-v134 .app,
+  body.ko-round-page-scroll-v134 .app-shell,
+  body.ko-round-page-scroll-v134 main,
+  body.ko-round-page-scroll-v134 .main,
+  body.ko-round-page-scroll-v134 .content,
+  body.ko-round-page-scroll-v134 .tab-content,
+  body.ko-round-page-scroll-v134 .tab-panel.active{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    overflow-y:visible!important;
+    position:static!important;
   }
 
   #knockoutTab.active,
-  #knockoutTab.ko-mobile-v131-active{
+  #knockoutTab.ko-mobile-v131-active,
+  #knockoutTab.ko-round-page-scroll-v134{
     display:block!important;
     height:auto!important;
     min-height:100vh!important;
     max-height:none!important;
-    overflow-y:auto!important;
-    padding:8px 10px calc(115px + env(safe-area-inset-bottom,0px))!important;
+    overflow:visible!important;
+    overflow-y:visible!important;
+    overflow-x:hidden!important;
+    position:static!important;
+    padding:8px 10px calc(160px + env(safe-area-inset-bottom,0px))!important;
+    background:linear-gradient(180deg,rgba(7,17,31,.98),rgba(2,6,23,.99))!important;
   }
 
-  #knockoutMobileV121.ko-mobile-single-v132,
-  #knockoutMobileV121{
+  #knockoutMobileV121,
+  #knockoutMobileV121.ko-mobile-v131-host,
+  #knockoutMobileV121.ko-round-page-scroll-v134,
+  #knockoutTab.active #knockoutMobileV121{
     display:block!important;
     height:auto!important;
     min-height:0!important;
     max-height:none!important;
     overflow:visible!important;
-    padding-bottom:calc(70px + env(safe-area-inset-bottom,0px))!important;
+    overflow-y:visible!important;
+    overflow-x:hidden!important;
+    position:static!important;
+    padding:0 0 calc(120px + env(safe-area-inset-bottom,0px))!important;
   }
 
-  #knockoutMobileV121 .ko-mobile-header-v132{
+  #knockoutMobileV121 .ko-mobile-header{
     position:static!important;
-    margin-bottom:8px!important;
+    top:auto!important;
+    z-index:auto!important;
+    margin:0 0 8px!important;
+    backdrop-filter:none!important;
   }
 
   #knockoutMobileV121 .ko-mobile-tabs{
     position:static!important;
-    margin-bottom:8px!important;
+    top:auto!important;
+    z-index:auto!important;
+    margin:0 -2px 8px!important;
+    padding:4px 2px 10px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    background:transparent!important;
+    -webkit-overflow-scrolling:touch!important;
   }
 
-  #knockoutMobileV121 .ko-mobile-game-controls-v132{
+  #knockoutMobileV121 .ko-mobile-list,
+  #knockoutMobileV121 .ko-mobile-v131-list,
+  #knockoutMobileV121 .ko-round-page-scroll-v134,
+  #knockoutTab.active #knockoutMobileV121 .ko-mobile-list{
     display:grid!important;
-    grid-template-columns:1fr auto 1fr!important;
-    align-items:center!important;
-    gap:8px!important;
-    margin:6px 0 10px!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-game-controls-v132 button{
-    min-height:42px!important;
-    border-radius:16px!important;
-    font-size:13px!important;
-    font-weight:1000!important;
-    padding:8px 10px!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-game-controls-v132 button[disabled]{
-    opacity:.36!important;
-    pointer-events:none!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-game-controls-v132 strong{
-    white-space:nowrap!important;
-    font-size:12px!important;
-    color:rgba(255,255,255,.68)!important;
-    font-weight:1000!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-single-list-v132,
-  #knockoutMobileV121 .ko-mobile-list{
-    display:block!important;
-    height:auto!important;
-    max-height:none!important;
-    overflow:visible!important;
-    padding:0 0 10px!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-single-card-v132{
-    margin:0!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-round-nav-v132{
-    display:grid!important;
-    grid-template-columns:1fr 1fr!important;
-    gap:8px!important;
-    margin-top:10px!important;
-    margin-bottom:calc(30px + env(safe-area-inset-bottom,0px))!important;
-  }
-
-  #knockoutMobileV121 .ko-mobile-round-nav-v132 button{
-    min-height:44px!important;
-    border-radius:16px!important;
-    font-size:13px!important;
-    font-weight:1000!important;
-  }
-}
-
-
-/* v133 — força mobile a mostrar 1 jogo de cada vez */
-@media(max-width:760px){
-  body.ko-mobile-force-one-v133-active{
-    overflow-y:auto!important;
-    height:auto!important;
-    min-height:100%!important;
-  }
-
-  #knockoutMobileV121.ko-mobile-force-one-v133 .ko-mobile-list,
-  #knockoutMobileV121 .ko-mobile-list{
-    display:block!important;
+    grid-template-columns:1fr!important;
+    gap:10px!important;
     height:auto!important;
     min-height:0!important;
     max-height:none!important;
     overflow:visible!important;
-    padding-bottom:18px!important;
+    overflow-y:visible!important;
+    overflow-x:hidden!important;
+    position:static!important;
+    padding:2px 0 calc(140px + env(safe-area-inset-bottom,0px))!important;
   }
 
-  #knockoutMobileV121 .ko-force-hidden-v133{
-    display:none!important;
-    visibility:hidden!important;
-    height:0!important;
-    min-height:0!important;
-    overflow:hidden!important;
-    margin:0!important;
-    padding:0!important;
-    border:0!important;
-  }
-
-  #knockoutMobileV121 .ko-force-active-v133{
+  #knockoutMobileV121 .ko-mobile-card{
     display:block!important;
     visibility:visible!important;
     height:auto!important;
     min-height:auto!important;
-    overflow:visible!important;
-  }
-
-  #koMobileForcedControlsV133{
-    display:grid!important;
-    grid-template-columns:1fr auto 1fr!important;
-    gap:8px!important;
-    align-items:center!important;
-    margin:8px 0 12px!important;
-  }
-
-  #koMobileForcedControlsV133 button{
-    min-height:44px!important;
-    border-radius:16px!important;
-    padding:8px 10px!important;
-    font-weight:1000!important;
-    font-size:13px!important;
-  }
-
-  #koMobileForcedControlsV133 button[disabled]{
-    opacity:.35!important;
-    pointer-events:none!important;
-  }
-
-  #koMobileForcedControlsV133 strong{
-    white-space:nowrap!important;
-    color:rgba(255,255,255,.72)!important;
-    font-weight:1000!important;
-    font-size:12px!important;
-  }
-
-  #knockoutTab.active{
-    height:auto!important;
-    min-height:100vh!important;
-    max-height:none!important;
-    overflow-y:auto!important;
-    padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))!important;
-  }
-
-  #knockoutMobileV121{
-    height:auto!important;
-    min-height:0!important;
     max-height:none!important;
     overflow:visible!important;
-    padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))!important;
+    position:relative!important;
+    flex:0 0 auto!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-nav{
+    position:static!important;
+    bottom:auto!important;
+    margin:10px 0 calc(80px + env(safe-area-inset-bottom,0px))!important;
+    padding-bottom:40px!important;
+  }
+
+  /* remove qualquer tentativa antiga de scroll interno */
+  #knockoutMobileV121 .ko-mobile-list::-webkit-scrollbar{
+    width:0!important;
+    height:0!important;
   }
 }

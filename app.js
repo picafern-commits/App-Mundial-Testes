@@ -3636,7 +3636,6 @@ function renderKnockout() {
 
 // v121 — Fase Final mobile por rondas. PC mantém layout original.
 let knockoutMobileSelectedRoundV121 = localStorage.getItem("mundial_ko_mobile_round_v121") || "";
-let knockoutMobileGameIndexV132 = Number(localStorage.getItem("mundial_ko_mobile_game_index_v132") || "0");
 
 function knockoutRoundsForMobileV121() {
   const matches = Array.isArray(appSettings?.knockout?.matches) ? appSettings.knockout.matches : [];
@@ -3731,37 +3730,44 @@ function knockoutMatchIdV121(match) {
   return match?.id || match?.matchId || match?.gameId || match?.key || `ko-${match?.__index ?? Math.random().toString(36).slice(2)}`;
 }
 
-
 function renderKnockoutMobileV121() {
+
   const activePanelV128 = document.querySelector(".tab-panel.active");
-  const tab = document.getElementById("knockoutTab");
-  if (!tab || activePanelV128?.id !== "knockoutTab") {
+  const tabV128 = document.getElementById("knockoutTab");
+  if (!tabV128 || activePanelV128?.id !== "knockoutTab") {
     document.getElementById("knockoutMobileV121")?.remove();
     return;
   }
 
-  let host = document.getElementById("knockoutMobileV121");
+
+  const tab = document.getElementById("knockoutTab");
+  if (!tab) return;
+
+  const isVisible = tab.classList.contains("active") || tab.offsetParent !== null || getComputedStyle(tab).display !== "none";
+  const adminTab = document.getElementById("adminTab");
+  const adminVisible = adminTab && (adminTab.classList.contains("active") || adminTab.offsetParent !== null) && getComputedStyle(adminTab).display !== "none";
+  if (adminVisible && !tab.classList.contains("active")) {
+    document.getElementById("knockoutMobileV121")?.remove();
+    return;
+  }
+
+let host = document.getElementById("knockoutMobileV121");
   if (host && host.parentElement !== tab) host.remove();
   host = document.getElementById("knockoutMobileV121");
   if (!host) {
     host = document.createElement("section");
     host.id = "knockoutMobileV121";
-    host.className = "knockout-mobile-v121 ko-mobile-single-v132";
+    host.className = "knockout-mobile-v121";
     tab.prepend(host);
   }
 
   const rounds = knockoutRoundsForMobileV121();
   if (!knockoutMobileSelectedRoundV121 || !rounds.some(round => round.name === knockoutMobileSelectedRoundV121)) {
     knockoutMobileSelectedRoundV121 = rounds[0]?.name || "Fase Final";
-    knockoutMobileGameIndexV132 = 0;
   }
 
   const selected = rounds.find(round => round.name === knockoutMobileSelectedRoundV121) || rounds[0] || { name: "Fase Final", games: [] };
   const selectedIndex = Math.max(0, rounds.findIndex(round => round.name === selected.name));
-  const totalGames = selected.games.length;
-
-  if (!Number.isFinite(knockoutMobileGameIndexV132)) knockoutMobileGameIndexV132 = 0;
-  knockoutMobileGameIndexV132 = Math.max(0, Math.min(knockoutMobileGameIndexV132, Math.max(0, totalGames - 1)));
 
   const roundTabs = rounds.map(round => `
     <button type="button" class="ko-mobile-chip ${round.name === selected.name ? "active" : ""}" data-ko-mobile-round="${escapeHtml(round.name)}">
@@ -3770,105 +3776,74 @@ function renderKnockoutMobileV121() {
     </button>
   `).join("");
 
-  const match = totalGames ? selected.games[knockoutMobileGameIndexV132] : null;
-  let cardHtml = "";
+  const cards = selected.games.length
+    ? selected.games.map((match, index) => {
+        const home = knockoutTeamNameV121(match, "home");
+        const away = knockoutTeamNameV121(match, "away");
+        const homeScore = knockoutScoreV121(match, "home");
+        const awayScore = knockoutScoreV121(match, "away");
+        const pens = knockoutPenaltiesV121(match);
+        const winner = knockoutWinnerV121(match);
+        const matchId = knockoutMatchIdV121(match);
 
-  if (match) {
-    const home = knockoutTeamNameV121(match, "home");
-    const away = knockoutTeamNameV121(match, "away");
-    const homeScore = knockoutScoreV121(match, "home");
-    const awayScore = knockoutScoreV121(match, "away");
-    const pens = knockoutPenaltiesV121(match);
-    const winner = knockoutWinnerV121(match);
-    const matchId = knockoutMatchIdV121(match);
+        return `
+          <article class="ko-mobile-card" data-ko-mobile-match="${escapeHtml(String(matchId))}">
+            <div class="ko-mobile-card-head">
+              <span>${escapeHtml(selected.name)}</span>
+              <strong>Jogo ${index + 1}</strong>
+            </div>
 
-    cardHtml = `
-      <article class="ko-mobile-card ko-mobile-card-premium-v130 ko-mobile-single-card-v132 ${winner ? "is-done-v130" : "is-waiting-v130"}" data-ko-mobile-match="${escapeHtml(String(matchId))}">
-        <div class="ko-mobile-card-head">
-          <span>${escapeHtml(selected.name)}</span>
-          <strong>Jogo ${knockoutMobileGameIndexV132 + 1}</strong>
-        </div>
+            <div class="ko-mobile-team ${winner && winner === home ? "winner" : ""}">
+              <span>${escapeHtml(home)}</span>
+              <b>${homeScore === null ? "—" : homeScore}</b>
+            </div>
 
-        <div class="ko-mobile-team ${winner && winner === home ? "winner" : ""}">
-          <span>${escapeHtml(home)}</span>
-          <b>${homeScore === null ? "—" : homeScore}</b>
-        </div>
+            <div class="ko-mobile-versus">vs</div>
 
-        <div class="ko-mobile-versus">vs</div>
+            <div class="ko-mobile-team ${winner && winner === away ? "winner" : ""}">
+              <span>${escapeHtml(away)}</span>
+              <b>${awayScore === null ? "—" : awayScore}</b>
+            </div>
 
-        <div class="ko-mobile-team ${winner && winner === away ? "winner" : ""}">
-          <span>${escapeHtml(away)}</span>
-          <b>${awayScore === null ? "—" : awayScore}</b>
-        </div>
+            ${pens ? `<div class="ko-mobile-pens">Penáltis: <strong>${pens.home} - ${pens.away}</strong></div>` : ""}
 
-        ${pens ? `<div class="ko-mobile-pens">Penáltis: <strong>${pens.home} - ${pens.away}</strong></div>` : ""}
+            <div class="ko-mobile-status ${winner ? "done" : "waiting"}">
+              ${winner ? `✅ Vencedor: <strong>${escapeHtml(winner)}</strong>` : "⏳ A aguardar resultado/equipas"}
+            </div>
 
-        <div class="ko-mobile-status ${winner ? "done" : "waiting"}">
-          ${winner ? `✅ Vencedor: <strong>${escapeHtml(winner)}</strong>` : "⏳ A aguardar resultado/equipas"}
-        </div>
+            ${isAdmin ? `<button type="button" class="secondary small ko-mobile-edit" data-ko-mobile-edit="${escapeHtml(String(matchId))}">Editar</button>` : ""}
+          </article>`;
+      }).join("")
+    : `<div class="ko-mobile-empty">Ainda não há jogos nesta ronda.</div>`;
 
-        ${isAdmin ? `<button type="button" class="secondary small ko-mobile-edit" data-ko-mobile-edit="${escapeHtml(String(matchId))}">Editar</button>` : ""}
-      </article>`;
-  } else {
-    cardHtml = `<div class="ko-mobile-empty">Ainda não há jogos nesta ronda.</div>`;
-  }
-
-  const prevRound = rounds[selectedIndex - 1];
   const nextRound = rounds[selectedIndex + 1];
-  const canPrevGame = totalGames > 0 && knockoutMobileGameIndexV132 > 0;
-  const canNextGame = totalGames > 0 && knockoutMobileGameIndexV132 < totalGames - 1;
+  const prevRound = rounds[selectedIndex - 1];
 
   host.innerHTML = `
-    <div class="ko-mobile-header ko-mobile-header-v132">
+    <div class="ko-mobile-header">
       <div>
         <span>Fase Final</span>
         <strong>${escapeHtml(selected.name)}</strong>
       </div>
-      <small>${totalGames ? `Jogo ${knockoutMobileGameIndexV132 + 1}/${totalGames}` : "0 jogos"}</small>
+      <small>${selected.games.length} jogo(s)</small>
     </div>
 
     <div class="ko-mobile-tabs">${roundTabs}</div>
 
-    <div class="ko-mobile-game-controls-v132">
-      <button type="button" class="secondary" data-ko-mobile-prev-game ${!canPrevGame ? "disabled" : ""}>← Anterior</button>
-      <strong>Jogo ${totalGames ? knockoutMobileGameIndexV132 + 1 : 0} de ${totalGames}</strong>
-      <button type="button" class="primary" data-ko-mobile-next-game ${!canNextGame ? "disabled" : ""}>Próximo →</button>
-    </div>
+    <div class="ko-mobile-list">${cards}</div>
 
-    <div class="ko-mobile-list ko-mobile-single-list-v132">${cardHtml}</div>
-
-    <div class="ko-mobile-nav ko-mobile-round-nav-v132">
+    <div class="ko-mobile-nav">
       ${prevRound ? `<button type="button" class="secondary" data-ko-mobile-round="${escapeHtml(prevRound.name)}">← ${escapeHtml(prevRound.name)}</button>` : ""}
       ${nextRound ? `<button type="button" class="primary" data-ko-mobile-round="${escapeHtml(nextRound.name)}">${escapeHtml(nextRound.name)} →</button>` : ""}
     </div>
   `;
 
-  const saveSingleState = () => {
-    localStorage.setItem("mundial_ko_mobile_round_v121", knockoutMobileSelectedRoundV121);
-    localStorage.setItem("mundial_ko_mobile_game_index_v132", String(knockoutMobileGameIndexV132));
-  };
-
   host.querySelectorAll("[data-ko-mobile-round]").forEach(btn => {
     btn.addEventListener("click", () => {
       knockoutMobileSelectedRoundV121 = btn.dataset.koMobileRound || selected.name;
-      knockoutMobileGameIndexV132 = 0;
-      saveSingleState();
+      localStorage.setItem("mundial_ko_mobile_round_v121", knockoutMobileSelectedRoundV121);
       renderKnockoutMobileV121();
     });
-  });
-
-  host.querySelector("[data-ko-mobile-prev-game]")?.addEventListener("click", () => {
-    if (!canPrevGame) return;
-    knockoutMobileGameIndexV132 -= 1;
-    saveSingleState();
-    renderKnockoutMobileV121();
-  });
-
-  host.querySelector("[data-ko-mobile-next-game]")?.addEventListener("click", () => {
-    if (!canNextGame) return;
-    knockoutMobileGameIndexV132 += 1;
-    saveSingleState();
-    renderKnockoutMobileV121();
   });
 
   host.querySelectorAll("[data-ko-mobile-edit]").forEach(btn => {
@@ -3880,7 +3855,6 @@ function renderKnockoutMobileV121() {
     });
   });
 }
-
 
 function setupKnockoutMobileV121() {
   renderKnockoutMobileV121();
@@ -7550,124 +7524,29 @@ document.addEventListener("click", () => setTimeout(fixKnockoutMobileScrollV131,
 document.addEventListener("touchstart", () => setTimeout(fixKnockoutMobileScrollV131, 120), { passive: true });
 
 
-// v133 — força Fase Final mobile a mostrar só 1 jogo de cada vez, mesmo que a lista antiga seja renderizada.
-let koMobileForcedIndexV133 = Number(localStorage.getItem("ko_mobile_forced_index_v133") || "0");
-let koMobileForcedRoundV133 = localStorage.getItem("ko_mobile_forced_round_v133") || "";
-
-function getKoMobileRoundNameV133() {
-  const activeChip = document.querySelector("#knockoutMobileV121 .ko-mobile-chip.active");
-  if (activeChip) return (activeChip.textContent || "").replace(/\d+/g, "").trim();
-  const header = document.querySelector("#knockoutMobileV121 .ko-mobile-header strong");
-  return (header?.textContent || "").trim();
-}
-
-function buildKoMobileForcedControlsV133(cards) {
-  const host = document.getElementById("knockoutMobileV121");
-  if (!host || !cards.length) return null;
-
-  let controls = document.getElementById("koMobileForcedControlsV133");
-  if (!controls) {
-    controls = document.createElement("div");
-    controls.id = "koMobileForcedControlsV133";
-    controls.className = "ko-mobile-forced-controls-v133";
-
-    const list = host.querySelector(".ko-mobile-list");
-    if (list) host.insertBefore(controls, list);
-    else host.appendChild(controls);
-  }
-
-  controls.innerHTML = `
-    <button type="button" class="secondary" data-ko-force-prev>← Anterior</button>
-    <strong>Jogo ${koMobileForcedIndexV133 + 1} de ${cards.length}</strong>
-    <button type="button" class="primary" data-ko-force-next>Próximo →</button>
-  `;
-
-  const prev = controls.querySelector("[data-ko-force-prev]");
-  const next = controls.querySelector("[data-ko-force-next]");
-
-  if (koMobileForcedIndexV133 <= 0) prev.setAttribute("disabled", "disabled");
-  if (koMobileForcedIndexV133 >= cards.length - 1) next.setAttribute("disabled", "disabled");
-
-  prev.addEventListener("click", () => {
-    koMobileForcedIndexV133 = Math.max(0, koMobileForcedIndexV133 - 1);
-    localStorage.setItem("ko_mobile_forced_index_v133", String(koMobileForcedIndexV133));
-    forceKoMobileOneGameV133();
-  });
-
-  next.addEventListener("click", () => {
-    koMobileForcedIndexV133 = Math.min(cards.length - 1, koMobileForcedIndexV133 + 1);
-    localStorage.setItem("ko_mobile_forced_index_v133", String(koMobileForcedIndexV133));
-    forceKoMobileOneGameV133();
-  });
-
-  return controls;
-}
-
-function forceKoMobileOneGameV133() {
+// v134 — Fase Final mobile em página longa com scroll normal.
+function enableKnockoutRoundPageScrollV134() {
   try {
     const activePanel = document.querySelector(".tab-panel.active");
-    if (activePanel?.id !== "knockoutTab") return;
+    const isKo = activePanel?.id === "knockoutTab";
+    document.body.classList.toggle("ko-round-page-scroll-v134", !!isKo);
 
+    const koTab = document.getElementById("knockoutTab");
     const host = document.getElementById("knockoutMobileV121");
-    if (!host) return;
+    const list = document.querySelector("#knockoutMobileV121 .ko-mobile-list");
 
-    const round = getKoMobileRoundNameV133();
-    if (round && round !== koMobileForcedRoundV133) {
-      koMobileForcedRoundV133 = round;
-      koMobileForcedIndexV133 = 0;
-      localStorage.setItem("ko_mobile_forced_round_v133", round);
-      localStorage.setItem("ko_mobile_forced_index_v133", "0");
-    }
-
-    const cards = Array.from(host.querySelectorAll(".ko-mobile-card"));
-    if (!cards.length) return;
-
-    koMobileForcedIndexV133 = Math.max(0, Math.min(koMobileForcedIndexV133, cards.length - 1));
-
-    buildKoMobileForcedControlsV133(cards);
-
-    cards.forEach((card, index) => {
-      card.classList.toggle("ko-force-active-v133", index === koMobileForcedIndexV133);
-      card.classList.toggle("ko-force-hidden-v133", index !== koMobileForcedIndexV133);
-      card.style.display = index === koMobileForcedIndexV133 ? "block" : "none";
-    });
-
-    const headerSmall = host.querySelector(".ko-mobile-header small");
-    if (headerSmall) headerSmall.textContent = `Jogo ${koMobileForcedIndexV133 + 1}/${cards.length}`;
-
-    host.classList.add("ko-mobile-force-one-v133");
-    document.body.classList.add("ko-mobile-force-one-v133-active");
+    if (koTab) koTab.classList.toggle("ko-round-page-scroll-v134", !!isKo);
+    if (host) host.classList.toggle("ko-round-page-scroll-v134", !!isKo);
+    if (list) list.classList.toggle("ko-round-page-scroll-v134", !!isKo);
   } catch (error) {
-    console.warn("force KO mobile one game v133 falhou:", error);
+    console.warn("KO ronda scroll v134 falhou:", error);
   }
-}
-
-function installKoMobileOneGameObserverV133() {
-  const host = document.getElementById("knockoutMobileV121");
-  if (!host || host.dataset.forceObserverV133 === "1") return;
-  host.dataset.forceObserverV133 = "1";
-
-  const observer = new MutationObserver(() => {
-    setTimeout(forceKoMobileOneGameV133, 40);
-  });
-  observer.observe(host, { childList: true, subtree: true });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(forceKoMobileOneGameV133, 300);
-  setTimeout(installKoMobileOneGameObserverV133, 500);
-  setTimeout(forceKoMobileOneGameV133, 1000);
-  setInterval(() => {
-    installKoMobileOneGameObserverV133();
-    forceKoMobileOneGameV133();
-  }, 1500);
+  setTimeout(enableKnockoutRoundPageScrollV134, 300);
+  setTimeout(enableKnockoutRoundPageScrollV134, 1000);
+  setTimeout(enableKnockoutRoundPageScrollV134, 1800);
 });
-
-document.addEventListener("click", event => {
-  if (event.target.closest("#knockoutMobileV121 .ko-mobile-chip")) {
-    koMobileForcedIndexV133 = 0;
-    localStorage.setItem("ko_mobile_forced_index_v133", "0");
-  }
-  setTimeout(forceKoMobileOneGameV133, 80);
-  setTimeout(installKoMobileOneGameObserverV133, 120);
-});
+document.addEventListener("click", () => setTimeout(enableKnockoutRoundPageScrollV134, 120));
+document.addEventListener("touchstart", () => setTimeout(enableKnockoutRoundPageScrollV134, 120), { passive: true });
