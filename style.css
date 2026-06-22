@@ -7109,3 +7109,24 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
   opacity:.68;
   font-weight:700;
 }
+
+
+/* v115 — botão Pesquisar visível para todos */
+.search-result-btn,
+.search-result-btn-v115{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
+  border-radius:999px!important;
+  min-height:34px!important;
+  padding:7px 12px!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+}
+
+.search-result-btn::before,
+.search-result-btn-v115::before{
+  content:"🔎";
+  font-size:.95em;
+}

@@ -4252,18 +4252,22 @@ function renderGroups() {
 }
 
 
-function openResultSearchForGame(game) {
+
+function openResultSearchForGame(gameId) {
+  const game = games.find(item => item.id === gameId);
   if (!game) return toast("Jogo não encontrado.");
 
-  const home = game.homeTeam || game.home || game.teamA || "";
-  const away = game.awayTeam || game.away || game.teamB || "";
-  if (!home || !away) return toast("Este jogo ainda não tem as duas equipas definidas.");
+  const home = String(game.homeTeam || "").trim();
+  const away = String(game.awayTeam || "").trim();
 
-  const date = game.matchDate || game.date || "";
-  const query = `${home} vs ${away} ${date} resultado Mundial 2026`;
+  if (!home || !away) return toast("Equipas em falta neste jogo.");
+
+  // v115: pesquisa limpa apenas "equipa vs equipa".
+  const query = `${home} vs ${away}`;
   const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
   window.open(url, "_blank", "noopener,noreferrer");
 }
+
 
 function openResultsSearchDashboard() {
   if (!hasPermission("editResults")) {
@@ -4294,39 +4298,45 @@ function openResultsSearchDashboard() {
   toast("Não existem jogos pendentes para pesquisar.");
 }
 
-function setupSearchResultsAdminButton() {
-  const button = $("searchAllResultsBtn");
-  if (!button || button.dataset.bound === "1") return;
 
-  button.dataset.bound = "1";
-  button.addEventListener("click", () => openResultsSearchDashboard());
+function setupSearchResultsAdminButton() {
+  // v115: pesquisar resultados é visível para todos.
+  addSearchButtonsToResultCards();
 }
+
+
 
 function addSearchButtonsToResultCards() {
-  if (!hasPermission("editResults")) return;
-
-  document.querySelectorAll("[data-result-game]").forEach(resultButton => {
-    const gameId = resultButton.dataset.resultGame;
+  document.querySelectorAll("[data-game-id]").forEach(card => {
+    const gameId = card.getAttribute("data-game-id");
     if (!gameId) return;
+    if (card.querySelector(".search-result-btn-v115, .search-result-btn")) return;
 
-    const parent = resultButton.parentElement;
-    if (!parent || parent.querySelector(`[data-search-result-game="${CSS.escape(gameId)}"]`)) return;
+    const game = games.find(item => item.id === gameId);
+    if (!game) return;
 
-    const searchButton = document.createElement("button");
-    searchButton.type = "button";
-    searchButton.className = "secondary small search-game-result-btn admin-only";
-    searchButton.dataset.searchResultGame = gameId;
-    searchButton.textContent = "Pesquisar";
-    searchButton.addEventListener("click", event => {
+    const actions =
+      card.querySelector(".match-actions") ||
+      card.querySelector(".match-card-actions") ||
+      card.querySelector(".actions") ||
+      card.querySelector(".card-actions") ||
+      card;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "secondary small search-result-btn search-result-btn-v115";
+    btn.textContent = "Pesquisar";
+    btn.title = `${game.homeTeam || ""} vs ${game.awayTeam || ""}`.trim();
+    btn.addEventListener("click", event => {
       event.preventDefault();
       event.stopPropagation();
-      const game = games.find(item => item.id === gameId);
-      openResultSearchForGame(game);
+      openResultSearchForGame(gameId);
     });
 
-    parent.insertBefore(searchButton, resultButton);
+    actions.appendChild(btn);
   });
 }
+
 
 function renderAdminState() {
   $("adminLocked").classList.toggle("hidden", isAdmin || isAdminProfile());
@@ -6905,3 +6915,10 @@ window.firestoreReadsOptimizerInfo = function firestoreReadsOptimizerInfo() {
 setTimeout(installFirestoreEconomyModeV114, 800);
 setTimeout(installFirestoreEconomyModeV114, 1800);
 setTimeout(installFirestoreEconomyModeV114, 3500);
+
+let v115PesquisarTodosInterval = null;
+document.addEventListener("DOMContentLoaded", () => {
+  if (!v115PesquisarTodosInterval && typeof addSearchButtonsToResultCards === "function") {
+    v115PesquisarTodosInterval = setInterval(addSearchButtonsToResultCards, 5000);
+  }
+});
