@@ -3730,34 +3730,22 @@ function knockoutMatchIdV121(match) {
   return match?.id || match?.matchId || match?.gameId || match?.key || `ko-${match?.__index ?? Math.random().toString(36).slice(2)}`;
 }
 
+
 function renderKnockoutMobileV121() {
-
   const activePanelV128 = document.querySelector(".tab-panel.active");
-  const tabV128 = document.getElementById("knockoutTab");
-  if (!tabV128 || activePanelV128?.id !== "knockoutTab") {
-    document.getElementById("knockoutMobileV121")?.remove();
-    return;
-  }
-
-
   const tab = document.getElementById("knockoutTab");
-  if (!tab) return;
-
-  const isVisible = tab.classList.contains("active") || tab.offsetParent !== null || getComputedStyle(tab).display !== "none";
-  const adminTab = document.getElementById("adminTab");
-  const adminVisible = adminTab && (adminTab.classList.contains("active") || adminTab.offsetParent !== null) && getComputedStyle(adminTab).display !== "none";
-  if (adminVisible && !tab.classList.contains("active")) {
+  if (!tab || activePanelV128?.id !== "knockoutTab") {
     document.getElementById("knockoutMobileV121")?.remove();
     return;
   }
 
-let host = document.getElementById("knockoutMobileV121");
+  let host = document.getElementById("knockoutMobileV121");
   if (host && host.parentElement !== tab) host.remove();
   host = document.getElementById("knockoutMobileV121");
   if (!host) {
     host = document.createElement("section");
     host.id = "knockoutMobileV121";
-    host.className = "knockout-mobile-v121";
+    host.className = "knockout-mobile-v121 ko-mobile-list-page-v135";
     tab.prepend(host);
   }
 
@@ -3787,7 +3775,7 @@ let host = document.getElementById("knockoutMobileV121");
         const matchId = knockoutMatchIdV121(match);
 
         return `
-          <article class="ko-mobile-card" data-ko-mobile-match="${escapeHtml(String(matchId))}">
+          <article class="ko-mobile-card ko-mobile-card-premium-v130 ${winner ? "is-done-v130" : "is-waiting-v130"}" data-ko-mobile-match="${escapeHtml(String(matchId))}">
             <div class="ko-mobile-card-head">
               <span>${escapeHtml(selected.name)}</span>
               <strong>Jogo ${index + 1}</strong>
@@ -3820,7 +3808,7 @@ let host = document.getElementById("knockoutMobileV121");
   const prevRound = rounds[selectedIndex - 1];
 
   host.innerHTML = `
-    <div class="ko-mobile-header">
+    <div class="ko-mobile-header ko-mobile-header-v135">
       <div>
         <span>Fase Final</span>
         <strong>${escapeHtml(selected.name)}</strong>
@@ -3830,9 +3818,9 @@ let host = document.getElementById("knockoutMobileV121");
 
     <div class="ko-mobile-tabs">${roundTabs}</div>
 
-    <div class="ko-mobile-list">${cards}</div>
+    <div class="ko-mobile-list ko-mobile-list-page-v135">${cards}</div>
 
-    <div class="ko-mobile-nav">
+    <div class="ko-mobile-nav ko-mobile-round-nav-v135">
       ${prevRound ? `<button type="button" class="secondary" data-ko-mobile-round="${escapeHtml(prevRound.name)}">← ${escapeHtml(prevRound.name)}</button>` : ""}
       ${nextRound ? `<button type="button" class="primary" data-ko-mobile-round="${escapeHtml(nextRound.name)}">${escapeHtml(nextRound.name)} →</button>` : ""}
     </div>
@@ -3842,6 +3830,7 @@ let host = document.getElementById("knockoutMobileV121");
     btn.addEventListener("click", () => {
       knockoutMobileSelectedRoundV121 = btn.dataset.koMobileRound || selected.name;
       localStorage.setItem("mundial_ko_mobile_round_v121", knockoutMobileSelectedRoundV121);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       renderKnockoutMobileV121();
     });
   });
@@ -3855,6 +3844,7 @@ let host = document.getElementById("knockoutMobileV121");
     });
   });
 }
+
 
 function setupKnockoutMobileV121() {
   renderKnockoutMobileV121();
@@ -7550,3 +7540,16 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 document.addEventListener("click", () => setTimeout(enableKnockoutRoundPageScrollV134, 120));
 document.addEventListener("touchstart", () => setTimeout(enableKnockoutRoundPageScrollV134, 120), { passive: true });
+
+function renderKnockoutMobileListPageV135() {
+  const activePanel = document.querySelector(".tab-panel.active");
+  if (activePanel?.id === "knockoutTab" && typeof renderKnockoutMobileV121 === "function") {
+    renderKnockoutMobileV121();
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(renderKnockoutMobileListPageV135, 500);
+  setTimeout(renderKnockoutMobileListPageV135, 1500);
+});
+document.addEventListener("click", () => setTimeout(renderKnockoutMobileListPageV135, 140));
