@@ -7856,3 +7856,49 @@ summary:focus-visible{
   opacity:.65!important;
   cursor:wait!important;
 }
+
+
+/* v142 — caixa do botão football-data no Admin */
+.football-data-admin-box-v142{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  width:100%!important;
+  margin:10px 0 14px!important;
+  padding:14px!important;
+  border:1px solid rgba(52,211,153,.24)!important;
+  border-radius:16px!important;
+  background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(15,23,42,.92))!important;
+}
+.football-data-admin-box-v142 div{
+  display:grid!important;
+  gap:3px!important;
+}
+.football-data-admin-box-v142 strong{
+  color:#fff!important;
+  font-size:15px!important;
+}
+.football-data-admin-box-v142 span{
+  color:rgba(255,255,255,.65)!important;
+  font-size:12px!important;
+}
+#syncFootballDataBtn{
+  min-height:42px!important;
+  white-space:nowrap!important;
+  background:linear-gradient(135deg,rgba(16,185,129,.96),rgba(34,197,94,.84))!important;
+  border-color:rgba(52,211,153,.45)!important;
+}
+#syncFootballDataBtn:disabled{
+  opacity:.45!important;
+  cursor:not-allowed!important;
+}
+@media(max-width:760px){
+  .football-data-admin-box-v142{
+    flex-direction:column!important;
+    align-items:stretch!important;
+  }
+  #syncFootballDataBtn{
+    width:100%!important;
+  }
+}

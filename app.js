@@ -8114,3 +8114,100 @@ function setupFootballDataButtonV139() {
 }
 document.addEventListener("DOMContentLoaded", () => setTimeout(setupFootballDataButtonV139, 300));
 document.addEventListener("click", () => setTimeout(setupFootballDataButtonV139, 100));
+
+
+// v142 — garante botão Football-data no Admin, sem depender do HTML original.
+function canUseFootballDataSyncV142() {
+  try {
+    if (typeof hasPermission === "function" && hasPermission("editResults")) return true;
+    if (typeof isAdmin !== "undefined" && isAdmin) return true;
+    if (typeof currentUser !== "undefined" && currentUser?.email) {
+      const email = String(currentUser.email || "").toLowerCase();
+      if (email === "pica.fern@gmail.com") return true;
+    }
+  } catch {}
+  return false;
+}
+
+function findAdminContainerV142() {
+  const candidates = [
+    "#adminTab",
+    "#adminPanel",
+    "[data-tab-panel='admin']",
+    "[data-page='admin']",
+    ".admin-panel",
+    ".admin-section",
+    "#settingsTab",
+    "#configTab"
+  ];
+
+  for (const selector of candidates) {
+    const el = document.querySelector(selector);
+    if (el) return el;
+  }
+
+  const active = document.querySelector(".tab-panel.active");
+  if (active && /admin|config|settings|defini/i.test(active.id + " " + active.textContent)) return active;
+
+  return document.querySelector("main") || document.body;
+}
+
+function ensureFootballDataButtonV142() {
+  try {
+    const activePanel = document.querySelector(".tab-panel.active");
+    const activeText = (activePanel?.id || "") + " " + (activePanel?.textContent || "");
+    const adminIsVisible = /admin|config|settings|defini/i.test(activeText) || document.querySelector(".tab.active[data-tab='admin'], .tab.active[data-tab='settings']");
+    if (!adminIsVisible) return;
+
+    let btn = document.getElementById("syncFootballDataBtn");
+    if (!btn) {
+      const container = findAdminContainerV142();
+      const bar = document.createElement("div");
+      bar.className = "football-data-admin-box-v142";
+      bar.innerHTML = `
+        <div>
+          <strong>Resultados automáticos</strong>
+          <span>Atualizar resultados através do football-data.org</span>
+        </div>
+        <button id="syncFootballDataBtn" class="primary" type="button">Atualizar resultados automáticos</button>
+      `;
+
+      const preferred = container.querySelector(".admin-actions, .actions, .toolbar, .button-row, .excel-actions, .card, .panel");
+      if (preferred) preferred.prepend(bar);
+      else container.prepend(bar);
+      btn = document.getElementById("syncFootballDataBtn");
+    }
+
+    btn.classList.remove("hidden");
+    btn.hidden = false;
+    btn.style.display = "";
+    btn.disabled = !canUseFootballDataSyncV142();
+
+    if (!canUseFootballDataSyncV142()) {
+      btn.title = "Sem permissão para editar resultados.";
+    }
+
+    if (btn.dataset.footballDataReady !== "1") {
+      btn.dataset.footballDataReady = "1";
+      btn.addEventListener("click", () => {
+        if (typeof syncFootballDataResultsV139 === "function") {
+          syncFootballDataResultsV139();
+        } else {
+          toast("A função football-data ainda não carregou. Atualiza a página e tenta novamente.");
+        }
+      });
+    }
+  } catch (error) {
+    console.warn("Botão football-data v142 falhou:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(ensureFootballDataButtonV142, 300);
+  setTimeout(ensureFootballDataButtonV142, 1000);
+  setTimeout(ensureFootballDataButtonV142, 2000);
+});
+document.addEventListener("click", () => {
+  setTimeout(ensureFootballDataButtonV142, 120);
+  setTimeout(ensureFootballDataButtonV142, 500);
+});
