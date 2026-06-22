@@ -8361,3 +8361,186 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(forceDesktopFullscreenV147, 1200);
 });
 document.addEventListener("click", () => setTimeout(forceDesktopFullscreenV147, 120));
+
+
+// v149 — football-data free: automático clean, sem funcionalidades premium.
+const FOOTBALL_FREE_AUTO_V149 = {
+  minMinutesBetweenAutoSync: 45,
+  storageKey: "mundial_football_free_last_auto_v149"
+};
+
+function footballFreeCanAutoSyncV149() {
+  try {
+    if (!currentUser || !firebaseAuth) return false;
+    const allowed =
+      (typeof hasPermission === "function" && hasPermission("editResults")) ||
+      (typeof isAdmin !== "undefined" && isAdmin) ||
+      String(currentUser?.email || "").toLowerCase() === "pica.fern@gmail.com";
+    if (!allowed) return false;
+
+    const last = Number(localStorage.getItem(FOOTBALL_FREE_AUTO_V149.storageKey) || "0");
+    const elapsed = Date.now() - last;
+    return elapsed > FOOTBALL_FREE_AUTO_V149.minMinutesBetweenAutoSync * 60 * 1000;
+  } catch {
+    return false;
+  }
+}
+
+function footballFreeFormatDateV149(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString("pt-PT", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+}
+
+function renderFootballFreeStatusV149(data = null) {
+  try {
+    let box = document.getElementById("footballFreeStatusBoxV149");
+    const adminRoot = document.getElementById("footballDataAdminFixedBoxV143") || document.querySelector(".tab-panel.active") || document.querySelector("main") || document.body;
+
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "footballFreeStatusBoxV149";
+      box.className = "football-free-status-box-v149";
+      adminRoot.insertAdjacentElement("afterend", box);
+    }
+
+    const last = data?.lastSyncIso || localStorage.getItem("mundial_football_free_last_sync_iso_v149") || "";
+    const upcoming = Array.isArray(data?.upcoming) ? data.upcoming.slice(0, 4) : [];
+    const locked = Array.isArray(data?.liveOrLocked) ? data.liveOrLocked.length : 0;
+
+    box.innerHTML = `
+      <div class="football-free-status-head-v149">
+        <strong>Football-data Free</strong>
+        <span>${last ? `Última sync: ${footballFreeFormatDateV149(last)}` : "Pronto para sincronizar"}</span>
+      </div>
+      <div class="football-free-status-grid-v149">
+        <div><b>${Number(data?.updatedGames?.length || 0) + Number(data?.updatedKnockoutMatches?.length || 0)}</b><span>resultados encontrados</span></div>
+        <div><b>${Number(data?.finished || 0)}</b><span>jogos terminados</span></div>
+        <div><b>${locked}</b><span>a decorrer/bloqueados</span></div>
+      </div>
+      ${upcoming.length ? `
+        <div class="football-free-upcoming-v149">
+          <small>Próximos jogos pela API</small>
+          ${upcoming.map(match => `
+            <p><span>${footballFreeFormatDateV149(match.utcDate)}</span><strong>${escapeHtml(match.homeTeam || "—")} vs ${escapeHtml(match.awayTeam || "—")}</strong></p>
+          `).join("")}
+        </div>
+      ` : ""}
+    `;
+
+    box.hidden = false;
+    box.style.display = "";
+  } catch (error) {
+    console.warn("renderFootballFreeStatusV149 falhou:", error);
+  }
+}
+
+async function syncFootballDataResultsFreeV149(mode = "manual") {
+  if (!hasPermission("editResults")) {
+    toast("Sem permissão para atualizar resultados.");
+    return;
+  }
+
+  if (!currentUser || !firebaseAuth) {
+    toast("Tens de estar com login feito para atualizar resultados.");
+    return;
+  }
+
+  const url = footballDataFunctionUrlV139();
+  if (!url) {
+    toast("Projeto Firebase em falta no config.js.");
+    return;
+  }
+
+  const btn = $("syncFootballDataBtn");
+  const oldText = btn?.textContent || "";
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = mode === "auto" ? "Sync automática..." : "A atualizar...";
+  }
+
+  try {
+    setFirebaseStatus("loading", mode === "auto" ? "Football-data: sync automática..." : "Football-data: a procurar resultados...");
+    const token = await currentUser.getIdToken(true);
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        competition: "WC",
+        season: "2026",
+        mode,
+        daysBefore: 1,
+        daysAfter: 7
+      })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    const changedGames = mergeFootballDataGameUpdatesV139(data.updatedGames || []);
+    const changedKo = mergeFootballDataKnockoutV139(data.updatedKnockoutMatches || []);
+
+    localStorage.setItem("mundial_football_free_last_sync_iso_v149", data.lastSyncIso || new Date().toISOString());
+    if (mode === "auto") localStorage.setItem(FOOTBALL_FREE_AUTO_V149.storageKey, String(Date.now()));
+
+    saveLocalData("football-data free sync");
+    if (typeof renderAll === "function") renderAll();
+
+    renderFootballFreeStatusV149(data);
+
+    const total = Number(data.updatedGames?.length || 0) + Number(data.updatedKnockoutMatches?.length || 0);
+    const changed = changedGames + changedKo;
+    const msg = total
+      ? `Football-data Free: ${total} resultado(s), ${changed} alterado(s).`
+      : "Football-data Free: nenhum resultado novo encontrado.";
+
+    setFirebaseStatus("success", msg);
+    if (mode !== "auto") toast(msg);
+  } catch (error) {
+    console.error("Football-data Free falhou:", error);
+    setFirebaseStatus("error", `Football-data: ${error.message || "erro"}`);
+    if (mode !== "auto") toast(`Football-data: ${error.message || "erro"}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = oldText || "Atualizar resultados automáticos";
+    }
+  }
+}
+
+function setupFootballFreeAutoV149() {
+  try {
+    const btn = $("syncFootballDataBtn");
+    if (btn && btn.dataset.footballFreeV149 !== "1") {
+      btn.dataset.footballFreeV149 = "1";
+      btn.textContent = "Sincronizar Football-data Free";
+      btn.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        syncFootballDataResultsFreeV149("manual");
+      }, true);
+    }
+
+    renderFootballFreeStatusV149();
+
+    if (footballFreeCanAutoSyncV149()) {
+      localStorage.setItem(FOOTBALL_FREE_AUTO_V149.storageKey, String(Date.now()));
+      syncFootballDataResultsFreeV149("auto");
+    }
+  } catch (error) {
+    console.warn("setupFootballFreeAutoV149 falhou:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(setupFootballFreeAutoV149, 800);
+  setTimeout(setupFootballFreeAutoV149, 2200);
+});
+document.addEventListener("click", () => setTimeout(setupFootballFreeAutoV149, 180));

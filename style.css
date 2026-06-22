@@ -8166,3 +8166,103 @@ summary:focus-visible{
     box-sizing:border-box!important;
   }
 }
+
+
+/* v149 — Football-data Free clean status */
+.football-free-status-box-v149{
+  width:100%!important;
+  box-sizing:border-box!important;
+  margin:10px 0 16px!important;
+  padding:14px!important;
+  border:1px solid rgba(255,255,255,.12)!important;
+  border-radius:16px!important;
+  background:linear-gradient(135deg,rgba(15,23,42,.96),rgba(2,6,23,.96))!important;
+  box-shadow:0 14px 30px rgba(0,0,0,.22)!important;
+}
+.football-free-status-head-v149{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  margin-bottom:10px!important;
+}
+.football-free-status-head-v149 strong{
+  color:#fff!important;
+  font-size:15px!important;
+  font-weight:950!important;
+}
+.football-free-status-head-v149 span{
+  color:rgba(255,255,255,.64)!important;
+  font-size:12px!important;
+}
+.football-free-status-grid-v149{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:8px!important;
+}
+.football-free-status-grid-v149 div{
+  padding:10px!important;
+  border-radius:12px!important;
+  background:rgba(255,255,255,.055)!important;
+  border:1px solid rgba(255,255,255,.08)!important;
+}
+.football-free-status-grid-v149 b{
+  display:block!important;
+  color:#d1fae5!important;
+  font-size:20px!important;
+  line-height:1!important;
+}
+.football-free-status-grid-v149 span{
+  display:block!important;
+  margin-top:4px!important;
+  color:rgba(255,255,255,.58)!important;
+  font-size:11px!important;
+}
+.football-free-upcoming-v149{
+  margin-top:12px!important;
+  padding-top:10px!important;
+  border-top:1px solid rgba(255,255,255,.08)!important;
+}
+.football-free-upcoming-v149 small{
+  display:block!important;
+  margin-bottom:6px!important;
+  color:rgba(255,255,255,.55)!important;
+  font-size:11px!important;
+  text-transform:uppercase!important;
+  letter-spacing:.08em!important;
+}
+.football-free-upcoming-v149 p{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  margin:0!important;
+  padding:7px 0!important;
+  border-bottom:1px solid rgba(255,255,255,.05)!important;
+}
+.football-free-upcoming-v149 p:last-child{
+  border-bottom:0!important;
+}
+.football-free-upcoming-v149 p span{
+  color:rgba(255,255,255,.54)!important;
+  font-size:12px!important;
+  white-space:nowrap!important;
+}
+.football-free-upcoming-v149 p strong{
+  color:#fff!important;
+  font-size:12px!important;
+  text-align:right!important;
+}
+@media(max-width:760px){
+  .football-free-status-grid-v149{
+    grid-template-columns:1fr!important;
+  }
+  .football-free-status-head-v149,
+  .football-free-upcoming-v149 p{
+    align-items:flex-start!important;
+    flex-direction:column!important;
+  }
+  .football-free-upcoming-v149 p strong{
+    text-align:left!important;
+  }
+}

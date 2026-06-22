@@ -431,6 +431,47 @@ async function assertFootballDataAdminV147(req) {
   return { uid: decoded.uid, email };
 }
 
+
+function footballFormatDateYmd(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function footballDateWindow(daysBefore = 1, daysAfter = 7) {
+  const now = new Date();
+  const from = new Date(now);
+  from.setUTCDate(from.getUTCDate() - daysBefore);
+  const to = new Date(now);
+  to.setUTCDate(to.getUTCDate() + daysAfter);
+  return { from: footballFormatDateYmd(from), to: footballFormatDateYmd(to) };
+}
+
+function footballMatchSummary(match) {
+  const score = footballApiScore(match);
+  return {
+    footballDataId: String(match.id || ""),
+    utcDate: cleanString(match.utcDate),
+    status: cleanString(match.status),
+    stage: cleanString(match.stage),
+    group: cleanString(match.group),
+    homeTeam: footballApiTeamName(match.homeTeam),
+    awayTeam: footballApiTeamName(match.awayTeam),
+    homeScore: score?.homeScore ?? null,
+    awayScore: score?.awayScore ?? null,
+    homePenalties: score?.homePenalties ?? null,
+    awayPenalties: score?.awayPenalties ?? null
+  };
+}
+
+function footballShouldLockMatch(match) {
+  const status = String(match?.status || "").toUpperCase();
+  return status && !["SCHEDULED", "TIMED", "POSTPONED"].includes(status);
+}
+
+function footballReadableSyncMode(mode) {
+  if (mode === "auto") return "Automático";
+  return "Manual";
+}
+
 exports.syncFootballDataWorldCup = onRequest({
   region: "europe-west1",
   timeoutSeconds: 90,
@@ -464,9 +505,15 @@ exports.syncFootballDataWorldCup = onRequest({
 
     const competition = cleanString(req.body?.competition || "WC");
     const season = cleanString(req.body?.season || "2026");
+    const syncMode = cleanString(req.body?.mode || "manual");
+    const windowDaysBefore = Number(req.body?.daysBefore ?? 1);
+    const windowDaysAfter = Number(req.body?.daysAfter ?? 7);
 
     const url = new URL(`https://api.football-data.org/v4/competitions/${encodeURIComponent(competition)}/matches`);
     if (season) url.searchParams.set("season", season);
+    const window = footballDateWindow(windowDaysBefore, windowDaysAfter);
+    url.searchParams.set("dateFrom", window.from);
+    url.searchParams.set("dateTo", window.to);
 
     const apiResponse = await fetch(url, {
       headers: {
@@ -490,6 +537,13 @@ exports.syncFootballDataWorldCup = onRequest({
 
     const matches = Array.isArray(apiData.matches) ? apiData.matches : [];
     const finished = matches.filter(match => ["FINISHED", "AWARDED"].includes(String(match.status || "").toUpperCase()) && footballApiScore(match));
+    const upcoming = matches
+      .filter(match => !["FINISHED", "AWARDED"].includes(String(match.status || "").toUpperCase()))
+      .slice(0, 12)
+      .map(footballMatchSummary);
+    const liveOrLocked = matches
+      .filter(footballShouldLockMatch)
+      .map(footballMatchSummary);
 
     const gamesSnap = await db.collection("games").get();
     const localGames = gamesSnap.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
@@ -517,6 +571,7 @@ exports.syncFootballDataWorldCup = onRequest({
           footballDataId: String(apiMatch.id || ""),
           footballDataStatus: cleanString(apiMatch.status),
           footballDataStage: cleanString(apiMatch.stage),
+          footballDataLocked: footballShouldLockMatch(apiMatch),
           footballDataUpdatedBy: actor.email,
           source: "football-data.org",
           homeScore: score.homeScore,
@@ -564,7 +619,27 @@ exports.syncFootballDataWorldCup = onRequest({
       }
     });
 
-    if (updatedKnockoutMatches.length) {
+    
+    const syncMetaRef = db.collection("settings").doc("footballData");
+    batch.set(syncMetaRef, {
+      lastSyncAt: FieldValue.serverTimestamp(),
+      lastSyncIso: new Date().toISOString(),
+      lastSyncBy: actor.email,
+      mode: footballReadableSyncMode(syncMode),
+      competition,
+      season,
+      dateFrom: window.from,
+      dateTo: window.to,
+      apiMatches: matches.length,
+      finished: finished.length,
+      updatedGames: updatedGames.length,
+      updatedKnockoutMatches: updatedKnockoutMatches.length,
+      upcoming,
+      liveOrLocked
+    }, { merge: true });
+    writes += 1;
+
+if (updatedKnockoutMatches.length) {
       const nextSettings = {
         ...settings,
         knockout: {
@@ -604,7 +679,10 @@ exports.syncFootballDataWorldCup = onRequest({
       apiMatches: matches.length,
       finished: finished.length,
       updatedGames,
-      updatedKnockoutMatches
+      updatedKnockoutMatches,
+      upcoming,
+      liveOrLocked,
+      lastSyncIso: new Date().toISOString()
     });
   } catch (error) {
     logger.error("syncFootballDataWorldCup falhou", error);
