@@ -7353,3 +7353,26 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 document.addEventListener("click", () => setTimeout(addSearchButtonsToResultCards, 150));
+
+
+// v122 — Ajuda scroll da Fase Final mobile.
+function fixKnockoutMobileScrollV122() {
+  try {
+    const tab = document.getElementById("knockoutTab");
+    const host = document.getElementById("knockoutMobileV121");
+    const list = document.querySelector("#knockoutMobileV121 .ko-mobile-list");
+
+    if (tab) tab.classList.add("ko-mobile-scroll-page-v122");
+    if (host) host.classList.add("ko-mobile-scroll-host-v122");
+    if (list) list.classList.add("ko-mobile-scroll-list-v122");
+  } catch (error) {
+    console.warn("Fase final mobile scroll v122 falhou:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(fixKnockoutMobileScrollV122, 400);
+  setTimeout(fixKnockoutMobileScrollV122, 1200);
+});
+
+document.addEventListener("click", () => setTimeout(fixKnockoutMobileScrollV122, 120));

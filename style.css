@@ -7442,3 +7442,80 @@ input[data-no-persist-v116]{
     font-weight:950!important;
   }
 }
+
+
+/* v122 — Fase Final mobile: corrigir scroll das rondas grandes */
+@media(max-width:760px){
+  html,
+  body{
+    height:auto!important;
+    min-height:100%!important;
+    overflow-y:auto!important;
+    overscroll-behavior-y:auto!important;
+  }
+
+  body{
+    position:relative!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+
+  #knockoutTab,
+  #knockoutTab.ko-mobile-scroll-page-v122{
+    height:auto!important;
+    min-height:100vh!important;
+    max-height:none!important;
+    overflow:visible!important;
+    overflow-y:visible!important;
+    padding-bottom:calc(120px + env(safe-area-inset-bottom, 0px))!important;
+  }
+
+  #knockoutMobileV121,
+  #knockoutMobileV121.ko-mobile-scroll-host-v122,
+  .knockout-mobile-v121{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    overflow-y:visible!important;
+    padding-bottom:calc(90px + env(safe-area-inset-bottom, 0px))!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-list,
+  #knockoutMobileV121 .ko-mobile-scroll-list-v122,
+  .ko-mobile-list{
+    display:grid!important;
+    gap:12px!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    overflow-y:visible!important;
+    padding-bottom:24px!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-card,
+  .ko-mobile-card{
+    flex:0 0 auto!important;
+    min-height:auto!important;
+  }
+
+  #knockoutMobileV121 .ko-mobile-nav,
+  .ko-mobile-nav{
+    position:static!important;
+    bottom:auto!important;
+    padding-bottom:calc(24px + env(safe-area-inset-bottom, 0px))!important;
+  }
+
+  .app,
+  .app-shell,
+  .main,
+  main,
+  .content,
+  .tab-content,
+  .tab-panel.active{
+    max-height:none!important;
+    overflow-y:visible!important;
+  }
+}
