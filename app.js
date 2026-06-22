@@ -4155,19 +4155,58 @@ function betResultClass(bet, game) {
   return "miss";
 }
 
+
+
+
+function playedGamesNewestFirstV118() {
+  return games
+    .filter(game => hasResult(game))
+    .slice()
+    .sort((a, b) => parsePortugalDate(b.matchDate).getTime() - parsePortugalDate(a.matchDate).getTime());
+}
+
+function polishScorePlayedGamesOnlyV118() {
+  try {
+    document.querySelectorAll("#scoreTab [data-game-id], #scoreTab [data-result-game]").forEach(el => {
+      const id = el.getAttribute("data-game-id") || el.getAttribute("data-result-game");
+      const game = games.find(item => item.id === id);
+      if (game && !hasResult(game)) {
+        const row = el.closest(".game-row,.match-row,.bet-row,.score-game-row,tr,.card,article,li") || el;
+        row.style.display = "none";
+      }
+    });
+  } catch (error) {
+    console.warn("Pontuação v118 polish falhou:", error);
+  }
+}
+
 function playerGameRows(playerName) {
   const playerId = playerIdFromName(playerName);
-  return games.map(game => {
-    const bet = bets.find(item => item.playerId === playerId && item.gameId === game.id) || null;
-    return {
-      game,
-      bet,
-      points: bet ? pointsForBet(bet, game) : 0,
-      label: betResultLabel(bet, game),
-      className: betResultClass(bet, game)
-    };
-  });
+
+  return games
+    .filter(game => hasResult(game))
+    .slice()
+    .sort((a, b) => parsePortugalDate(b.matchDate).getTime() - parsePortugalDate(a.matchDate).getTime())
+    .map(game => {
+      const bet = betForPlayerGame(playerId, game.id);
+      const points = bet ? pointsForBet(bet, game) : 0;
+      const result = `${Number(game.homeScore)}-${Number(game.awayScore)}`;
+      const prediction = bet ? `${Number(bet.homeGuess)}-${Number(bet.awayGuess)}` : "—";
+      const cls = bet ? betResultClass(bet, game) : "miss";
+      const label = bet ? betResultLabel(bet, game) : "Sem aposta";
+
+      return {
+        game,
+        bet,
+        points,
+        result,
+        prediction,
+        cls,
+        label
+      };
+    });
 }
+
 
 function renderScore() {
   const rows = leaderboard();
@@ -4223,6 +4262,8 @@ function renderScore() {
         `;
       }).join("")}
     </div>`;
+
+  setTimeout(polishScorePlayedGamesOnlyV118, 0);
 }
 
 function blankTeam(team) { return { team, played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, gd: 0, points: 0 }; }
