@@ -7523,59 +7523,15 @@ input[data-no-persist-v116]{
 
 
 
-/* v125 — Fase Final mobile só na página Fase Final */
+
+/* v128 — KO mobile isolado: só dentro da aba Fase Final */
 @media(max-width:760px){
-  body:not([data-active-section-v125="knockoutTab"]) #knockoutMobileV121,
-  body:not([data-active-section-v125="knockoutTab"]) .knockout-mobile-v121{
+  body:not(:has(#knockoutTab.active)) #knockoutMobileV121{
     display:none!important;
     visibility:hidden!important;
     pointer-events:none!important;
   }
 
-  body[data-active-section-v125="knockoutTab"] #knockoutTab #knockoutMobileV121,
-  body[data-active-section-v125="knockoutTab"] #knockoutTab .knockout-mobile-v121{
-    display:block!important;
-    visibility:visible!important;
-    pointer-events:auto!important;
-  }
-
-  #adminTab #knockoutMobileV121,
-  #adminTab .knockout-mobile-v121,
-  #dashboardTab #knockoutMobileV121,
-  #calendarTab #knockoutMobileV121,
-  #scoreTab #knockoutMobileV121,
-  #betsTab #knockoutMobileV121{
-    display:none!important;
-    visibility:hidden!important;
-    pointer-events:none!important;
-  }
-
-  body[data-active-section-v125="knockoutTab"] #knockoutTab{
-    height:auto!important;
-    min-height:100vh!important;
-    overflow-y:auto!important;
-    -webkit-overflow-scrolling:touch!important;
-    padding-bottom:calc(120px + env(safe-area-inset-bottom, 0px))!important;
-  }
-
-  body[data-active-section-v125="knockoutTab"] #knockoutMobileV121{
-    height:auto!important;
-    max-height:none!important;
-    overflow:visible!important;
-    padding-bottom:calc(90px + env(safe-area-inset-bottom, 0px))!important;
-  }
-
-  body[data-active-section-v125="knockoutTab"] #knockoutMobileV121 .ko-mobile-list{
-    height:auto!important;
-    max-height:none!important;
-    overflow:visible!important;
-    padding-bottom:32px!important;
-  }
-}
-
-
-/* v127 — proteção: Fase Final mobile nunca aparece fora da página Fase Final */
-@media(max-width:760px){
   #adminTab #knockoutMobileV121,
   #dashboardTab #knockoutMobileV121,
   #calendarTab #knockoutMobileV121,
@@ -7588,13 +7544,26 @@ input[data-no-persist-v116]{
     pointer-events:none!important;
   }
 
-  #knockoutTab #knockoutMobileV121{
+  #knockoutTab.active #knockoutMobileV121{
+    display:block!important;
+    visibility:visible!important;
+    pointer-events:auto!important;
+    height:auto!important;
     max-height:none!important;
     overflow:visible!important;
-    padding-bottom:calc(90px + env(safe-area-inset-bottom, 0px))!important;
+    padding-bottom:calc(100px + env(safe-area-inset-bottom, 0px))!important;
   }
 
-  #knockoutTab #knockoutMobileV121 .ko-mobile-list{
+  #knockoutTab.active{
+    height:auto!important;
+    min-height:100vh!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+    padding-bottom:calc(120px + env(safe-area-inset-bottom, 0px))!important;
+  }
+
+  #knockoutTab.active #knockoutMobileV121 .ko-mobile-list{
+    height:auto!important;
     max-height:none!important;
     overflow:visible!important;
     padding-bottom:36px!important;

@@ -1382,11 +1382,6 @@ function updateActiveAppSection() {
   const isKnockout = activeTabId === "knockoutTab";
   document.body.classList.toggle("knockout-layout-active", isKnockout);
   $("appShell")?.classList.toggle("knockout-screen-active", isKnockout);
-
-  if (typeof setActiveAppSectionV125 === "function") {
-    setActiveAppSectionV125(getActiveAppSectionV125());
-    cleanupKnockoutMobileOutsidePageV125();
-  }
 }
 
 function updateSessionBox() {
@@ -3582,7 +3577,6 @@ function setupKnockoutAdjustTopButton() {
 }
 
 function renderKnockout() {
-  if (typeof setActiveAppSectionV125 === "function") setActiveAppSectionV125("knockoutTab");
   ensureKnockoutSettings();
   const notice = $("knockoutLockNotice");
   const container = $("knockoutBracket");
@@ -3638,91 +3632,7 @@ function renderKnockout() {
   applyKnockoutLayoutFromSettings();
   requestAnimationFrame(applyKnockoutLayoutFromSettings);
 
-  setTimeout(renderKnockoutMobileV121, 0);
 }
-
-
-
-// v125 — Rastreador simples da página ativa.
-let activeAppSectionV125 = "";
-
-function setActiveAppSectionV125(sectionId) {
-  activeAppSectionV125 = sectionId || "";
-  document.body.dataset.activeSectionV125 = activeAppSectionV125;
-
-  if (activeAppSectionV125 !== "knockoutTab") {
-    document.getElementById("knockoutMobileV121")?.remove();
-  }
-}
-
-function getActiveAppSectionV125() {
-  const activeByClass = document.querySelector(".app-section.active, .tab-panel.active, .page.active, section.active");
-  if (activeByClass?.id) return activeByClass.id;
-
-  const visibleCandidates = ["dashboardTab","calendarTab","scoreTab","betsTab","knockoutTab","adminTab","settingsTab","usersTab"];
-  for (const id of visibleCandidates) {
-    const el = document.getElementById(id);
-    if (!el) continue;
-    const style = getComputedStyle(el);
-    if (style.display !== "none" && style.visibility !== "hidden" && el.offsetHeight > 0) return id;
-  }
-
-  return activeAppSectionV125 || "";
-}
-
-function canRenderKnockoutMobileV125() {
-  const tab = document.getElementById("knockoutTab");
-  if (!tab) return false;
-  const active = getActiveAppSectionV125();
-  return active === "knockoutTab" || tab.classList.contains("active");
-}
-
-function cleanupKnockoutMobileOutsidePageV125() {
-  if (!canRenderKnockoutMobileV125()) {
-    document.getElementById("knockoutMobileV121")?.remove();
-  }
-}
-
-document.addEventListener("click", event => {
-  const target = event.target.closest("[data-section], [data-tab], [data-page], [data-target], [href^='#']");
-  if (!target) {
-    setTimeout(cleanupKnockoutMobileOutsidePageV125, 80);
-    return;
-  }
-
-  const value =
-    target.dataset.section ||
-    target.dataset.tab ||
-    target.dataset.page ||
-    target.dataset.target ||
-    (target.getAttribute("href") || "").replace("#", "");
-
-  const map = {
-    dashboard: "dashboardTab",
-    calendar: "calendarTab",
-    jogos: "calendarTab",
-    score: "scoreTab",
-    pontuacao: "scoreTab",
-    bets: "betsTab",
-    apostas: "betsTab",
-    knockout: "knockoutTab",
-    fasefinal: "knockoutTab",
-    final: "knockoutTab",
-    admin: "adminTab",
-    settings: "settingsTab"
-  };
-
-  const clean = String(value || "").replace("#", "").replace(".", "").trim();
-  setActiveAppSectionV125(map[clean] || clean);
-  setTimeout(cleanupKnockoutMobileOutsidePageV125, 120);
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(() => {
-    setActiveAppSectionV125(getActiveAppSectionV125());
-    cleanupKnockoutMobileOutsidePageV125();
-  }, 300);
-});
 
 // v121 — Fase Final mobile por rondas. PC mantém layout original.
 let knockoutMobileSelectedRoundV121 = localStorage.getItem("mundial_ko_mobile_round_v121") || "";
@@ -3822,16 +3732,9 @@ function knockoutMatchIdV121(match) {
 
 function renderKnockoutMobileV121() {
 
-  const koTabForGuardV127 = document.getElementById("knockoutTab");
-  const activePanelForGuardV127 = document.querySelector(".app-section.active, .tab-panel.active, .page.active, section.active");
-  if (activePanelForGuardV127 && activePanelForGuardV127.id && activePanelForGuardV127.id !== "knockoutTab") {
-    document.getElementById("knockoutMobileV121")?.remove();
-    return;
-  }
-  if (!koTabForGuardV127) return;
-
-
-  if (typeof canRenderKnockoutMobileV125 === "function" && !canRenderKnockoutMobileV125()) {
+  const activePanelV128 = document.querySelector(".tab-panel.active");
+  const tabV128 = document.getElementById("knockoutTab");
+  if (!tabV128 || activePanelV128?.id !== "knockoutTab") {
     document.getElementById("knockoutMobileV121")?.remove();
     return;
   }
@@ -3957,37 +3860,3592 @@ function setupKnockoutMobileV121() {
   renderKnockoutMobileV121();
 }
 
+function renderKnockoutPhotoLayout(finalMatch, champion, thirdPlaceTeams) {
+  const roundColumns = buildKnockoutPhotoColumns();
+  const canEditLayout = isAdminProfile() && hasPermission("editKnockout");
+  return `
+    <div class="bracket-photo-shell">
+      <div class="bracket-title-row">
+        <span>Copa do Mundo FIFA 2026</span>
+        <strong>Fases finais</strong>
+        <span>Mundial Pontos 2026</span>
+      </div>
 
+      ${canEditLayout ? `
+        <details class="ko-page-layout-panel">
+          <summary>Ajustar cards</summary>
+          ${renderKnockoutLayoutControls("page")}
+        </details>
+      ` : ""}
 
-// v127 — limpeza segura: Fase Final mobile só dentro da página Fase Final.
-function cleanupKnockoutMobileOutsidePageV127() {
+      <div class="bracket-photo-grid bracket-photo-grid-split">
+        ${roundColumns.left.map(renderKnockoutPhotoColumn).join("")}
+        ${renderKnockoutCenter(finalMatch, champion, thirdPlaceTeams)}
+        ${roundColumns.right.map(renderKnockoutPhotoColumn).join("")}
+      </div>
+    </div>`;
+}
+
+function knockoutLoser(match) {
+  const winner = knockoutWinner(match);
+  if (!winner || !match?.homeTeam || !match?.awayTeam) return "";
+  return winner === match.homeTeam ? match.awayTeam : match.homeTeam;
+}
+
+function buildKnockoutPhotoColumns() {
+  const byRound = key => knockoutMatches().filter(match => match.round === key);
+  const labels = {
+    r32: "Segunda fase",
+    r16: "Oitavos de final",
+    qf: "Quartos de final",
+    sf: "Meia-final"
+  };
+  const split = key => {
+    const list = byRound(key);
+    const half = Math.ceil(list.length / 2);
+    return [list.slice(0, half), list.slice(half)];
+  };
+  const [r32Left, r32Right] = split("r32");
+  const [r16Left, r16Right] = split("r16");
+  const [qfLeft, qfRight] = split("qf");
+  const [sfLeft, sfRight] = split("sf");
+
+  return {
+    left: [
+      { key: "r32", side: "left", label: labels.r32, matches: r32Left },
+      { key: "r16", side: "left", label: labels.r16, matches: r16Left },
+      { key: "qf", side: "left", label: labels.qf, matches: qfLeft },
+      { key: "sf", side: "left", label: labels.sf, matches: sfLeft }
+    ],
+    right: [
+      { key: "sf", side: "right", label: labels.sf, matches: sfRight },
+      { key: "qf", side: "right", label: labels.qf, matches: qfRight },
+      { key: "r16", side: "right", label: labels.r16, matches: r16Right },
+      { key: "r32", side: "right", label: labels.r32, matches: r32Right }
+    ]
+  };
+}
+
+function renderKnockoutPhotoColumn(column) {
+  const layoutKey = `${column.key}_${column.side}`;
+  return `
+    <section class="bracket-photo-round round-${column.key} bracket-side-${column.side}" data-ko-layout="${escapeHtml(layoutKey)}" style="--ko-column-offset:${knockoutLayoutValue(layoutKey)}px">
+      <h3>${escapeHtml(column.label)}</h3>
+      <div class="bracket-photo-matches">
+        ${column.matches.map((match, index) => renderKnockoutMatch(match, knockoutMatchLayoutKey(column, index))).join("")}
+      </div>
+    </section>`;
+}
+
+function knockoutMatchLayoutKey(column, index) {
+  if (column.key !== "r16") return "";
+  return `r16_${column.side}_pair_${Math.floor(index / 2) + 1}`;
+}
+
+function renderKnockoutCenter(finalMatch, champion, thirdPlaceTeams) {
+  return `
+    <section class="bracket-center-column" data-ko-layout="center" style="--ko-column-offset:${knockoutLayoutValue("center")}px">
+      <div class="bracket-final-badge ${champion ? "has-champion" : ""}">
+        <span>FINAL</span>
+        <strong>${escapeHtml(champion || "Campeão")}</strong>
+      </div>
+      <div class="bracket-center-final">
+        ${finalMatch ? renderKnockoutMatch(finalMatch) : ""}
+      </div>
+    </section>`;
+}
+
+function renderKnockoutMatch(match, layoutKey = "") {
+  const winner = knockoutWinner(match);
+  const editable = isAdmin && knockoutAvailable();
+  const waiting = !match.homeTeam || !match.awayTeam;
+  const hasScore = match.homeScore !== null && match.homeScore !== undefined && match.homeScore !== "" && match.awayScore !== null && match.awayScore !== undefined && match.awayScore !== "";
+  const isDraw = hasScore && Number(match.homeScore) === Number(match.awayScore);
+  const hasPens = match.homePenalties !== null && match.homePenalties !== undefined && match.homePenalties !== "" && match.awayPenalties !== null && match.awayPenalties !== undefined && match.awayPenalties !== "";
+  const lockedText = waiting ? "" : winner ? "Vencedor" : isDraw ? "Faltam penáltis" : "Por decidir";
+
+  return `
+    <article class="knockout-match ${winner ? "has-winner" : ""} ${waiting ? "waiting" : ""}" ${layoutKey ? `data-ko-layout="${escapeHtml(layoutKey)}" style="--ko-match-offset:${knockoutLayoutValue(layoutKey)}px"` : ""}>
+      <div class="knockout-match-title">${escapeHtml(match.roundLabel)} ${match.index}</div>
+
+      <div class="ko-team ${winner === match.homeTeam ? "winner" : ""}">
+        <span>${escapeHtml(match.homeTeam || "A definir")}</span>
+        <b>${match.homeScore ?? ""}</b>
+      </div>
+
+      <div class="ko-team ${winner === match.awayTeam ? "winner" : ""}">
+        <span>${escapeHtml(match.awayTeam || "A definir")}</span>
+        <b>${match.awayScore ?? ""}</b>
+      </div>
+
+      ${(isDraw || hasPens) ? `
+        <div class="ko-penalties-line">
+          <span>Penáltis</span>
+          <strong>${hasPens ? `${match.homePenalties}-${match.awayPenalties}` : "por preencher"}</strong>
+        </div>
+      ` : ""}
+
+      <div class="ko-status-line">
+        <small>${escapeHtml(lockedText)}</small>
+        ${editable ? `<button class="secondary small" type="button" data-ko-edit="${escapeHtml(match.id)}">Editar</button>` : ""}
+      </div>
+    </article>`;
+}
+
+function renderKnockoutLayoutControls() {
+  return `
+    <div class="ko-layout-editor">
+      <div class="ko-layout-head">
+        <div>
+          <strong>Posição dos cards</strong>
+          <span>Ajusta para cima/baixo cada coluna da Fase Final.</span>
+        </div>
+        <div class="ko-layout-actions">
+          <button class="secondary small" type="button" data-ko-layout-reset>Repor</button>
+          <button class="primary small" type="button" data-ko-layout-save>Guardar posições</button>
+        </div>
+      </div>
+      <div class="ko-layout-grid">
+        ${KNOCKOUT_LAYOUT_KEYS.map(([key, label]) => {
+          const value = knockoutLayoutValue(key);
+          return `
+            <label class="ko-layout-control">
+              <span>${escapeHtml(label)}</span>
+              <input class="ko-layout-range" type="range" min="-180" max="180" step="2" value="${value}" data-ko-layout-input="${escapeHtml(key)}" />
+              <input class="ko-layout-number" type="number" min="-180" max="180" step="2" value="${value}" data-ko-layout-number="${escapeHtml(key)}" />
+            </label>
+          `;
+        }).join("")}
+      </div>
+    </div>`;
+}
+
+function renderKnockoutAdmin() {
+  ensureKnockoutSettings();
+
+  const toggle = $("adminKnockoutUnlockedInput");
+  if (toggle) toggle.checked = Boolean(appSettings.knockout?.adminUnlocked);
+
+  const panel = $("knockoutAdminPanel");
+  if (!panel) return;
+
+  const teams = knockoutTeamOptions();
+  const teamOptions = team => `<option value="">A definir</option>${teams.map(item => `<option value="${escapeHtml(item)}" ${item === team ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}`;
+
+  panel.innerHTML = `
+    <div class="ko-admin-note">
+      <strong>Regra da Fase Final:</strong> define manualmente as equipas dos <strong>16 avos</strong>.
+      Depois, os vencedores passam automaticamente para os oitavos, quartos, meias, final e campeão.
+    </div>
+    <div class="ko-admin-list">
+      ${knockoutMatches().map(match => {
+        const firstRound = isFirstKnockoutRound(match);
+        const canScore = Boolean(match.homeTeam && match.awayTeam);
+
+        const homeControl = firstRound
+          ? `<select class="ko-home-team">${teamOptions(match.homeTeam)}</select>`
+          : `<input class="ko-readonly-team" type="text" value="${escapeHtml(match.homeTeam || "A definir automaticamente")}" disabled />`;
+
+        const awayControl = firstRound
+          ? `<select class="ko-away-team">${teamOptions(match.awayTeam)}</select>`
+          : `<input class="ko-readonly-team" type="text" value="${escapeHtml(match.awayTeam || "A definir automaticamente")}" disabled />`;
+
+        return `
+          <div class="ko-admin-row ko-admin-row-penalties ${firstRound ? "manual-round" : "auto-round"}" data-ko-admin="${escapeHtml(match.id)}">
+            <strong>${escapeHtml(match.roundLabel)} ${match.index}</strong>
+            ${homeControl}
+            <span>vs</span>
+            ${awayControl}
+
+            <label class="ko-score-label">Resultado
+              <span class="ko-score-pair">
+                <input class="ko-home-score" type="number" min="0" inputmode="numeric" value="${match.homeScore ?? ""}" placeholder="0" ${canScore ? "" : "disabled"} />
+                <em>-</em>
+                <input class="ko-away-score" type="number" min="0" inputmode="numeric" value="${match.awayScore ?? ""}" placeholder="0" ${canScore ? "" : "disabled"} />
+              </span>
+            </label>
+
+            <label class="ko-score-label ko-penalty-label">Penáltis
+              <span class="ko-score-pair">
+                <input class="ko-home-penalties" type="number" min="0" inputmode="numeric" value="${match.homePenalties ?? ""}" placeholder="0" ${canScore ? "" : "disabled"} />
+                <em>-</em>
+                <input class="ko-away-penalties" type="number" min="0" inputmode="numeric" value="${match.awayPenalties ?? ""}" placeholder="0" ${canScore ? "" : "disabled"} />
+              </span>
+            </label>
+
+            <button class="primary small" type="button" data-ko-save="${escapeHtml(match.id)}">${firstRound ? "Guardar 16 avos" : "Guardar resultado"}</button>
+          </div>
+        `;
+      }).join("")}
+    </div>`;
+}
+
+async function saveKnockoutUnlock() {
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
+
+  ensureKnockoutSettings();
+  appSettings.knockout.adminUnlocked = Boolean($("adminKnockoutUnlockedInput")?.checked);
+  await persistSettings();
+  renderAll();
+  toast(appSettings.knockout.adminUnlocked ? "Fase Final desbloqueada para Admin." : "Fase Final volta a bloquear até acabarem os grupos.");
+}
+
+function applyKnockoutLayoutFromSettings() {
+  if (!appSettings.knockout) return;
+  const layout = { ...defaultKnockoutLayout(), ...(appSettings.knockout.layout || {}) };
+
+  Object.entries(layout).forEach(([key, rawValue]) => {
+    const value = Number(rawValue);
+    const safeValue = Number.isFinite(value) ? Math.max(-180, Math.min(180, value)) : 0;
+
+    document.querySelectorAll(`[data-ko-layout="${CSS.escape(key)}"]`).forEach(element => {
+      element.style.setProperty("--ko-column-offset", `${safeValue}px`);
+      element.style.setProperty("--ko-match-offset", `${safeValue}px`);
+    });
+
+    syncKnockoutLayoutInputs(key, safeValue);
+  });
+}
+
+function syncKnockoutLayoutInputs(key, value) {
+  document.querySelectorAll(`[data-ko-layout-input="${CSS.escape(key)}"], [data-ko-layout-number="${CSS.escape(key)}"]`).forEach(input => {
+    input.value = value;
+  });
+}
+
+function previewKnockoutLayoutPosition(key, value) {
+  const safeValue = Number.isFinite(Number(value)) ? Math.max(-180, Math.min(180, Number(value))) : 0;
+
+  document.querySelectorAll(`[data-ko-layout="${CSS.escape(key)}"]`).forEach(element => {
+    element.style.setProperty("--ko-column-offset", `${safeValue}px`);
+    element.style.setProperty("--ko-match-offset", `${safeValue}px`);
+  });
+
+  syncKnockoutLayoutInputs(key, safeValue);
+}
+
+async function saveKnockoutLayoutFromAdmin(reset = false) {
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
+
+  ensureKnockoutSettings();
+
+  const nextLayout = { ...defaultKnockoutLayout(), ...(appSettings.knockout.layout || {}) };
+
+  if (reset) {
+    Object.keys(nextLayout).forEach(key => { nextLayout[key] = 0; });
+  } else {
+    KNOCKOUT_LAYOUT_KEYS.forEach(([key]) => {
+      const input = document.querySelector(`[data-ko-layout-number="${CSS.escape(key)}"]`) ||
+        document.querySelector(`[data-ko-layout-input="${CSS.escape(key)}"]`);
+      const value = Number(input?.value ?? nextLayout[key] ?? 0);
+      nextLayout[key] = Number.isFinite(value) ? Math.max(-180, Math.min(180, value)) : 0;
+    });
+  }
+
+  appSettings.knockout.layout = nextLayout;
+  markSettingsPending();
+  saveLocalData(reset ? "posições fase final repostas" : "posições fase final guardadas");
+
+  renderKnockout();
+  renderKnockoutAdmin();
+  applyKnockoutLayoutFromSettings();
+  requestAnimationFrame(applyKnockoutLayoutFromSettings);
+
   try {
-    const koTab = document.getElementById("knockoutTab");
-    const mobile = document.getElementById("knockoutMobileV121");
-    if (!mobile) return;
-
-    if (!koTab || mobile.parentElement !== koTab) {
-      mobile.remove();
-      return;
-    }
-
-    const activePanel = document.querySelector(".app-section.active, .tab-panel.active, .page.active, section.active");
-    if (activePanel && activePanel.id && activePanel.id !== "knockoutTab") {
-      mobile.remove();
-      return;
-    }
-
-    if (koTab.classList && !koTab.classList.contains("active")) {
-      const style = getComputedStyle(koTab);
-      if (style.display === "none" || style.visibility === "hidden") mobile.remove();
+    const saved = await saveSettingsFastToFirebase(reset ? "repor posições fase final" : "guardar posições fase final");
+    if (saved) {
+      setFirebaseStatus("success", "Firebase: posições da Fase Final guardadas");
+      applyKnockoutLayoutFromSettings();
+      requestAnimationFrame(applyKnockoutLayoutFromSettings);
+    } else {
+      scheduleFullSync("guardar posições fase final", 300);
     }
   } catch (error) {
-    console.warn("cleanup KO mobile v127 falhou:", error);
+    console.error("Falhou guardar posições da Fase Final:", error);
+    scheduleFullSync("guardar posições fase final", 600);
+    setFirebaseStatus("error", `Firebase: posições pendentes (${shortFirebaseError(error)})`);
+  }
+
+  toast(reset ? "Posições repostas." : "Posições da Fase Final guardadas.");
+}
+async function saveKnockoutMatchFromAdmin(matchId) {
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
+
+  ensureKnockoutSettings();
+
+  const row = document.querySelector(`[data-ko-admin="${CSS.escape(matchId)}"]`);
+  const match = knockoutMatchById(matchId);
+  if (!row || !match) return;
+
+  const firstRound = isFirstKnockoutRound(match);
+
+  if (firstRound) {
+    match.homeTeam = row.querySelector(".ko-home-team")?.value || "";
+    match.awayTeam = row.querySelector(".ko-away-team")?.value || "";
+  }
+
+  if (!match.homeTeam || !match.awayTeam) {
+    match.homeScore = null;
+    match.awayScore = null;
+    match.homePenalties = null;
+    match.awayPenalties = null;
+    markSettingsPending();
+    saveLocalData("fase final equipas incompletas");
+    await saveSettingsFastToFirebase("fase final equipas incompletas");
+    renderKnockout();
+    renderKnockoutAdmin();
+    toast(firstRound ? "Define as duas equipas deste jogo." : "Este jogo ainda está à espera dos vencedores anteriores.");
+    return;
+  }
+
+  const homeScoreValue = row.querySelector(".ko-home-score")?.value ?? "";
+  const awayScoreValue = row.querySelector(".ko-away-score")?.value ?? "";
+  const homePenaltiesValue = row.querySelector(".ko-home-penalties")?.value ?? "";
+  const awayPenaltiesValue = row.querySelector(".ko-away-penalties")?.value ?? "";
+
+  match.homeScore = homeScoreValue === "" ? null : Number(homeScoreValue);
+  match.awayScore = awayScoreValue === "" ? null : Number(awayScoreValue);
+
+  const hasFullScore = match.homeScore !== null && match.awayScore !== null;
+  const isDraw = hasFullScore && Number(match.homeScore) === Number(match.awayScore);
+
+  if (isDraw) {
+    if (homePenaltiesValue === "" || awayPenaltiesValue === "") {
+      toast("Jogo empatado. Preenche o resultado dos penáltis.");
+      return;
+    }
+
+    match.homePenalties = Number(homePenaltiesValue);
+    match.awayPenalties = Number(awayPenaltiesValue);
+
+    if (Number(match.homePenalties) === Number(match.awayPenalties)) {
+      toast("Os penáltis não podem ficar empatados.");
+      return;
+    }
+  } else {
+    match.homePenalties = homePenaltiesValue === "" ? null : Number(homePenaltiesValue);
+    match.awayPenalties = awayPenaltiesValue === "" ? null : Number(awayPenaltiesValue);
+
+    if ((homePenaltiesValue === "") !== (awayPenaltiesValue === "")) {
+      toast("Preenche os dois campos dos penáltis ou deixa os dois vazios.");
+      return;
+    }
+
+    if (homePenaltiesValue !== "" && Number(match.homePenalties) === Number(match.awayPenalties)) {
+      toast("Se preencheres penáltis, eles não podem ficar empatados.");
+      return;
+    }
+  }
+
+  match.updatedAt = new Date().toISOString();
+
+  propagateKnockoutWinners(false);
+  markSettingsPending();
+  saveLocalData("fase final jogo guardado");
+
+  renderKnockout();
+  renderKnockoutAdmin();
+
+  try {
+    await saveSettingsFastToFirebase("fase final jogo guardado");
+    setFirebaseStatus("success", "Firebase: Fase Final guardada");
+  } catch (error) {
+    console.error("Falhou guardar Fase Final:", error);
+    scheduleFullSync("fase final jogo guardado", 600);
+    setFirebaseStatus("error", `Firebase: Fase Final pendente (${shortFirebaseError(error)})`);
+  }
+
+  toast("Resultado guardado. Vencedor avançou automaticamente.");
+}
+
+function openKnockoutEditInAdmin(matchId) {
+  if (!hasPermission("editKnockout")) { toast("Sem permissão para editar a Fase Final."); return; }
+
+  if (!isAdmin) {
+    toast("Entra no Admin para editar a Fase Final.");
+    return;
+  }
+  document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
+  document.querySelector('[data-tab="adminTab"]')?.classList.add("active");
+  $("adminTab")?.classList.add("active");
+  updateActiveAppSection();
+  renderKnockoutAdmin();
+  setTimeout(() => {
+    const row = document.querySelector(`[data-ko-admin="${CSS.escape(matchId)}"]`);
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+    row?.classList.add("pulse-row");
+    setTimeout(() => row?.classList.remove("pulse-row"), 1500);
+  }, 80);
+}
+
+function renderAll() {
+  setupSearchResultsAdminButton();
+  setTimeout(addSearchButtonsToResultCards, 0);
+  setupOnlineUsersCloseControls();
+  setupKnockoutAdjustTopButton(); renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); updateActiveAppSection(); 
+  setTimeout(addSearchButtonsToResultCards, 250);
+}
+
+function renderCalendarFilterState() {
+  const missingBtn = $("calendarMissingResultsBtn");
+  const playedBtn = $("calendarPlayedGamesBtn");
+  const allBtn = $("calendarAllGamesBtn");
+
+  const missingCount = games.filter(game => !hasResult(game)).length;
+  const playedCount = games.filter(game => hasResult(game)).length;
+  const totalCount = games.length;
+
+  if (missingBtn) {
+    missingBtn.classList.toggle("active-filter", calendarViewMode === "missing");
+    missingBtn.innerHTML = `Faltam resultados <span class="filter-count">${missingCount}</span>`;
+    missingBtn.title = "Mostra apenas jogos que ainda não têm resultado colocado.";
+    missingBtn.setAttribute("aria-label", `Faltam resultados: ${missingCount} jogos`);
+  }
+
+  if (playedBtn) {
+    playedBtn.classList.toggle("active-filter", calendarViewMode === "played");
+    playedBtn.innerHTML = `Já jogaram <span class="filter-count">${playedCount}</span>`;
+    playedBtn.title = "Mostra apenas jogos que já têm resultado, do mais recente para o mais antigo.";
+    playedBtn.setAttribute("aria-label", `Já jogaram: ${playedCount} jogos, do mais recente para o mais antigo`);
+  }
+
+  if (allBtn) {
+    allBtn.classList.toggle("active-filter", calendarViewMode === "all");
+    allBtn.innerHTML = `Todos os jogos <span class="filter-count">${totalCount}</span>`;
+    allBtn.title = "Mostra todos os jogos por data/calendário.";
+    allBtn.setAttribute("aria-label", `Todos os jogos: ${totalCount} jogos por data`);
+  }
+}
+
+function renderCalendar() {
+  const container = $("gamesList");
+  const groups = groupByDate(filteredGames());
+  const days = [...groups.entries()].sort((a, b) => {
+    // Já jogaram: dias mais recentes primeiro.
+    if (calendarViewMode === "played") return b[0].localeCompare(a[0]);
+
+    // Todos os jogos e Faltam resultados: por data/calendário.
+    return a[0].localeCompare(b[0]);
+  });
+
+  if (!days.length) {
+    container.innerHTML = `<div class="empty">Não há jogos para mostrar neste filtro.</div>${knockoutEntryButtonHtml()}`;
+    renderCalendarFilterState();
+    return;
+  }
+
+  container.innerHTML = days.map(([, dayGames]) => `
+    <section class="day-block"><h3>${escapeHtml(dateHeader(dayGames[0].matchDate))}</h3><div class="match-list">${dayGames.map(renderMatchRow).join("")}</div></section>
+  `).join("") + knockoutEntryButtonHtml();
+
+  renderCalendarFilterState();
+}
+function renderMatchRow(game) {
+  const status = statusOf(game);
+  const scoreText = hasResult(game) ? `${game.homeScore}-${game.awayScore}` : "VS";
+  const gameBets = betsForGame(game.id);
+  const settledText = hasResult(game) ? `${gameBets.length} apostas · pontos atribuídos` : `${gameBets.length} apostas importadas`;
+  const resultButtonText = hasResult(game) ? "Editar resultado" : "Adicionar resultado";
+
+  return `
+    <article class="match-row ${status.className}">
+      <div class="group-pill">${escapeHtml(game.group)}</div>
+      <div class="team home"><strong>${escapeHtml(game.homeTeam)}</strong></div>
+      <div class="score-vs">${escapeHtml(scoreText)}</div>
+      <div class="team away"><strong>${escapeHtml(game.awayTeam)}</strong></div>
+      <div class="time">${timePortugal(game.matchDate)}</div>
+      <div class="state ${status.className}">${status.text}</div>
+      <div class="bet-note">${escapeHtml(settledText)}</div>
+      <div class="calendar-actions">
+        <button class="primary small" type="button" data-result-game="${escapeHtml(game.id)}">${resultButtonText}</button>
+        <button class="secondary small" type="button" data-bets-game="${escapeHtml(game.id)}">Ver apostas</button>
+      </div>
+    </article>`;
+}
+
+function betResultLabel(bet, game) {
+  if (!game || !hasResult(game)) return "Por jogar";
+  if (!bet) return "Sem aposta";
+  if (isExactBet(bet, game)) return "Resultado exato";
+  if (isOutcomeBet(bet, game)) {
+    return outcome(game.homeScore, game.awayScore) === "draw" ? "Empate certo" : "Vencedor certo";
+  }
+  return "Falhou";
+}
+
+function betResultClass(bet, game) {
+  if (!game || !hasResult(game)) return "pending";
+  if (!bet) return "missing";
+  if (isExactBet(bet, game)) return "exact";
+  if (isOutcomeBet(bet, game)) return "winner";
+  return "miss";
+}
+
+
+
+
+function playedGamesNewestFirstV118() {
+  return games
+    .filter(game => hasResult(game))
+    .slice()
+    .sort((a, b) => parsePortugalDate(b.matchDate).getTime() - parsePortugalDate(a.matchDate).getTime());
+}
+
+
+function polishScorePlayedGamesOnlyV118() {
+  // v119: a filtragem correta já é feita em playerGameRows.
+}
+
+
+
+
+function gameHasRealResultV119(game) {
+  if (!game) return false;
+
+  const candidates = [
+    [game.homeScore, game.awayScore],
+    [game.scoreHome, game.scoreAway],
+    [game.homeGoals, game.awayGoals],
+    [game.resultHome, game.resultAway],
+    [game.goalsHome, game.goalsAway]
+  ];
+
+  return candidates.some(([home, away]) => {
+    if (home === "" || home === null || home === undefined) return false;
+    if (away === "" || away === null || away === undefined) return false;
+    return Number.isFinite(Number(home)) && Number.isFinite(Number(away));
+  });
+}
+
+function gameScorePairV119(game) {
+  const candidates = [
+    [game.homeScore, game.awayScore],
+    [game.scoreHome, game.scoreAway],
+    [game.homeGoals, game.awayGoals],
+    [game.resultHome, game.resultAway],
+    [game.goalsHome, game.goalsAway]
+  ];
+
+  for (const [home, away] of candidates) {
+    if (home === "" || home === null || home === undefined) continue;
+    if (away === "" || away === null || away === undefined) continue;
+    if (Number.isFinite(Number(home)) && Number.isFinite(Number(away))) {
+      return [Number(home), Number(away)];
+    }
+  }
+
+  return [null, null];
+}
+
+function playedGamesNewestFirstV119() {
+  return games
+    .filter(game => gameHasRealResultV119(game))
+    .slice()
+    .sort((a, b) => parsePortugalDate(b.matchDate).getTime() - parsePortugalDate(a.matchDate).getTime());
+}
+
+
+
+
+function betForPlayerGameV120(playerName, gameId) {
+  const normalizedName = String(playerName || "").trim();
+  const normalizedId = playerIdFromName(normalizedName);
+
+  return bets.find(item => {
+    if (!item || item.gameId !== gameId) return false;
+
+    const itemName = String(item.playerName || "").trim();
+    const itemId = String(item.playerId || "").trim();
+
+    return (
+      itemId === normalizedId ||
+      playerIdFromName(itemName) === normalizedId ||
+      itemName.toLowerCase() === normalizedName.toLowerCase()
+    );
+  }) || null;
+}
+
+
+function playerGameRows(playerName) {
+  return playedGamesNewestFirstV119().map(game => {
+    const bet = betForPlayerGameV120(playerName, game.id);
+    const points = bet ? pointsForBet(bet, game) : 0;
+
+    return {
+      game,
+      bet,
+      points,
+      label: bet ? betResultLabel(bet, game) : "Sem aposta",
+      className: bet ? betResultClass(bet, game) : "miss"
+    };
+  });
+}
+
+
+
+
+function renderScore() {
+  const rows = leaderboard();
+  const target = $("scoreSummary");
+  if (!target) return;
+
+  if (!rows.length) {
+    target.innerHTML = `<div class="empty">Importa o Excel de Resultados para criar a classificação.</div>`;
+    return;
+  }
+
+  target.innerHTML = `
+    <div class="score-detail-list">
+      ${rows.map((row, index) => {
+        const gameRows = playerGameRows(row.playerName);
+        const settled = gameRows.length;
+        const withBets = gameRows.filter(item => item.bet).length;
+
+        return `
+          <details class="player-score-card">
+            <summary>
+              <div class="player-rank">${index + 1}</div>
+              <div class="player-score-main">
+                <strong>${escapeHtml(row.playerName)}</strong>
+                <span>${row.exact} exatos · ${row.winner} vencedor/empate · ${settled} jogos com resultado · ${withBets} apostas</span>
+              </div>
+              <div class="player-total">${row.points} pts</div>
+              <div class="player-arrow">⌄</div>
+            </summary>
+
+            <div class="player-games-table">
+              <div class="player-game-row head">
+                <span>Jogo</span>
+                <span>Aposta</span>
+                <span>Resultado</span>
+                <span>Tipo</span>
+                <span>Pontos</span>
+              </div>
+              ${gameRows.map(({ game, bet, points, label, className }) => `
+                <div class="player-game-row ${className}">
+                  <span>
+                    <b>${escapeHtml(game.homeTeam)} - ${escapeHtml(game.awayTeam)}</b>
+                    <small>${escapeHtml(game.group)} · ${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}</small>
+                  </span>
+                  <span>${bet ? `${bet.homeGuess}-${bet.awayGuess}` : "-"}</span>
+                  <span>${(() => { const [h,a] = gameScorePairV119(game); return h === null ? "-" : `${h}-${a}`; })()}</span>
+                  <span><em>${escapeHtml(label)}</em></span>
+                  <strong>${points}</strong>
+                </div>
+              `).join("")}
+            </div>
+          </details>
+        `;
+      }).join("")}
+    </div>`;
+
+  setTimeout(polishScorePlayedGamesOnlyV118, 0);
+}
+
+function blankTeam(team) { return { team, played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, gd: 0, points: 0 }; }
+function groupSortName(group) { return String(group).match(/Grupo ([A-Z])/i)?.[1] || "Z"; }
+function buildStandings() {
+  const tables = new Map();
+  games.forEach(game => {
+    if (!tables.has(game.group)) tables.set(game.group, new Map());
+    const table = tables.get(game.group);
+    [game.homeTeam, game.awayTeam].forEach(team => { if (!table.has(team)) table.set(team, blankTeam(team)); });
+    if (!hasResult(game)) return;
+    const home = table.get(game.homeTeam), away = table.get(game.awayTeam);
+    const hs = Number(game.homeScore), as = Number(game.awayScore);
+    home.played += 1; away.played += 1;
+    home.gf += hs; home.ga += as; away.gf += as; away.ga += hs;
+    home.gd = home.gf - home.ga; away.gd = away.gf - away.ga;
+    if (hs > as) { home.wins += 1; away.losses += 1; home.points += 3; }
+    else if (hs < as) { away.wins += 1; home.losses += 1; away.points += 3; }
+    else { home.draws += 1; away.draws += 1; home.points += 1; away.points += 1; }
+  });
+  return [...tables.entries()].sort((a, b) => groupSortName(a[0]).localeCompare(groupSortName(b[0]))).map(([group, table]) => ({ group, rows: [...table.values()].sort((a, b) => b.points - a.points || b.gd - a.gd || b.gf - a.gf || a.team.localeCompare(b.team)) }));
+}
+function renderGroups() {
+  $("groupsTables").innerHTML = buildStandings().map(({ group, rows }) => `
+    <section class="group-table"><h3>${escapeHtml(group)}</h3><div class="table">
+      <div class="table-row head"><span>#</span><span>Seleção</span><span>J</span><span>DG</span><span>Pts</span></div>
+      ${rows.map((row, index) => `<div class="table-row"><span>${index + 1}</span><strong>${escapeHtml(row.team)}</strong><span>${row.played}</span><span>${row.gd}</span><b>${row.points}</b></div>`).join("")}
+    </div></section>`).join("");
+}
+
+
+
+
+function openResultSearchForGame(gameOrId) {
+  const game = typeof gameOrId === "string"
+    ? games.find(item => item.id === gameOrId)
+    : gameOrId;
+
+  if (!game) return toast("Jogo não encontrado.");
+
+  const home = String(game.homeTeam || game.home || game.teamA || "").trim();
+  const away = String(game.awayTeam || game.away || game.teamB || "").trim();
+
+  if (!home || !away) return toast("Este jogo ainda não tem as duas equipas definidas.");
+
+  const query = `${home} vs ${away}`;
+  const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+
+
+function openResultsSearchDashboard() {
+  if (!hasPermission("editResults")) {
+    toast("Só o Admin pode pesquisar resultados.");
+    return;
+  }
+
+  const dueGames = (games || [])
+    .filter(game => !hasResult(game))
+    .filter(game => parsePortugalDate(game.matchDate).getTime() <= Date.now())
+    .sort((a, b) => parsePortugalDate(a.matchDate) - parsePortugalDate(b.matchDate));
+
+  if (dueGames.length) {
+    openResultSearchForGame(dueGames[0]);
+    if (dueGames.length > 1) toast(`Abri a pesquisa do primeiro jogo. Existem ${dueGames.length} jogos sem resultado.`);
+    return;
+  }
+
+  const nextGame = (games || [])
+    .filter(game => !hasResult(game))
+    .sort((a, b) => parsePortugalDate(a.matchDate) - parsePortugalDate(b.matchDate))[0];
+
+  if (nextGame) {
+    openResultSearchForGame(nextGame);
+    return;
+  }
+
+  toast("Não existem jogos pendentes para pesquisar.");
+}
+
+
+
+function setupSearchResultsAdminButton() {
+  // v117: o botão Pesquisar por jogo é público.
+  addSearchButtonsToResultCards();
+
+  const button = $("searchAllResultsBtn");
+  if (!button || button.dataset.bound === "1") return;
+
+  button.dataset.bound = "1";
+  button.addEventListener("click", () => openResultsSearchDashboard());
+}
+
+
+
+
+
+function addSearchButtonsToResultCards() {
+  const resultButtons = document.querySelectorAll("[data-result-game]");
+
+  resultButtons.forEach(resultButton => {
+    const gameId = resultButton.dataset.resultGame;
+    if (!gameId) return;
+
+    const parent = resultButton.parentElement;
+    if (!parent) return;
+
+    if (parent.querySelector(`[data-search-result-game="${CSS.escape(gameId)}"]`)) return;
+
+    const game = games.find(item => item.id === gameId);
+    if (!game) return;
+
+    const searchButton = document.createElement("button");
+    searchButton.type = "button";
+    searchButton.className = "secondary small search-game-result-btn search-result-btn-v117";
+    searchButton.dataset.searchResultGame = gameId;
+    searchButton.textContent = "Pesquisar";
+    searchButton.title = `${game.homeTeam || game.home || game.teamA || ""} vs ${game.awayTeam || game.away || game.teamB || ""}`.trim();
+
+    searchButton.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      openResultSearchForGame(game);
+    });
+
+    parent.insertBefore(searchButton, resultButton);
+  });
+
+  document.querySelectorAll("[data-game-id]").forEach(card => {
+    const gameId = card.getAttribute("data-game-id");
+    if (!gameId || card.querySelector(`[data-search-result-game="${CSS.escape(gameId)}"]`)) return;
+
+    const game = games.find(item => item.id === gameId);
+    if (!game) return;
+
+    const actions = card.querySelector(".match-actions,.match-card-actions,.actions,.card-actions") || card;
+    const searchButton = document.createElement("button");
+    searchButton.type = "button";
+    searchButton.className = "secondary small search-game-result-btn search-result-btn-v117";
+    searchButton.dataset.searchResultGame = gameId;
+    searchButton.textContent = "Pesquisar";
+    searchButton.title = `${game.homeTeam || game.home || game.teamA || ""} vs ${game.awayTeam || game.away || game.teamB || ""}`.trim();
+
+    searchButton.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      openResultSearchForGame(game);
+    });
+
+    actions.appendChild(searchButton);
+  });
+}
+
+
+
+function renderAdminState() {
+  $("adminLocked").classList.toggle("hidden", isAdmin || isAdminProfile());
+  $("adminUnlocked").classList.toggle("hidden", !(isAdmin || isAdminProfile()));
+  const status = storageMode === "firebase" ? "Firebase online" : "Modo local";
+  $("storageStatus").textContent = `${status}. Importa as apostas do Excel Resultados e mete os resultados reais manualmente.`;
+}
+function renderSettingsForm() {
+  if (!$("pointsExactInput")) return;
+  $("pointsExactInput").value = appSettings.points.exact;
+  if ($("pointsWinnerInput")) $("pointsWinnerInput").value = appSettings.points.winner ?? 1;
+  $("pointsMvpInput").value = appSettings.points.mvp;
+  $("pointsTopScorerInput").value = appSettings.points.topScorer;
+  $("pointsChampionInput").value = appSettings.points.champion;
+  $("finalMvpInput").value = appSettings.extraResults.mvp || "";
+  $("finalTopScorerInput").value = appSettings.extraResults.topScorer || "";
+  $("finalChampionInput").value = appSettings.extraResults.champion || "";
+  if (appSettings.lastImport) {
+    $("importSummary").innerHTML = `<strong>Última importação:</strong> ${escapeHtml(new Date(appSettings.lastImport.at).toLocaleString("pt-PT"))} · ${appSettings.lastImport.bets || 0} apostas · ${appSettings.lastImport.players || 0} users · ${appSettings.lastImport.results || 0} resultados.`;
+  }
+}
+
+function renderApiSettings() {
+  if (!$("apiKeyInput")) return;
+  const api = appSettings.api || defaultSettings().api;
+  $("apiKeyInput").value = api.apiKey || "";
+  $("apiLeagueInput").value = api.league || "1";
+  $("apiSeasonInput").value = api.season || "2026";
+  const summary = $("apiSyncSummary");
+  if (summary) {
+    summary.innerHTML = api.lastSync
+      ? `<strong>Última sincronização:</strong> ${escapeHtml(new Date(api.lastSync.at).toLocaleString("pt-PT"))} · ${api.lastSync.updated || 0} resultados atualizados · ${api.lastSync.matched || 0} jogos encontrados na app.`
+      : "Ainda não foi feita sincronização automática.";
+  }
+}
+
+
+function betForPlayerGame(playerName, gameId) {
+  const playerId = playerIdFromName(playerName);
+  return bets.find(item => item.playerId === playerId && item.gameId === gameId) || null;
+}
+
+function renderUserBetsSelector() {
+  const select = $("editUserSelect");
+  if (!select) return;
+
+  const players = allPlayers();
+  if (!selectedEditUser || !players.includes(selectedEditUser)) {
+    selectedEditUser = players[0] || "";
+  }
+
+  select.innerHTML = players.length
+    ? players.map(name => `<option value="${escapeHtml(name)}" ${name === selectedEditUser ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")
+    : `<option value="">Sem users importados</option>`;
+}
+
+function renderUserBetsEditor() {
+  const container = $("userBetsEditor");
+  if (!container) return;
+
+  const players = allPlayers();
+  if (!players.length) {
+    container.innerHTML = `<div class="empty">Ainda não existem users. Importa o Excel ou adiciona users no Admin.</div>`;
+    renderUserBetsSelector();
+    return;
+  }
+
+  if (!selectedEditUser || !players.includes(selectedEditUser)) {
+    selectedEditUser = players[0];
+  }
+
+  renderUserBetsSelector();
+
+  const extra = appSettings.extraPredictions?.[selectedEditUser] || {};
+
+  container.innerHTML = `
+    <div class="user-final-editor">
+      <h3>Resultados finais de ${escapeHtml(selectedEditUser)}</h3>
+      <div class="final-fields-grid">
+        <label>MVP
+          <input id="editExtraMvpInput" type="text" value="${escapeHtml(extra.mvp || "")}" placeholder="Nome do MVP" />
+        </label>
+        <label>Melhor Marcador
+          <input id="editExtraTopScorerInput" type="text" value="${escapeHtml(extra.topScorer || "")}" placeholder="Nome do melhor marcador" />
+        </label>
+        <label>Equipa Vencedora
+          <input id="editExtraChampionInput" type="text" value="${escapeHtml(extra.champion || "")}" placeholder="Seleção vencedora" />
+        </label>
+      </div>
+    </div>
+
+    <div class="user-games-editor">
+      ${games.map(game => {
+        const bet = betForPlayerGame(selectedEditUser, game.id);
+        return `
+          <div class="user-game-edit-row" data-edit-game="${escapeHtml(game.id)}">
+            <div class="user-game-meta">
+              <span>${escapeHtml(game.group)}</span>
+              <strong>${escapeHtml(game.homeTeam)} - ${escapeHtml(game.awayTeam)}</strong>
+              <small>${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}</small>
+            </div>
+            <div class="user-game-score">
+              <input class="edit-home-score" type="number" min="0" inputmode="numeric" value="${bet ? bet.homeGuess : ""}" aria-label="Aposta ${escapeHtml(game.homeTeam)}" />
+              <span>-</span>
+              <input class="edit-away-score" type="number" min="0" inputmode="numeric" value="${bet ? bet.awayGuess : ""}" aria-label="Aposta ${escapeHtml(game.awayTeam)}" />
+            </div>
+            <button class="secondary small clear-user-game-btn" type="button">Limpar</button>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+async function saveEditedUserBets() {
+  if (!hasPermission("editUsers")) { toast("Sem permissão."); return; }
+
+  const playerName = selectedEditUser;
+  if (!playerName) {
+    toast("Escolhe um utilizador.");
+    return;
+  }
+
+  const playerId = playerIdFromName(playerName);
+  const now = new Date().toISOString();
+  const previousPlayerBetIds = bets.filter(item => item.playerId === playerId).map(item => item.id);
+  const otherBets = bets.filter(item => item.playerId !== playerId);
+  const newPlayerBets = [];
+
+  document.querySelectorAll("[data-edit-game]").forEach(row => {
+    const gameId = row.dataset.editGame;
+    const homeValue = row.querySelector(".edit-home-score")?.value ?? "";
+    const awayValue = row.querySelector(".edit-away-score")?.value ?? "";
+
+    if (homeValue === "" && awayValue === "") return;
+
+    if (homeValue === "" || awayValue === "") {
+      return;
+    }
+
+    newPlayerBets.push({
+      id: `${playerId}_${gameId}`,
+      playerId,
+      playerName,
+      gameId,
+      homeGuess: Number(homeValue),
+      awayGuess: Number(awayValue),
+      source: "Editado na app",
+      updatedAt: now
+    });
+  });
+
+  bets = [...otherBets, ...newPlayerBets];
+
+  appSettings.extraPredictions = appSettings.extraPredictions || {};
+  appSettings.extraPredictions[playerName] = {
+    mvp: $("editExtraMvpInput")?.value?.trim() || "",
+    topScorer: $("editExtraTopScorerInput")?.value?.trim() || "",
+    champion: $("editExtraChampionInput")?.value?.trim() || ""
+  };
+
+  if (!appSettings.users.includes(playerName)) {
+    appSettings.users.push(playerName);
+  }
+
+  const nextPlayerBetIds = new Set(newPlayerBets.map(bet => bet.id));
+  const removedPlayerBetIds = previousPlayerBetIds.filter(id => !nextPlayerBetIds.has(id));
+  markBetsPending(newPlayerBets.map(bet => bet.id));
+  markBetsForDelete(removedPlayerBetIds);
+  markSettingsPending();
+
+  saveLocalData("editar apostas utilizador local");
+  renderAll();
+  toast(`Apostas de ${playerName} guardadas.`);
+
+  saveUserBetsFastToFirebase(playerId, previousPlayerBetIds, newPlayerBets)
+    .then(saved => {
+      if (saved) {
+        setFirebaseStatus("success", `Firebase: apostas de ${playerName} guardadas`);
+        return;
+      }
+      scheduleFullSync("editar apostas utilizador", 800);
+      setFirebaseStatus("error", "Firebase: nao ligado - apostas guardadas localmente");
+    })
+    .catch(error => {
+      console.error("Falhou guardar apostas do utilizador no Firebase:", error);
+      scheduleFullSync("editar apostas utilizador", 1200);
+      setFirebaseStatus("error", `Firebase: erro ao guardar apostas (${shortFirebaseError(error)})`);
+    });
+}
+
+function clearUserGameRow(button) {
+  const row = button.closest("[data-edit-game]");
+  if (!row) return;
+  row.querySelector(".edit-home-score").value = "";
+  row.querySelector(".edit-away-score").value = "";
+}
+
+function renderAdmin() {
+  const container = $("adminGamesList");
+  if (!isAdmin) { container.innerHTML = ""; return; }
+  container.innerHTML = games.map(game => `
+    <article class="admin-row"><div class="admin-match"><span class="group-pill">${escapeHtml(game.group)}</span><strong>${escapeHtml(game.homeTeam)} vs ${escapeHtml(game.awayTeam)}</strong><small>${timePortugal(game.matchDate)} · ${escapeHtml(dateHeader(game.matchDate))} · ${betsForGame(game.id).length} apostas</small></div>
+      <div class="result-inputs modal-result-actions">
+        <span class="admin-result-chip">${hasResult(game) ? `Resultado: ${game.homeScore}-${game.awayScore}` : "Sem resultado"}</span>
+        <button class="primary" type="button" data-result-game="${escapeHtml(game.id)}">${hasResult(game) ? "Editar resultado" : "Adicionar resultado"}</button>
+      </div>
+    </article>`).join("");
+}
+
+async function saveBet(gameId, homeGuess, awayGuess, playerName = "Manual") {
+  const game = games.find(item => item.id === gameId);
+  if (!game) return;
+  if (isLocked(game)) return toast("Apostas fechadas para este jogo.");
+  if (homeGuess === "" || awayGuess === "") return toast("Preenche os dois campos da aposta.");
+  const playerId = playerIdFromName(playerName);
+  const bet = { id: `${playerId}_${gameId}`, playerId, playerName, gameId, homeGuess: Number(homeGuess), awayGuess: Number(awayGuess), source: "manual", updatedAt: new Date().toISOString() };
+  await persistBet(bet);
+  renderAll();
+  toast("Aposta guardada.");
+}
+async function setResult(gameId, homeScore, awayScore) {
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
+
+  if (homeScore === "" || awayScore === "") {
+    toast("Preenche o resultado completo.");
+    return false;
+  }
+
+  const game = games.find(item => item.id === gameId);
+  if (!game) {
+    toast("Jogo não encontrado.");
+    return false;
+  }
+
+  game.homeScore = Number(homeScore);
+  game.awayScore = Number(awayScore);
+  stampGame(game, "resultado guardado");
+  markGamePending(game.id);
+
+  saveLocalData("resultado editado local antes firebase");
+  renderAll();
+  toast("Resultado guardado. A sincronizar Firebase...");
+
+  persistGame(game).then(() => {
+    renderAll();
+    toast("Resultado guardado no Firebase.");
+  }).catch(error => {
+    console.error("Falhou guardar resultado no Firebase:", error);
+    markGamePending(game.id);
+    saveLocalData("resultado pendente firebase");
+    setFirebaseStatus("error", `Firebase: resultado pendente (${shortFirebaseError(error)})`);
+    toast("Resultado ficou guardado localmente e será reenviado.");
+  });
+
+  return true;
+}
+async function clearResult(gameId) {
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
+
+  const game = games.find(item => item.id === gameId);
+  if (!game) return false;
+
+  game.homeScore = null;
+  game.awayScore = null;
+  stampGame(game, "resultado limpo");
+  markGamePending(game.id);
+
+  saveLocalData("resultado limpo local antes firebase");
+  renderAll();
+  toast("Resultado limpo. A sincronizar Firebase...");
+
+  persistGame(game).then(() => {
+    renderAll();
+    toast("Resultado limpo no Firebase.");
+  }).catch(error => {
+    console.error("Falhou limpar resultado no Firebase:", error);
+    markGamePending(game.id);
+    saveLocalData("limpar resultado pendente firebase");
+    setFirebaseStatus("error", `Firebase: limpeza pendente (${shortFirebaseError(error)})`);
+    toast("Alteração ficou guardada localmente e será reenviada.");
+  });
+
+  return true;
+}
+
+function todayGames() { const key = todayKey(); return games.filter(game => dateKey(game.matchDate) === key); }
+function scoreText() {
+  const rows = leaderboard();
+  if (!rows.length) return "⭐ Classificação Mundial 2026\n\nAinda não há apostas importadas.";
+  return "⭐ Classificação Mundial 2026\n\n" + rows.map((row, index) => `${index + 1}. ${row.playerName} - ${row.points} pts`).join("\n");
+}
+function todayText() {
+  const list = todayGames();
+  if (!list.length) return "⭐ Jogos de Hoje\n\nHoje não há jogos registados.";
+  const grouped = [...groupByGroup(list).entries()];
+  return "⭐ Jogos de Hoje\n\n" + grouped.map(([group, rows]) => {
+    const lines = rows.map(game => `${game.homeTeam} vs ${game.awayTeam} - ${timePortugal(game.matchDate)}`);
+    return `${group}\n${lines.join("\n")}`;
+  }).join("\n\n");
+}
+function groupsText() {
+  return "⭐ Classificação dos Grupos\n\n" + buildStandings().map(({ group, rows }) => {
+    const lines = rows.map((row, index) => `${index + 1}. ${row.team} - ${row.points} pts`);
+    return `${group}\n${lines.join("\n")}`;
+  }).join("\n\n");
+}
+function groupByGroup(list) {
+  return list.reduce((map, game) => { if (!map.has(game.group)) map.set(game.group, []); map.get(game.group).push(game); return map; }, new Map());
+}
+async function copyText(text, message) {
+  try { await navigator.clipboard.writeText(text); toast(message); }
+  catch { window.prompt("Copia o texto:", text); }
+}
+function toast(message) {
+  const element = $("toast");
+  element.textContent = message;
+  element.classList.remove("hidden");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => element.classList.add("hidden"), 2600);
+}
+
+function parseScore(value) {
+  if (value === null || value === undefined) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  // formatos aceites: 2-1, 2 - 1, 2:1, 2/1, 2 x 1
+  const normal = raw.replace(/[–—]/g, "-").replace(/\s+/g, " ");
+  const match = normal.match(/(^|\D)(\d{1,2})\s*(?:-|:|\/|x)\s*(\d{1,2})(\D|$)/i);
+  if (!match) return null;
+
+  return [Number(match[2]), Number(match[3])];
+}
+function splitMatchLabel(label) {
+  const raw = String(label || "").trim();
+  if (!raw) return null;
+
+  const scoreMatch = raw.match(/\s+(\d+\s*[-–:\/x]\s*\d+)\s*$/i);
+  const score = scoreMatch ? parseScore(scoreMatch[1]) : null;
+  const cleanLabel = scoreMatch ? raw.slice(0, scoreMatch.index).trim() : raw;
+
+  const directParts = cleanLabel.split(/\s+(?:-|–|—|vs|v\.?|x)\s+/i);
+  if (directParts.length >= 2) {
+    return { home: canonicalTeam(directParts[0]), away: canonicalTeam(directParts.slice(1).join(" - ")), score };
+  }
+
+  // Caso venha sem espaços: "Colômbia-RD Congo"
+  const looseParts = cleanLabel.split(/\s*(?:-|–|—)\s*/).filter(Boolean);
+  if (looseParts.length >= 2) {
+    return { home: canonicalTeam(looseParts[0]), away: canonicalTeam(looseParts.slice(1).join(" - ")), score };
+  }
+
+  return null;
+}
+function findGameMatch(home, away, group = "") {
+  const h = normalizeComparable(canonicalTeam(home));
+  const a = normalizeComparable(canonicalTeam(away));
+  const g = normalizeComparable(group);
+
+  const directWithGroup = games.find(game =>
+    normalizeComparable(game.homeTeam) === h &&
+    normalizeComparable(game.awayTeam) === a &&
+    (!g || normalizeComparable(game.group) === g)
+  );
+  if (directWithGroup) return { game: directWithGroup, reversed: false };
+
+  const reverseWithGroup = games.find(game =>
+    normalizeComparable(game.homeTeam) === a &&
+    normalizeComparable(game.awayTeam) === h &&
+    (!g || normalizeComparable(game.group) === g)
+  );
+  if (reverseWithGroup) return { game: reverseWithGroup, reversed: true };
+
+  const directAnyGroup = games.find(game =>
+    normalizeComparable(game.homeTeam) === h &&
+    normalizeComparable(game.awayTeam) === a
+  );
+  if (directAnyGroup) return { game: directAnyGroup, reversed: false };
+
+  const reverseAnyGroup = games.find(game =>
+    normalizeComparable(game.homeTeam) === a &&
+    normalizeComparable(game.awayTeam) === h
+  );
+  if (reverseAnyGroup) return { game: reverseAnyGroup, reversed: true };
+
+  return null;
+}
+
+function findGameByTeams(home, away, group = "") {
+  return findGameMatch(home, away, group)?.game || null;
+}
+async function readWorkbookFile(file) {
+  if (!window.XLSX) throw new Error("Biblioteca Excel ainda não carregou. Verifica ligação à internet.");
+  const buffer = await file.arrayBuffer();
+  if (file.name.toLowerCase().endsWith(".csv")) {
+    const text = new TextDecoder("utf-8").decode(buffer);
+    return XLSX.read(text, { type: "string" });
+  }
+  return XLSX.read(buffer, { type: "array" });
+}
+function firstSheetRows(workbook) {
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, blankrows: false });
+}
+function cellText(value) { return String(value ?? "").trim(); }
+function findPlayersRow(rows) {
+  for (let r = 0; r < rows.length; r += 1) {
+    const row = rows[r] || [];
+    const idx = row.findIndex(cell => normalizeKey(cell) === "jogadores");
+    if (idx !== -1) {
+      let gameIdCol = -1;
+      const players = [];
+      for (let c = idx + 1; c < row.length; c += 1) {
+        const name = cellText(row[c]);
+        const key = normalizeKey(name);
+        if (!name) continue;
+        if (["id jogo", "id do jogo", "game id", "gameid", "id"].includes(key)) {
+          gameIdCol = c;
+          continue;
+        }
+        players.push({ name, col: c });
+      }
+      return { rowIndex: r, labelCol: idx, gameIdCol, players };
+    }
+  }
+  return null;
+}
+
+function setImportStatus(type, title, details = "") {
+  const box = $("importStatusBox");
+  if (!box) return;
+
+  box.className = `import-status-box ${type}`;
+  box.innerHTML = `
+    <strong>${escapeHtml(title)}</strong>
+    ${details ? `<span>${escapeHtml(details)}</span>` : ""}
+  `;
+}
+
+function importStatusFromResult(result) {
+  const betsCount = result?.bets?.length ?? result?.importedBets?.length ?? 0;
+  const resultsCount = result?.results?.length ?? 0;
+  const usersCount = result?.users?.length ?? result?.players?.length ?? 0;
+  const errorsCount = result?.errors?.length ?? 0;
+
+  if (errorsCount > 0 && betsCount === 0 && resultsCount === 0) {
+    setImportStatus("error", "Erro ao importar Excel", `${errorsCount} avisos/erros encontrados. Vê os detalhes abaixo.`);
+    return;
+  }
+
+  if (errorsCount > 0) {
+    setImportStatus("warning", "Excel importado com avisos", `${betsCount} apostas · ${usersCount} users · ${errorsCount} avisos.`);
+    return;
+  }
+
+  setImportStatus("success", "Excel importado com sucesso", `${betsCount} apostas importadas · ${usersCount} users.`);
+}
+
+function parseResultadosWorkbookRows(rows) {
+  const info = findPlayersRow(rows);
+  if (!info) return { bets: [], extras: {}, errors: ["Não encontrei a linha Jogadores no ficheiro Resultados."] };
+  const importedBets = [];
+  const extras = {};
+  const errors = [];
+  let currentGroup = "";
+  for (let r = info.rowIndex + 1; r < rows.length; r += 1) {
+    const row = rows[r] || [];
+    const label = cellText(row[info.labelCol]);
+    if (!label) continue;
+    if (/^grupo\s+/i.test(label)) { currentGroup = label; continue; }
+    const labelKey = normalizeKey(label);
+    if (labelKey.includes("mvp") || labelKey.includes("melhor marcador") || labelKey.includes("equipa vencedora") || labelKey.includes("campeao") || labelKey.includes("campea")) {
+      const field = labelKey.includes("mvp") ? "mvp" : labelKey.includes("melhor marcador") ? "topScorer" : "champion";
+      info.players.forEach(player => {
+        const value = cellText(row[player.col]);
+        if (!value) return;
+        if (!extras[player.name]) extras[player.name] = {};
+        extras[player.name][field] = value;
+      });
+      continue;
+    }
+    const excelGameId = info.gameIdCol >= 0 ? cellText(row[info.gameIdCol]) : "";
+    let matchInfo = null;
+
+    if (excelGameId) {
+      const gameById = games.find(item => item.id === excelGameId);
+      if (gameById) matchInfo = { game: gameById, reversed: false };
+    }
+
+    const parsedMatch = splitMatchLabel(label);
+    if (!matchInfo && parsedMatch) {
+      matchInfo = findGameMatch(parsedMatch.home, parsedMatch.away, currentGroup);
+    }
+
+    if (!matchInfo) { errors.push(`Jogo não encontrado: ${currentGroup} · ${label}${excelGameId ? ` · ID: ${excelGameId}` : ""}`); continue; }
+    const game = matchInfo.game;
+    info.players.forEach(player => {
+      const score = parseScore(row[player.col]);
+      if (!score) return;
+      const finalScore = matchInfo.reversed ? [score[1], score[0]] : score;
+      const playerId = playerIdFromName(player.name);
+      importedBets.push({ id: `${playerId}_${game.id}`, playerId, playerName: player.name, gameId: game.id, homeGuess: finalScore[0], awayGuess: finalScore[1], source: "Resultados.xlsx", updatedAt: new Date().toISOString() });
+    });
+  }
+  return { bets: importedBets, extras, errors };
+}
+function parsePontosWorkbookRows(rows) {
+  const info = findPlayersRow(rows);
+  if (!info) return { results: [], importedPoints: {}, errors: ["Não encontrei a linha Jogadores no ficheiro Pontos."] };
+  const results = [];
+  const importedPoints = {};
+  const errors = [];
+  let currentGroup = "";
+  info.players.forEach(player => importedPoints[player.name] = 0);
+  for (let r = info.rowIndex + 1; r < rows.length; r += 1) {
+    const row = rows[r] || [];
+    const label = cellText(row[info.labelCol]);
+    if (!label) continue;
+    if (/^grupo\s+/i.test(label)) { currentGroup = label; continue; }
+    const parsedMatch = splitMatchLabel(label);
+    if (parsedMatch?.score) {
+      const matchInfo = findGameMatch(parsedMatch.home, parsedMatch.away, currentGroup);
+      if (matchInfo) {
+        const finalScore = matchInfo.reversed ? [parsedMatch.score[1], parsedMatch.score[0]] : parsedMatch.score;
+        results.push({ gameId: matchInfo.game.id, homeScore: finalScore[0], awayScore: finalScore[1] });
+      }
+      else errors.push(`Resultado sem jogo encontrado: ${currentGroup} · ${label}`);
+    }
+    info.players.forEach(player => {
+      const value = Number(String(row[player.col] ?? "").replace(",", "."));
+      if (Number.isFinite(value)) importedPoints[player.name] += value;
+    });
+  }
+  return { results, importedPoints, errors };
+}
+async function previewExcelImport() {
+  if (!hasPermission("importExcel")) { toast("Sem permissão."); return; }
+
+  const resultadosFile = $("resultadosExcelInput").files?.[0];
+  const pontosFile = $("pontosExcelInput").files?.[0];
+  if (!resultadosFile && !pontosFile) { setImportStatus("error", "Nenhum ficheiro selecionado", "Seleciona o Excel Resultados corrigido para importar.");
+    toast("Seleciona o Excel Resultados corrigido para importar."); return; }
+  const preview = $("excelPreview");
+  preview.innerHTML = "A ler ficheiros...";
+  const combined = { bets: [], extras: {}, results: [], importedPoints: {}, errors: [] };
+  try {
+    if (resultadosFile) {
+      const workbook = await readWorkbookFile(resultadosFile);
+      const parsed = parseResultadosWorkbookRows(firstSheetRows(workbook));
+      combined.bets.push(...parsed.bets);
+      combined.extras = { ...combined.extras, ...parsed.extras };
+      combined.errors.push(...parsed.errors);
+    }
+    if (pontosFile) {
+      const workbook = await readWorkbookFile(pontosFile);
+      const parsed = parsePontosWorkbookRows(firstSheetRows(workbook));
+      combined.results.push(...parsed.results);
+      combined.importedPoints = parsed.importedPoints;
+      combined.errors.push(...parsed.errors);
+    }
+    const players = new Set(combined.bets.map(bet => bet.playerName));
+    Object.keys(combined.extras).forEach(name => players.add(name));
+    Object.keys(combined.importedPoints).forEach(name => players.add(name));
+    pendingExcelImport = combined;
+    
+  importStatusFromResult(combined);
+preview.innerHTML = `
+      <div class="preview-grid"><div><strong>${combined.bets.length}</strong><span>apostas lidas</span></div><div><strong>${players.size}</strong><span>users</span></div><div><strong>${combined.results.length}</strong><span>resultados de jogos</span></div><div><strong>${Object.keys(combined.extras).length}</strong><span>extras</span></div></div>
+      ${combined.errors.length ? `<details open><summary>${combined.errors.length} avisos — estas linhas não foram importadas</summary><ul>${combined.errors.slice(0, 80).map(err => `<li>${escapeHtml(err)}</li>`).join("")}</ul></details>` : `<p class="ok-line">Sem erros críticos encontrados.</p>`}
+    `;
+    $("confirmExcelImportBtn").disabled = false;
+  } catch (error) {
+    console.error(error);
+    preview.innerHTML = `<p class="error-line">Erro a ler Excel: ${escapeHtml(error.message || error)}</p>`;
+    $("confirmExcelImportBtn").disabled = true;
+  }
+}
+async function confirmExcelImport() {
+  if (!hasPermission("importExcel")) { toast("Sem permissão."); return; }
+
+  if (!pendingExcelImport) return toast("Faz primeiro a pré-visualização.");
+  const replace = $("replaceExcelBetsInput").checked;
+  pendingExcelImport.results.forEach(result => {
+    const game = games.find(item => item.id === result.gameId);
+    if (!game) return;
+    game.homeScore = result.homeScore;
+    game.awayScore = result.awayScore;
+  });
+  appSettings.extraPredictions = { ...(appSettings.extraPredictions || {}), ...(pendingExcelImport.extras || {}) };
+  appSettings.importedPoints = pendingExcelImport.importedPoints || appSettings.importedPoints || {};
+  const importedUsers = new Set(appSettings.users || []);
+  pendingExcelImport.bets.forEach(bet => importedUsers.add(bet.playerName));
+  Object.keys(pendingExcelImport.extras || {}).forEach(name => importedUsers.add(name));
+  Object.keys(pendingExcelImport.importedPoints || {}).forEach(name => importedUsers.add(name));
+  appSettings.users = [...importedUsers].filter(Boolean).sort((a, b) => a.localeCompare(b));
+  appSettings.lastImport = { at: new Date().toISOString(), bets: pendingExcelImport.bets.length, players: new Set(pendingExcelImport.bets.map(bet => bet.playerName)).size, results: pendingExcelImport.results.length };
+  const importResult = pendingExcelImport;
+  await persistAllBets(importResult.bets, replace);
+  await persistAllGames();
+  await persistSettings();
+  importStatusFromResult(importResult);
+  pendingExcelImport = null;
+  $("excelModal").classList.add("hidden");
+  $("confirmExcelImportBtn").disabled = true;
+  renderAll();
+  setImportStatus("success", "Excel importado e guardado", "As apostas foram gravadas. Podes atualizar a página sem perder os dados.");
+  toast("Excel importado. Classificação recalculada.");
+}
+async function savePointsSettings() {
+  if (!hasPermission("editPoints")) { toast("Sem permissão."); return; }
+
+  appSettings.points = {
+    exact: Number($("pointsExactInput").value) || 0,
+    winner: Number($("pointsWinnerInput")?.value ?? appSettings.points.winner ?? 1) || 0,
+    mvp: Number($("pointsMvpInput").value) || 0,
+    topScorer: Number($("pointsTopScorerInput").value) || 0,
+    champion: Number($("pointsChampionInput").value) || 0
+  };
+  await persistSettings(); renderAll(); toast("Sistema de pontos atualizado.");
+}
+async function saveExtraResults() {
+  if (!hasPermission("editPoints")) { toast("Sem permissão."); return; }
+
+  appSettings.extraResults = { mvp: $("finalMvpInput").value.trim(), topScorer: $("finalTopScorerInput").value.trim(), champion: $("finalChampionInput").value.trim() };
+  await persistSettings(); renderAll(); toast("Resultados especiais guardados.");
+}
+
+async function addUser() {
+  if (!hasPermission("editUsers")) { toast("Sem permissão."); return; }
+
+  const input = $("newUserNameInput");
+  const name = input?.value.trim();
+  if (!name) return toast("Escreve o nome do user.");
+  const users = new Set(appSettings.users || []);
+  users.add(name);
+  appSettings.users = [...users].filter(Boolean).sort((a, b) => a.localeCompare(b));
+  input.value = "";
+  await persistSettings();
+  renderAll();
+  toast("User adicionado.");
+}
+
+async function removeUser(name) {
+  if (!hasPermission("editUsers")) { toast("Sem permissão."); return; }
+
+  if (!confirm(`Remover ${name} da lista de users? As apostas importadas não são apagadas.`)) return;
+  appSettings.users = (appSettings.users || []).filter(user => user !== name);
+  await persistSettings();
+  renderAll();
+  toast("User removido da lista.");
+}
+
+function renderUsers() {
+  const el = $("usersList");
+  if (!el) return;
+  const users = allPlayers();
+  if (!users.length) {
+    el.innerHTML = `<div class="empty small-empty">Ainda não existem users. Adiciona manualmente ou importa o Excel.</div>`;
+    return;
+  }
+  el.innerHTML = users.map(name => {
+    const stats = playerStats(name);
+    const isManual = (appSettings.users || []).includes(name);
+    return `<div class="user-pill-row">
+      <div>
+        <strong>${escapeHtml(name)}</strong>
+        <small>${stats.points} pts · ${stats.totalBets} apostas${isManual ? " · user manual" : " · via Excel"}</small>
+      </div>
+      <button class="secondary small" type="button" onclick="window.removeUserFromUI('${escapeHtml(name).replace(/'/g, "\\'")}')">Remover</button>
+    </div>`;
+  }).join("");
+}
+
+
+
+function scoreForExport(game, playerName) {
+  const playerId = playerIdFromName(playerName);
+  const bet = bets.find(item => item.gameId === game.id && item.playerId === playerId);
+  if (!bet) return "";
+  return `${bet.homeGuess}-${bet.awayGuess}`;
+}
+
+function resultLabelForExport(game) {
+  const base = `${game.homeTeam} - ${game.awayTeam}`;
+  return hasResult(game) ? `${base} ${game.homeScore}-${game.awayScore}` : base;
+}
+
+function exportResultadosExcel() {
+  if (!window.XLSX) {
+    toast("Biblioteca Excel ainda não carregou.");
+    return;
+  }
+
+  const players = allPlayers();
+  const rows = [];
+
+  rows.push(["Mundial 2026 - Resultados / Apostas"]);
+  rows.push(["Preenche as apostas no formato 2-1. Não alteres a coluna ID Jogo, ela serve para a app importar sem falhas."]);
+  rows.push([]);
+  rows.push(["Jogadores", "ID Jogo", ...players]);
+
+  let currentGroup = "";
+  games.forEach(game => {
+    if (game.group !== currentGroup) {
+      currentGroup = game.group;
+      rows.push([currentGroup]);
+    }
+
+    rows.push([
+      resultLabelForExport(game),
+      game.id,
+      ...players.map(playerName => scoreForExport(game, playerName))
+    ]);
+  });
+
+  rows.push([]);
+  rows.push(["MVP", "", ...players.map(playerName => appSettings.extraPredictions?.[playerName]?.mvp || "")]);
+  rows.push(["Melhor Marcador", "", ...players.map(playerName => appSettings.extraPredictions?.[playerName]?.topScorer || "")]);
+  rows.push(["Equipa Vencedora", "", ...players.map(playerName => appSettings.extraPredictions?.[playerName]?.champion || "")]);
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  ws["!cols"] = [
+    { wch: 34 },
+    { wch: 18 },
+    ...players.map(() => ({ wch: 16 }))
+  ];
+
+  // Congelar a linha dos jogadores e a primeira coluna em programas compatíveis.
+  ws["!freeze"] = { xSplit: 2, ySplit: 4 };
+
+  XLSX.utils.book_append_sheet(wb, ws, "Resultados");
+
+  const resumo = [
+    ["Resumo"],
+    ["Users", players.length],
+    ["Jogos", games.length],
+    ["Apostas importadas", bets.length],
+    ["Última exportação", new Date().toLocaleString("pt-PT")]
+  ];
+  const wsResumo = XLSX.utils.aoa_to_sheet(resumo);
+  wsResumo["!cols"] = [{ wch: 22 }, { wch: 18 }];
+  XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
+
+  XLSX.writeFile(wb, "Resultados_Mundial_2026.xlsx");
+  toast("Excel Resultados exportado.");
+}
+
+function exportPontosExcel() {
+  if (!window.XLSX) {
+    toast("Biblioteca Excel ainda não carregou.");
+    return;
+  }
+
+  const rows = [
+    ["Jogador", "Jogos com resultado", "Resultados exatos", "Pontos jogos", "MVP", "Melhor Marcador", "Equipa Vencedora", "Pontos extras", "Total"]
+  ];
+
+  leaderboard().forEach(row => {
+    rows.push([
+      row.playerName,
+      row.settled,
+      row.exact,
+      row.gamePoints,
+      row.mvp,
+      row.topScorer,
+      row.champion,
+      row.extraPoints,
+      row.points
+    ]);
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"] = [
+    { wch: 24 }, { wch: 18 }, { wch: 18 }, { wch: 14 },
+    { wch: 10 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 10 }
+  ];
+  XLSX.utils.book_append_sheet(wb, ws, "Pontos");
+
+  const detailRows = [["Grupo", "Jogo", "Resultado real", "Hora Portugal", "User", "Aposta", "Pontos"]];
+  games.forEach(game => {
+    betsForGame(game.id).forEach(bet => {
+      detailRows.push([
+        game.group,
+        `${game.homeTeam} - ${game.awayTeam}`,
+        hasResult(game) ? `${game.homeScore}-${game.awayScore}` : "",
+        timePortugal(game.matchDate),
+        bet.playerName,
+        `${bet.homeGuess}-${bet.awayGuess}`,
+        pointsForBet(bet, game)
+      ]);
+    });
+  });
+  const wsDetail = XLSX.utils.aoa_to_sheet(detailRows);
+  XLSX.utils.book_append_sheet(wb, wsDetail, "Detalhe");
+
+  XLSX.writeFile(wb, "Pontos_Mundial_2026.xlsx");
+  toast("Excel Pontos exportado.");
+}
+
+
+function gameBetTypeLabel(bet, game) {
+  if (!game || !hasResult(game)) return "Por jogar";
+  if (!bet) return "Sem aposta";
+  if (typeof isExactBet === "function" && isExactBet(bet, game)) return "Resultado exato";
+  if (typeof isOutcomeBet === "function" && isOutcomeBet(bet, game)) {
+    return outcome(game.homeScore, game.awayScore) === "draw" ? "Empate certo" : "Vencedor certo";
+  }
+  return "Falhou";
+}
+
+function gameBetTypeClass(bet, game) {
+  if (!game || !hasResult(game)) return "pending";
+  if (!bet) return "missing";
+  if (typeof isExactBet === "function" && isExactBet(bet, game)) return "exact";
+  if (typeof isOutcomeBet === "function" && isOutcomeBet(bet, game)) return "winner";
+  return "miss";
+}
+
+function closeBetsModal() {
+  $("betsModal")?.classList.add("hidden");
+}
+
+function showGameBets(gameId) {
+  const game = games.find(item => item.id === gameId);
+  if (!game) return;
+
+  const modal = $("betsModal");
+  const title = $("betsModalTitle");
+  const subtitle = $("betsModalSubtitle");
+  const summary = $("betsGameSummary");
+  const body = $("betsModalBody");
+
+  if (!modal || !title || !summary || !body) {
+    const rows = betsForGame(gameId).sort((a, b) => a.playerName.localeCompare(b.playerName)).map(bet => `${bet.playerName}: ${bet.homeGuess}-${bet.awayGuess}${hasResult(game) ? ` · ${pointsForBet(bet, game)} pts` : ""}`);
+    alert(`${game.homeTeam} vs ${game.awayTeam}\n\n${rows.length ? rows.join("\n") : "Sem apostas para este jogo."}`);
+    return;
+  }
+
+  const rows = betsForGame(gameId).sort((a, b) =>
+    pointsForBet(b, game) - pointsForBet(a, game) ||
+    a.playerName.localeCompare(b.playerName, "pt")
+  );
+
+  const exactCount = rows.filter(bet => typeof isExactBet === "function" && isExactBet(bet, game)).length;
+  const winnerCount = rows.filter(bet => !(typeof isExactBet === "function" && isExactBet(bet, game)) && typeof isOutcomeBet === "function" && isOutcomeBet(bet, game)).length;
+  const totalPoints = rows.reduce((sum, bet) => sum + pointsForBet(bet, game), 0);
+
+  title.textContent = `${game.homeTeam} - ${game.awayTeam}`;
+  subtitle.textContent = `${game.group} · ${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}`;
+
+  summary.innerHTML = `
+    <div class="bets-summary-card main">
+      <span>Resultado</span>
+      <strong>${hasResult(game) ? `${game.homeScore}-${game.awayScore}` : "Por colocar"}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Apostas</span>
+      <strong>${rows.length}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Exatos</span>
+      <strong>${hasResult(game) ? exactCount : "-"}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Vencedor/empate</span>
+      <strong>${hasResult(game) ? winnerCount : "-"}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Pontos</span>
+      <strong>${hasResult(game) ? totalPoints : "-"}</strong>
+    </div>
+  `;
+
+  if (!rows.length) {
+    body.innerHTML = `<div class="empty">Ainda não existem apostas importadas para este jogo.</div>`;
+  } else {
+    body.innerHTML = `
+      <div class="bets-list-head">
+        <span>Jogador</span>
+        <span>Aposta</span>
+        <span>Tipo</span>
+        <span>Pontos</span>
+      </div>
+      <div class="bets-list">
+        ${rows.map((bet, index) => {
+          const points = pointsForBet(bet, game);
+          const typeLabel = gameBetTypeLabel(bet, game);
+          const typeClass = gameBetTypeClass(bet, game);
+          return `
+            <article class="bet-user-row ${typeClass}">
+              <div class="bet-user-main" data-label="Jogador">
+                <span class="bet-position">${index + 1}</span>
+                <strong title="${escapeHtml(bet.playerName)}">${escapeHtml(bet.playerName)}</strong>
+              </div>
+              <div class="bet-score-pill" data-label="Aposta">${bet.homeGuess}-${bet.awayGuess}</div>
+              <div class="bet-type-pill" data-label="Tipo">${escapeHtml(typeLabel)}</div>
+              <b data-label="Pontos">${hasResult(game) ? points : "-"}</b>
+            </article>
+          `;
+        }).join("")}
+      </div>`;
+  }
+
+  modal.classList.remove("hidden");
+}
+
+
+function resultImpactPreview(game, homeScore, awayScore) {
+  const gameBets = betsForGame(game.id);
+  if (homeScore === "" || awayScore === "") {
+    return `${gameBets.length} apostas importadas. Mete o resultado para calcular pontos.`;
+  }
+
+  const tempGame = { ...game, homeScore: Number(homeScore), awayScore: Number(awayScore) };
+  const exact = gameBets.filter(bet => isExactBet(bet, tempGame)).length;
+  const winner = gameBets.filter(bet => !isExactBet(bet, tempGame) && isOutcomeBet(bet, tempGame)).length;
+  const totalPoints = gameBets.reduce((sum, bet) => sum + pointsForBet(bet, tempGame), 0);
+
+  return `${gameBets.length} apostas · ${exact} resultados exatos · ${winner} vencedor/empate · ${totalPoints} pontos atribuídos`;
+}
+
+function updateResultPreview() {
+  const gameId = $("resultGameIdInput")?.value;
+  const game = games.find(item => item.id === gameId);
+  if (!game || !$("resultPointsPreview")) return;
+
+  $("resultPointsPreview").textContent = resultImpactPreview(
+    game,
+    $("modalHomeScoreInput").value,
+    $("modalAwayScoreInput").value
+  );
+}
+
+function openResultModal(gameId) {
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return; }
+
+  const game = games.find(item => item.id === gameId);
+  if (!game) return;
+
+  $("resultGameIdInput").value = game.id;
+  $("resultModalTitle").textContent = hasResult(game) ? "Editar resultado" : "Adicionar resultado";
+  $("resultModalSubtitle").textContent = "Ao guardar, a app compara as apostas dos users e recalcula a classificação.";
+  $("resultHomeFlag").textContent = "";
+  $("resultAwayFlag").textContent = "";
+  $("resultHomeTeam").textContent = game.homeTeam;
+  $("resultAwayTeam").textContent = game.awayTeam;
+  $("resultGroupInput").value = game.group;
+  $("resultDateInput").value = `${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}`;
+  $("modalHomeScoreInput").value = game.homeScore ?? "";
+  $("modalAwayScoreInput").value = game.awayScore ?? "";
+
+  updateResultPreview();
+  $("resultModal").classList.remove("hidden");
+  setTimeout(() => $("modalHomeScoreInput")?.focus(), 80);
+}
+
+function closeResultModal() {
+  $("resultModal")?.classList.add("hidden");
+}
+
+async function saveResultFromModal() {
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
+
+  const gameId = $("resultGameIdInput").value;
+  const homeScore = $("modalHomeScoreInput").value;
+  const awayScore = $("modalAwayScoreInput").value;
+
+  if (homeScore === "" || awayScore === "") {
+    toast("Preenche os dois campos do resultado.");
+    return;
+  }
+
+  const btn = $("saveModalResultBtn");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A guardar...";
+  }
+
+  try {
+    const ok = await setResult(gameId, homeScore, awayScore);
+    if (ok) closeResultModal();
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Guardar resultado";
+    }
+  }
+}
+
+async function clearResultFromModal() {
+  if (!hasPermission("editResults")) { toast("Sem permissão para editar resultados."); return false; }
+
+  const gameId = $("resultGameIdInput").value;
+  if (!gameId) return;
+
+  const btn = $("clearModalResultBtn");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A limpar...";
+  }
+
+  try {
+    const ok = await clearResult(gameId);
+    if (ok) closeResultModal();
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Limpar resultado";
+    }
+  }
+}
+
+window.showGameBets = showGameBets;
+window.openResultModal = openResultModal;
+window.syncFirebaseFull = syncFirebaseFull;
+window.saveBetFromUI = id => saveBet(id, $("home_" + id)?.value ?? "", $("away_" + id)?.value ?? "");
+window.setResultFromUI = id => setResult(id, $("res_home_" + id).value, $("res_away_" + id).value);
+window.clearResultFromUI = id => clearResult(id);
+
+
+document.addEventListener("click", event => {
+  const knockoutOpenButton = event.target.closest("#openKnockoutFromCalendarBtn");
+  if (knockoutOpenButton) {
+    openKnockoutPage();
+    return;
+  }
+
+  const koEditButton = event.target.closest("[data-ko-edit]");
+  if (koEditButton) {
+    openKnockoutEditInAdmin(koEditButton.dataset.koEdit);
+    return;
+  }
+
+  const koSaveButton = event.target.closest("[data-ko-save]");
+  if (koSaveButton) {
+    saveKnockoutMatchFromAdmin(koSaveButton.dataset.koSave);
+    return;
+  }
+
+  const koLayoutSaveButton = event.target.closest("[data-ko-layout-save]");
+  if (koLayoutSaveButton) {
+    saveKnockoutLayoutFromAdmin(false);
+    return;
+  }
+
+  const koLayoutResetButton = event.target.closest("[data-ko-layout-reset]");
+  if (koLayoutResetButton) {
+    saveKnockoutLayoutFromAdmin(true);
+    return;
+  }
+
+  const resultButton = event.target.closest("[data-result-game]");
+  if (resultButton) {
+    openResultModal(resultButton.dataset.resultGame);
+    return;
+  }
+
+  const betsButton = event.target.closest("[data-bets-game]");
+  if (betsButton) {
+    showGameBets(betsButton.dataset.betsGame);
+  }
+});
+
+document.querySelectorAll(".tab").forEach(button => {
+  button.addEventListener("click", () => {
+    if (!permissionTabAllowed(button.dataset.tab)) {
+      toast("Sem permissão para abrir esta página.");
+      return;
+    }
+    if (button.dataset.tab === "knockoutTab" && !knockoutAvailable()) {
+      toast("Fase Final bloqueada. O Admin pode ativar no painel Admin.");
+      return;
+    }
+    document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
+    button.classList.add("active");
+    $(button.dataset.tab).classList.add("active");
+    updateActiveAppSection();
+    if (button.dataset.tab === "knockoutTab") renderKnockout();
+  });
+});
+$("unlockAdminBtn").addEventListener("click", () => {
+  if ($("adminPinInput").value !== ADMIN_PIN) return toast("PIN errado.");
+  isAdmin = true; localStorage.setItem("mundial_admin_unlocked", "1"); renderAll();
+});
+
+$("calendarMissingResultsBtn")?.addEventListener("click", () => {
+  calendarViewMode = "missing";
+  renderCalendar();
+  renderCalendarFilterState();
+});
+
+$("calendarPlayedGamesBtn")?.addEventListener("click", () => {
+  calendarViewMode = "played";
+  renderCalendar();
+  renderCalendarFilterState();
+});
+
+$("calendarAllGamesBtn")?.addEventListener("click", () => {
+  calendarViewMode = "all";
+  renderCalendar();
+  renderCalendarFilterState();
+});
+
+$("copyScoreBtn")?.addEventListener("click", () => copyText(scoreText(), "Classificação copiada."));
+$("addUserBtn")?.addEventListener("click", addUser);
+$("newUserNameInput")?.addEventListener("keydown", event => { if (event.key === "Enter") addUser(); });
+$("exportResultadosBtn")?.addEventListener("click", exportResultadosExcel);
+$("openExcelModalBtn")?.addEventListener("click", () => { setImportStatus("idle", "Aguardando ficheiro Excel", "Escolhe o Excel Resultados para importar."); $("excelModal").classList.remove("hidden"); });
+$("closeExcelModalBtn")?.addEventListener("click", () => $("excelModal").classList.add("hidden"));
+$("excelModal")?.addEventListener("click", event => { if (event.target.id === "excelModal") $("excelModal").classList.add("hidden"); });
+$("previewExcelBtn")?.addEventListener("click", previewExcelImport);
+$("confirmExcelImportBtn")?.addEventListener("click", confirmExcelImport);
+$("savePointsSettingsBtn")?.addEventListener("click", savePointsSettings);
+$("saveExtraResultsBtn")?.addEventListener("click", saveExtraResults);
+$("exportPontosBtn")?.addEventListener("click", exportPontosExcel);
+$("saveKnockoutUnlockBtn")?.addEventListener("click", saveKnockoutUnlock);
+
+
+
+$("closeBetsModalBtn")?.addEventListener("click", closeBetsModal);
+$("betsModal")?.addEventListener("click", event => { if (event.target.id === "betsModal") closeBetsModal(); });
+document.addEventListener("keydown", event => { if (event.key === "Escape" && !$("betsModal")?.classList.contains("hidden")) closeBetsModal(); });
+
+$("closeResultModalBtn")?.addEventListener("click", closeResultModal);
+$("saveModalResultBtn")?.addEventListener("click", saveResultFromModal);
+$("clearModalResultBtn")?.addEventListener("click", clearResultFromModal);
+$("modalHomeScoreInput")?.addEventListener("input", updateResultPreview);
+$("modalAwayScoreInput")?.addEventListener("input", updateResultPreview);
+$("resultModal")?.addEventListener("click", event => { if (event.target.id === "resultModal") closeResultModal(); });
+document.addEventListener("keydown", event => { if (event.key === "Escape" && !$("resultModal")?.classList.contains("hidden")) closeResultModal(); });
+
+
+$("editUserSelect")?.addEventListener("change", event => {
+  selectedEditUser = event.target.value;
+  renderUserBetsEditor();
+});
+
+$("saveUserBetsBtn")?.addEventListener("click", saveEditedUserBets);
+
+document.addEventListener("click", event => {
+  const clearBtn = event.target.closest(".clear-user-game-btn");
+  if (clearBtn) clearUserGameRow(clearBtn);
+});
+
+
+let deferredInstallPrompt = null;
+
+
+function isIosDevice() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function isStandaloneMode() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function setupIosAppMode() {
+  const hint = $("iosInstallHint");
+  if (hint && isIosDevice() && !isStandaloneMode()) {
+    hint.classList.remove("hidden");
+  }
+
+  // Evita zoom por duplo toque no iPhone.
+  let lastTouchEnd = 0;
+  document.addEventListener("touchend", event => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 320) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
+
+  // Evita gestos de zoom em iOS quando suportado.
+  ["gesturestart", "gesturechange", "gestureend"].forEach(name => {
+    document.addEventListener(name, event => event.preventDefault(), { passive: false });
+  });
+
+  document.documentElement.classList.toggle("standalone-mode", isStandaloneMode());
+  document.documentElement.classList.toggle("ios-device", isIosDevice());
+}
+
+function setupPwaInstall() {
+  const installBtn = $("installAppBtn");
+  if (!installBtn) return;
+
+  window.addEventListener("beforeinstallprompt", event => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    installBtn.classList.remove("hidden");
+  });
+
+  installBtn.addEventListener("click", async () => {
+    if (!deferredInstallPrompt) {
+      toast("No Edge: menu ⋯ > Apps > Instalar este site como aplicação.");
+      return;
+    }
+
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    installBtn.classList.add("hidden");
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    installBtn.classList.add("hidden");
+    toast("App instalada.");
+  });
+}
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .then(registration => {
+        setupAppUpdateRefresh(registration);
+      })
+      .catch(error => console.warn("Service worker nao registado:", error));
+  });
+}
+
+async function clearAppCaches() {
+  try {
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(key => caches.delete(key)));
+    }
+  } catch (error) {
+    console.warn("Nao consegui limpar a cache da app:", error);
+  }
+}
+
+function showRefreshAppButton(message = "Nova versao disponivel.") {
+  const button = $("refreshAppBtn");
+  if (!button) return;
+  button.classList.remove("hidden");
+  button.classList.add("has-update");
+  button.title = message;
+}
+
+async function refreshAppNow() {
+  const button = $("refreshAppBtn");
+  if (button) {
+    button.disabled = true;
+    button.textContent = "A atualizar...";
+  }
+
+  toast("A atualizar app...");
+
+  try {
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(async registration => {
+        try { registration.waiting?.postMessage({ type: "SKIP_WAITING" }); } catch {}
+        try { await registration.update(); } catch {}
+      }));
+    }
+
+    await clearAppCaches();
+  } catch (error) {
+    console.warn("Atualizacao da app falhou, vou recarregar na mesma:", error);
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("v", Date.now().toString());
+  window.location.replace(url.toString());
+}
+
+function setupAppUpdateRefresh(registration) {
+  const button = $("refreshAppBtn");
+  if (button && button.dataset.bound !== "1") {
+    button.dataset.bound = "1";
+    button.addEventListener("click", refreshAppNow);
+  }
+
+  if (!registration) return;
+
+  registration.addEventListener("updatefound", () => {
+    const worker = registration.installing;
+    if (!worker) return;
+
+    worker.addEventListener("statechange", () => {
+      if (worker.state === "installed" && navigator.serviceWorker.controller) {
+        showRefreshAppButton("Nova versao pronta para instalar.");
+        toast("Nova versao pronta. Toca em Atualizar app.");
+      }
+    });
+  });
+
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (window.__appRefreshControllerChanged) return;
+    window.__appRefreshControllerChanged = true;
+    window.location.reload();
+  });
+
+  navigator.serviceWorker.addEventListener("message", event => {
+    if (event.data?.type === "APP_VERSION_READY") {
+      showRefreshAppButton("Nova versao pronta para instalar.");
+    }
+  });
+
+  setTimeout(() => {
+    registration.update().catch(() => {});
+  }, 1200);
+}
+
+function setupPageWheelScroll() {
+  document.addEventListener("wheel", event => {
+    if (document.body.classList.contains("knockout-layout-active")) return;
+    if (event.defaultPrevented || !event.deltaY) return;
+    if (event.target.closest("#chatPanel, #chatActionMenu, #chatImageViewer, .chat-panel, .chat-messages, .chat-action-menu, .chat-image-viewer, .modal, .modal-card, .ko-admin-list")) return;
+
+    const before = window.scrollY;
+    window.scrollBy({ top: event.deltaY, left: 0, behavior: "auto" });
+    if (window.scrollY !== before) event.preventDefault();
+  }, { passive: false });
+}
+
+$("loginBtn")?.addEventListener("click", handleLogin);
+$("createAccountBtn")?.addEventListener("click", handleCreateAccount);
+$("logoutBtn")?.addEventListener("click", logout);
+$("loginPasswordInput")?.addEventListener("keydown", event => { if (event.key === "Enter") handleLogin(); });
+$("loginEmailInput")?.addEventListener("keydown", event => { if (event.key === "Enter") handleLogin(); });
+$("addPermissionUserBtn")?.addEventListener("click", addPermissionUser);
+document.addEventListener("click", event => {
+  const saveBtn = event.target.closest("[data-save-permissions]");
+  if (saveBtn) savePermissionUser(saveBtn.dataset.savePermissions);
+});
+document.addEventListener("change", event => {
+  const roleSelect = event.target.closest("[data-role-email]");
+  if (roleSelect) {
+    const email = roleSelect.dataset.roleEmail;
+    const card = document.querySelector(`[data-permission-card="${CSS.escape(email)}"]`);
+    const isAdminRole = roleSelect.value === "admin";
+    card?.querySelectorAll("[data-perm-key]").forEach(input => {
+      input.disabled = isAdminRole;
+      if (isAdminRole) input.checked = true;
+    });
+  }
+});
+
+document.addEventListener("input", event => {
+  const layoutRange = event.target.closest("[data-ko-layout-input]");
+  const layoutNumber = event.target.closest("[data-ko-layout-number]");
+  const layoutInput = layoutRange || layoutNumber;
+  if (!layoutInput) return;
+
+  const key = layoutInput.dataset.koLayoutInput || layoutInput.dataset.koLayoutNumber;
+  const value = Math.max(-180, Math.min(180, Number(layoutInput.value) || 0));
+  syncKnockoutLayoutInputs(key, value);
+  previewKnockoutLayoutPosition(key, value);
+});
+
+window.addEventListener("beforeunload", () => {
+  try { saveLocalData("beforeunload"); } catch {}
+});
+
+setupRememberedAccount();
+setupIosAppMode();
+setupPwaInstall();
+setupPageWheelScroll();
+registerServiceWorker();
+await initFirebase();
+setupAuthGate();
+
+
+// beforeunload_presence_v63
+window.addEventListener("beforeunload", () => {
+  try {
+    updateMyPresence(true);
+  } catch (error) {
+    console.warn("Não foi possível marcar offline ao sair:", error);
+  }
+});
+
+setupKnockoutAdjustTopButton();
+
+setupOnlineUsersCloseControls();
+
+
+
+setupSearchResultsAdminButton();
+
+
+
+
+// v89 — Chat mobile limpo: sem capturas globais agressivas.
+(function setupChatMobileCleanV89(){
+  if (window.__chatMobileCleanV89) return;
+  window.__chatMobileCleanV89 = true;
+
+  function isMobileChat() {
+    return window.matchMedia?.("(max-width: 760px)")?.matches || window.innerWidth <= 760;
+  }
+
+  function clearChatState() {
+    document.body.classList.remove("chat-fullscreen-open", "chat-mobile-page-open", "chat-window-open");
+    document.documentElement.classList.remove("chat-mobile-page-open");
+    document.body.style.overflow = "";
+    document.body.style.position = "";
+    document.body.style.width = "";
+    document.body.style.height = "";
+  }
+
+  function applyChatOpenState() {
+    const mobile = isMobileChat();
+    document.body.classList.toggle("chat-mobile-page-open", mobile);
+    document.body.classList.toggle("chat-fullscreen-open", mobile);
+    document.body.classList.toggle("chat-window-open", !mobile);
+    document.documentElement.classList.toggle("chat-mobile-page-open", mobile);
+  }
+
+  window.closeChatMobileClean = function closeChatMobileClean(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const panel = document.getElementById("chatPanel");
+    if (panel) panel.classList.add("hidden");
+
+    clearChatState();
+
+    try { if (typeof closeChatActionMenu === "function") closeChatActionMenu(); } catch {}
+    try { if (typeof clearChatReply === "function") clearChatReply(); } catch {}
+    try { if (typeof updateChatTyping === "function") updateChatTyping(false); } catch {}
+    try { document.getElementById("chatInput")?.blur(); } catch {}
+
+    if (window.location.hash === "#chat") {
+      try { history.replaceState(null, "", window.location.pathname + window.location.search); } catch {}
+    }
+
+    try {
+      chatLastSeenAt = Date.now();
+      localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
+      updateChatUnreadBadge();
+    } catch {}
+
+    return false;
+  };
+
+  window.closeChatPanelNow = window.closeChatMobileClean;
+  window.closeChatPanel = function closeChatPanelClean() {
+    return window.closeChatMobileClean();
+  };
+
+  window.openChatPanel = function openChatPanelClean() {
+    const panel = document.getElementById("chatPanel");
+    if (!panel) {
+      clearChatState();
+      return;
+    }
+
+    panel.classList.remove("hidden");
+    applyChatOpenState();
+
+    if (isMobileChat() && window.location.hash !== "#chat") {
+      try { history.pushState({ chatOpen: true }, "", "#chat"); } catch {}
+    }
+
+    try { chatOpenedOnce = true; } catch {}
+    try {
+      chatLastSeenAt = Date.now();
+      localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
+    } catch {}
+    try { updateChatUnreadBadge(); } catch {}
+    try { if (typeof chatNotifyNewMessages === "function") chatNotifyNewMessages(); } catch {}
+    try { if (typeof renderChatPinnedMessage === "function") renderChatPinnedMessage(); } catch {}
+
+    setTimeout(() => {
+      try { scrollChatToBottom(); } catch {}
+    }, 50);
+  };
+
+  window.openChatImageClean = function openChatImageClean(src, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (!viewer || !img || !src) return false;
+
+    img.src = src;
+    viewer.classList.remove("hidden");
+    document.body.classList.add("chat-image-viewer-open");
+    return false;
+  };
+
+  window.closeChatImageClean = function closeChatImageClean(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (viewer) viewer.classList.add("hidden");
+    if (img) img.removeAttribute("src");
+    document.body.classList.remove("chat-image-viewer-open");
+    return false;
+  };
+
+  function bindCleanChat() {
+    const openBtn = document.getElementById("chatOpenBtn");
+    const closeBtn = document.getElementById("chatCloseBtn");
+    const messages = document.getElementById("chatMessages");
+    const imageClose = document.getElementById("chatImageViewerClose");
+    const imageViewer = document.getElementById("chatImageViewer");
+
+    if (openBtn && openBtn.dataset.v89Open !== "1") {
+      openBtn.dataset.v89Open = "1";
+      openBtn.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        window.openChatPanel();
+      });
+    }
+
+    if (closeBtn && closeBtn.dataset.v89Close !== "1") {
+      closeBtn.dataset.v89Close = "1";
+      closeBtn.setAttribute("onclick", "return window.closeChatMobileClean(event)");
+      ["click", "touchend"].forEach(name => {
+        closeBtn.addEventListener(name, event => window.closeChatMobileClean(event), { passive: false });
+      });
+    }
+
+    if (messages && messages.dataset.v89Messages !== "1") {
+      messages.dataset.v89Messages = "1";
+
+      // Tocar na imagem: abre imagem. Não interfere com texto.
+      messages.addEventListener("click", event => {
+        const imageButton = event.target.closest?.(".chat-image-button,[data-chat-image-src]");
+        if (imageButton) {
+          const src = imageButton.dataset.chatImageSrc || imageButton.querySelector?.("img")?.src || "";
+          window.openChatImageClean(src, event);
+          return;
+        }
+
+        // No mobile, tocar na mensagem abre ações, para não depender de long press do Safari.
+      });
+
+      // Long press continua disponível, mas sem capturar imagens.
+      let pressTimer = null;
+      messages.addEventListener("touchstart", event => {
+        if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+        const row = event.target.closest?.(".chat-message-row[data-chat-message]");
+        if (!row) return;
+        pressTimer = setTimeout(() => {
+          if (typeof openChatActionMenu === "function") openChatActionMenu(row.dataset.chatMessage, event);
+        }, 520);
+      }, { passive: true });
+
+      ["touchend", "touchmove", "touchcancel"].forEach(name => {
+        messages.addEventListener(name, () => {
+          if (pressTimer) clearTimeout(pressTimer);
+          pressTimer = null;
+        }, { passive: true });
+      });
+    }
+
+    if (imageClose && imageClose.dataset.v89Close !== "1") {
+      imageClose.dataset.v89Close = "1";
+      imageClose.addEventListener("click", event => window.closeChatImageClean(event));
+      imageClose.addEventListener("touchend", event => window.closeChatImageClean(event), { passive: false });
+    }
+
+    if (imageViewer && imageViewer.dataset.v89Viewer !== "1") {
+      imageViewer.dataset.v89Viewer = "1";
+      imageViewer.addEventListener("click", event => {
+        if (event.target === imageViewer) window.closeChatImageClean(event);
+      });
+    }
+  }
+
+  bindCleanChat();
+  document.addEventListener("DOMContentLoaded", () => {
+    bindCleanChat();
+
+    const panel = document.getElementById("chatPanel");
+    if (panel) panel.classList.add("hidden");
+    clearChatState();
+
+    if (window.location.hash === "#chat") {
+      try { history.replaceState(null, "", window.location.pathname + window.location.search); } catch {}
+    }
+  });
+  setTimeout(bindCleanChat, 400);
+
+  window.addEventListener("popstate", () => {
+    const panel = document.getElementById("chatPanel");
+    if (panel && !panel.classList.contains("hidden") && window.location.hash !== "#chat") {
+      window.closeChatMobileClean();
+    }
+  });
+})();
+
+
+// v91 — fixes sobre base v89: menu por toque e imagem acima do chat.
+(function setupChatMenuImageV91(){
+  if (window.__chatMenuImageV91) return;
+  window.__chatMenuImageV91 = true;
+
+  function isMobileV91() {
+    return window.matchMedia?.("(max-width: 760px)")?.matches || window.innerWidth <= 760;
+  }
+
+  function getMessageIdFromTarget(target) {
+    return target?.closest?.(".chat-message-row[data-chat-message], .chat-bubble[data-chat-message]")?.dataset?.chatMessage || "";
+  }
+
+  window.openChatImageAboveV91 = function openChatImageAboveV91(src, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (!viewer || !img || !src) return false;
+
+    img.src = src;
+    viewer.classList.remove("hidden");
+    viewer.style.zIndex = "2147483600";
+    document.body.classList.add("chat-image-viewer-open");
+    return false;
+  };
+
+  window.closeChatImageAboveV91 = function closeChatImageAboveV91(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (viewer) viewer.classList.add("hidden");
+    if (img) img.removeAttribute("src");
+    document.body.classList.remove("chat-image-viewer-open");
+    return false;
+  };
+
+  function openMessageMenuV91(id, event) {
+    if (!id || typeof openChatActionMenu !== "function") return false;
+
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    openChatActionMenu(id, event || { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2, target: document.body });
+    return false;
+  }
+
+  function bindV91() {
+    const messages = document.getElementById("chatMessages");
+    const viewer = document.getElementById("chatImageViewer");
+    const viewerClose = document.getElementById("chatImageViewerClose");
+
+    if (messages && messages.dataset.v91Bound !== "1") {
+      messages.dataset.v91Bound = "1";
+
+      // Click normal: imagem abre; mensagem abre menu no mobile.
+      messages.addEventListener("click", event => {
+        const imageButton = event.target.closest?.(".chat-image-button,[data-chat-image-src]");
+        if (imageButton) {
+          const src = imageButton.dataset.chatImageSrc || imageButton.querySelector?.("img")?.src || "";
+          return window.openChatImageAboveV91(src, event);
+        }
+
+      });
+
+      // iPhone/Safari às vezes falha click em elementos dentro de scroll: usar touchend só no container.
+      messages.addEventListener("touchend", event => {
+        const imageButton = event.target.closest?.(".chat-image-button,[data-chat-image-src]");
+        if (imageButton) {
+          const src = imageButton.dataset.chatImageSrc || imageButton.querySelector?.("img")?.src || "";
+          return window.openChatImageAboveV91(src, event);
+        }
+
+      }, { passive: false });
+
+      // PC continua com botão direito.
+      messages.addEventListener("contextmenu", event => {
+        const id = getMessageIdFromTarget(event.target);
+        if (id) return openMessageMenuV91(id, event);
+      });
+    }
+
+    if (viewerClose && viewerClose.dataset.v91Bound !== "1") {
+      viewerClose.dataset.v91Bound = "1";
+      viewerClose.addEventListener("click", event => window.closeChatImageAboveV91(event));
+      viewerClose.addEventListener("touchend", event => window.closeChatImageAboveV91(event), { passive: false });
+    }
+
+    if (viewer && viewer.dataset.v91Bound !== "1") {
+      viewer.dataset.v91Bound = "1";
+      viewer.addEventListener("click", event => {
+        if (event.target === viewer) window.closeChatImageAboveV91(event);
+      });
+    }
+  }
+
+  bindV91();
+  document.addEventListener("DOMContentLoaded", bindV91);
+  setTimeout(bindV91, 350);
+})();
+
+
+// v92 — Força visualizador de imagem por cima do chat mobile.
+(function setupImageAboveChatV92(){
+  if (window.__imageAboveChatV92) return;
+  window.__imageAboveChatV92 = true;
+
+  const previousOpen = window.openChatImageAboveV91 || window.openChatImageClean || window.openChatImageViewerV90 || window.openChatImageViewer;
+
+  window.openChatImageAboveChatV92 = function openChatImageAboveChatV92(src, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (!viewer || !img || !src) return false;
+
+    img.src = src;
+    viewer.classList.remove("hidden");
+    viewer.style.visibility = "visible";
+    viewer.style.pointerEvents = "auto";
+    viewer.style.zIndex = "2147483646";
+    document.body.classList.add("chat-image-viewer-open");
+    document.documentElement.classList.add("chat-image-viewer-open");
+
+    return false;
+  };
+
+  window.closeChatImageAboveChatV92 = function closeChatImageAboveChatV92(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (viewer) viewer.classList.add("hidden");
+    if (img) img.removeAttribute("src");
+
+    document.body.classList.remove("chat-image-viewer-open");
+    document.documentElement.classList.remove("chat-image-viewer-open");
+
+    return false;
+  };
+
+  // Substitui os nomes usados pelas versões anteriores.
+  window.openChatImageAboveV91 = window.openChatImageAboveChatV92;
+  window.openChatImageClean = window.openChatImageAboveChatV92;
+  window.openChatImageViewerV90 = window.openChatImageAboveChatV92;
+  window.closeChatImageAboveV91 = window.closeChatImageAboveChatV92;
+  window.closeChatImageClean = window.closeChatImageAboveChatV92;
+  window.closeChatImageViewerV90 = window.closeChatImageAboveChatV92;
+
+  function bindV92() {
+    const viewer = document.getElementById("chatImageViewer");
+    const closeBtn = document.getElementById("chatImageViewerClose");
+    const messages = document.getElementById("chatMessages");
+
+    if (closeBtn && closeBtn.dataset.v92Bound !== "1") {
+      closeBtn.dataset.v92Bound = "1";
+      closeBtn.addEventListener("click", event => window.closeChatImageAboveChatV92(event));
+      closeBtn.addEventListener("touchend", event => window.closeChatImageAboveChatV92(event), { passive: false });
+    }
+
+    if (viewer && viewer.dataset.v92Bound !== "1") {
+      viewer.dataset.v92Bound = "1";
+      viewer.addEventListener("click", event => {
+        if (event.target === viewer) window.closeChatImageAboveChatV92(event);
+      });
+      viewer.addEventListener("touchend", event => {
+        if (event.target === viewer) window.closeChatImageAboveChatV92(event);
+      }, { passive: false });
+    }
+
+    if (messages && messages.dataset.v92ImageBound !== "1") {
+      messages.dataset.v92ImageBound = "1";
+      messages.addEventListener("click", event => {
+        const imageButton = event.target.closest?.(".chat-image-button,[data-chat-image-src]");
+        if (!imageButton) return;
+        const src = imageButton.dataset.chatImageSrc || imageButton.querySelector?.("img")?.src || "";
+        if (src) return window.openChatImageAboveChatV92(src, event);
+      });
+      messages.addEventListener("touchend", event => {
+        const imageButton = event.target.closest?.(".chat-image-button,[data-chat-image-src]");
+        if (!imageButton) return;
+        const src = imageButton.dataset.chatImageSrc || imageButton.querySelector?.("img")?.src || "";
+        if (src) return window.openChatImageAboveChatV92(src, event);
+      }, { passive: false });
+    }
+  }
+
+  bindV92();
+  document.addEventListener("DOMContentLoaded", bindV92);
+  setTimeout(bindV92, 350);
+})();
+
+
+// v93 — visualizador usa SEMPRE o src real do <img>, seguro no iPhone/Safari.
+(function setupChatImageSrcRealV93(){
+  if (window.__chatImageSrcRealV93) return;
+  window.__chatImageSrcRealV93 = true;
+
+  function getRealImageSrcFromButton(button) {
+    const img = button?.querySelector?.("img.chat-image, img");
+    return img?.currentSrc || img?.src || img?.getAttribute?.("src") || "";
+  }
+
+  window.openChatImageSrcRealV93 = function openChatImageSrcRealV93(src, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (!viewer || !img || !src) return false;
+
+    viewer.classList.remove("hidden");
+    viewer.style.display = "flex";
+    viewer.style.visibility = "visible";
+    viewer.style.opacity = "1";
+    viewer.style.pointerEvents = "auto";
+    viewer.style.zIndex = "2147483646";
+
+    img.style.display = "block";
+    img.style.visibility = "visible";
+    img.style.opacity = "1";
+    img.style.maxWidth = "96vw";
+    img.style.maxHeight = "86dvh";
+    img.style.objectFit = "contain";
+    img.style.zIndex = "2147483646";
+
+    img.onload = () => {
+      img.style.display = "block";
+      img.style.visibility = "visible";
+      img.style.opacity = "1";
+    };
+
+    img.onerror = () => {
+      console.warn("Imagem do chat não carregou no viewer.");
+    };
+
+    img.src = src;
+
+    document.body.classList.add("chat-image-viewer-open");
+    document.documentElement.classList.add("chat-image-viewer-open");
+
+    return false;
+  };
+
+  window.closeChatImageSrcRealV93 = function closeChatImageSrcRealV93(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    }
+
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+
+    if (viewer) {
+      viewer.classList.add("hidden");
+      viewer.style.display = "";
+      viewer.style.visibility = "";
+      viewer.style.opacity = "";
+      viewer.style.pointerEvents = "";
+    }
+
+    if (img) {
+      img.removeAttribute("src");
+      img.onload = null;
+      img.onerror = null;
+    }
+
+    document.body.classList.remove("chat-image-viewer-open");
+    document.documentElement.classList.remove("chat-image-viewer-open");
+
+    return false;
+  };
+
+  window.openChatImageAboveChatV92 = window.openChatImageSrcRealV93;
+  window.openChatImageAboveV91 = window.openChatImageSrcRealV93;
+  window.openChatImageClean = window.openChatImageSrcRealV93;
+  window.openChatImageViewerV90 = window.openChatImageSrcRealV93;
+
+  window.closeChatImageAboveChatV92 = window.closeChatImageSrcRealV93;
+  window.closeChatImageAboveV91 = window.closeChatImageSrcRealV93;
+  window.closeChatImageClean = window.closeChatImageSrcRealV93;
+  window.closeChatImageViewerV90 = window.closeChatImageSrcRealV93;
+
+  function bindV93() {
+    const messages = document.getElementById("chatMessages");
+    const viewer = document.getElementById("chatImageViewer");
+    const closeBtn = document.getElementById("chatImageViewerClose");
+
+    if (messages && messages.dataset.v93ImageBound !== "1") {
+      messages.dataset.v93ImageBound = "1";
+
+      const openFromEvent = event => {
+        const button = event.target.closest?.(".chat-image-button");
+        if (!button) return;
+
+        const src = getRealImageSrcFromButton(button);
+        if (!src) return;
+
+        return window.openChatImageSrcRealV93(src, event);
+      };
+
+      messages.addEventListener("click", openFromEvent, { capture: true });
+      messages.addEventListener("touchend", openFromEvent, { capture: true, passive: false });
+    }
+
+    if (closeBtn && closeBtn.dataset.v93Bound !== "1") {
+      closeBtn.dataset.v93Bound = "1";
+      closeBtn.addEventListener("click", event => window.closeChatImageSrcRealV93(event));
+      closeBtn.addEventListener("touchend", event => window.closeChatImageSrcRealV93(event), { passive: false });
+    }
+
+    if (viewer && viewer.dataset.v93Bound !== "1") {
+      viewer.dataset.v93Bound = "1";
+      viewer.addEventListener("click", event => {
+        if (event.target === viewer) window.closeChatImageSrcRealV93(event);
+      });
+      viewer.addEventListener("touchend", event => {
+        if (event.target === viewer) window.closeChatImageSrcRealV93(event);
+      }, { passive: false });
+    }
+  }
+
+  bindV93();
+  document.addEventListener("DOMContentLoaded", bindV93);
+  setTimeout(bindV93, 350);
+})();
+
+
+// v96 - interacao do menu: long press correto no mobile e clique direito no PC.
+(function setupChatInteractionV96(){
+  if (window.__chatInteractionV96) return;
+  window.__chatInteractionV96 = true;
+
+  let pressTimer = null;
+  let pressStart = null;
+  let pressOpened = false;
+  let suppressNextClickUntil = 0;
+
+  function isTouchLike(event) {
+    return event?.pointerType === "touch" || event?.pointerType === "pen" || event?.type?.startsWith("touch");
+  }
+
+  function pointFromEvent(event) {
+    const touch = event?.changedTouches?.[0] || event?.touches?.[0];
+    return {
+      x: Number(touch?.clientX ?? event?.clientX ?? 0),
+      y: Number(touch?.clientY ?? event?.clientY ?? 0)
+    };
+  }
+
+  function rowFromEvent(event) {
+    return event?.target?.closest?.(".chat-message-row[data-chat-message]") || null;
+  }
+
+  function clearPress() {
+    if (pressTimer) clearTimeout(pressTimer);
+    pressTimer = null;
+    pressStart = null;
+    pressOpened = false;
+  }
+
+  function openMenuForRow(row, point) {
+    const id = row?.dataset?.chatMessage || "";
+    if (!id || typeof openChatActionMenu !== "function") return;
+    if (pressTimer) clearTimeout(pressTimer);
+    pressTimer = null;
+    pressOpened = true;
+    suppressNextClickUntil = Date.now() + 1500;
+    openChatActionMenu(id, {
+      clientX: point.x,
+      clientY: point.y,
+      target: row,
+      preventDefault() {},
+      stopPropagation() {}
+    });
+  }
+
+  function bindV96() {
+    const messages = document.getElementById("chatMessages");
+    if (!messages || messages.dataset.v96Bound === "1") return;
+    messages.dataset.v96Bound = "1";
+
+    messages.addEventListener("pointerdown", event => {
+      if (!isTouchLike(event)) return;
+      if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+
+      const row = rowFromEvent(event);
+      if (!row) {
+        if (typeof closeChatActionMenu === "function") closeChatActionMenu();
+        return;
+      }
+
+      event.stopImmediatePropagation();
+      clearPress();
+
+      const point = pointFromEvent(event);
+      pressStart = { ...point, row };
+      pressTimer = setTimeout(() => {
+        if (!pressStart || pressStart.row !== row) return;
+        if (navigator.vibrate) {
+          try { navigator.vibrate(15); } catch {}
+        }
+        openMenuForRow(row, point);
+      }, 620);
+    }, { capture: true, passive: false });
+
+    messages.addEventListener("touchstart", event => {
+      if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+      if (!rowFromEvent(event)) return;
+      event.stopImmediatePropagation();
+    }, { capture: true, passive: true });
+
+    const cancelIfMoved = event => {
+      if (!pressStart) return;
+      const point = pointFromEvent(event);
+      if (Math.abs(point.x - pressStart.x) > 10 || Math.abs(point.y - pressStart.y) > 10) {
+        clearPress();
+      }
+    };
+
+    messages.addEventListener("pointermove", cancelIfMoved, { capture: true, passive: true });
+    messages.addEventListener("touchmove", cancelIfMoved, { capture: true, passive: true });
+    messages.addEventListener("scroll", clearPress, { passive: true });
+
+    const finishTouch = event => {
+      if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+      if (Date.now() < suppressNextClickUntil) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        clearPress();
+        return;
+      }
+      const hadPress = Boolean(pressTimer || pressStart || pressOpened);
+      const opened = pressOpened;
+      clearPress();
+      if (hadPress) event.stopImmediatePropagation();
+      if (!opened && typeof closeChatActionMenu === "function") closeChatActionMenu();
+    };
+
+    messages.addEventListener("pointerup", finishTouch, { capture: true, passive: false });
+    messages.addEventListener("pointercancel", finishTouch, { capture: true, passive: false });
+    messages.addEventListener("touchend", finishTouch, { capture: true, passive: false });
+    messages.addEventListener("touchcancel", finishTouch, { capture: true, passive: false });
+
+    messages.addEventListener("click", event => {
+      if (event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+      if (Date.now() < suppressNextClickUntil) {
+        event.stopImmediatePropagation();
+        return;
+      }
+      if (rowFromEvent(event)) {
+        event.stopImmediatePropagation();
+        if (typeof closeChatActionMenu === "function") closeChatActionMenu();
+      }
+    }, { capture: true });
+
+    messages.addEventListener("contextmenu", event => {
+      const row = rowFromEvent(event);
+      if (!row || event.target.closest?.(".chat-image-button,[data-chat-image-src]")) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openMenuForRow(row, pointFromEvent(event));
+    }, { capture: true });
+  }
+
+  function closeMenuOnOutsidePress(event) {
+    const menu = document.getElementById("chatActionMenu");
+    if (!menu || menu.classList.contains("hidden")) return;
+    if (menu.contains(event.target)) return;
+    if (event.type === "click" && Date.now() < suppressNextClickUntil) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+    if (typeof closeChatActionMenu === "function") closeChatActionMenu();
+    if (event.target.closest?.("#chatPanel, #chatMessages, .chat-message-row")) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }
+
+  document.addEventListener("pointerdown", closeMenuOnOutsidePress, { capture: true });
+  document.addEventListener("touchstart", closeMenuOnOutsidePress, { capture: true, passive: false });
+
+  bindV96();
+  document.addEventListener("DOMContentLoaded", bindV96);
+  setTimeout(bindV96, 350);
+})();
+
+
+// v99 - abertura do chat mais rapida e sem bloquear no primeiro toque.
+(function setupChatOpenFastV99(){
+  if (window.__chatOpenFastV99) return;
+  window.__chatOpenFastV99 = true;
+
+  function isMobileV99() {
+    return window.matchMedia?.("(max-width: 760px)")?.matches || window.innerWidth <= 760;
+  }
+
+  function applyOpenClasses(open) {
+    const mobile = isMobileV99();
+    document.body.classList.toggle("chat-mobile-page-open", Boolean(open && mobile));
+    document.body.classList.toggle("chat-fullscreen-open", Boolean(open && mobile));
+    document.body.classList.toggle("chat-window-open", Boolean(open && !mobile));
+    document.documentElement.classList.toggle("chat-mobile-page-open", Boolean(open && mobile));
+  }
+
+  window.openChatPanel = function openChatPanelFastV99(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    }
+
+    const panel = document.getElementById("chatPanel");
+    const messages = document.getElementById("chatMessages");
+    if (!panel) return false;
+
+    panel.classList.remove("hidden");
+    panel.style.pointerEvents = "auto";
+    applyOpenClasses(true);
+
+    if (isMobileV99() && window.location.hash !== "#chat") {
+      try { history.pushState({ chatOpen: true }, "", "#chat"); } catch {}
+    }
+
+    try { if (typeof setupChatUi === "function") setupChatUi(); } catch {}
+    try { if (typeof renderChatTabs === "function") renderChatTabs(); } catch {}
+    try { if (typeof closeChatActionMenu === "function") closeChatActionMenu(); } catch {}
+
+    try {
+      chatOpenedOnce = true;
+      chatLastSeenAt = Date.now();
+      localStorage.setItem("mundial_chat_last_seen_at", String(chatLastSeenAt));
+    } catch {}
+
+    if (!currentUser) {
+      try { if (typeof renderChatMessages === "function") renderChatMessages(); } catch {}
+    } else if (messages && (!Array.isArray(chatMessagesCache) || !chatMessagesCache.length)) {
+      messages.innerHTML = `<div class="empty small-empty">A carregar chat...</div>`;
+    }
+
+    try { if (typeof startChatListenerSafe === "function") startChatListenerSafe(); } catch {}
+    try { if (typeof startPinnedChatListenerSafe === "function") startPinnedChatListenerSafe(); } catch {}
+    try { if (typeof startChatTypingListenerSafe === "function") startChatTypingListenerSafe(); } catch {}
+    try { if (typeof updateChatUnreadBadge === "function") updateChatUnreadBadge(); } catch {}
+    try { if (typeof chatNotifyNewMessages === "function") chatNotifyNewMessages(); } catch {}
+    try { if (typeof renderChatPinnedMessage === "function") renderChatPinnedMessage(); } catch {}
+
+    setTimeout(() => {
+      try { if (typeof scrollChatToBottom === "function") scrollChatToBottom(); } catch {}
+      if (!isMobileV99()) {
+        try { document.getElementById("chatInput")?.focus(); } catch {}
+      }
+    }, 40);
+
+    setTimeout(() => {
+      try {
+        if ((!Array.isArray(chatMessagesCache) || !chatMessagesCache.length) && typeof loadChatMessagesOnce === "function") {
+          loadChatMessagesOnce();
+        }
+      } catch {}
+    }, 450);
+
+    return false;
+  };
+
+  function bindV99() {
+    const openBtn = document.getElementById("chatOpenBtn");
+    if (!openBtn || openBtn.dataset.v99Open === "1") return;
+    openBtn.dataset.v99Open = "1";
+    openBtn.addEventListener("click", event => window.openChatPanel(event), { capture: true });
+    openBtn.addEventListener("touchend", event => window.openChatPanel(event), { capture: true, passive: false });
+  }
+
+  bindV99();
+  document.addEventListener("DOMContentLoaded", bindV99);
+  setTimeout(bindV99, 350);
+})();
+
+
+// v100 - botoes do menu de chat respondem no mobile sem bloquear.
+(function setupChatActionButtonsV100(){
+  if (window.__chatActionButtonsV100) return;
+  window.__chatActionButtonsV100 = true;
+
+  function handleAction(event, action) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    }
+
+    const id = chatActionMessageId;
+    closeChatActionMenu();
+    if (!id) return false;
+
+    if (action === "reply") setChatReply(id);
+    if (action === "pin") pinChatMessage(id);
+    if (action === "delete") deleteChatMessage(id);
+    return false;
+  }
+
+  function bindButton(button, action) {
+    if (!button || button.dataset.v100Bound === "1") return;
+    button.dataset.v100Bound = "1";
+    ["click", "pointerup", "touchend"].forEach(name => {
+      button.addEventListener(name, event => handleAction(event, action), { capture: true, passive: false });
+    });
+  }
+
+  function bindV100() {
+    bindButton(document.getElementById("chatActionReplyBtn"), "reply");
+    bindButton(document.getElementById("chatActionPinBtn"), "pin");
+    bindButton(document.getElementById("chatActionDeleteBtn"), "delete");
+  }
+
+  bindV100();
+  document.addEventListener("DOMContentLoaded", bindV100);
+  setTimeout(bindV100, 350);
+})();
+
+
+// v103 - recupera o chat quando algum estado antigo deixa o painel sem toque.
+(function setupChatTouchRecoveryV103(){
+  if (window.__chatTouchRecoveryV103) return;
+  window.__chatTouchRecoveryV103 = true;
+
+  let recoveryTimer = null;
+
+  function isMobileV103() {
+    return window.matchMedia?.("(max-width: 760px)")?.matches || window.innerWidth <= 760;
+  }
+
+  function chatIsOpen() {
+    const panel = document.getElementById("chatPanel");
+    return Boolean(panel && !panel.classList.contains("hidden"));
+  }
+
+  function closeImageViewerIfHiddenOrIdle() {
+    const viewer = document.getElementById("chatImageViewer");
+    const img = document.getElementById("chatImageViewerImg");
+    if (!viewer) return;
+    if (viewer.classList.contains("hidden")) {
+      viewer.style.pointerEvents = "none";
+      viewer.style.visibility = "";
+      viewer.style.opacity = "";
+      viewer.style.display = "";
+      document.body.classList.remove("chat-image-viewer-open");
+      document.documentElement.classList.remove("chat-image-viewer-open");
+      if (img && !viewer.classList.contains("hidden")) img.removeAttribute("src");
+    }
+  }
+
+  function forceChatInteractive() {
+    const panel = document.getElementById("chatPanel");
+    if (!panel || panel.classList.contains("hidden")) return;
+
+    const mobile = isMobileV103();
+    document.body.classList.toggle("chat-mobile-page-open", mobile);
+    document.body.classList.toggle("chat-fullscreen-open", mobile);
+    document.body.classList.toggle("chat-window-open", !mobile);
+    document.documentElement.classList.toggle("chat-mobile-page-open", mobile);
+
+    panel.style.pointerEvents = "auto";
+    panel.style.visibility = "visible";
+    panel.style.opacity = "1";
+
+    panel.querySelectorAll("button,input,textarea,select,.chat-messages,.chat-form,.chat-room-switch").forEach(el => {
+      el.style.pointerEvents = "auto";
+    });
+
+    closeImageViewerIfHiddenOrIdle();
+
+    if (typeof setupChatUi === "function") {
+      try { setupChatUi(); } catch {}
+    }
+    if (typeof setupChatCloseButtonSafe === "function") {
+      try { setupChatCloseButtonSafe(); } catch {}
+    }
+  }
+
+  function scheduleRecovery() {
+    if (recoveryTimer) clearTimeout(recoveryTimer);
+    forceChatInteractive();
+    recoveryTimer = setTimeout(forceChatInteractive, 80);
+  }
+
+  const previousOpen = window.openChatPanel;
+  window.openChatPanel = function openChatPanelRecoveredV103(event) {
+    const result = typeof previousOpen === "function" ? previousOpen(event) : false;
+    scheduleRecovery();
+    setTimeout(scheduleRecovery, 350);
+    return result;
+  };
+
+  document.addEventListener("pointerdown", event => {
+    if (!chatIsOpen()) return;
+    if (event.target.closest?.("#chatPanel, #chatActionMenu, #chatImageViewer")) scheduleRecovery();
+  }, { capture: true, passive: true });
+
+  document.addEventListener("touchstart", event => {
+    if (!chatIsOpen()) return;
+    if (event.target.closest?.("#chatPanel, #chatActionMenu, #chatImageViewer")) scheduleRecovery();
+  }, { capture: true, passive: true });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && chatIsOpen()) scheduleRecovery();
+  });
+
+  window.addEventListener("resize", () => {
+    if (chatIsOpen()) scheduleRecovery();
+  });
+
+  setInterval(() => {
+    if (chatIsOpen()) forceChatInteractive();
+  }, 2500);
+})();
+
+
+// v98 — Sistema de chat ativado/desativado por admin.
+let chatSystemEnabled = false;
+let chatSettingsUnsubscribeV98 = null;
+let chatSettingsLoadedV98 = false;
+
+function chatSettingsDocRefV98() {
+  if (!db || !firebaseApi) return null;
+  const { doc } = firebaseApi;
+  if (typeof doc !== "function") return null;
+  return doc(db, "appSettings", "chatSystem");
+}
+
+function isCurrentUserAdminV98() {
+  try {
+    if (typeof isCurrentUserAdmin === "function") return Boolean(isCurrentUserAdmin());
+  } catch {}
+
+  try {
+    if (typeof isAdmin === "function") return Boolean(isAdmin());
+  } catch {}
+
+  try {
+    if (typeof currentUserIsAdmin !== "undefined") return Boolean(currentUserIsAdmin);
+  } catch {}
+
+  try {
+    const email = String(currentUser?.email || "").toLowerCase().trim();
+    const cfg = window.APP_CONFIG || window.appConfig || {};
+    const admins = cfg.adminEmails || cfg.admins || [];
+    if (Array.isArray(admins) && admins.map(x => String(x).toLowerCase().trim()).includes(email)) return true;
+  } catch {}
+
+  try {
+    const email = String(currentUser?.email || "").toLowerCase().trim();
+    if (Array.isArray(window.adminEmails) && window.adminEmails.map(x => String(x).toLowerCase().trim()).includes(email)) return true;
+  } catch {}
+
+  try {
+    const email = String(currentUser?.email || "").toLowerCase().trim();
+    if (Array.isArray(APP_CONFIG?.adminEmails) && APP_CONFIG.adminEmails.map(x => String(x).toLowerCase().trim()).includes(email)) return true;
+  } catch {}
+
+  return false;
+}
+
+function setChatVisibleV98(enabled) {
+  chatSystemEnabled = Boolean(enabled);
+
+  const chatBtn = document.getElementById("chatOpenBtn");
+  const chatPanel = document.getElementById("chatPanel");
+  const adminToggle = document.getElementById("chatAdminToggleBtn");
+  const adminLabel = document.getElementById("chatAdminToggleLabel");
+  const isAdmin = isCurrentUserAdminV98();
+
+  if (chatBtn) {
+    chatBtn.classList.toggle("hidden", !chatSystemEnabled);
+    chatBtn.style.display = chatSystemEnabled ? "" : "none";
+  }
+
+  if (!chatSystemEnabled) { try { stopChatSafe(); } catch {} }
+
+  if (!chatSystemEnabled && chatPanel) {
+    chatPanel.classList.add("hidden");
+    try { document.body.classList.remove("chat-fullscreen-open", "chat-mobile-page-open", "chat-window-open"); } catch {}
+    try { document.documentElement.classList.remove("chat-mobile-page-open"); } catch {}
+  }
+
+  if (adminToggle) {
+    adminToggle.classList.toggle("hidden", !isAdmin);
+    adminToggle.style.display = isAdmin ? "" : "none";
+    adminToggle.classList.toggle("is-on", chatSystemEnabled);
+    adminToggle.classList.toggle("is-off", !chatSystemEnabled);
+  }
+
+  if (adminLabel) adminLabel.textContent = chatSystemEnabled ? "Ativo" : "Desativo";
+}
+
+async function saveChatSystemEnabledV98(enabled) {
+  if (!isCurrentUserAdminV98()) {
+    try { toast("Só o admin pode alterar o chat."); } catch {}
+    return;
+  }
+
+  if (!db || !firebaseApi || storageMode !== "firebase") {
+    try { toast("Firebase não está ligado."); } catch {}
+    return;
+  }
+
+  try {
+    const ref = chatSettingsDocRefV98();
+    if (!ref) throw new Error("Sem referência Firebase");
+
+    const { setDoc, serverTimestamp } = firebaseApi;
+    await setDoc(ref, {
+      enabled: Boolean(enabled),
+      updatedAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date().toISOString(),
+      updatedBy: currentUser?.uid || "",
+      updatedByEmail: String(currentUser?.email || "").toLowerCase()
+    }, { merge: true });
+
+    setChatVisibleV98(Boolean(enabled));
+    try { toast(Boolean(enabled) ? "Chat ativado." : "Chat desativado."); } catch {}
+  } catch (error) {
+    console.error("Falhou guardar estado do chat:", error);
+    try { toast("Não consegui guardar o estado do chat."); } catch {}
+  }
+}
+
+async function loadChatSystemEnabledV98() {
+  setChatVisibleV98(false);
+
+  if (!db || !firebaseApi || storageMode !== "firebase" || !currentUser) {
+    chatSettingsLoadedV98 = false;
+    setChatVisibleV98(false);
+    return;
+  }
+
+  try {
+    if (typeof chatSettingsUnsubscribeV98 === "function") {
+      try { chatSettingsUnsubscribeV98(); } catch {}
+      chatSettingsUnsubscribeV98 = null;
+    }
+
+    const ref = chatSettingsDocRefV98();
+    if (!ref) throw new Error("Sem referência Firebase");
+
+    const { onSnapshot } = firebaseApi;
+
+    if (typeof onSnapshot === "function") {
+      chatSettingsUnsubscribeV98 = onSnapshot(ref, snap => {
+        chatSettingsLoadedV98 = true;
+        const data = snap.exists?.() ? (snap.data?.() || {}) : {};
+        setChatVisibleV98(Boolean(data.enabled));
+      }, error => {
+        console.warn("Estado do chat não carregou:", error);
+        setChatVisibleV98(false);
+      });
+    }
+  } catch (error) {
+    console.warn("Erro ao carregar estado do chat:", error);
+    setChatVisibleV98(false);
+  }
+}
+
+function setupChatAdminToggleV98() {
+  const btn = document.getElementById("chatAdminToggleBtn");
+  if (btn && btn.dataset.v98Bound !== "1") {
+    btn.dataset.v98Bound = "1";
+    btn.addEventListener("click", async event => {
+      event.preventDefault();
+      event.stopPropagation();
+      await saveChatSystemEnabledV98(!chatSystemEnabled);
+    });
+  }
+
+  setChatVisibleV98(chatSystemEnabled);
+}
+
+// Bloqueia abertura se estiver desativado.
+(function wrapChatOpenWithToggleV98(){
+  if (window.__chatOpenToggleWrappedV98) return;
+  window.__chatOpenToggleWrappedV98 = true;
+
+  const originalWindowOpen = typeof window.openChatPanel === "function" ? window.openChatPanel : null;
+
+  window.openChatPanel = function openChatPanelToggleV98(...args) {
+    if (!chatSystemEnabled) {
+      try { toast("Chat desativado pelo admin."); } catch {}
+      return;
+    }
+
+    if (typeof originalWindowOpen === "function") return originalWindowOpen.apply(this, args);
+    try {
+      const panel = document.getElementById("chatPanel");
+      if (panel) panel.classList.remove("hidden");
+    } catch {}
+  };
+})();
+
+document.addEventListener("click", event => {
+  const chatBtn = event.target.closest?.("#chatOpenBtn");
+  if (!chatBtn) return;
+
+  if (!chatSystemEnabled) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+    try { toast("Chat desativado pelo admin."); } catch {}
+    return false;
+  }
+}, { capture: true });
+
+document.addEventListener("DOMContentLoaded", () => {
+  setupChatAdminToggleV98();
+  setChatVisibleV98(false);
+  setTimeout(setupChatAdminToggleV98, 300);
+});
+
+(function startChatSettingsWatcherV98(){
+  if (window.__chatSettingsWatcherV98) return;
+  window.__chatSettingsWatcherV98 = true;
+
+  const tick = () => {
+    setupChatAdminToggleV98();
+
+    if (currentUser && db && firebaseApi && storageMode === "firebase") {
+      if (!chatSettingsLoadedV98) loadChatSystemEnabledV98();
+    } else {
+      chatSettingsLoadedV98 = false;
+      setChatVisibleV98(false);
+    }
+  };
+
+  setInterval(tick, 60000);
+  setTimeout(tick, 800);
+  setTimeout(tick, 3000);
+})();
+
+
+// v107 — diagnóstico rápido no console.
+window.firestoreReadsOptimizerInfo = function firestoreReadsOptimizerInfo() {
+  return {
+    realtimeListeners: Array.isArray(realtimeUnsubscribers) ? realtimeUnsubscribers.length : null,
+    chatListener: Boolean(chatUnsubscribe),
+    pinnedChatListener: Boolean(chatPinnedUnsubscribe),
+    typingChatListener: Boolean(chatTypingUnsubscribe),
+    presenceEveryMs: typeof PRESENCE_UPDATE_MS !== "undefined" ? PRESENCE_UPDATE_MS : null,
+    onlineUsersEveryMs: typeof ONLINE_USERS_REFRESH_MS !== "undefined" ? ONLINE_USERS_REFRESH_MS : null,
+    chatLimit: typeof CHAT_LIMIT !== "undefined" ? CHAT_LIMIT : null
+  };
+};
+
+setTimeout(installFirestoreEconomyModeV114, 800);
+setTimeout(installFirestoreEconomyModeV114, 1800);
+setTimeout(installFirestoreEconomyModeV114, 3500);
+
+let v115PesquisarTodosInterval = null;
+document.addEventListener("DOMContentLoaded", () => {
+  if (!v115PesquisarTodosInterval && typeof addSearchButtonsToResultCards === "function") {
+    v115PesquisarTodosInterval = setInterval(addSearchButtonsToResultCards, 5000);
+  }
+});
+
+
+// v116 — barra de pesquisa funcional sem guardar texto.
+function setupSearchBarNoPersistV116() {
+  const candidates = [
+    "searchInput",
+    "searchBox",
+    "globalSearchInput",
+    "calendarSearchInput",
+    "gameSearchInput",
+    "gamesSearchInput",
+    "topSearchInput"
+  ];
+
+  let input = null;
+  for (const id of candidates) {
+    const el = document.getElementById(id);
+    if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) {
+      input = el;
+      break;
+    }
+  }
+
+  if (!input) {
+    input = Array.from(document.querySelectorAll('input[type="search"], input[placeholder*="Pesquisar" i], input[placeholder*="Procurar" i], input[aria-label*="Pesquisar" i]'))[0] || null;
+  }
+
+  if (!input || input.dataset.noPersistV116 === "1") return;
+
+  input.dataset.noPersistV116 = "1";
+  input.autocomplete = "off";
+  input.setAttribute("data-lpignore", "true");
+
+  // Não recuperar texto antigo.
+  input.value = "";
+  searchText = "";
+
+  const applySearch = () => {
+    searchText = String(input.value || "").trim();
+    try { renderCalendar(); } catch {}
+    try { renderCalendarFilterState(); } catch {}
+  };
+
+  input.addEventListener("input", applySearch);
+  input.addEventListener("search", applySearch);
+  input.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      input.value = "";
+      searchText = "";
+      applySearch();
+      input.blur();
+    }
+  });
+
+  // Ao fechar/atualizar, não deixa o texto ficar guardado no input pelo browser.
+  window.addEventListener("beforeunload", () => {
+    try { input.value = ""; searchText = ""; } catch {}
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setupSearchBarNoPersistV116();
+  setTimeout(setupSearchBarNoPersistV116, 500);
+  setTimeout(setupSearchBarNoPersistV116, 1500);
+});
+document.addEventListener("click", () => setTimeout(setupSearchBarNoPersistV116, 120));
+
+
+let v117PesquisarReapply = null;
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(addSearchButtonsToResultCards, 400);
+  setTimeout(addSearchButtonsToResultCards, 1200);
+  if (!v117PesquisarReapply) {
+    v117PesquisarReapply = setInterval(addSearchButtonsToResultCards, 4000);
+  }
+});
+document.addEventListener("click", () => setTimeout(addSearchButtonsToResultCards, 150));
+
+
+// v122 — Ajuda scroll da Fase Final mobile.
+function fixKnockoutMobileScrollV122() {
+  try {
+    const tab = document.getElementById("knockoutTab");
+    const host = document.getElementById("knockoutMobileV121");
+    const list = document.querySelector("#knockoutMobileV121 .ko-mobile-list");
+
+    if (tab) tab.classList.add("ko-mobile-scroll-page-v122");
+    if (host) host.classList.add("ko-mobile-scroll-host-v122");
+    if (list) list.classList.add("ko-mobile-scroll-list-v122");
+  } catch (error) {
+    console.warn("Fase final mobile scroll v122 falhou:", error);
   }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(cleanupKnockoutMobileOutsidePageV127, 300);
-  setTimeout(cleanupKnockoutMobileOutsidePageV127, 1200);
+  setTimeout(fixKnockoutMobileScrollV122, 400);
+  setTimeout(fixKnockoutMobileScrollV122, 1200);
 });
-document.addEventListener("click", () => setTimeout(cleanupKnockoutMobileOutsidePageV127, 120));
+
+document.addEventListener("click", () => setTimeout(fixKnockoutMobileScrollV122, 120));
+
+
+// v124 — impede que a vista mobile da Fase Final apareça noutras páginas.
+function isolateKnockoutMobileFromAdminV124() {
+  try {
+    const koTab = document.getElementById("knockoutTab");
+    const adminTab = document.getElementById("adminTab");
+    const mobile = document.getElementById("knockoutMobileV121");
+
+    const koVisible = koTab && (koTab.classList.contains("active") || getComputedStyle(koTab).display !== "none");
+    const adminVisible = adminTab && (adminTab.classList.contains("active") || getComputedStyle(adminTab).display !== "none");
+
+    if (mobile && (!koVisible || adminVisible)) {
+      mobile.remove();
+    }
+
+    if (koVisible && !adminVisible && typeof renderKnockoutMobileV121 === "function") {
+      const existing = document.getElementById("knockoutMobileV121");
+      if (!existing) renderKnockoutMobileV121();
+    }
+  } catch (error) {
+    console.warn("isolate KO mobile v124 falhou:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(isolateKnockoutMobileFromAdminV124, 300);
+  setTimeout(isolateKnockoutMobileFromAdminV124, 1200);
+});
+document.addEventListener("click", () => setTimeout(isolateKnockoutMobileFromAdminV124, 120));
+
+
+// v128 — render mobile da Fase Final só quando a aba Fase Final está ativa.
+function cleanupKnockoutMobileOutsidePageV128() {
+  const mobile = document.getElementById("knockoutMobileV121");
+  const activePanel = document.querySelector(".tab-panel.active");
+  if (mobile && activePanel?.id !== "knockoutTab") mobile.remove();
+}
+
+function renderKnockoutMobileIfActiveV128() {
+  const activePanel = document.querySelector(".tab-panel.active");
+  if (activePanel?.id === "knockoutTab" && typeof renderKnockoutMobileV121 === "function") {
+    renderKnockoutMobileV121();
+  } else {
+    cleanupKnockoutMobileOutsidePageV128();
+  }
+}
+
+document.addEventListener("click", event => {
+  const tabButton = event.target.closest('[data-tab]');
+  if (!tabButton) {
+    setTimeout(cleanupKnockoutMobileOutsidePageV128, 120);
+    return;
+  }
+
+  setTimeout(() => {
+    if (tabButton.dataset.tab === "knockoutTab") {
+      renderKnockoutMobileIfActiveV128();
+    } else {
+      cleanupKnockoutMobileOutsidePageV128();
+    }
+  }, 180);
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(cleanupKnockoutMobileOutsidePageV128, 400);
+  setTimeout(renderKnockoutMobileIfActiveV128, 1200);
+});
