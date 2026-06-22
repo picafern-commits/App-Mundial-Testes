@@ -7553,3 +7553,71 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(renderKnockoutMobileListPageV135, 1500);
 });
 document.addEventListener("click", () => setTimeout(renderKnockoutMobileListPageV135, 140));
+
+
+// v136 — scroll real da Fase Final mobile: liberta os contentores pais que cortam a lista.
+function setMobileViewportV136() {
+  try {
+    document.documentElement.style.setProperty("--real-vh-v136", `${window.innerHeight * 0.01}px`);
+  } catch {}
+}
+
+function enableKnockoutTruePageScrollV136() {
+  try {
+    setMobileViewportV136();
+
+    const activePanel = document.querySelector(".tab-panel.active");
+    const isKo = activePanel?.id === "knockoutTab";
+    document.body.classList.toggle("ko-true-scroll-v136", !!isKo);
+    document.documentElement.classList.toggle("ko-true-scroll-v136", !!isKo);
+
+    const ko = document.getElementById("knockoutTab");
+    const host = document.getElementById("knockoutMobileV121");
+    const list = document.querySelector("#knockoutMobileV121 .ko-mobile-list");
+
+    if (ko) ko.classList.toggle("ko-true-scroll-v136", !!isKo);
+    if (host) host.classList.toggle("ko-true-scroll-v136", !!isKo);
+    if (list) list.classList.toggle("ko-true-scroll-v136", !!isKo);
+
+    // Remove inline restrictions that can come from older mobile fixes.
+    if (isKo) {
+      [document.body, document.documentElement, ko, host, list].filter(Boolean).forEach(el => {
+        el.style.maxHeight = "none";
+        el.style.height = "auto";
+      });
+      if (ko) {
+        ko.style.overflow = "visible";
+        ko.style.overflowY = "visible";
+      }
+      if (host) {
+        host.style.overflow = "visible";
+        host.style.overflowY = "visible";
+      }
+      if (list) {
+        list.style.overflow = "visible";
+        list.style.overflowY = "visible";
+      }
+    }
+  } catch (error) {
+    console.warn("KO true scroll v136 falhou:", error);
+  }
+}
+
+window.addEventListener("resize", setMobileViewportV136);
+window.addEventListener("orientationchange", () => setTimeout(enableKnockoutTruePageScrollV136, 250));
+
+document.addEventListener("DOMContentLoaded", () => {
+  setMobileViewportV136();
+  setTimeout(enableKnockoutTruePageScrollV136, 250);
+  setTimeout(enableKnockoutTruePageScrollV136, 900);
+  setTimeout(enableKnockoutTruePageScrollV136, 1800);
+});
+
+document.addEventListener("click", () => {
+  setTimeout(enableKnockoutTruePageScrollV136, 80);
+  setTimeout(enableKnockoutTruePageScrollV136, 350);
+});
+
+document.addEventListener("touchmove", () => {
+  if (document.body.classList.contains("ko-true-scroll-v136")) enableKnockoutTruePageScrollV136();
+}, { passive: true });
