@@ -7494,3 +7494,31 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(enhanceKnockoutMobileCardsV130, 1400);
 });
 document.addEventListener("click", () => setTimeout(enhanceKnockoutMobileCardsV130, 140));
+
+
+// v131 — scroll real e limpo na Fase Final mobile.
+function fixKnockoutMobileScrollV131() {
+  try {
+    const activePanel = document.querySelector(".tab-panel.active");
+    const isKo = activePanel?.id === "knockoutTab";
+    document.body.classList.toggle("ko-mobile-v131-active", !!isKo);
+
+    const koTab = document.getElementById("knockoutTab");
+    const host = document.getElementById("knockoutMobileV121");
+    const list = document.querySelector("#knockoutMobileV121 .ko-mobile-list");
+
+    if (koTab) koTab.classList.toggle("ko-mobile-v131-active", !!isKo);
+    if (host) host.classList.toggle("ko-mobile-v131-host", !!isKo);
+    if (list) list.classList.toggle("ko-mobile-v131-list", !!isKo);
+  } catch (error) {
+    console.warn("KO mobile v131 scroll falhou:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(fixKnockoutMobileScrollV131, 300);
+  setTimeout(fixKnockoutMobileScrollV131, 1000);
+  setTimeout(fixKnockoutMobileScrollV131, 1800);
+});
+document.addEventListener("click", () => setTimeout(fixKnockoutMobileScrollV131, 120));
+document.addEventListener("touchstart", () => setTimeout(fixKnockoutMobileScrollV131, 120), { passive: true });
