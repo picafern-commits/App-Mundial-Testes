@@ -533,7 +533,117 @@ function setFirebaseStatus(type, message) {
   box.textContent = message;
 }
 
+
+
+// v113 — Modo económico Firebase: reduz listeners de snapshot.
+const FIRESTORE_ECONOMY_V113 = {
+  installed: false,
+  pollers: new Set(),
+  normalPollMs: 150000,
+  chatPollMs: 120000,
+  settingsPollMs: 180000
+};
+
+function economySnapshotDelayV113(target) {
+  try {
+    const path = String(target?.path || target?._query?.path?.canonicalString?.() || target?._query?.path?.segments?.join?.("/") || target?._path?.canonicalString?.() || "").toLowerCase();
+    if (path.includes("chat")) return FIRESTORE_ECONOMY_V113.chatPollMs;
+    if (path.includes("settings") || path.includes("appsettings")) return FIRESTORE_ECONOMY_V113.settingsPollMs;
+    if (path.includes("presence")) return 180000;
+  } catch {}
+  return FIRESTORE_ECONOMY_V113.normalPollMs;
+}
+
+function isDocRefV113(target) {
+  try {
+    if (target?.type === "document") return true;
+    if (target?.path && !target?._query) return true;
+    const segments = target?._key?.path?.segments || target?._path?.segments || [];
+    return Array.isArray(segments) && segments.length > 0 && segments.length % 2 === 0;
+  } catch {
+    return false;
+  }
+}
+
+function installFirestoreEconomyModeV113() {
+  if (FIRESTORE_ECONOMY_V113.installed) return;
+  if (!firebaseApi || typeof firebaseApi.onSnapshot !== "function") return;
+  if (typeof firebaseApi.getDoc !== "function" || typeof firebaseApi.getDocs !== "function") return;
+
+  const originalOnSnapshot = firebaseApi.onSnapshot;
+  firebaseApi.__originalOnSnapshotV113 = firebaseApi.__originalOnSnapshotV113 || originalOnSnapshot;
+
+  firebaseApi.onSnapshot = function economyOnSnapshotV113(target, ...args) {
+    let next = null;
+    let errorCb = null;
+
+    for (const arg of args) {
+      if (typeof arg === "function" && !next) next = arg;
+      else if (typeof arg === "function" && !errorCb) errorCb = arg;
+      else if (arg && typeof arg.next === "function") {
+        next = arg.next.bind(arg);
+        if (typeof arg.error === "function") errorCb = arg.error.bind(arg);
+      }
+    }
+
+    if (!next) return firebaseApi.__originalOnSnapshotV113.call(this, target, ...args);
+
+    let stopped = false;
+    let running = false;
+    let timer = null;
+    const delay = economySnapshotDelayV113(target);
+
+    const run = async () => {
+      if (stopped || running) return;
+      running = true;
+      try {
+        const isDoc = isDocRefV113(target);
+        const snap = isDoc ? await firebaseApi.getDoc(target) : await firebaseApi.getDocs(target);
+        if (!stopped) next(snap);
+      } catch (error) {
+        if (typeof errorCb === "function") errorCb(error);
+        else console.warn("Firestore económico v113:", error);
+      } finally {
+        running = false;
+        if (!stopped) timer = setTimeout(run, delay);
+      }
+    };
+
+    timer = setTimeout(run, 300);
+
+    const unsubscribe = () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+      FIRESTORE_ECONOMY_V113.pollers.delete(unsubscribe);
+    };
+
+    FIRESTORE_ECONOMY_V113.pollers.add(unsubscribe);
+    return unsubscribe;
+  };
+
+  FIRESTORE_ECONOMY_V113.installed = true;
+  console.info("Firestore modo económico v113 ativo.");
+}
+
+function stopFirestoreEconomyPollersV113() {
+  FIRESTORE_ECONOMY_V113.pollers.forEach(unsub => {
+    try { unsub(); } catch {}
+  });
+  FIRESTORE_ECONOMY_V113.pollers.clear();
+}
+
+window.firestoreEconomyInfoV113 = function firestoreEconomyInfoV113() {
+  return {
+    installed: FIRESTORE_ECONOMY_V113.installed,
+    activePollers: FIRESTORE_ECONOMY_V113.pollers.size,
+    normalPollMs: FIRESTORE_ECONOMY_V113.normalPollMs,
+    chatPollMs: FIRESTORE_ECONOMY_V113.chatPollMs,
+    settingsPollMs: FIRESTORE_ECONOMY_V113.settingsPollMs
+  };
+};
+
 async function initFirebase() {
+  setTimeout(installFirestoreEconomyModeV113, 0);
   const config = APP_CONFIG.firebase || {};
 
   if (!config.apiKey || !config.projectId) {
@@ -709,7 +819,7 @@ function queueRealtimeRender(reason = "firebase realtime") {
     ensureKnockoutSettings();
     saveLocalData(reason);
     renderAll();
-  }, 900);
+  }, 1200);
 }
 
 function setupRealtimeSync() {
@@ -1645,8 +1755,8 @@ function authFriendlyError(error) {
 
 const PRESENCE_COLLECTION = "presence";
 const ONLINE_WINDOW_MS = 2 * 60 * 1000;
-const PRESENCE_UPDATE_MS = 120 * 1000;
-const ONLINE_USERS_REFRESH_MS = 120 * 1000;
+const PRESENCE_UPDATE_MS = 180 * 1000;
+const ONLINE_USERS_REFRESH_MS = 180 * 1000;
 
 function displayNameFromEmail(email) {
   const value = String(email || "").trim();
@@ -1872,7 +1982,7 @@ function stopOnlineFeaturesSafe() {
 
 
 const CHAT_COLLECTION = "chatMessages";
-const CHAT_LIMIT = 60;
+const CHAT_LIMIT = 35;
 
 function chatUserName() {
   return String(currentProfile?.name || "").trim() || displayNameFromEmail(currentUser?.email || "") || currentUser?.email || "User";
@@ -7010,3 +7120,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 document.addEventListener("click", () => setTimeout(fixOnlineUsersPopupLayerV112, 60));
+
+setTimeout(installFirestoreEconomyModeV113, 800);
+setTimeout(installFirestoreEconomyModeV113, 1800);
+setTimeout(installFirestoreEconomyModeV113, 3500);

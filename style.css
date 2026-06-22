@@ -7870,3 +7870,11 @@ body.users-popup-open-v112 .v111-day{
     z-index:2147483300!important;
   }
 }
+
+
+/* v113 — indicador discreto do modo económico Firebase */
+.firebase-status-box::after{
+  content:" · modo económico";
+  opacity:.68;
+  font-weight:700;
+}
