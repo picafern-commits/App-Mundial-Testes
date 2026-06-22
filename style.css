@@ -8733,3 +8733,232 @@ body{
     flex:1 1 130px!important;
   }
 }
+/* v162 - gestao mais profissional: Admin, Logs, Configuracoes, PWA e estados. */
+:root{
+  --v162-panel:rgba(12,19,32,.92);
+  --v162-line:rgba(255,255,255,.13);
+  --v162-blue:#3b82f6;
+  --v162-purple:#8b5cf6;
+  --v162-amber:#fbbf24;
+  --v162-red:#fb7185;
+  --v162-teal:#22d3ee;
+}
+
+.admin-overview-v162,
+.settings-grid-v162{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:12px!important;
+}
+
+.settings-grid-v162{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+}
+
+.admin-overview-v162 article,
+.settings-card-v162{
+  min-width:0!important;
+  padding:16px!important;
+  border:1px solid var(--v162-line)!important;
+  border-radius:10px!important;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.035)),
+    var(--v162-panel)!important;
+  box-shadow:0 14px 36px rgba(0,0,0,.20)!important;
+}
+
+.admin-overview-v162 span,
+.settings-card-v162 span{
+  display:block!important;
+  color:rgba(255,255,255,.64)!important;
+  font-size:11px!important;
+  font-weight:950!important;
+  text-transform:uppercase!important;
+}
+
+.admin-overview-v162 strong,
+.settings-card-v162 strong{
+  display:block!important;
+  margin-top:6px!important;
+  color:#fff!important;
+  font-size:28px!important;
+  line-height:1!important;
+  font-weight:1000!important;
+}
+
+.admin-overview-v162 p,
+.settings-card-v162 p{
+  margin:8px 0 0!important;
+  color:rgba(255,255,255,.68)!important;
+  font-size:13px!important;
+  font-weight:750!important;
+  overflow-wrap:anywhere!important;
+}
+
+.settings-actions-v162{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:8px!important;
+  margin-top:14px!important;
+}
+
+.settings-actions-v162 button{
+  flex:1 1 132px!important;
+}
+
+.logs-toolbar .collapse-actions{
+  align-items:end!important;
+}
+
+.logs-filter-control{
+  display:grid!important;
+  gap:5px!important;
+  min-width:170px!important;
+  color:rgba(255,255,255,.68)!important;
+  font-size:11px!important;
+  font-weight:950!important;
+  text-transform:uppercase!important;
+}
+
+.logs-filter-control input,
+.logs-filter-control select{
+  min-height:38px!important;
+  border:1px solid var(--v162-line)!important;
+  border-radius:8px!important;
+  padding:8px 10px!important;
+  color:#fff!important;
+  background:rgba(255,255,255,.075)!important;
+  text-transform:none!important;
+  font-size:13px!important;
+  font-weight:800!important;
+}
+
+.logs-summary-v162{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:8px!important;
+  align-items:center!important;
+  margin:0 0 12px!important;
+}
+
+.logs-summary-v162 > span,
+.log-chip-v162{
+  min-height:30px!important;
+  border:1px solid var(--v162-line)!important;
+  border-radius:999px!important;
+  padding:6px 10px!important;
+  color:rgba(255,255,255,.72)!important;
+  background:rgba(255,255,255,.055)!important;
+  font-size:12px!important;
+  font-weight:900!important;
+}
+
+.log-chip-v162{
+  cursor:pointer!important;
+}
+
+.log-chip-v162.active{
+  color:#fff!important;
+  border-color:rgba(139,92,246,.55)!important;
+  background:linear-gradient(135deg,rgba(59,130,246,.34),rgba(139,92,246,.30))!important;
+}
+
+.log-chip-v162 b{
+  margin-left:4px!important;
+  color:#fff!important;
+}
+
+.system-log-actor em{
+  display:inline-flex!important;
+  justify-content:center!important;
+  min-height:24px!important;
+  margin-bottom:6px!important;
+  border:1px solid var(--v162-line)!important;
+  border-radius:999px!important;
+  padding:4px 8px!important;
+  color:#fff!important;
+  background:rgba(255,255,255,.07)!important;
+  font-size:11px!important;
+  font-style:normal!important;
+  font-weight:950!important;
+}
+
+.system-log-row.results{ border-left:3px solid var(--v162-blue)!important; }
+.system-log-row.knockout{ border-left:3px solid var(--v162-purple)!important; }
+.system-log-row.users{ border-left:3px solid var(--v162-teal)!important; }
+.system-log-row.sync{ border-left:3px solid var(--v162-amber)!important; }
+.system-log-row.errors{ border-left:3px solid var(--v162-red)!important; }
+
+.state,
+.admin-result-chip,
+.match-status,
+.status{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-height:28px!important;
+  border-radius:999px!important;
+  padding:5px 10px!important;
+  border:1px solid var(--v162-line)!important;
+  font-size:12px!important;
+  font-weight:1000!important;
+  white-space:nowrap!important;
+}
+
+.state.open{ color:#dbeafe!important; background:rgba(59,130,246,.12)!important; border-color:rgba(59,130,246,.35)!important; }
+.state.played{ color:#ccfbf1!important; background:rgba(20,184,166,.13)!important; border-color:rgba(45,212,191,.34)!important; }
+.state.live{ color:#fef3c7!important; background:rgba(251,191,36,.14)!important; border-color:rgba(251,191,36,.35)!important; }
+.state.suspended{ color:#ffe390!important; background:rgba(251,191,36,.13)!important; border-color:rgba(251,191,36,.42)!important; }
+.state.locked{ color:#fecaca!important; background:rgba(248,113,113,.12)!important; border-color:rgba(248,113,113,.32)!important; }
+
+.modal{
+  backdrop-filter:blur(12px)!important;
+}
+
+.modal-card{
+  border-radius:14px!important;
+  border-color:var(--v162-line)!important;
+  background:linear-gradient(180deg,rgba(13,21,34,.98),rgba(7,11,19,.98))!important;
+}
+
+body.modal-open-v162{
+  overflow:hidden!important;
+}
+
+#settingsTab .section-head,
+#logsTab .section-head,
+#adminTab .section-head{
+  background:
+    linear-gradient(135deg,rgba(59,130,246,.13),rgba(139,92,246,.12)),
+    var(--v162-panel)!important;
+}
+
+@media(max-width:980px){
+  .admin-overview-v162,
+  .settings-grid-v162{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+
+@media(max-width:760px){
+  .admin-overview-v162,
+  .settings-grid-v162{
+    grid-template-columns:1fr!important;
+  }
+
+  .logs-toolbar .collapse-actions,
+  .settings-actions-v162{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    align-items:stretch!important;
+  }
+
+  .logs-filter-control{
+    min-width:0!important;
+  }
+
+  .admin-overview-v162 strong,
+  .settings-card-v162 strong{
+    font-size:24px!important;
+  }
+}

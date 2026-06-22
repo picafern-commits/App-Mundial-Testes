@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Mundial Pontos 2026 · Visual Pro v161</title>
+  <title>Mundial Pontos 2026 · Gestão Pro v162</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Mundial 2026" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -108,6 +108,7 @@
       <button class="tab" type="button" data-tab="knockoutTab">Fase Final</button>
       <button class="tab" type="button" data-tab="logsTab">Logs</button>
       <button class="tab" type="button" data-tab="adminTab">Admin</button>
+      <button class="tab" type="button" data-tab="settingsTab">Configurações</button>
     </nav>
 
     <main>
@@ -167,11 +168,26 @@
               <span>Atualiza automaticamente quando a app sincroniza.</span>
             </div>
             <div class="collapse-actions">
+              <label class="logs-filter-control">Tipo
+                <select id="logsTypeFilter">
+                  <option value="all">Todos</option>
+                  <option value="results">Resultados</option>
+                  <option value="knockout">Fase Final</option>
+                  <option value="users">Utilizadores</option>
+                  <option value="sync">Firebase / Sync</option>
+                  <option value="admin">Admin</option>
+                  <option value="errors">Erros</option>
+                </select>
+              </label>
+              <label class="logs-filter-control">Pesquisar
+                <input id="logsSearchInput" type="search" placeholder="Ação, utilizador ou detalhe" />
+              </label>
               <button id="exportLogsBtn" class="secondary" type="button">Exportar logs</button>
               <button id="clearLogsBtn" class="secondary danger-soft" type="button">Limpar logs</button>
               <button id="lockLogsBtn" class="secondary" type="button">Bloquear</button>
             </div>
           </div>
+          <div id="logsSummaryV162" class="logs-summary-v162"></div>
           <div id="systemLogsList" class="system-logs-list"></div>
         </div>
       </section>
@@ -188,6 +204,7 @@
 
         <div id="adminUnlocked" class="hidden admin-stack admin-accordion">
           <div id="firebaseStatusBox" class="firebase-status-box">Firebase: a iniciar ligação...</div>
+          <div id="adminOverviewV162" class="admin-overview-v162"></div>
 
           <details class="admin-card admin-collapse">
             <summary>
@@ -394,6 +411,46 @@
             </summary>
             <div id="adminGamesList" class="admin-list"></div>
           </details>
+        </div>
+      </section>
+
+      <section id="settingsTab" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <h2>Configurações</h2>
+            <p>Estado da app, instalação PWA, cache e atalhos de manutenção.</p>
+          </div>
+        </div>
+
+        <div class="settings-grid-v162">
+          <article class="settings-card-v162">
+            <span>Versão</span>
+            <strong id="appVersionLabelV162">v162</strong>
+            <p id="pwaUpdateStateV162">A verificar atualizações...</p>
+            <div class="settings-actions-v162">
+              <button id="forceUpdateAppBtnV162" class="primary" type="button">Atualizar app</button>
+              <button id="clearCacheBtnV162" class="secondary" type="button">Limpar cache</button>
+            </div>
+          </article>
+
+          <article class="settings-card-v162">
+            <span>Instalação</span>
+            <strong id="pwaInstallStateV162">PWA pronta</strong>
+            <p id="pwaStandaloneStateV162">A app pode ser instalada no iPhone, Android e PC.</p>
+            <div class="settings-actions-v162">
+              <button id="installAppFromSettingsBtnV162" class="primary" type="button">Instalar app</button>
+            </div>
+          </article>
+
+          <article class="settings-card-v162">
+            <span>Dados</span>
+            <strong id="storageModeLabelV162">A carregar...</strong>
+            <p id="settingsSyncLabelV162">Estado da sincronização e cache local.</p>
+            <div class="settings-actions-v162">
+              <button id="openLogsFromSettingsBtnV162" class="secondary" type="button">Abrir logs</button>
+              <button id="openAdminFromSettingsBtnV162" class="secondary" type="button">Abrir Admin</button>
+            </div>
+          </article>
         </div>
       </section>
     </main>

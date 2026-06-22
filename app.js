@@ -10,6 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
+const APP_VERSION_LABEL = "v162";
 
 let db = null;
 let firebaseApi = null;
@@ -1832,6 +1833,7 @@ function permissionTabAllowed(tabId) {
   if (tabId === "knockoutTab") return hasPermission("knockout");
   if (tabId === "adminTab") return hasPermission("admin");
   if (tabId === "logsTab") return true;
+  if (tabId === "settingsTab") return true;
   return true;
 }
 
@@ -1852,6 +1854,7 @@ function applyPermissionsToUi() {
   document.querySelector('[data-tab="knockoutTab"]')?.classList.toggle("hidden", !hasPermission("knockout"));
   document.querySelector('[data-tab="logsTab"]')?.classList.toggle("hidden", false);
   document.querySelector('[data-tab="adminTab"]')?.classList.toggle("hidden", !hasPermission("admin"));
+  document.querySelector('[data-tab="settingsTab"]')?.classList.toggle("hidden", false);
 
   $("adminTab")?.classList.toggle("no-access", !hasPermission("admin"));
 
@@ -4623,7 +4626,7 @@ function renderAll() {
   setupSearchResultsAdminButton();
   setTimeout(addSearchButtonsToResultCards, 0);
   setupOnlineUsersCloseControls();
-  setupKnockoutAdjustTopButton(); renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSystemLogs(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); updateActiveAppSection(); 
+  setupKnockoutAdjustTopButton(); renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSystemLogs(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); renderAdminOverviewV162(); renderAppSettingsPanelV162(); applyPermissionsToUi(); updateActiveAppSection(); 
   setTimeout(addSearchButtonsToResultCards, 250);
 }
 
@@ -5317,39 +5320,122 @@ function renderAdmin() {
     </article>`).join("");
 }
 
-function renderSystemLogs() {
-  const container = $("systemLogsList");
-  const lockedPanel = $("logsLockedPanel");
-  const unlockedPanel = $("logsUnlockedPanel");
-  const unlocked = isLogsUnlocked();
+function logCategoryV162(log) {
+  const text = `${log?.action || ""} ${log?.detail || ""}`.toLowerCase();
+  if (/erro|falh|error|pin errado/.test(text)) return "errors";
+  if (/firebase|sync|sincron|cache|offline|online/.test(text)) return "sync";
+  if (/fase final|knockout|pen[aá]lt|ronda|bracket/.test(text)) return "knockout";
+  if (/resultado|jogo|suspens|suspenso|apostas?/.test(text)) return "results";
+  if (/utilizador|user|users|permiss|conta|perfil/.test(text)) return "users";
+  if (/admin|pontos|excel|import|export/.test(text)) return "admin";
+  return "admin";
+}
 
-  lockedPanel?.classList.toggle("hidden", unlocked);
-  unlockedPanel?.classList.toggle("hidden", !unlocked);
+function logCategoryLabelV162(category) {
+  return ({
+    results: "Resultados",
+    knockout: "Fase Final",
+    users: "Utilizadores",
+    sync: "Firebase / Sync",
+    admin: "Admin",
+    errors: "Erros"
+  })[category] || "Admin";
+}
 
-  if (!container || !unlocked) {
-    if (container) container.innerHTML = "";
-    return;
-  }
+function filteredSystemLogsV162() {
+  const type = $("logsTypeFilter")?.value || "all";
+  const search = String($("logsSearchInput")?.value || "").trim().toLowerCase();
 
-  const logs = systemLogs();
-  if (!logs.length) {
-    container.innerHTML = `<div class="empty small-empty">Ainda não há logs registados.</div>`;
-    return;
-  }
+  return systemLogs().filter(log => {
+    const category = logCategoryV162(log);
+    if (type !== "all" && category !== type) return false;
+    if (!search) return true;
+    const haystack = [
+      log?.action,
+      log?.detail,
+      log?.actorName,
+      log?.actorEmail,
+      JSON.stringify(log?.meta || {})
+    ].join(" ").toLowerCase();
+    return haystack.includes(search);
+  });
+}
 
-  container.innerHTML = logs.slice(0, MAX_SYSTEM_LOGS).map(log => `
-    <article class="system-log-row">
-      <div class="system-log-main">
-        <span>${escapeHtml(formatLogTime(log.at))}</span>
-        <strong>${escapeHtml(log.action || "Ação")}</strong>
-        <p>${escapeHtml(log.detail || "")}</p>
-      </div>
-      <div class="system-log-actor">
-        <strong>${escapeHtml(log.actorName || "Sistema")}</strong>
-        <span>${escapeHtml(log.actorEmail || "")}</span>
-      </div>
+function renderLogsSummaryV162(logs, total) {
+  const summary = $("logsSummaryV162");
+  if (!summary) return;
+  const active = $("logsTypeFilter")?.value || "all";
+  const counts = logs.reduce((acc, log) => {
+    const category = logCategoryV162(log);
+    acc[category] = (acc[category] || 0) + 1;
+    return acc;
+  }, {});
+
+  summary.innerHTML = `
+    <span>${logs.length} de ${total} logs</span>
+    ${["results", "knockout", "users", "sync", "admin", "errors"].map(category => `
+      <button type="button" class="log-chip-v162 ${active === category ? "active" : ""}" data-log-filter="${category}">
+        ${escapeHtml(logCategoryLabelV162(category))} <b>${counts[category] || 0}</b>
+      </button>
+    `).join("")}
+  `;
+}
+
+function renderAdminOverviewV162() {
+  const container = $("adminOverviewV162");
+  if (!container) return;
+
+  const totalGames = games.length;
+  const missing = games.filter(needsFinalResult).length;
+  const played = games.filter(hasFinalResult).length;
+  const suspended = games.filter(isSuspendedGame).length;
+  const usersCount = allPlayers().length;
+  const koCount = appSettings?.knockout?.matches?.length || 0;
+
+  container.innerHTML = `
+    <article>
+      <span>Resultados</span>
+      <strong>${played}/${totalGames}</strong>
+      <p>${missing} jogos por fechar</p>
     </article>
-  `).join("");
+    <article>
+      <span>Suspensos</span>
+      <strong>${suspended}</strong>
+      <p>Continuam em falta até terem resultado final</p>
+    </article>
+    <article>
+      <span>Users</span>
+      <strong>${usersCount}</strong>
+      <p>Participantes com apostas ou registo manual</p>
+    </article>
+    <article>
+      <span>Fase Final</span>
+      <strong>${koCount}</strong>
+      <p>Jogos preparados no bracket</p>
+    </article>
+  `;
+}
+
+function renderAppSettingsPanelV162() {
+  const version = $("appVersionLabelV162");
+  if (!version) return;
+
+  version.textContent = APP_VERSION_LABEL;
+  const standalone = isStandaloneMode();
+  const ios = isIosDevice();
+  const online = navigator.onLine;
+
+  if ($("pwaInstallStateV162")) $("pwaInstallStateV162").textContent = standalone ? "Instalada" : "Pronta para instalar";
+  if ($("pwaStandaloneStateV162")) {
+    $("pwaStandaloneStateV162").textContent = standalone
+      ? "A app está a correr em modo instalado."
+      : ios
+        ? "No iPhone, instala pelo Safari em Partilhar > Adicionar ao Ecrã Principal."
+        : "Usa o botão instalar quando o navegador disponibilizar a instalação.";
+  }
+  if ($("pwaUpdateStateV162")) $("pwaUpdateStateV162").textContent = $("refreshAppBtn")?.classList.contains("has-update") ? "Nova versão pronta para aplicar." : "Versão atual carregada.";
+  if ($("storageModeLabelV162")) $("storageModeLabelV162").textContent = storageMode === "firebase" ? "Firebase online" : "Modo local";
+  if ($("settingsSyncLabelV162")) $("settingsSyncLabelV162").textContent = online ? "Dispositivo online. A app sincroniza quando o Firebase estiver disponível." : "Dispositivo offline. As alterações ficam guardadas localmente.";
 }
 
 function unlockLogsTab() {
@@ -5373,36 +5459,6 @@ function lockLogsTab() {
   setLogsUnlocked(false);
   renderSystemLogs();
   toast("Logs bloqueados.");
-}
-
-function exportSystemLogsCsv() {
-  if (!isLogsUnlocked()) return toast("Desbloqueia os logs com PIN.");
-  const logs = systemLogs();
-  if (!logs.length) return toast("Ainda não há logs para exportar.");
-
-  const rows = [
-    ["Data", "Ação", "Detalhe", "Utilizador", "Email", "Dados"],
-    ...logs.map(log => [
-      formatLogTime(log.at),
-      log.action || "",
-      log.detail || "",
-      log.actorName || "",
-      log.actorEmail || "",
-      JSON.stringify(log.meta || {})
-    ])
-  ];
-
-  const csv = rows.map(row => row.map(csvEscape).join(";")).join("\r\n");
-  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `logs-mundial-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-  toast("Logs exportados.");
 }
 
 async function clearSystemLogs() {
@@ -6323,6 +6379,7 @@ document.querySelectorAll(".tab").forEach(button => {
     updateActiveAppSection();
     if (button.dataset.tab === "knockoutTab") renderKnockout();
     if (button.dataset.tab === "logsTab") renderSystemLogs();
+    if (button.dataset.tab === "settingsTab") renderAppSettingsPanelV162();
   });
 });
 $("unlockAdminBtn").addEventListener("click", () => {
@@ -9221,3 +9278,167 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(renderSuspendedGameAdminV159, 3500);
 });
 document.addEventListener("click", () => setTimeout(renderSuspendedGameAdminV159, 180));
+
+// v162 - camada limpa para Admin, Logs, Configurações e PWA.
+function renderSystemLogs() {
+  const container = $("systemLogsList");
+  const lockedPanel = $("logsLockedPanel");
+  const unlockedPanel = $("logsUnlockedPanel");
+  const summary = $("logsSummaryV162");
+  const unlocked = isLogsUnlocked();
+
+  lockedPanel?.classList.toggle("hidden", unlocked);
+  unlockedPanel?.classList.toggle("hidden", !unlocked);
+
+  if (!container || !unlocked) {
+    if (container) container.innerHTML = "";
+    if (summary) summary.innerHTML = "";
+    return;
+  }
+
+  const allLogs = systemLogs();
+  const logs = filteredSystemLogsV162();
+  renderLogsSummaryV162(logs, allLogs.length);
+
+  if (!logs.length) {
+    container.innerHTML = `<div class="empty small-empty">Não há logs para este filtro.</div>`;
+    return;
+  }
+
+  container.innerHTML = logs.slice(0, MAX_SYSTEM_LOGS).map(log => {
+    const category = logCategoryV162(log);
+    return `
+      <article class="system-log-row ${escapeHtml(category)}">
+        <div class="system-log-main">
+          <span>${escapeHtml(formatLogTime(log.at))}</span>
+          <strong>${escapeHtml(log.action || "Ação")}</strong>
+          <p>${escapeHtml(log.detail || "")}</p>
+        </div>
+        <div class="system-log-actor">
+          <em>${escapeHtml(logCategoryLabelV162(category))}</em>
+          <strong>${escapeHtml(log.actorName || "Sistema")}</strong>
+          <span>${escapeHtml(log.actorEmail || "")}</span>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function exportSystemLogsCsv() {
+  if (!isLogsUnlocked()) return toast("Desbloqueia os logs com PIN.");
+  const logs = filteredSystemLogsV162();
+  if (!logs.length) return toast("Não há logs para exportar neste filtro.");
+
+  const rows = [
+    ["Data", "Tipo", "Ação", "Detalhe", "Utilizador", "Email", "Dados"],
+    ...logs.map(log => [
+      formatLogTime(log.at),
+      logCategoryLabelV162(logCategoryV162(log)),
+      log.action || "",
+      log.detail || "",
+      log.actorName || "",
+      log.actorEmail || "",
+      JSON.stringify(log.meta || {})
+    ])
+  ];
+
+  const csv = rows.map(row => row.map(csvEscape).join(";")).join("\r\n");
+  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `logs-mundial-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  toast("Logs exportados.");
+}
+
+function openTabV162(tabId) {
+  const button = document.querySelector(`.tab[data-tab="${CSS.escape(tabId)}"]`);
+  if (!button || !permissionTabAllowed(tabId)) return false;
+  button.click();
+  return true;
+}
+
+async function clearAppCachesV162() {
+  await clearAppCaches();
+  renderAppSettingsPanelV162();
+  toast("Cache limpa. Se necessário, atualiza a app.");
+}
+
+function setupModalStateV162() {
+  const hasOpenModal = [...document.querySelectorAll(".modal")].some(modal => !modal.classList.contains("hidden"));
+  document.body.classList.toggle("modal-open-v162", hasOpenModal);
+}
+
+function closeTopModalV162() {
+  const modals = [...document.querySelectorAll(".modal")].filter(modal => !modal.classList.contains("hidden"));
+  const modal = modals.at(-1);
+  if (!modal) return false;
+
+  if (modal.id === "resultModal") closeResultModal();
+  else if (modal.id === "betsModal") closeBetsModal();
+  else if (modal.id === "excelModal") modal.classList.add("hidden");
+  else if (modal.id === "knockoutRecordModal") modal.remove();
+  else modal.classList.add("hidden");
+
+  setupModalStateV162();
+  return true;
+}
+
+function setupV162Controls() {
+  if (window.__mundialV162ControlsBound) return;
+  window.__mundialV162ControlsBound = true;
+
+  $("logsTypeFilter")?.addEventListener("change", renderSystemLogs);
+  $("logsSearchInput")?.addEventListener("input", renderSystemLogs);
+
+  const oldExportBtn = $("exportLogsBtn");
+  if (oldExportBtn) {
+    const exportBtn = oldExportBtn.cloneNode(true);
+    oldExportBtn.replaceWith(exportBtn);
+    exportBtn.addEventListener("click", exportSystemLogsCsv);
+  }
+
+  document.addEventListener("click", event => {
+    const chip = event.target.closest("[data-log-filter]");
+    if (chip) {
+      const select = $("logsTypeFilter");
+      if (select) select.value = chip.dataset.logFilter || "all";
+      renderSystemLogs();
+      return;
+    }
+
+    const modal = event.target.closest(".modal");
+    if (modal && event.target === modal) {
+      closeTopModalV162();
+      return;
+    }
+
+    if (event.target.closest("[data-modal-close], .modal-close, .close-modal")) {
+      closeTopModalV162();
+    }
+  }, true);
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && closeTopModalV162()) event.preventDefault();
+  }, true);
+
+  $("forceUpdateAppBtnV162")?.addEventListener("click", refreshAppNow);
+  $("clearCacheBtnV162")?.addEventListener("click", clearAppCachesV162);
+  $("installAppFromSettingsBtnV162")?.addEventListener("click", () => $("installAppBtn")?.click());
+  $("openLogsFromSettingsBtnV162")?.addEventListener("click", () => openTabV162("logsTab"));
+  $("openAdminFromSettingsBtnV162")?.addEventListener("click", () => openTabV162("adminTab") || toast("Sem permissão para abrir Admin."));
+
+  window.addEventListener("online", renderAppSettingsPanelV162);
+  window.addEventListener("offline", renderAppSettingsPanelV162);
+  setInterval(setupModalStateV162, 600);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setupV162Controls();
+  renderAdminOverviewV162();
+  renderAppSettingsPanelV162();
+});
