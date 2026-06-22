@@ -292,6 +292,21 @@ function statusOf(game) {
 }
 function isLocked(game) { return statusOf(game).className !== "open"; }
 
+function isSuspendedGame(game) {
+  const apiStatus = String(game?.footballDataStatus || game?.statusApi || "").toUpperCase();
+  return game?.manualStatus === "SUSPENDED" ||
+    game?.manualSuspended === true ||
+    apiStatus === "SUSPENDED";
+}
+
+function hasFinalResult(game) {
+  return hasResult(game) && !isSuspendedGame(game);
+}
+
+function needsFinalResult(game) {
+  return isSuspendedGame(game) || !hasFinalResult(game);
+}
+
 function mergeSettings(input = {}) {
   const base = defaultSettings();
   return {
@@ -1072,18 +1087,18 @@ async function persistSettings() {
 function betsForGame(gameId) { return bets.filter(bet => bet.gameId === gameId); }
 
 function isExactBet(bet, game) {
-  if (!bet || !game || !hasResult(game)) return false;
+  if (!bet || !game || !hasFinalResult(game)) return false;
   return Number(bet.homeGuess) === Number(game.homeScore) &&
     Number(bet.awayGuess) === Number(game.awayScore);
 }
 
 function isOutcomeBet(bet, game) {
-  if (!bet || !game || !hasResult(game)) return false;
+  if (!bet || !game || !hasFinalResult(game)) return false;
   return outcome(bet.homeGuess, bet.awayGuess) === outcome(game.homeScore, game.awayScore);
 }
 
 function pointsForBet(bet, game) {
-  if (!bet || !game || !hasResult(game)) return 0;
+  if (!bet || !game || !hasFinalResult(game)) return 0;
 
   const exactPoints = Number(appSettings?.points?.exact) || 3;
   const winnerPoints = Number(appSettings?.points?.winner) || 1;
@@ -1233,7 +1248,7 @@ function playerStats(playerName) {
       return;
     }
 
-    if (!hasResult(game)) return;
+    if (!hasFinalResult(game)) return;
 
     const points = pointsForBet(bet, game);
     stats.gamePoints += points;
@@ -1278,11 +1293,11 @@ function filteredGames() {
   let base = [...games];
 
   if (calendarViewMode === "missing") {
-    base = base.filter(game => !hasResult(game));
+    base = base.filter(needsFinalResult);
   }
 
   if (calendarViewMode === "played") {
-    base = base.filter(game => hasResult(game));
+    base = base.filter(hasFinalResult);
   }
 
   const query = (searchText || "").trim().toLowerCase();
@@ -3563,7 +3578,7 @@ function knockoutMatchById(id) {
 }
 
 function groupStageFinished() {
-  return games.length > 0 && games.every(hasResult);
+  return games.length > 0 && games.every(hasFinalResult);
 }
 
 function knockoutAvailable() {
@@ -3667,7 +3682,7 @@ function propagateKnockoutWinners(shouldSave = true) {
 
 function knockoutEntryButtonHtml() {
   const available = knockoutAvailable();
-  const missing = games.filter(game => !hasResult(game)).length;
+  const missing = games.filter(needsFinalResult).length;
   const text = available ? "Abrir Fase Final" : `Fase Final bloqueada · faltam ${missing} resultado(s)`;
   return `
     <div class="knockout-entry-card ${available ? "available" : "locked"}">
@@ -3795,7 +3810,7 @@ function renderKnockout() {
   if (!container) return;
 
   if (!knockoutAvailable()) {
-    const missing = games.filter(game => !hasResult(game)).length;
+    const missing = games.filter(needsFinalResult).length;
     if (notice) notice.innerHTML = `<strong>Fase Final bloqueada</strong><span>Faltam ${missing} resultado(s) da fase de grupos. O Admin pode ativar esta página para trabalhar.</span>`;
     container.innerHTML = "";
     return;
@@ -4617,8 +4632,8 @@ function renderCalendarFilterState() {
   const playedBtn = $("calendarPlayedGamesBtn");
   const allBtn = $("calendarAllGamesBtn");
 
-  const missingCount = games.filter(game => !hasResult(game)).length;
-  const playedCount = games.filter(game => hasResult(game)).length;
+  const missingCount = games.filter(needsFinalResult).length;
+  const playedCount = games.filter(hasFinalResult).length;
   const totalCount = games.length;
 
   if (missingBtn) {
@@ -4668,10 +4683,12 @@ function renderCalendar() {
 }
 function renderMatchRow(game) {
   const status = statusOf(game);
-  const scoreText = hasResult(game) ? `${game.homeScore}-${game.awayScore}` : "VS";
+  const finalResult = hasFinalResult(game);
+  const suspended = isSuspendedGame(game);
+  const scoreText = finalResult ? `${game.homeScore}-${game.awayScore}` : (suspended ? "Suspenso" : "VS");
   const gameBets = betsForGame(game.id);
-  const settledText = hasResult(game) ? `${gameBets.length} apostas · pontos atribuídos` : `${gameBets.length} apostas importadas`;
-  const resultButtonText = hasResult(game) ? "Editar resultado" : "Adicionar resultado";
+  const settledText = finalResult ? `${gameBets.length} apostas · pontos atribuídos` : `${gameBets.length} apostas importadas`;
+  const resultButtonText = finalResult ? "Editar resultado" : "Adicionar resultado";
 
   return `
     <article class="match-row ${status.className}">
@@ -4727,6 +4744,7 @@ function polishScorePlayedGamesOnlyV118() {
 
 function gameHasRealResultV119(game) {
   if (!game) return false;
+  if (isSuspendedGame(game)) return false;
 
   const candidates = [
     [game.homeScore, game.awayScore],
@@ -4936,7 +4954,7 @@ function buildStandings() {
     if (!tables.has(game.group)) tables.set(game.group, new Map());
     const table = tables.get(game.group);
     [game.homeTeam, game.awayTeam].forEach(team => { if (!table.has(team)) table.set(team, blankTeam(team)); });
-    if (!hasResult(game)) return;
+    if (!hasFinalResult(game)) return;
     const home = table.get(game.homeTeam), away = table.get(game.awayTeam);
     const hs = Number(game.homeScore), as = Number(game.awayScore);
     home.played += 1; away.played += 1;
@@ -4985,7 +5003,7 @@ function openResultsSearchDashboard() {
   }
 
   const dueGames = (games || [])
-    .filter(game => !hasResult(game))
+    .filter(needsFinalResult)
     .filter(game => parsePortugalDate(game.matchDate).getTime() <= Date.now())
     .sort((a, b) => parsePortugalDate(a.matchDate) - parsePortugalDate(b.matchDate));
 
@@ -4996,7 +5014,7 @@ function openResultsSearchDashboard() {
   }
 
   const nextGame = (games || [])
-    .filter(game => !hasResult(game))
+    .filter(needsFinalResult)
     .sort((a, b) => parsePortugalDate(a.matchDate) - parsePortugalDate(b.matchDate))[0];
 
   if (nextGame) {
@@ -5293,8 +5311,8 @@ function renderAdmin() {
   container.innerHTML = games.map(game => `
     <article class="admin-row"><div class="admin-match"><span class="group-pill">${escapeHtml(game.group)}</span><strong>${escapeHtml(game.homeTeam)} vs ${escapeHtml(game.awayTeam)}</strong><small>${timePortugal(game.matchDate)} · ${escapeHtml(dateHeader(game.matchDate))} · ${betsForGame(game.id).length} apostas</small></div>
       <div class="result-inputs modal-result-actions">
-        <span class="admin-result-chip">${hasResult(game) ? `Resultado: ${game.homeScore}-${game.awayScore}` : "Sem resultado"}</span>
-        <button class="primary" type="button" data-result-game="${escapeHtml(game.id)}">${hasResult(game) ? "Editar resultado" : "Adicionar resultado"}</button>
+        <span class="admin-result-chip">${hasFinalResult(game) ? `Resultado: ${game.homeScore}-${game.awayScore}` : (isSuspendedGame(game) ? "Suspenso" : "Sem resultado")}</span>
+        <button class="primary" type="button" data-result-game="${escapeHtml(game.id)}">${hasFinalResult(game) ? "Editar resultado" : "Adicionar resultado"}</button>
       </div>
     </article>`).join("");
 }
@@ -9049,11 +9067,7 @@ function getAllEditableGamesV159() {
       });
     }
 
-    const koMatches =
-      state?.knockout?.matches ||
-      state?.settings?.knockout?.matches ||
-      settings?.knockout?.matches ||
-      [];
+    const koMatches = appSettings?.knockout?.matches || [];
 
     if (Array.isArray(koMatches)) {
       koMatches.forEach(game => {
@@ -9176,12 +9190,19 @@ async function setSuspendedGameV159(isSuspended) {
 
     Object.assign(item.game, payload);
 
-    const firestoreDb = typeof db !== "undefined" ? db : window.db;
-    if (type === "group" && firestoreDb?.collection) {
-      await firestoreDb.collection("games").doc(id).set(payload, { merge: true });
+    if (type === "group") {
+      markGamePending(item.game.id);
+      saveLocalData(isSuspended ? "jogo marcado suspenso" : "suspensão removida");
+      saveGameFastToFirebase(item.game, { reason: isSuspended ? "jogo marcado suspenso" : "suspensão removida" })
+        .catch(error => {
+          console.warn("Suspenso guardado localmente; Firebase pendente:", error);
+          markGamePending(item.game.id);
+          scheduleFullSync("reenviar jogo suspenso", 800);
+        });
     } else {
-      if (typeof saveSettings === "function") await saveSettings();
-      else if (typeof saveLocalData === "function") saveLocalData("jogo suspenso fase final");
+      markSettingsPending();
+      saveLocalData("jogo suspenso fase final");
+      scheduleFullSync("jogo suspenso fase final", 500);
     }
 
     if (typeof saveLocalData === "function") saveLocalData("jogo suspenso");

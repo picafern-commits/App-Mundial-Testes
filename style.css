@@ -8592,3 +8592,144 @@ summary:focus-visible{
   border-color:rgba(255,98,98,.42)!important;
   background:rgba(255,98,98,.10)!important;
 }
+
+/* v161 — acabamento visual profissional + destaque de jogos suspensos. */
+:root{
+  --professional-panel:rgba(13,21,34,.88);
+  --professional-panel-strong:rgba(17,28,44,.94);
+  --professional-line:rgba(255,255,255,.12);
+}
+
+body{
+  background:
+    radial-gradient(circle at 12% 0%,rgba(34,184,207,.16),transparent 28%),
+    radial-gradient(circle at 88% 0%,rgba(255,212,90,.10),transparent 25%),
+    linear-gradient(180deg,#070b13 0%,#0a111d 48%,#070b13 100%)!important;
+}
+
+.app-shell{
+  max-width:1480px!important;
+}
+
+.topbar{
+  border:1px solid var(--professional-line)!important;
+  background:linear-gradient(180deg,rgba(13,21,34,.96),rgba(7,11,19,.92))!important;
+  box-shadow:0 22px 60px rgba(0,0,0,.28)!important;
+}
+
+.topbar h1{
+  letter-spacing:0!important;
+}
+
+.section-head,
+.day-block,
+.admin-card,
+.player-score-card,
+.logs-live-panel,
+.logs-lock-card{
+  border:1px solid var(--professional-line)!important;
+  background:linear-gradient(180deg,var(--professional-panel-strong),var(--professional-panel))!important;
+  box-shadow:0 16px 42px rgba(0,0,0,.22)!important;
+}
+
+.day-block{
+  border-radius:14px!important;
+  padding:14px!important;
+}
+
+.day-block h3{
+  margin:0 0 10px!important;
+  color:#fff!important;
+  font-size:15px!important;
+  font-weight:1000!important;
+}
+
+.match-list{
+  display:grid!important;
+  gap:10px!important;
+}
+
+.match-row{
+  border:1px solid rgba(255,255,255,.10)!important;
+  border-radius:12px!important;
+  background:rgba(255,255,255,.045)!important;
+  transition:transform .16s ease,border-color .16s ease,background .16s ease!important;
+}
+
+.match-row:hover{
+  transform:translateY(-1px)!important;
+  border-color:rgba(34,184,207,.34)!important;
+  background:rgba(255,255,255,.065)!important;
+}
+
+.match-row.suspended{
+  border-color:rgba(255,212,90,.42)!important;
+  background:
+    linear-gradient(90deg,rgba(255,212,90,.13),rgba(255,255,255,.045) 36%),
+    rgba(255,255,255,.04)!important;
+}
+
+.match-row.suspended .score-vs{
+  min-width:86px!important;
+  color:#ffe390!important;
+  border-color:rgba(255,212,90,.36)!important;
+  background:rgba(255,212,90,.10)!important;
+  font-size:12px!important;
+}
+
+.state.suspended,
+.match-status.suspended,
+.status.suspended,
+.badge.suspended{
+  color:#ffe390!important;
+  border-color:rgba(255,212,90,.42)!important;
+  background:rgba(255,212,90,.12)!important;
+}
+
+.group-pill{
+  border-color:rgba(34,184,207,.30)!important;
+  background:rgba(34,184,207,.10)!important;
+}
+
+.score-vs{
+  border:1px solid rgba(255,255,255,.10)!important;
+  border-radius:10px!important;
+  background:rgba(255,255,255,.06)!important;
+}
+
+.calendar-actions{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:8px!important;
+  justify-content:flex-end!important;
+}
+
+.admin-card summary{
+  padding:6px 2px!important;
+}
+
+.admin-card[open]{
+  border-color:rgba(34,184,207,.24)!important;
+}
+
+.football-realtime-sync-box-v156,
+.suspended-game-admin-box-v159{
+  border-color:rgba(34,184,207,.22)!important;
+  background:
+    radial-gradient(circle at top left,rgba(34,184,207,.12),transparent 30%),
+    linear-gradient(180deg,rgba(13,21,34,.98),rgba(7,11,19,.98))!important;
+}
+
+@media(max-width:760px){
+  .day-block{
+    padding:11px!important;
+  }
+
+  .calendar-actions{
+    justify-content:stretch!important;
+  }
+
+  .calendar-actions button{
+    flex:1 1 130px!important;
+  }
+}
