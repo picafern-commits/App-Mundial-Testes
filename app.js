@@ -7470,3 +7470,27 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(updateKnockoutScrollClassV129, 1000);
 });
 document.addEventListener("click", () => setTimeout(updateKnockoutScrollClassV129, 120));
+
+
+// v130 — acabamento visual seguro da Fase Final mobile.
+function enhanceKnockoutMobileCardsV130() {
+  try {
+    const activePanel = document.querySelector(".tab-panel.active");
+    if (activePanel?.id !== "knockoutTab") return;
+    document.querySelectorAll("#knockoutMobileV121 .ko-mobile-card").forEach((card, index) => {
+      card.classList.add("ko-mobile-card-premium-v130");
+      card.style.setProperty("--ko-index", String(index));
+      const status = card.querySelector(".ko-mobile-status");
+      card.classList.toggle("is-done-v130", !!status?.classList.contains("done"));
+      card.classList.toggle("is-waiting-v130", !status?.classList.contains("done"));
+    });
+    document.querySelectorAll("#knockoutMobileV121 .ko-mobile-chip").forEach(chip => chip.classList.add("ko-mobile-chip-premium-v130"));
+  } catch (error) {
+    console.warn("KO mobile premium v130 falhou:", error);
+  }
+}
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(enhanceKnockoutMobileCardsV130, 500);
+  setTimeout(enhanceKnockoutMobileCardsV130, 1400);
+});
+document.addEventListener("click", () => setTimeout(enhanceKnockoutMobileCardsV130, 140));
