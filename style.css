@@ -7902,3 +7902,131 @@ summary:focus-visible{
     width:100%!important;
   }
 }
+
+
+/* v143 — botão fixo de resultados automáticos no topo do Admin */
+#footballDataAdminFixedBoxV143{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  width:100%!important;
+  box-sizing:border-box!important;
+  margin:0 0 12px!important;
+  padding:14px 16px!important;
+  border:1px solid rgba(52,211,153,.32)!important;
+  border-radius:16px!important;
+  background:linear-gradient(135deg,rgba(16,185,129,.16),rgba(15,23,42,.96))!important;
+  box-shadow:0 14px 28px rgba(0,0,0,.22)!important;
+}
+#footballDataAdminFixedBoxV143 .football-data-admin-fixed-info-v143{
+  display:grid!important;
+  gap:4px!important;
+}
+#footballDataAdminFixedBoxV143 strong{
+  color:#ffffff!important;
+  font-size:15px!important;
+  font-weight:950!important;
+}
+#footballDataAdminFixedBoxV143 span{
+  color:rgba(255,255,255,.68)!important;
+  font-size:12px!important;
+  line-height:1.3!important;
+}
+#footballDataAdminFixedBoxV143 #syncFootballDataBtn{
+  min-height:42px!important;
+  padding:10px 14px!important;
+  border-radius:12px!important;
+  white-space:nowrap!important;
+  background:linear-gradient(135deg,rgba(16,185,129,.98),rgba(34,197,94,.88))!important;
+  border-color:rgba(52,211,153,.55)!important;
+}
+#footballDataAdminFixedBoxV143 #syncFootballDataBtn:disabled{
+  opacity:.45!important;
+  cursor:not-allowed!important;
+}
+@media(max-width:760px){
+  #footballDataAdminFixedBoxV143{
+    flex-direction:column!important;
+    align-items:stretch!important;
+  }
+  #footballDataAdminFixedBoxV143 #syncFootballDataBtn{
+    width:100%!important;
+  }
+}
+
+
+/* v144 — PC ocupa o ecrã todo */
+@media(min-width:901px){
+  html.pc-full-width-v144,
+  body.pc-full-width-v144{
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    overflow-x:hidden!important;
+  }
+
+  body.pc-full-width-v144{
+    margin:0!important;
+  }
+
+  body.pc-full-width-v144 .app,
+  body.pc-full-width-v144 #app,
+  body.pc-full-width-v144 .app-shell,
+  body.pc-full-width-v144 .shell,
+  body.pc-full-width-v144 .page-shell,
+  body.pc-full-width-v144 .container,
+  body.pc-full-width-v144 .main-container,
+  body.pc-full-width-v144 main,
+  body.pc-full-width-v144 .main,
+  body.pc-full-width-v144 .content,
+  body.pc-full-width-v144 .app-content,
+  body.pc-full-width-v144 .tab-content,
+  body.pc-full-width-v144 .tab-panel.active{
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    margin-left:0!important;
+    margin-right:0!important;
+    box-sizing:border-box!important;
+  }
+
+  body.pc-full-width-v144 .app,
+  body.pc-full-width-v144 #app{
+    min-height:100vh!important;
+  }
+
+  body.pc-full-width-v144 main,
+  body.pc-full-width-v144 .main,
+  body.pc-full-width-v144 .content,
+  body.pc-full-width-v144 .app-content{
+    padding-left:12px!important;
+    padding-right:12px!important;
+  }
+
+  body.pc-full-width-v144 header,
+  body.pc-full-width-v144 .topbar,
+  body.pc-full-width-v144 .nav,
+  body.pc-full-width-v144 .tabs,
+  body.pc-full-width-v144 .tabbar,
+  body.pc-full-width-v144 .status-bar,
+  body.pc-full-width-v144 .firebase-status,
+  body.pc-full-width-v144 .panel,
+  body.pc-full-width-v144 .card,
+  body.pc-full-width-v144 .admin-section,
+  body.pc-full-width-v144 .admin-card,
+  body.pc-full-width-v144 .day-block,
+  body.pc-full-width-v144 .leaderboard-table,
+  body.pc-full-width-v144 #footballDataAdminFixedBoxV143{
+    width:100%!important;
+    max-width:none!important;
+    box-sizing:border-box!important;
+  }
+
+  body.pc-full-width-v144 .grid,
+  body.pc-full-width-v144 .cards-grid,
+  body.pc-full-width-v144 .admin-grid{
+    width:100%!important;
+    max-width:none!important;
+  }
+}

@@ -8211,3 +8211,118 @@ document.addEventListener("click", () => {
   setTimeout(ensureFootballDataButtonV142, 120);
   setTimeout(ensureFootballDataButtonV142, 500);
 });
+
+
+// v143 — botão fixo no topo do Admin, independente do layout interno.
+function isAdminPageActiveV143() {
+  try {
+    const adminTabActive = document.querySelector('.tab.active[data-tab="admin"], .nav-btn.active[data-tab="admin"], button.active[data-tab="admin"]');
+    if (adminTabActive) return true;
+
+    const activePanel = document.querySelector(".tab-panel.active, .page.active, section.active");
+    const text = ((activePanel?.id || "") + " " + (activePanel?.textContent || "")).toLowerCase();
+    if (text.includes("permissões de utilizadores") || text.includes("permissoes de utilizadores")) return true;
+    if (text.includes("importar excel resultados") && text.includes("sistema de pontos")) return true;
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function findAdminRootV143() {
+  const byContent = Array.from(document.querySelectorAll("section, main, div"))
+    .filter(el => {
+      const text = (el.textContent || "").toLowerCase();
+      return text.includes("permissões de utilizadores") || text.includes("permissoes de utilizadores");
+    })
+    .sort((a, b) => (a.textContent || "").length - (b.textContent || "").length);
+
+  return byContent[0] || document.querySelector(".tab-panel.active") || document.querySelector("main") || document.body;
+}
+
+function ensureFootballDataAdminFixedButtonV143() {
+  try {
+    if (!isAdminPageActiveV143()) return;
+
+    let box = document.getElementById("footballDataAdminFixedBoxV143");
+    let btn = document.getElementById("syncFootballDataBtn");
+
+    if (!box) {
+      const root = findAdminRootV143();
+      box = document.createElement("div");
+      box.id = "footballDataAdminFixedBoxV143";
+      box.className = "football-data-admin-fixed-box-v143";
+      box.innerHTML = `
+        <div class="football-data-admin-fixed-info-v143">
+          <strong>Resultados automáticos</strong>
+          <span>Vai buscar resultados ao football-data.org e atualiza a pontuação.</span>
+        </div>
+        <button id="syncFootballDataBtn" class="primary" type="button">Atualizar resultados automáticos</button>
+      `;
+
+      root.prepend(box);
+      btn = document.getElementById("syncFootballDataBtn");
+    }
+
+    if (box) {
+      box.hidden = false;
+      box.style.display = "flex";
+      box.classList.remove("hidden");
+    }
+
+    if (btn) {
+      btn.hidden = false;
+      btn.style.display = "";
+      btn.classList.remove("hidden");
+
+      const allowed =
+        (typeof hasPermission === "function" && hasPermission("editResults")) ||
+        (typeof isAdmin !== "undefined" && isAdmin) ||
+        String(currentUser?.email || "").toLowerCase() === "pica.fern@gmail.com";
+
+      btn.disabled = !allowed;
+      btn.title = allowed ? "" : "Sem permissão para editar resultados.";
+
+      if (btn.dataset.footballDataReady !== "1") {
+        btn.dataset.footballDataReady = "1";
+        btn.addEventListener("click", () => {
+          if (typeof syncFootballDataResultsV139 === "function") {
+            syncFootballDataResultsV139();
+          } else {
+            toast("A ligação football-data não carregou. Atualiza a página e tenta novamente.");
+          }
+        });
+      }
+    }
+  } catch (error) {
+    console.warn("Botão football-data v143 falhou:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(ensureFootballDataAdminFixedButtonV143, 250);
+  setTimeout(ensureFootballDataAdminFixedButtonV143, 900);
+  setTimeout(ensureFootballDataAdminFixedButtonV143, 1800);
+  setInterval(ensureFootballDataAdminFixedButtonV143, 2500);
+});
+document.addEventListener("click", () => {
+  setTimeout(ensureFootballDataAdminFixedButtonV143, 100);
+  setTimeout(ensureFootballDataAdminFixedButtonV143, 450);
+});
+
+
+// v144 — força layout desktop a ocupar a largura toda.
+function enablePcFullWidthV144() {
+  try {
+    const isDesktop = window.matchMedia("(min-width: 900px)").matches;
+    document.body.classList.toggle("pc-full-width-v144", isDesktop);
+    document.documentElement.classList.toggle("pc-full-width-v144", isDesktop);
+  } catch {}
+}
+window.addEventListener("resize", enablePcFullWidthV144);
+document.addEventListener("DOMContentLoaded", () => {
+  enablePcFullWidthV144();
+  setTimeout(enablePcFullWidthV144, 400);
+  setTimeout(enablePcFullWidthV144, 1200);
+});
