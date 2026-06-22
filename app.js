@@ -4165,47 +4165,97 @@ function playedGamesNewestFirstV118() {
     .sort((a, b) => parsePortugalDate(b.matchDate).getTime() - parsePortugalDate(a.matchDate).getTime());
 }
 
+
 function polishScorePlayedGamesOnlyV118() {
-  try {
-    document.querySelectorAll("#scoreTab [data-game-id], #scoreTab [data-result-game]").forEach(el => {
-      const id = el.getAttribute("data-game-id") || el.getAttribute("data-result-game");
-      const game = games.find(item => item.id === id);
-      if (game && !hasResult(game)) {
-        const row = el.closest(".game-row,.match-row,.bet-row,.score-game-row,tr,.card,article,li") || el;
-        row.style.display = "none";
-      }
-    });
-  } catch (error) {
-    console.warn("Pontuação v118 polish falhou:", error);
-  }
+  // v119: a filtragem correta já é feita em playerGameRows.
 }
+
+
+
+
+function gameHasRealResultV119(game) {
+  if (!game) return false;
+
+  const candidates = [
+    [game.homeScore, game.awayScore],
+    [game.scoreHome, game.scoreAway],
+    [game.homeGoals, game.awayGoals],
+    [game.resultHome, game.resultAway],
+    [game.goalsHome, game.goalsAway]
+  ];
+
+  return candidates.some(([home, away]) => {
+    if (home === "" || home === null || home === undefined) return false;
+    if (away === "" || away === null || away === undefined) return false;
+    return Number.isFinite(Number(home)) && Number.isFinite(Number(away));
+  });
+}
+
+function gameScorePairV119(game) {
+  const candidates = [
+    [game.homeScore, game.awayScore],
+    [game.scoreHome, game.scoreAway],
+    [game.homeGoals, game.awayGoals],
+    [game.resultHome, game.resultAway],
+    [game.goalsHome, game.goalsAway]
+  ];
+
+  for (const [home, away] of candidates) {
+    if (home === "" || home === null || home === undefined) continue;
+    if (away === "" || away === null || away === undefined) continue;
+    if (Number.isFinite(Number(home)) && Number.isFinite(Number(away))) {
+      return [Number(home), Number(away)];
+    }
+  }
+
+  return [null, null];
+}
+
+function playedGamesNewestFirstV119() {
+  return games
+    .filter(game => gameHasRealResultV119(game))
+    .slice()
+    .sort((a, b) => parsePortugalDate(b.matchDate).getTime() - parsePortugalDate(a.matchDate).getTime());
+}
+
+
+
+
+function betForPlayerGameV120(playerName, gameId) {
+  const normalizedName = String(playerName || "").trim();
+  const normalizedId = playerIdFromName(normalizedName);
+
+  return bets.find(item => {
+    if (!item || item.gameId !== gameId) return false;
+
+    const itemName = String(item.playerName || "").trim();
+    const itemId = String(item.playerId || "").trim();
+
+    return (
+      itemId === normalizedId ||
+      playerIdFromName(itemName) === normalizedId ||
+      itemName.toLowerCase() === normalizedName.toLowerCase()
+    );
+  }) || null;
+}
+
 
 function playerGameRows(playerName) {
-  const playerId = playerIdFromName(playerName);
+  return playedGamesNewestFirstV119().map(game => {
+    const bet = betForPlayerGameV120(playerName, game.id);
+    const points = bet ? pointsForBet(bet, game) : 0;
 
-  return games
-    .filter(game => hasResult(game))
-    .slice()
-    .sort((a, b) => parsePortugalDate(b.matchDate).getTime() - parsePortugalDate(a.matchDate).getTime())
-    .map(game => {
-      const bet = betForPlayerGame(playerId, game.id);
-      const points = bet ? pointsForBet(bet, game) : 0;
-      const result = `${Number(game.homeScore)}-${Number(game.awayScore)}`;
-      const prediction = bet ? `${Number(bet.homeGuess)}-${Number(bet.awayGuess)}` : "—";
-      const cls = bet ? betResultClass(bet, game) : "miss";
-      const label = bet ? betResultLabel(bet, game) : "Sem aposta";
-
-      return {
-        game,
-        bet,
-        points,
-        result,
-        prediction,
-        cls,
-        label
-      };
-    });
+    return {
+      game,
+      bet,
+      points,
+      label: bet ? betResultLabel(bet, game) : "Sem aposta",
+      className: bet ? betResultClass(bet, game) : "miss"
+    };
+  });
 }
+
+
 
 
 function renderScore() {
@@ -4222,7 +4272,7 @@ function renderScore() {
     <div class="score-detail-list">
       ${rows.map((row, index) => {
         const gameRows = playerGameRows(row.playerName);
-        const settled = gameRows.filter(item => hasResult(item.game)).length;
+        const settled = gameRows.length;
         const withBets = gameRows.filter(item => item.bet).length;
 
         return `
@@ -4252,7 +4302,7 @@ function renderScore() {
                     <small>${escapeHtml(game.group)} · ${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}</small>
                   </span>
                   <span>${bet ? `${bet.homeGuess}-${bet.awayGuess}` : "-"}</span>
-                  <span>${hasResult(game) ? `${game.homeScore}-${game.awayScore}` : "-"}</span>
+                  <span>${(() => { const [h,a] = gameScorePairV119(game); return h === null ? "-" : `${h}-${a}`; })()}</span>
                   <span><em>${escapeHtml(label)}</em></span>
                   <strong>${points}</strong>
                 </div>

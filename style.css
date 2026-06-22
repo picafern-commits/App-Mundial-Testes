@@ -7184,3 +7184,15 @@ input[data-no-persist-v116]{
 #scoreTab .bet-row:first-child{
   border-top-color:rgba(52,211,153,.35)!important;
 }
+
+
+/* v119 — Pontuação corrigida: só jogos com resultado real */
+#scoreTab .player-games-table .player-game-row:not(.head){
+  display:grid!important;
+}
+
+
+/* v120 — Pontuação: apostas recuperadas nos jogos com resultado */
+#scoreTab .player-game-row:not(.head) span:nth-child(2){
+  font-weight:900!important;
+}
