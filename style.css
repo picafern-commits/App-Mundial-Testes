@@ -7569,3 +7569,70 @@ input[data-no-persist-v116]{
     padding-bottom:36px!important;
   }
 }
+
+
+/* v129 — Fase Final mobile com scroll normal, sem tocar no login */
+@media(max-width:760px){
+  body.knockout-scroll-active-v129{
+    overflow-y:auto!important;
+    height:auto!important;
+    min-height:100%!important;
+    position:relative!important;
+    touch-action:pan-y!important;
+  }
+
+  body.knockout-scroll-active-v129 .app,
+  body.knockout-scroll-active-v129 .app-shell,
+  body.knockout-scroll-active-v129 main,
+  body.knockout-scroll-active-v129 .main,
+  body.knockout-scroll-active-v129 .content,
+  body.knockout-scroll-active-v129 .tab-content{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+
+  #knockoutTab.knockout-scroll-active-v129,
+  body.knockout-scroll-active-v129 #knockoutTab.active{
+    display:block!important;
+    height:auto!important;
+    min-height:100vh!important;
+    max-height:none!important;
+    overflow-y:visible!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    padding-bottom:calc(140px + env(safe-area-inset-bottom, 0px))!important;
+  }
+
+  body.knockout-scroll-active-v129 #knockoutMobileV121,
+  body.knockout-scroll-active-v129 #knockoutTab.active #knockoutMobileV121{
+    display:block!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    padding-bottom:calc(110px + env(safe-area-inset-bottom, 0px))!important;
+  }
+
+  body.knockout-scroll-active-v129 #knockoutMobileV121 .ko-mobile-list,
+  body.knockout-scroll-active-v129 #knockoutTab.active #knockoutMobileV121 .ko-mobile-list{
+    display:grid!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    padding-bottom:42px!important;
+  }
+
+  body.knockout-scroll-active-v129 #knockoutMobileV121 .ko-mobile-card{
+    min-height:auto!important;
+    flex:0 0 auto!important;
+  }
+
+  body.knockout-scroll-active-v129 #knockoutMobileV121 .ko-mobile-nav{
+    position:static!important;
+    bottom:auto!important;
+    margin-bottom:calc(36px + env(safe-area-inset-bottom, 0px))!important;
+  }
+}

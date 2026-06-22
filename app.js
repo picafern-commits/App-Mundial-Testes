@@ -7449,3 +7449,24 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(cleanupKnockoutMobileOutsidePageV128, 400);
   setTimeout(renderKnockoutMobileIfActiveV128, 1200);
 });
+
+
+// v129 — ativa scroll normal só na página Fase Final.
+function updateKnockoutScrollClassV129() {
+  try {
+    const activePanel = document.querySelector(".tab-panel.active");
+    const isKnockout = activePanel?.id === "knockoutTab";
+    document.body.classList.toggle("knockout-scroll-active-v129", !!isKnockout);
+
+    const ko = document.getElementById("knockoutTab");
+    if (ko) ko.classList.toggle("knockout-scroll-active-v129", !!isKnockout);
+  } catch (error) {
+    console.warn("KO scroll v129 falhou:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(updateKnockoutScrollClassV129, 250);
+  setTimeout(updateKnockoutScrollClassV129, 1000);
+});
+document.addEventListener("click", () => setTimeout(updateKnockoutScrollClassV129, 120));
