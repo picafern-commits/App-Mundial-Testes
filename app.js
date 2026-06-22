@@ -4056,7 +4056,9 @@ function renderAll() {
   setupSearchResultsAdminButton();
   setTimeout(addSearchButtonsToResultCards, 0);
   setupOnlineUsersCloseControls();
-  setupKnockoutAdjustTopButton(); renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); updateActiveAppSection(); }
+  setupKnockoutAdjustTopButton(); renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); applyPermissionsToUi(); updateActiveAppSection(); 
+  setTimeout(addSearchButtonsToResultCards, 250);
+}
 
 function renderCalendarFilterState() {
   const missingBtn = $("calendarMissingResultsBtn");
@@ -4253,20 +4255,24 @@ function renderGroups() {
 
 
 
-function openResultSearchForGame(gameId) {
-  const game = games.find(item => item.id === gameId);
+
+function openResultSearchForGame(gameOrId) {
+  const game = typeof gameOrId === "string"
+    ? games.find(item => item.id === gameOrId)
+    : gameOrId;
+
   if (!game) return toast("Jogo não encontrado.");
 
-  const home = String(game.homeTeam || "").trim();
-  const away = String(game.awayTeam || "").trim();
+  const home = String(game.homeTeam || game.home || game.teamA || "").trim();
+  const away = String(game.awayTeam || game.away || game.teamB || "").trim();
 
-  if (!home || !away) return toast("Equipas em falta neste jogo.");
+  if (!home || !away) return toast("Este jogo ainda não tem as duas equipas definidas.");
 
-  // v115: pesquisa limpa apenas "equipa vs equipa".
   const query = `${home} vs ${away}`;
   const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
   window.open(url, "_blank", "noopener,noreferrer");
 }
+
 
 
 function openResultsSearchDashboard() {
@@ -4299,43 +4305,78 @@ function openResultsSearchDashboard() {
 }
 
 
+
 function setupSearchResultsAdminButton() {
-  // v115: pesquisar resultados é visível para todos.
+  // v117: o botão Pesquisar por jogo é público.
   addSearchButtonsToResultCards();
+
+  const button = $("searchAllResultsBtn");
+  if (!button || button.dataset.bound === "1") return;
+
+  button.dataset.bound = "1";
+  button.addEventListener("click", () => openResultsSearchDashboard());
 }
+
+
 
 
 
 function addSearchButtonsToResultCards() {
-  document.querySelectorAll("[data-game-id]").forEach(card => {
-    const gameId = card.getAttribute("data-game-id");
+  const resultButtons = document.querySelectorAll("[data-result-game]");
+
+  resultButtons.forEach(resultButton => {
+    const gameId = resultButton.dataset.resultGame;
     if (!gameId) return;
-    if (card.querySelector(".search-result-btn-v115, .search-result-btn")) return;
+
+    const parent = resultButton.parentElement;
+    if (!parent) return;
+
+    if (parent.querySelector(`[data-search-result-game="${CSS.escape(gameId)}"]`)) return;
 
     const game = games.find(item => item.id === gameId);
     if (!game) return;
 
-    const actions =
-      card.querySelector(".match-actions") ||
-      card.querySelector(".match-card-actions") ||
-      card.querySelector(".actions") ||
-      card.querySelector(".card-actions") ||
-      card;
+    const searchButton = document.createElement("button");
+    searchButton.type = "button";
+    searchButton.className = "secondary small search-game-result-btn search-result-btn-v117";
+    searchButton.dataset.searchResultGame = gameId;
+    searchButton.textContent = "Pesquisar";
+    searchButton.title = `${game.homeTeam || game.home || game.teamA || ""} vs ${game.awayTeam || game.away || game.teamB || ""}`.trim();
 
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "secondary small search-result-btn search-result-btn-v115";
-    btn.textContent = "Pesquisar";
-    btn.title = `${game.homeTeam || ""} vs ${game.awayTeam || ""}`.trim();
-    btn.addEventListener("click", event => {
+    searchButton.addEventListener("click", event => {
       event.preventDefault();
       event.stopPropagation();
-      openResultSearchForGame(gameId);
+      openResultSearchForGame(game);
     });
 
-    actions.appendChild(btn);
+    parent.insertBefore(searchButton, resultButton);
+  });
+
+  document.querySelectorAll("[data-game-id]").forEach(card => {
+    const gameId = card.getAttribute("data-game-id");
+    if (!gameId || card.querySelector(`[data-search-result-game="${CSS.escape(gameId)}"]`)) return;
+
+    const game = games.find(item => item.id === gameId);
+    if (!game) return;
+
+    const actions = card.querySelector(".match-actions,.match-card-actions,.actions,.card-actions") || card;
+    const searchButton = document.createElement("button");
+    searchButton.type = "button";
+    searchButton.className = "secondary small search-game-result-btn search-result-btn-v117";
+    searchButton.dataset.searchResultGame = gameId;
+    searchButton.textContent = "Pesquisar";
+    searchButton.title = `${game.homeTeam || game.home || game.teamA || ""} vs ${game.awayTeam || game.away || game.teamB || ""}`.trim();
+
+    searchButton.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      openResultSearchForGame(game);
+    });
+
+    actions.appendChild(searchButton);
   });
 }
+
 
 
 function renderAdminState() {
@@ -6922,3 +6963,80 @@ document.addEventListener("DOMContentLoaded", () => {
     v115PesquisarTodosInterval = setInterval(addSearchButtonsToResultCards, 5000);
   }
 });
+
+
+// v116 — barra de pesquisa funcional sem guardar texto.
+function setupSearchBarNoPersistV116() {
+  const candidates = [
+    "searchInput",
+    "searchBox",
+    "globalSearchInput",
+    "calendarSearchInput",
+    "gameSearchInput",
+    "gamesSearchInput",
+    "topSearchInput"
+  ];
+
+  let input = null;
+  for (const id of candidates) {
+    const el = document.getElementById(id);
+    if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) {
+      input = el;
+      break;
+    }
+  }
+
+  if (!input) {
+    input = Array.from(document.querySelectorAll('input[type="search"], input[placeholder*="Pesquisar" i], input[placeholder*="Procurar" i], input[aria-label*="Pesquisar" i]'))[0] || null;
+  }
+
+  if (!input || input.dataset.noPersistV116 === "1") return;
+
+  input.dataset.noPersistV116 = "1";
+  input.autocomplete = "off";
+  input.setAttribute("data-lpignore", "true");
+
+  // Não recuperar texto antigo.
+  input.value = "";
+  searchText = "";
+
+  const applySearch = () => {
+    searchText = String(input.value || "").trim();
+    try { renderCalendar(); } catch {}
+    try { renderCalendarFilterState(); } catch {}
+  };
+
+  input.addEventListener("input", applySearch);
+  input.addEventListener("search", applySearch);
+  input.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      input.value = "";
+      searchText = "";
+      applySearch();
+      input.blur();
+    }
+  });
+
+  // Ao fechar/atualizar, não deixa o texto ficar guardado no input pelo browser.
+  window.addEventListener("beforeunload", () => {
+    try { input.value = ""; searchText = ""; } catch {}
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setupSearchBarNoPersistV116();
+  setTimeout(setupSearchBarNoPersistV116, 500);
+  setTimeout(setupSearchBarNoPersistV116, 1500);
+});
+document.addEventListener("click", () => setTimeout(setupSearchBarNoPersistV116, 120));
+
+
+let v117PesquisarReapply = null;
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(addSearchButtonsToResultCards, 400);
+  setTimeout(addSearchButtonsToResultCards, 1200);
+  if (!v117PesquisarReapply) {
+    v117PesquisarReapply = setInterval(addSearchButtonsToResultCards, 4000);
+  }
+});
+document.addEventListener("click", () => setTimeout(addSearchButtonsToResultCards, 150));

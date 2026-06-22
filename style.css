@@ -7130,3 +7130,43 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
   content:"🔎";
   font-size:.95em;
 }
+
+
+/* v116 — barra de pesquisa funcional, sem persistir texto */
+input[type="search"],
+input[placeholder*="Pesquisar" i],
+input[placeholder*="Procurar" i]{
+  autocomplete:off;
+}
+
+input[data-no-persist-v116="1"],
+input[data-no-persist-v116]{
+  border-radius:999px!important;
+}
+
+
+/* v117 — botão Pesquisar em cada jogo */
+.search-game-result-btn,
+.search-result-btn-v117{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
+  border-radius:999px!important;
+  min-height:34px!important;
+  padding:7px 12px!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+.search-game-result-btn::before,
+.search-result-btn-v117::before{
+  content:"🔎";
+  font-size:.95em;
+}
+
+.search-game-result-btn.admin-only{
+  display:inline-flex!important;
+}
