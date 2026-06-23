@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v166";
+const APP_VERSION_LABEL = "v181";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 
@@ -9615,130 +9615,212 @@ function renderInstallGuideV164() {
   `;
 }
 
-function pushDeviceIdV165() {
-  let id = localStorage.getItem(PUSH_DEVICE_KEY_V165);
+function pushVapidStorageKeyV181() {
+  return `${STORAGE_KEY}_push_vapid_key_clean_v181`;
+}
+
+function pushPreferencesStorageKeyV181() {
+  return `${STORAGE_KEY}_push_preferences_clean_v181`;
+}
+
+function pushLastTokenStorageKeyV181() {
+  return `${STORAGE_KEY}_push_last_token_clean_v181`;
+}
+
+function pushDeviceIdV181() {
+  const key = `${STORAGE_KEY}_push_device_id_clean_v181`;
+  let id = localStorage.getItem(key);
   if (!id) {
     id = `device_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-    localStorage.setItem(PUSH_DEVICE_KEY_V165, id);
+    localStorage.setItem(key, id);
   }
   return id;
 }
 
-function pushTokenDocIdV165() {
-  if (!currentUser?.uid) return "";
-  return `${currentUser.uid}_${pushDeviceIdV165()}`;
+function pushVapidKeyV181() {
+  return String(
+    localStorage.getItem(pushVapidStorageKeyV181()) ||
+    window.MUNDIAL_CONFIG?.messaging?.vapidKey ||
+    APP_CONFIG?.messaging?.vapidKey ||
+    ""
+  ).trim();
 }
 
-function pushSupportV165() {
+function pushFunctionsBaseV181() {
+  const projectId = APP_CONFIG?.firebase?.projectId || window.MUNDIAL_CONFIG?.firebase?.projectId || "app-mundial2026";
+  return `https://us-central1-${projectId}.cloudfunctions.net`;
+}
+
+async function callPushFunctionV181(functionName, payload = {}) {
+  const user = firebaseAuth?.currentUser || currentUser;
+  let idToken = "";
+  try { idToken = user?.getIdToken ? await user.getIdToken() : ""; } catch {}
+
+  const response = await fetch(`${pushFunctionsBaseV181()}/${functionName}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
+    },
+    body: JSON.stringify({
+      ...payload,
+      uid: user?.uid || currentUser?.uid || "",
+      email: normalizeEmail(user?.email || currentUser?.email || ""),
+      appVersion: APP_CONFIG?.appVersion || APP_VERSION_LABEL,
+      deviceId: pushDeviceIdV181(),
+      userAgent: navigator.userAgent
+    })
+  });
+
+  let data = {};
+  try { data = await response.json(); } catch {}
+  if (!response.ok || data.ok === false) {
+    throw new Error(data.error || `${functionName} respondeu ${response.status}`);
+  }
+  return data;
+}
+
+function defaultPushPreferencesV181() {
+  return {
+    gameStart: true,
+    gameEnd: true,
+    goals: true,
+    quietHours: { enabled: true, startHour: 23, endHour: 9, timezone: "Europe/Lisbon" }
+  };
+}
+
+function savedPushPreferencesV181() {
+  try {
+    return { ...defaultPushPreferencesV181(), ...(JSON.parse(localStorage.getItem(pushPreferencesStorageKeyV181()) || "{}") || {}) };
+  } catch {
+    return defaultPushPreferencesV181();
+  }
+}
+
+function currentPushPreferencesV181() {
+  const saved = savedPushPreferencesV181();
+  return {
+    gameStart: $("pushGameStartInputV181")?.checked ?? saved.gameStart,
+    gameEnd: $("pushGameEndInputV181")?.checked ?? saved.gameEnd,
+    goals: $("pushGoalsInputV181")?.checked ?? saved.goals,
+    quietHours: {
+      enabled: $("pushQuietHoursInputV181")?.checked ?? saved.quietHours?.enabled ?? true,
+      startHour: 23,
+      endHour: 9,
+      timezone: "Europe/Lisbon"
+    }
+  };
+}
+
+function savePushPreferencesLocalV181(preferences = currentPushPreferencesV181()) {
+  localStorage.setItem(pushPreferencesStorageKeyV181(), JSON.stringify(preferences));
+  return preferences;
+}
+
+function pushSupportV181() {
   const permission = typeof Notification === "undefined" ? "unsupported" : Notification.permission;
-  const standalone = isStandaloneMode();
+  const vapidKey = pushVapidKeyV181();
   const ios = isIosDevice();
-  const vapidKey = String(APP_CONFIG?.messaging?.vapidKey || "").trim();
+  const standalone = isStandaloneMode();
   return {
     supported: Boolean(firebaseMessaging && firebaseMessagingApi && "serviceWorker" in navigator && typeof Notification !== "undefined"),
     permission,
-    standalone,
-    ios,
     vapidKey,
     hasVapid: Boolean(vapidKey),
-    needsIosInstall: ios && !standalone
+    ios,
+    standalone,
+    needsIosInstall: ios && !standalone,
+    sw: "serviceWorker" in navigator
   };
 }
 
-function pushPrefsV165() {
-  return {
-    gameStart: $("pushGameStartInputV165")?.checked !== false,
-    gameEnd: $("pushGameEndInputV165")?.checked !== false,
-    goals: $("pushGoalsInputV165")?.checked !== false,
-    results: true,
-    knockout: true,
-    chatGeneral: false,
-    chatAdmin: true
-  };
+function pushDiagnosticV181() {
+  const support = pushSupportV181();
+  return [
+    `Permissão: ${support.permission}`,
+    `Firebase Messaging: ${firebaseMessaging && firebaseMessagingApi ? "OK" : "não ligado"}`,
+    `Service Worker: ${support.sw ? "OK" : "não suportado"}`,
+    `VAPID: ${support.hasVapid ? "OK" : "em falta"}`,
+    support.needsIosInstall ? "iPhone: instalar no Ecrã Principal" : ""
+  ].filter(Boolean).join(" · ");
 }
 
-function pushQuietHoursV166() {
-  return {
-    enabled: $("pushQuietHoursInputV166")?.checked !== false,
-    startHour: 23,
-    endHour: 9,
-    timezone: "Europe/Lisbon"
-  };
-}
-
-async function savePushTokenPreferencesV165(token) {
-  if (!db || !firebaseApi || !currentUser) return false;
-  const docId = pushTokenDocIdV165();
-  if (!docId) return false;
-  const payload = {
-    uid: currentUser.uid,
-    email: normalizeEmail(currentUser.email),
-    name: currentProfile?.name || displayNameFromEmail(currentUser.email),
-    platform: pushSupportV165().ios ? "ios" : /android/i.test(navigator.userAgent) ? "android" : "desktop",
-    userAgent: navigator.userAgent,
-    preferences: pushPrefsV165(),
-    quietHours: pushQuietHoursV166(),
-    rooms: { general: false, admin: true },
-    updatedAt: new Date().toISOString()
-  };
-  if (token !== undefined) {
-    payload.token = token;
-    payload.enabled = Boolean(token);
+function saveVapidKeyV181() {
+  const input = $("pushVapidInputV181");
+  const key = String(input?.value || "").trim();
+  if (!key) {
+    toast("Cola a VAPID key no campo antes de guardar.");
+    input?.focus();
+    return;
   }
-  await firebaseApi.setDoc(firebaseApi.doc(db, "notificationTokens", docId), payload, { merge: true });
-  return true;
-}
-
-async function enablePushNotificationsV165() {
-  if (!hasPermission("admin")) return toast("Só o Admin pode ativar notificações push.");
-  const support = pushSupportV165();
-  if (!support.supported) return toast("Este navegador ainda não suporta push nesta app.");
-  if (support.needsIosInstall) return toast("No iPhone, instala primeiro a app no Ecrã Principal.");
-  if (!support.hasVapid) return toast("Falta configurar a VAPID key do Firebase Messaging no config.js.");
-
-  const permission = await Notification.requestPermission();
-  if (permission !== "granted") {
-    renderPushNotificationsPanelV165();
-    return toast("Permissão de notificações não autorizada.");
-  }
-
-  const registration = await navigator.serviceWorker.ready;
-  const token = await firebaseMessagingApi.getToken(firebaseMessaging, {
-    vapidKey: support.vapidKey,
-    serviceWorkerRegistration: registration
-  });
-
-  if (!token) return toast("Não foi possível criar o token de notificações.");
-  await savePushTokenPreferencesV165(token);
+  localStorage.setItem(pushVapidStorageKeyV181(), key);
+  toast("VAPID guardada neste dispositivo.");
   renderPushNotificationsPanelV165();
-  toast("Notificações push ativas neste dispositivo.");
 }
 
-async function savePushPreferencesOnlyV165() {
-  if (!hasPermission("admin")) return;
+async function savePushPreferencesV181() {
+  const preferences = savePushPreferencesLocalV181();
   try {
-    await savePushTokenPreferencesV165();
-    toast("Preferências de notificações guardadas.");
+    await callPushFunctionV181("savePushPreferences", { preferences });
+    toast("Preferências push guardadas.");
   } catch (error) {
-    console.warn("Preferências push não guardadas:", error);
-    toast("Não consegui guardar as preferências push.");
+    console.warn("Preferências push guardadas só localmente:", error);
+    toast("Preferências guardadas neste dispositivo.");
   }
 }
 
-async function sendTestPushV165() {
-  if (!hasPermission("admin")) return toast("Só o Admin pode testar push.");
-  if (!db || !firebaseApi || !currentUser) return toast("Firebase não está ligado.");
+async function enablePushNotificationsV181() {
   try {
-    await firebaseApi.addDoc(firebaseApi.collection(db, "notificationTests"), {
-      uid: currentUser.uid,
-      email: normalizeEmail(currentUser.email),
-      createdAt: new Date().toISOString(),
-      source: "push-panel-v165"
+    if (!hasPermission("admin")) return toast("Só o Admin pode ativar notificações push.");
+    if (!currentUser && !firebaseAuth?.currentUser) return toast("Faz login antes de ativar push.");
+
+    const support = pushSupportV181();
+    if (!support.supported) return toast("Este navegador ainda não suporta push nesta app.");
+    if (support.needsIosInstall) return toast("No iPhone, instala primeiro a app no Ecrã Principal.");
+    if (!support.hasVapid) return toast("Cola a VAPID key no campo antes de guardar.");
+
+    let permission = support.permission;
+    if (permission !== "granted") permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      renderPushNotificationsPanelV165();
+      return toast("Permissão de notificações não autorizada.");
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+    const token = await firebaseMessagingApi.getToken(firebaseMessaging, {
+      vapidKey: support.vapidKey,
+      serviceWorkerRegistration: registration
     });
-    toast("Teste enviado. Se o dispositivo estiver ativo, vais receber uma notificação.");
+
+    if (!token) return toast("Não foi possível criar token push.");
+
+    const preferences = savePushPreferencesLocalV181();
+    await callPushFunctionV181("registerPushToken", {
+      token,
+      preferences,
+      platform: support.ios ? "ios" : /android/i.test(navigator.userAgent) ? "android" : "web"
+    });
+
+    localStorage.setItem(pushLastTokenStorageKeyV181(), token);
+    toast("Notificações push ativas neste dispositivo.");
+    renderPushNotificationsPanelV165();
   } catch (error) {
-    console.warn("Teste push falhou:", error);
-    toast("Não consegui enviar o teste push.");
+    console.error("enablePushNotificationsV181 falhou:", error);
+    const msg = String(error?.message || error || "erro");
+    if (msg.includes("invalid-vapid-key")) return toast("VAPID key inválida. Confirma a chave no Firebase.");
+    toast(`Não consegui ativar push: ${msg.slice(0, 140)}`);
+  }
+}
+
+async function sendTestPushV181() {
+  try {
+    if (!hasPermission("admin")) return toast("Só o Admin pode testar push.");
+    const token = localStorage.getItem(pushLastTokenStorageKeyV181()) || "";
+    await callPushFunctionV181("requestPushTest", { token, preferences: currentPushPreferencesV181() });
+    toast("Teste push pedido.");
+  } catch (error) {
+    console.error("sendTestPushV181 falhou:", error);
+    toast(`Não consegui pedir teste push: ${String(error?.message || error || "erro").slice(0, 140)}`);
   }
 }
 
@@ -9750,21 +9832,19 @@ function renderPushNotificationsPanelV165() {
     return;
   }
 
-  const support = pushSupportV165();
-  const permissionText = support.permission === "granted" ? "Permitidas" :
-    support.permission === "denied" ? "Bloqueadas" :
-    support.permission === "unsupported" ? "Não suportadas" :
-    "Por ativar";
-  const deviceText = support.ios ? (support.standalone ? "iPhone PWA instalada" : "iPhone: instalar no Ecrã Principal") :
-    /android/i.test(navigator.userAgent) ? "Android" : "PC / Browser";
-  const vapidText = support.hasVapid ? "VAPID configurada" : "VAPID em falta";
+  const support = pushSupportV181();
+  const preferences = savedPushPreferencesV181();
+  const localVapid = localStorage.getItem(pushVapidStorageKeyV181()) || "";
+  const hasToken = Boolean(localStorage.getItem(pushLastTokenStorageKeyV181()));
+  const permissionText = support.permission === "granted" ? "Permitidas" : support.permission === "denied" ? "Bloqueadas" : support.permission === "unsupported" ? "Não suportadas" : "Por ativar";
+  const deviceText = support.ios ? (support.standalone ? "iPhone PWA instalada" : "iPhone: instalar no Ecrã Principal") : /android/i.test(navigator.userAgent) ? "Android" : "PC / Browser";
 
   panel.innerHTML = `
     <div class="push-panel-head-v165">
       <div>
         <strong>Push Android / iPhone</strong>
-        <span>Eventos preparados: Jogo começou, Jogo acabou e Golo da equipa.</span>
-        <small>Funciona com a app fechada quando o dispositivo está subscrito e a VAPID key está configurada.</small>
+        <span>Fluxo único via Firebase Functions: VAPID, preferências, ativação e teste.</span>
+        <small>Funciona com a app fechada quando o dispositivo está subscrito. Silêncio por defeito: 23h-09h.</small>
       </div>
       <div class="push-panel-actions-v165">
         <button id="enablePushBtnV165" class="primary" type="button">Ativar neste dispositivo</button>
@@ -9774,21 +9854,31 @@ function renderPushNotificationsPanelV165() {
     <div class="push-status-v165">
       <span>${escapeHtml(permissionText)}</span>
       <span>${escapeHtml(deviceText)}</span>
-      <span>${escapeHtml(vapidText)}</span>
+      <span>${support.hasVapid ? "VAPID OK" : "VAPID em falta"}</span>
+      <span>${hasToken ? "Token guardado" : "Token por ativar"}</span>
+    </div>
+    <div class="push-vapid-box-v181">
+      <strong>VAPID key</strong>
+      <span>Lida por ordem: localStorage, window.MUNDIAL_CONFIG.messaging.vapidKey, APP_CONFIG.messaging.vapidKey.</span>
+      <div>
+        <input id="pushVapidInputV181" type="text" placeholder="Cola aqui a VAPID key" value="${escapeHtml(localVapid)}" />
+        <button id="saveVapidBtnV181" type="button">Guardar VAPID</button>
+      </div>
     </div>
     <div class="push-options-v165">
-      <label><input id="pushGameStartInputV165" type="checkbox" checked /> Jogo começou</label>
-      <label><input id="pushGameEndInputV165" type="checkbox" checked /> Jogo acabou</label>
-      <label><input id="pushGoalsInputV165" type="checkbox" checked /> Golo da equipa</label>
-      <label><input id="pushQuietHoursInputV166" type="checkbox" checked /> Silenciar 23h-09h</label>
-      <button id="savePushPrefsBtnV165" class="secondary" type="button">Guardar preferências</button>
+      <label><input id="pushGameStartInputV181" type="checkbox" ${preferences.gameStart ? "checked" : ""} /> Jogo começou</label>
+      <label><input id="pushGameEndInputV181" type="checkbox" ${preferences.gameEnd ? "checked" : ""} /> Jogo acabou</label>
+      <label><input id="pushGoalsInputV181" type="checkbox" ${preferences.goals ? "checked" : ""} /> Golo da equipa</label>
+      <label><input id="pushQuietHoursInputV181" type="checkbox" ${preferences.quietHours?.enabled !== false ? "checked" : ""} /> Silenciar 23h-09h</label>
+      <button id="savePushPrefsBtnV181" class="secondary" type="button">Guardar preferências</button>
     </div>
-    <p class="push-note-v165">No iPhone, as notificações Web Push exigem a app instalada no Ecrã Principal e uma versão recente do iOS. O servidor não envia push entre as 23h e as 09h de Lisboa quando o silêncio está ativo.</p>
+    <p class="push-note-v165">Diagnóstico: ${escapeHtml(pushDiagnosticV181())}</p>
   `;
 
-  $("enablePushBtnV165")?.addEventListener("click", enablePushNotificationsV165);
-  $("testPushBtnV165")?.addEventListener("click", sendTestPushV165);
-  $("savePushPrefsBtnV165")?.addEventListener("click", savePushPreferencesOnlyV165);
+  $("saveVapidBtnV181")?.addEventListener("click", saveVapidKeyV181);
+  $("savePushPrefsBtnV181")?.addEventListener("click", savePushPreferencesV181);
+  $("enablePushBtnV165")?.addEventListener("click", enablePushNotificationsV181);
+  $("testPushBtnV165")?.addEventListener("click", sendTestPushV181);
 }
 
 function setupV162Controls() {
@@ -9857,639 +9947,3 @@ document.addEventListener("DOMContentLoaded", () => {
   renderAppSettingsPanelV162();
   renderInstallGuideV164();
 });
-
-
-// v169 — Push: diagnóstico claro + VAPID local se config.js estiver vazio.
-const PUSH_VAPID_LOCAL_KEY_V169 = `${STORAGE_KEY}_push_vapid_key_v169`;
-const PUSH_ENABLED_LOCAL_KEY_V169 = `${STORAGE_KEY}_push_enabled_v169`;
-
-function pushVapidKeyV169() {
-  return String(APP_CONFIG?.messaging?.vapidKey || localStorage.getItem(PUSH_VAPID_LOCAL_KEY_V169) || "").trim();
-}
-
-function pushDiagnosticMessageV169() {
-  const support = pushSupportV165();
-  const parts = [];
-  parts.push(`Permissão: ${support.permission || "?"}`);
-  parts.push(`Firebase Messaging: ${firebaseMessaging && firebaseMessagingApi ? "OK" : "não ligado"}`);
-  parts.push(`Service Worker: ${"serviceWorker" in navigator ? "OK" : "não suportado"}`);
-  parts.push(`VAPID: ${pushVapidKeyV169() ? "OK" : "em falta"}`);
-  if (support.needsIosInstall) parts.push("iPhone: instalar no Ecrã Principal");
-  return parts.join(" · ");
-}
-
-// Reforça a função de suporte sem quebrar a antiga.
-const pushSupportOriginalV169 = typeof pushSupportV165 === "function" ? pushSupportV165 : null;
-function pushSupportV169() {
-  const original = pushSupportOriginalV169 ? pushSupportOriginalV169() : {};
-  const vapidKey = pushVapidKeyV169();
-  return {
-    ...original,
-    vapidKey,
-    hasVapid: Boolean(vapidKey),
-    supported: Boolean(firebaseMessaging && firebaseMessagingApi && "serviceWorker" in navigator && typeof Notification !== "undefined")
-  };
-}
-
-// Substitui a função global usada pelo painel.
-pushSupportV165 = pushSupportV169;
-
-async function enablePushNotificationsV169() {
-  try {
-    if (!hasPermission("admin")) return toast("Só o Admin pode ativar notificações push.");
-
-    if (!db || !firebaseApi || !currentUser) {
-      return toast("Firebase/login ainda não está pronto. Aguarda uns segundos e tenta novamente.");
-    }
-
-    const support = pushSupportV169();
-
-    if (!support.supported) {
-      console.warn("Push não suportado:", pushDiagnosticMessageV169());
-      return toast(`Push indisponível: ${pushDiagnosticMessageV169()}`);
-    }
-
-    if (support.needsIosInstall) {
-      return toast("No iPhone, instala primeiro a app no Ecrã Principal.");
-    }
-
-    if (!support.hasVapid) {
-      renderPushNotificationsPanelV169();
-      return toast("Falta a VAPID key. Cola a chave no campo das notificações e guarda.");
-    }
-
-    if (!navigator.serviceWorker?.ready) {
-      return toast("Service Worker ainda não está pronto. Atualiza a app e tenta novamente.");
-    }
-
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      renderPushNotificationsPanelV169();
-      return toast("Permissão de notificações não autorizada no navegador.");
-    }
-
-    const registration = await navigator.serviceWorker.ready;
-
-    const token = await firebaseMessagingApi.getToken(firebaseMessaging, {
-      vapidKey: support.vapidKey,
-      serviceWorkerRegistration: registration
-    });
-
-    if (!token) {
-      return toast("Não foi possível criar o token de notificações.");
-    }
-
-    await savePushTokenPreferencesV165(token);
-    localStorage.setItem(PUSH_ENABLED_LOCAL_KEY_V169, "1");
-    localStorage.setItem(`${PUSH_ENABLED_LOCAL_KEY_V169}_last`, new Date().toISOString());
-
-    renderPushNotificationsPanelV169();
-    toast("Notificações push ativas neste dispositivo.");
-  } catch (error) {
-    console.error("Ativar push falhou:", error);
-    const msg = String(error?.message || error || "erro");
-    if (msg.includes("messaging/permission-blocked")) return toast("Notificações bloqueadas no navegador. Ativa nas permissões do site.");
-    if (msg.includes("messaging/unsupported-browser")) return toast("Este navegador não suporta Firebase Push nesta app.");
-    if (msg.includes("messaging/invalid-vapid-key")) return toast("VAPID key inválida. Confirma a chave no Firebase.");
-    if (msg.includes("permission-denied")) return toast("Sem permissão no Firestore para guardar notificationTokens.");
-    toast(`Não consegui ativar push: ${msg.slice(0, 120)}`);
-  }
-}
-
-async function saveVapidKeyV169() {
-  try {
-    const input = $("pushVapidInputV169");
-    const key = String(input?.value || "").trim();
-    if (!key) {
-      localStorage.removeItem(PUSH_VAPID_LOCAL_KEY_V169);
-      toast("VAPID local removida.");
-    } else {
-      localStorage.setItem(PUSH_VAPID_LOCAL_KEY_V169, key);
-      toast("VAPID guardada neste dispositivo.");
-    }
-    renderPushNotificationsPanelV169();
-  } catch (error) {
-    console.warn("Guardar VAPID falhou:", error);
-    toast("Não consegui guardar a VAPID.");
-  }
-}
-
-async function sendTestPushV169() {
-  try {
-    if (!hasPermission("admin")) return toast("Só o Admin pode testar push.");
-    if (!db || !firebaseApi || !currentUser) return toast("Firebase/login ainda não está pronto.");
-
-    const enabled = localStorage.getItem(PUSH_ENABLED_LOCAL_KEY_V169) === "1";
-    if (!enabled) {
-      return toast("Ativa primeiro este dispositivo antes de enviar teste.");
-    }
-
-    await firebaseApi.addDoc(firebaseApi.collection(db, "notificationTests"), {
-      uid: currentUser.uid,
-      email: normalizeEmail(currentUser.email),
-      createdAt: new Date().toISOString(),
-      source: "push-panel-v169"
-    });
-
-    toast("Teste enviado. Se o token estiver ativo, vais receber a notificação.");
-  } catch (error) {
-    console.error("Teste push falhou:", error);
-    const msg = String(error?.message || error || "erro");
-    if (msg.includes("permission-denied")) return toast("Sem permissão no Firestore para criar notificationTests.");
-    toast(`Não consegui enviar o teste push: ${msg.slice(0, 120)}`);
-  }
-}
-
-function renderPushNotificationsPanelV169() {
-  const panel = $("pushNotificationsPanelV165");
-  if (!panel) return;
-  if (!hasPermission("admin")) {
-    panel.innerHTML = "";
-    return;
-  }
-
-  const support = pushSupportV169();
-  const enabled = localStorage.getItem(PUSH_ENABLED_LOCAL_KEY_V169) === "1";
-  const permissionText = support.permission === "granted" ? "Permitidas" :
-    support.permission === "denied" ? "Bloqueadas" :
-    support.permission === "unsupported" ? "Não suportadas" :
-    "Por ativar";
-  const deviceText = support.ios ? (support.standalone ? "iPhone PWA instalada" : "iPhone: instalar no Ecrã Principal") :
-    /android/i.test(navigator.userAgent) ? "Android" : "PC / Browser";
-  const vapidText = support.hasVapid ? "VAPID configurada" : "VAPID em falta";
-  const tokenText = enabled ? "Dispositivo ativo" : "Dispositivo por ativar";
-  const localVapid = localStorage.getItem(PUSH_VAPID_LOCAL_KEY_V169) || "";
-
-  panel.innerHTML = `
-    <div class="push-panel-head-v165">
-      <div>
-        <strong>Push Android / iPhone</strong>
-        <span>Eventos preparados: Jogo começou, Jogo acabou e Golo da equipa.</span>
-        <small>Funciona com a app fechada quando o dispositivo está subscrito e a VAPID key está configurada.</small>
-      </div>
-      <div class="push-panel-actions-v165">
-        <button id="enablePushBtnV165" class="primary" type="button">Ativar neste dispositivo</button>
-        <button id="testPushBtnV165" class="secondary" type="button">Enviar teste</button>
-      </div>
-    </div>
-
-    <div class="push-status-v165">
-      <span>${escapeHtml(permissionText)}</span>
-      <span>${escapeHtml(deviceText)}</span>
-      <span>${escapeHtml(vapidText)}</span>
-      <span>${escapeHtml(tokenText)}</span>
-    </div>
-
-    ${support.hasVapid ? "" : `
-      <div class="push-vapid-box-v169">
-        <strong>VAPID key em falta</strong>
-        <span>Vai ao Firebase → Project settings → Cloud Messaging → Web Push certificates e copia a Key pair.</span>
-        <div>
-          <input id="pushVapidInputV169" type="text" placeholder="Cola aqui a VAPID key" value="${escapeHtml(localVapid)}" />
-          <button id="saveVapidBtnV169" type="button">Guardar VAPID</button>
-        </div>
-      </div>
-    `}
-
-    <div class="push-options-v165">
-      <label><input id="pushGameStartInputV165" type="checkbox" checked /> Jogo começou</label>
-      <label><input id="pushGameEndInputV165" type="checkbox" checked /> Jogo acabou</label>
-      <label><input id="pushGoalsInputV165" type="checkbox" checked /> Golo da equipa</label>
-      <label><input id="pushQuietHoursInputV166" type="checkbox" checked /> Silenciar 23h-09h</label>
-      <button id="savePushPrefsBtnV165" class="secondary" type="button">Guardar preferências</button>
-    </div>
-
-    <p class="push-note-v165">Diagnóstico: ${escapeHtml(pushDiagnosticMessageV169())}</p>
-  `;
-
-  $("enablePushBtnV165")?.addEventListener("click", enablePushNotificationsV169);
-  $("testPushBtnV165")?.addEventListener("click", sendTestPushV169);
-  $("savePushPrefsBtnV165")?.addEventListener("click", savePushPreferencesOnlyV165);
-  $("saveVapidBtnV169")?.addEventListener("click", saveVapidKeyV169);
-}
-
-// Substitui painel antigo por painel com diagnóstico.
-renderPushNotificationsPanelV165 = renderPushNotificationsPanelV169;
-enablePushNotificationsV165 = enablePushNotificationsV169;
-sendTestPushV165 = sendTestPushV169;
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(renderPushNotificationsPanelV169, 500);
-  setTimeout(renderPushNotificationsPanelV169, 1600);
-  setTimeout(renderPushNotificationsPanelV169, 3200);
-});
-document.addEventListener("click", event => {
-  if (event.target?.id === "enablePushBtnV165") {
-    event.preventDefault();
-    enablePushNotificationsV169();
-  }
-  if (event.target?.id === "testPushBtnV165") {
-    event.preventDefault();
-    sendTestPushV169();
-  }
-  if (event.target?.id === "saveVapidBtnV169") {
-    event.preventDefault();
-    saveVapidKeyV169();
-  }
-}, true);
-
-
-// v170 — Configurações: botões sempre funcionais + push VAPID robusto.
-function getConfigVapidKeyV170() {
-  try {
-    return String(
-      APP_CONFIG?.messaging?.vapidKey ||
-      window.MUNDIAL_CONFIG?.messaging?.vapidKey ||
-      localStorage.getItem(`${STORAGE_KEY}_push_vapid_key_v169`) ||
-      ""
-    ).trim();
-  } catch {
-    return "";
-  }
-}
-
-function appToastV170(message) {
-  try {
-    if (typeof toast === "function") return toast(message);
-  } catch {}
-  try { alert(message); } catch {}
-}
-
-async function clearAppCacheV170() {
-  try {
-    if ("caches" in window) {
-      const names = await caches.keys();
-      await Promise.all(names.map(name => caches.delete(name)));
-    }
-
-    if (navigator.serviceWorker?.getRegistrations) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      // Não desregista por defeito para não matar push; força só update.
-      await Promise.all(regs.map(reg => reg.update().catch(() => null)));
-    }
-
-    localStorage.setItem(`${STORAGE_KEY}_last_cache_clear_v170`, new Date().toISOString());
-    appToastV170("Cache limpa. Fecha e abre a app novamente.");
-  } catch (error) {
-    console.error("Limpar cache falhou:", error);
-    appToastV170(`Não consegui limpar cache: ${error.message || "erro"}`);
-  }
-}
-
-async function updateAppV170() {
-  try {
-    if (navigator.serviceWorker?.getRegistration) {
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (reg) await reg.update();
-    }
-    if ("caches" in window) {
-      const names = await caches.keys();
-      await Promise.all(names.map(name => caches.delete(name)));
-    }
-    appToastV170("Atualização preparada. A app vai recarregar.");
-    setTimeout(() => location.reload(true), 500);
-  } catch (error) {
-    console.error("Atualizar app falhou:", error);
-    appToastV170(`Não consegui atualizar: ${error.message || "erro"}`);
-  }
-}
-
-async function installAppV170() {
-  try {
-    if (window.deferredInstallPrompt) {
-      window.deferredInstallPrompt.prompt();
-      await window.deferredInstallPrompt.userChoice.catch(() => null);
-      window.deferredInstallPrompt = null;
-      appToastV170("Pedido de instalação enviado.");
-      return;
-    }
-
-    const ua = navigator.userAgent || "";
-    if (/iphone|ipad|ipod/i.test(ua)) {
-      appToastV170("No iPhone: Safari → Partilhar → Adicionar ao Ecrã Principal.");
-    } else if (/edg/i.test(ua)) {
-      appToastV170("No Edge: menu ⋯ → Apps → Instalar este site como aplicação.");
-    } else if (/chrome/i.test(ua)) {
-      appToastV170("No Chrome: menu ⋮ → Instalar app ou Adicionar ao ecrã principal.");
-    } else {
-      appToastV170("Usa o menu do navegador para instalar a app/PWA.");
-    }
-  } catch (error) {
-    console.error("Instalar app falhou:", error);
-    appToastV170(`Não consegui iniciar instalação: ${error.message || "erro"}`);
-  }
-}
-
-function openLogsV170() {
-  try {
-    if (typeof showTab === "function") return showTab("logs");
-    const btn = [...document.querySelectorAll("button,a,[role='button']")].find(el => (el.textContent || "").toLowerCase().includes("logs"));
-    if (btn) return btn.click();
-    location.hash = "#logs";
-  } catch {
-    location.hash = "#logs";
-  }
-}
-
-function openAdminV170() {
-  try {
-    if (typeof showTab === "function") return showTab("admin");
-    const btn = [...document.querySelectorAll("button,a,[role='button']")].find(el => (el.textContent || "").toLowerCase().includes("admin"));
-    if (btn) return btn.click();
-    location.hash = "#admin";
-  } catch {
-    location.hash = "#admin";
-  }
-}
-
-async function enablePushV170() {
-  try {
-    if (!("Notification" in window)) {
-      appToastV170("Este navegador não suporta notificações.");
-      return;
-    }
-
-    const vapidKey = getConfigVapidKeyV170();
-    if (!vapidKey) {
-      appToastV170("VAPID key em falta no config.js.");
-      return;
-    }
-
-    if (!firebaseMessaging || !firebaseMessagingApi) {
-      appToastV170("Firebase Messaging ainda não está pronto. Aguarda uns segundos.");
-      return;
-    }
-
-    if (!currentUser) {
-      appToastV170("Tens de estar com login feito.");
-      return;
-    }
-
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      appToastV170("Permissão de notificações não autorizada.");
-      return;
-    }
-
-    if (!navigator.serviceWorker?.ready) {
-      appToastV170("Service Worker ainda não está pronto.");
-      return;
-    }
-
-    const registration = await navigator.serviceWorker.ready;
-    const token = await firebaseMessagingApi.getToken(firebaseMessaging, {
-      vapidKey,
-      serviceWorkerRegistration: registration
-    });
-
-    if (!token) {
-      appToastV170("Não foi possível criar token push.");
-      return;
-    }
-
-    if (typeof savePushTokenPreferencesV165 === "function") {
-      await savePushTokenPreferencesV165(token);
-    } else if (db && firebaseApi?.setDoc && firebaseApi?.doc) {
-      await firebaseApi.setDoc(firebaseApi.doc(db, "notificationTokens", token), {
-        token,
-        uid: currentUser.uid,
-        email: normalizeEmail(currentUser.email),
-        updatedAt: new Date().toISOString(),
-        userAgent: navigator.userAgent
-      }, { merge: true });
-    } else {
-      throw new Error("Firestore não está pronto para guardar notificationTokens.");
-    }
-
-    localStorage.setItem(`${STORAGE_KEY}_push_enabled_v170`, "1");
-    appToastV170("Notificações push ativas neste dispositivo.");
-  } catch (error) {
-    console.error("enablePushV170 falhou:", error);
-    const msg = String(error?.message || error || "erro");
-    if (msg.includes("invalid-vapid-key")) return appToastV170("VAPID key inválida.");
-    if (msg.includes("permission-denied")) return appToastV170("Sem permissão no Firestore para guardar notificationTokens.");
-    appToastV170(`Não consegui ativar push: ${msg.slice(0, 130)}`);
-  }
-}
-
-async function sendTestPushV170() {
-  try {
-    if (!currentUser || !db || !firebaseApi?.addDoc || !firebaseApi?.collection) {
-      appToastV170("Firebase/login ainda não está pronto.");
-      return;
-    }
-
-    await firebaseApi.addDoc(firebaseApi.collection(db, "notificationTests"), {
-      uid: currentUser.uid,
-      email: normalizeEmail(currentUser.email),
-      createdAt: new Date().toISOString(),
-      source: "settings-v170"
-    });
-
-    appToastV170("Teste push pedido. Verifica se recebes a notificação.");
-  } catch (error) {
-    console.error("sendTestPushV170 falhou:", error);
-    const msg = String(error?.message || error || "erro");
-    if (msg.includes("permission-denied")) return appToastV170("Sem permissão para criar notificationTests.");
-    appToastV170(`Não consegui enviar teste: ${msg.slice(0, 130)}`);
-  }
-}
-
-function bindSettingsButtonsV170() {
-  try {
-    if (document.body.dataset.settingsButtonsV170 === "1") return;
-    document.body.dataset.settingsButtonsV170 = "1";
-
-    window.addEventListener("beforeinstallprompt", event => {
-      event.preventDefault();
-      window.deferredInstallPrompt = event;
-    });
-
-    document.addEventListener("click", event => {
-      const btn = event.target.closest?.("button, a, [role='button']");
-      if (!btn) return;
-
-      const id = String(btn.id || "").toLowerCase();
-      const label = String(btn.textContent || btn.getAttribute("aria-label") || "").trim().toLowerCase();
-      const data = [
-        btn.getAttribute("data-action"),
-        btn.getAttribute("data-tab"),
-        btn.getAttribute("data-page"),
-        btn.getAttribute("href")
-      ].filter(Boolean).join(" ").toLowerCase();
-
-      const all = `${id} ${label} ${data}`;
-
-      if (all.includes("atualizar app") || all.includes("update app") || id.includes("update")) {
-        event.preventDefault();
-        updateAppV170();
-        return;
-      }
-
-      if (all.includes("limpar cache") || all.includes("clear cache") || id.includes("cache")) {
-        event.preventDefault();
-        clearAppCacheV170();
-        return;
-      }
-
-      if (all.includes("instalar agora") || all.includes("instalar app") || all.includes("install app")) {
-        event.preventDefault();
-        installAppV170();
-        return;
-      }
-
-      if (all.includes("abrir logs")) {
-        event.preventDefault();
-        openLogsV170();
-        return;
-      }
-
-      if (all.includes("abrir admin")) {
-        event.preventDefault();
-        openAdminV170();
-        return;
-      }
-
-      if (all.includes("ativar neste dispositivo") || all.includes("ativar push")) {
-        event.preventDefault();
-        enablePushV170();
-        return;
-      }
-
-      if (all.includes("enviar teste")) {
-        event.preventDefault();
-        sendTestPushV170();
-        return;
-      }
-    }, true);
-  } catch (error) {
-    console.warn("bindSettingsButtonsV170 falhou:", error);
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(bindSettingsButtonsV170, 100);
-  setTimeout(bindSettingsButtonsV170, 900);
-  setTimeout(bindSettingsButtonsV170, 2200);
-});
-document.addEventListener("click", () => setTimeout(bindSettingsButtonsV170, 120));
-
-
-// v177 — Push via Functions limpo, sem Firestore direto para token.
-const PUSH_FUNCTIONS_BASE_V177 = "https://us-central1-app-mundial2026.cloudfunctions.net";
-
-async function callPushFunctionV177(functionName, payload = {}) {
-  const res = await fetch(`${PUSH_FUNCTIONS_BASE_V177}/${functionName}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ...payload,
-      uid: currentUser?.uid || firebaseAuth?.currentUser?.uid || "",
-      email: normalizeEmail?.(currentUser?.email || firebaseAuth?.currentUser?.email || "") || "",
-      appVersion: "177.0",
-      userAgent: navigator.userAgent
-    })
-  });
-
-  let data = {};
-  try { data = await res.json(); } catch {}
-
-  if (!res.ok || data.ok === false) {
-    throw new Error(data.error || `Function ${functionName} respondeu ${res.status}`);
-  }
-  return data;
-}
-
-function getPushPreferencesV177() {
-  const findChecked = (needle, fallback = true) => {
-    const text = needle.toLowerCase();
-    const labels = Array.from(document.querySelectorAll("label, .push-pref, .toggle, .checkbox"));
-    const el = labels.find(x => (x.textContent || "").toLowerCase().includes(text));
-    const input = el?.querySelector?.('input[type="checkbox"]');
-    return input ? input.checked === true : fallback;
-  };
-
-  return {
-    gameStarted: findChecked("jogo começou"),
-    gameFinished: findChecked("jogo acabou"),
-    teamGoal: findChecked("golo"),
-    quietHours: findChecked("silenciar", false)
-  };
-}
-
-async function savePushTokenViaFunctionV177(token) {
-  if (!token) throw new Error("Token push vazio.");
-
-  localStorage.setItem(`${STORAGE_KEY}_push_last_token_v177`, token);
-  localStorage.setItem(`${STORAGE_KEY}_push_enabled_v170`, "1");
-
-  await callPushFunctionV177("registerPushToken", {
-    token,
-    preferences: getPushPreferencesV177(),
-    platform: /iphone|ipad|ipod/i.test(navigator.userAgent) ? "ios" : "web"
-  });
-}
-
-async function savePushPreferencesV177() {
-  try {
-    const preferences = getPushPreferencesV177();
-    localStorage.setItem(`${STORAGE_KEY}_push_preferences_v177`, JSON.stringify(preferences));
-
-    await callPushFunctionV177("savePushPreferences", { preferences }).catch(error => {
-      console.warn("Preferências ficaram locais porque Function falhou:", error);
-    });
-
-    appToastV170?.("Preferências push guardadas.");
-  } catch (error) {
-    console.error("savePushPreferencesV177 falhou:", error);
-    appToastV170?.(`Não consegui guardar preferências: ${error.message || "erro"}`);
-  }
-}
-
-async function sendTestPushV177() {
-  try {
-    const token =
-      localStorage.getItem(`${STORAGE_KEY}_push_last_token_v177`) ||
-      localStorage.getItem(`${STORAGE_KEY}_push_last_token_v175`) ||
-      localStorage.getItem(`${STORAGE_KEY}_push_last_token_v170`) ||
-      "";
-
-    await callPushFunctionV177("requestPushTest", {
-      token,
-      preferences: getPushPreferencesV177()
-    });
-
-    appToastV170?.("Teste push pedido.");
-  } catch (error) {
-    console.error("sendTestPushV177 falhou:", error);
-    appToastV170?.(`Não consegui pedir teste push: ${error.message || "erro"}`);
-  }
-}
-
-// Override único dos pontos antigos.
-savePushTokenPreferencesV165 = savePushTokenViaFunctionV177;
-if (typeof savePushPreferencesV165 !== "undefined") savePushPreferencesV165 = savePushPreferencesV177;
-if (typeof savePushNotificationPreferencesV165 !== "undefined") savePushNotificationPreferencesV165 = savePushPreferencesV177;
-if (typeof sendTestPushV165 !== "undefined") sendTestPushV165 = sendTestPushV177;
-if (typeof sendTestPushV169 !== "undefined") sendTestPushV169 = sendTestPushV177;
-if (typeof sendTestPushV170 !== "undefined") sendTestPushV170 = sendTestPushV177;
-
-document.addEventListener("click", event => {
-  const btn = event.target.closest?.("button, [role='button']");
-  if (!btn) return;
-  const txt = String(btn.textContent || btn.id || btn.getAttribute("aria-label") || "").toLowerCase();
-
-  if (txt.includes("guardar prefer")) {
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    savePushPreferencesV177();
-  }
-
-  if (txt.includes("enviar teste")) {
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    sendTestPushV177();
-  }
-}, true);

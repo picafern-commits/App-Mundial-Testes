@@ -9327,31 +9327,31 @@ body.modal-open-v162{
 }
 
 
-/* v169 — VAPID / diagnóstico push */
-.push-vapid-box-v169{
+/* Push VAPID / diagnostico */
+.push-vapid-box-v181{
   margin:10px 0!important;
   padding:12px!important;
   border-radius:14px!important;
   background:rgba(255,212,90,.08)!important;
   border:1px solid rgba(255,212,90,.28)!important;
 }
-.push-vapid-box-v169 strong{
+.push-vapid-box-v181 strong{
   display:block!important;
   color:#ffe390!important;
   font-size:13px!important;
   margin-bottom:4px!important;
 }
-.push-vapid-box-v169 span{
+.push-vapid-box-v181 span{
   display:block!important;
   color:rgba(255,255,255,.68)!important;
   font-size:12px!important;
   margin-bottom:8px!important;
 }
-.push-vapid-box-v169 div{
+.push-vapid-box-v181 div{
   display:flex!important;
   gap:8px!important;
 }
-.push-vapid-box-v169 input{
+.push-vapid-box-v181 input{
   flex:1!important;
   min-width:0!important;
   border-radius:12px!important;
@@ -9360,7 +9360,7 @@ body.modal-open-v162{
   color:#fff!important;
   padding:10px 12px!important;
 }
-.push-vapid-box-v169 button{
+.push-vapid-box-v181 button{
   border-radius:12px!important;
   border:1px solid rgba(255,212,90,.32)!important;
   background:rgba(255,212,90,.14)!important;
@@ -9369,13 +9369,13 @@ body.modal-open-v162{
   padding:10px 12px!important;
 }
 @media(max-width:760px){
-  .push-vapid-box-v169 div{
+  .push-vapid-box-v181 div{
     flex-direction:column!important;
   }
 }
 
 
-/* v170-settings-buttons-fix */
+/* Ajuste de toque nos botoes */
 button,
 [role="button"]{
   touch-action: manipulation;
