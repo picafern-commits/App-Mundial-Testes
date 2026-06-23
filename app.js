@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v182";
+const APP_VERSION_LABEL = "v183";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -766,6 +766,27 @@ window.firestoreEconomyInfoV114 = function firestoreEconomyInfoV114() {
   };
 };
 
+async function showForegroundPushNotificationV183(payload = {}) {
+  try {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    if (!("serviceWorker" in navigator)) return;
+    const title = payload?.notification?.title || payload?.data?.title || "Mundial Pontos 2026";
+    const body = payload?.notification?.body || payload?.data?.body || "";
+    const registration = await navigator.serviceWorker.ready;
+    await registration.showNotification(title, {
+      body,
+      tag: payload?.data?.tag || payload?.messageId || `mundial-foreground-${Date.now()}`,
+      icon: "./icons/icon-192.png",
+      badge: "./icons/icon-192.png",
+      data: {
+        url: payload?.data?.url || "./index.html?open=notifications",
+        type: payload?.data?.type || "foreground"
+      }
+    });
+  } catch (error) {
+    console.warn("Nao consegui mostrar notificacao foreground:", error);
+  }
+}
 async function initFirebase() {
   setTimeout(installFirestoreEconomyModeV114, 0);
   const config = APP_CONFIG.firebase || {};
@@ -802,6 +823,7 @@ async function initFirebase() {
         messagingModule.onMessage(firebaseMessaging, payload => {
           const title = payload?.notification?.title || payload?.data?.title || "Notificação Mundial";
           const body = payload?.notification?.body || payload?.data?.body || "";
+          showForegroundPushNotificationV183(payload);
           toast(body ? `${title}: ${body}` : title);
           renderNotificationsCenterV164();
         });
@@ -9826,9 +9848,8 @@ async function enablePushNotificationsV181(options = {}) {
 async function sendTestPushV181() {
   try {
     if (!hasPermission("admin")) return toast("Só o Admin pode testar push.");
-    const token = localStorage.getItem(pushLastTokenStorageKeyV181()) || "";
-    await callPushFunctionV181("requestPushTest", { token, preferences: currentPushPreferencesV181() });
-    toast("Teste push pedido.");
+    const data = await callPushFunctionV181("requestPushTest", { allDevices: true, preferences: currentPushPreferencesV181() });
+    toast(`Teste push pedido para ${data.sent || 0} dispositivo(s).`);
   } catch (error) {
     console.error("sendTestPushV181 falhou:", error);
     toast(`Não consegui pedir teste push: ${String(error?.message || error || "erro").slice(0, 140)}`);

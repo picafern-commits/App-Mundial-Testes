@@ -1029,6 +1029,10 @@ function cleanQuietHours(input = {}) {
   };
 }
 
+function isPushAdmin(identity = {}) {
+  return ADMIN_EMAILS.has(normalizeEmail(identity.email));
+}
+
 exports.registerPushToken = onRequest({ cors: true, region: "us-central1" }, async (req, res) => {
   setCorsPush(res);
   if (req.method === "OPTIONS") return res.status(204).send("");
@@ -1114,6 +1118,7 @@ exports.requestPushTest = onRequest({ cors: true, region: "us-central1" }, async
     const identity = await requestIdentityPush(req, body);
     const directToken = cleanString(body.token);
     const quietHours = cleanQuietHours(body.quietHours || body.preferences?.quietHours || {});
+    const sendAllDevices = body.allDevices === true || body.allDevices === "true";
     let sent = 0;
 
     const title = "Teste push Mundial";
@@ -1129,11 +1134,15 @@ exports.requestPushTest = onRequest({ cors: true, region: "us-central1" }, async
       }
     };
 
-    if (directToken && !tokenInQuietHours({ quietHours })) {
+    if (directToken && !sendAllDevices && !tokenInQuietHours({ quietHours })) {
       await messaging.send({ token: directToken, ...payload });
       sent = 1;
-    } else if (identity.uid) {
-      const tokens = await loadEnabledTokens({ onlyUid: identity.uid });
+    } else {
+      const tokens = isPushAdmin(identity)
+        ? await loadEnabledTokens()
+        : identity.uid
+          ? await loadEnabledTokens({ onlyUid: identity.uid })
+          : [];
       sent = await sendTokenNotifications(tokens, () => payload);
     }
 

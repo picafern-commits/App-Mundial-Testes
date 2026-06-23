@@ -9170,6 +9170,10 @@ body.modal-open-v162{
   box-shadow:0 14px 34px rgba(0,0,0,.20)!important;
 }
 
+.push-optin-v182.hidden{
+  display:none!important;
+}
+
 .push-optin-v182 strong,
 .push-optin-v182 span{
   display:block!important;
