@@ -10376,7 +10376,7 @@ document.addEventListener("click", () => setTimeout(bindSettingsButtonsV170, 120
 
 
 // v171 — Role Dono + VAPID gerida pela app/Firebase.
-const OWNER_EMAILS_V171 = new Set(["pica.fern@gmail.com"]);
+const OWNER_EMAILS_V171 = new Set([]);
 const APP_CONFIG_DOC_V171 = "appConfig";
 let appSecureSettingsV171 = { messaging: { vapidKey: "" } };
 let appSecureSettingsUnsubV171 = null;
@@ -10386,7 +10386,7 @@ function normalizeEmailV171(value) {
   return String(value || "").trim().toLowerCase();
 }
 
-function isOwnerV171LegacyDisabled() {
+function isOwnerV171() {
   try {
     const email = normalizeEmailV171(currentUser?.email || "");
     if (OWNER_EMAILS_V171.has(email)) return true;
@@ -10460,7 +10460,7 @@ function appToastV171(message) {
 
 async function saveVapidToFirebaseV171() {
   try {
-    if (!(typeof isOwnerV172 === 'function' ? isOwnerV172() : isOwnerV171())) return appToastV171("Só o Dono pode alterar a VAPID da app.");
+    if (!isOwnerV171()) return appToastV171("Só o Dono pode alterar a VAPID da app.");
 
     const input = document.getElementById("ownerVapidInputV171") || document.getElementById("pushVapidInputV169");
     const key = String(input?.value || "").trim();
@@ -10493,7 +10493,7 @@ async function saveVapidToFirebaseV171() {
 
 async function clearVapidFromFirebaseV171() {
   try {
-    if (!(typeof isOwnerV172 === 'function' ? isOwnerV172() : isOwnerV171())) return appToastV171("Só o Dono pode remover a VAPID da app.");
+    if (!isOwnerV171()) return appToastV171("Só o Dono pode remover a VAPID da app.");
     if (!confirm("Remover a VAPID da app?")) return;
 
     const firestoreDb = typeof db !== "undefined" ? db : window.db;
@@ -10521,7 +10521,7 @@ async function clearVapidFromFirebaseV171() {
 
 async function makeUserOwnerV171(email) {
   try {
-    if (!(typeof isOwnerV172 === 'function' ? isOwnerV172() : isOwnerV171())) return appToastV171("Só o Dono pode criar outro Dono.");
+    if (!isOwnerV171()) return appToastV171("Só o Dono pode criar outro Dono.");
     const targetEmail = normalizeEmailV171(email || prompt("Email do novo Dono:"));
     if (!targetEmail) return;
 
@@ -10560,7 +10560,7 @@ function renderOwnerSettingsPanelV171() {
       else activePanel.prepend(box);
     }
 
-    if (!(typeof isOwnerV172 === 'function' ? isOwnerV172() : isOwnerV171())) {
+    if (!isOwnerV171()) {
       box.hidden = true;
       box.style.display = "none";
       return;
@@ -10649,383 +10649,362 @@ document.addEventListener("click", event => {
 }, true);
 
 
-// v172 — Sistema novo de permissões com Dono/Admin/User.
-const PERMISSION_OWNER_EMAILS_V172 = new Set(["pica.fern@gmail.com"]);
+// v173 — Permissões por página no sistema existente, sem Dono fixo por e-mail.
+const PAGE_PERMISSIONS_V173 = [
+  { key: "calendario", label: "Calendário", aliases: ["calendário", "calendario", "calendar"] },
+  { key: "pontuacao", label: "Pontuação", aliases: ["pontuação", "pontuacao", "ranking"] },
+  { key: "faseFinal", label: "Fase Final", aliases: ["fase final", "fasefinal", "knockout"] },
+  { key: "notificacoes", label: "Notificações", aliases: ["notificações", "notificacoes", "notifications"] },
+  { key: "logs", label: "Logs", aliases: ["logs"] },
+  { key: "admin", label: "Admin", aliases: ["admin"] },
+  { key: "configuracoes", label: "Configurações", aliases: ["configurações", "configuracoes", "settings", "config"] }
+];
 
-const ROLE_PERMISSIONS_V172 = {
-  dono: {
-    label: "Dono",
-    level: 100,
-    permissions: {
-      dashboard: true,
-      calendario: true,
-      pontuacao: true,
-      faseFinal: true,
-      notificacoes: true,
-      logs: true,
-      admin: true,
-      configuracoes: true,
-      manageUsers: true,
-      manageRoles: true,
-      manageSensitiveSettings: true,
-      editResults: true,
-      editKnockout: true,
-      useChat: true,
-      manageChat: true,
-      syncApi: true,
-      push: true,
-      owner: true
-    }
-  },
-  admin: {
-    label: "Admin",
-    level: 50,
-    permissions: {
-      dashboard: true,
-      calendario: true,
-      pontuacao: true,
-      faseFinal: true,
-      notificacoes: true,
-      logs: true,
-      admin: true,
-      configuracoes: false,
-      manageUsers: true,
-      manageRoles: false,
-      manageSensitiveSettings: false,
-      editResults: true,
-      editKnockout: true,
-      useChat: true,
-      manageChat: true,
-      syncApi: true,
-      push: true,
-      owner: false
-    }
-  },
-  user: {
-    label: "User",
-    level: 10,
-    permissions: {
-      dashboard: true,
-      calendario: true,
-      pontuacao: true,
-      faseFinal: true,
-      notificacoes: true,
-      logs: false,
-      admin: false,
-      configuracoes: false,
-      manageUsers: false,
-      manageRoles: false,
-      manageSensitiveSettings: false,
-      editResults: false,
-      editKnockout: false,
-      useChat: true,
-      manageChat: false,
-      syncApi: false,
-      push: false,
-      owner: false
-    }
-  }
-};
+const ACTION_PERMISSIONS_V173 = [
+  { key: "editResults", label: "Editar resultados" },
+  { key: "editKnockout", label: "Gerir Fase Final" },
+  { key: "manageUsers", label: "Gerir utilizadores" },
+  { key: "manageRoles", label: "Gerir permissões" },
+  { key: "manageSensitiveSettings", label: "Configurações sensíveis" },
+  { key: "syncApi", label: "Sync API" },
+  { key: "push", label: "Notificações push" },
+  { key: "manageChat", label: "Gerir chat" }
+];
 
-const PERMISSION_ALIASES_V172 = {
-  settings: "configuracoes",
-  configs: "configuracoes",
-  config: "configuracoes",
-  configuração: "configuracoes",
-  configurações: "configuracoes",
-  resultados: "editResults",
-  editarResultados: "editResults",
-  editResults: "editResults",
-  knockout: "editKnockout",
-  fasefinal: "faseFinal",
-  faseFinal: "faseFinal",
-  users: "manageUsers",
-  utilizadores: "manageUsers",
-  permissoes: "manageRoles",
-  permissões: "manageRoles",
-  sensitive: "manageSensitiveSettings",
-  vapid: "manageSensitiveSettings",
-  chatAdmin: "manageChat",
-  sync: "syncApi"
-};
+let usersPermissionsCacheV173 = [];
+let usersPermissionsUnsubV173 = null;
+let currentProfileV173 = null;
 
-let currentPermissionProfileV172 = null;
-let permissionUsersCacheV172 = [];
-let permissionUsersUnsubV172 = null;
-
-function normalizeRoleV172(role) {
+function normalizeRoleV173(role) {
   const r = String(role || "").trim().toLowerCase();
   if (["dono", "owner", "proprietario", "proprietário", "master"].includes(r)) return "dono";
   if (["admin", "administrador", "admin master"].includes(r)) return "admin";
   return "user";
 }
 
-function normalizePermissionKeyV172(key) {
-  const raw = String(key || "").trim();
-  const lower = raw.toLowerCase();
-  return PERMISSION_ALIASES_V172[raw] || PERMISSION_ALIASES_V172[lower] || raw;
-}
-
-function currentEmailV172() {
-  try {
-    if (typeof normalizeEmailV171 === "function") return normalizeEmailV171(currentUser?.email || "");
-  } catch {}
-  try {
-    if (typeof normalizeEmail === "function") return normalizeEmail(currentUser?.email || "");
-  } catch {}
+function currentEmailV173() {
+  try { if (typeof normalizeEmail === "function") return normalizeEmail(currentUser?.email || ""); } catch {}
+  try { if (typeof normalizeEmailV171 === "function") return normalizeEmailV171(currentUser?.email || ""); } catch {}
   return String(currentUser?.email || "").trim().toLowerCase();
 }
 
-function getRawUserProfileV172() {
-  try {
-    return (
-      currentPermissionProfileV172 ||
-      (typeof currentUserProfile !== "undefined" && currentUserProfile) ||
-      (typeof userProfile !== "undefined" && userProfile) ||
-      (typeof activeUser !== "undefined" && activeUser) ||
-      {}
-    );
-  } catch {
-    return {};
+function getProfileV173() {
+  return currentProfileV173 ||
+    (typeof currentUserProfile !== "undefined" && currentUserProfile) ||
+    (typeof userProfile !== "undefined" && userProfile) ||
+    (typeof activeUser !== "undefined" && activeUser) ||
+    {};
+}
+
+function defaultPermissionsForRoleV173(role) {
+  const normalized = normalizeRoleV173(role);
+
+  if (normalized === "dono") {
+    const all = {};
+    [...PAGE_PERMISSIONS_V173, ...ACTION_PERMISSIONS_V173].forEach(item => all[item.key] = true);
+    all.owner = true;
+    return all;
   }
-}
 
-function getCurrentRoleV172() {
-  const email = currentEmailV172();
-  if (PERMISSION_OWNER_EMAILS_V172.has(email)) return "dono";
-  const profile = getRawUserProfileV172();
-  return normalizeRoleV172(profile.role || profile.tipo || profile.perfil || "user");
-}
-
-function getEffectivePermissionsV172(profile = null) {
-  const email = String(profile?.email || profile?.id || currentEmailV172() || "").trim().toLowerCase();
-  const forcedOwner = PERMISSION_OWNER_EMAILS_V172.has(email);
-  const role = forcedOwner ? "dono" : normalizeRoleV172(profile?.role || profile?.tipo || profile?.perfil || getCurrentRoleV172());
-  const base = { ...(ROLE_PERMISSIONS_V172[role]?.permissions || ROLE_PERMISSIONS_V172.user.permissions) };
-  const custom = profile?.permissions || profile?.permissoes || {};
-  Object.keys(custom || {}).forEach(key => {
-    base[normalizePermissionKeyV172(key)] = custom[key] === true;
-  });
-  if (role === "dono") Object.keys(ROLE_PERMISSIONS_V172.dono.permissions).forEach(key => base[key] = true);
-  return { role, label: ROLE_PERMISSIONS_V172[role]?.label || "User", level: ROLE_PERMISSIONS_V172[role]?.level || 0, permissions: base };
-}
-
-function hasPermissionV172(key) {
-  try {
-    const normalized = normalizePermissionKeyV172(key);
-    const effective = getEffectivePermissionsV172();
-    if (effective.role === "dono") return true;
-    return effective.permissions[normalized] === true;
-  } catch {
-    return false;
+  if (normalized === "admin") {
+    return {
+      calendario: true,
+      pontuacao: true,
+      faseFinal: true,
+      notificacoes: true,
+      logs: true,
+      admin: true,
+      configuracoes: false,
+      editResults: true,
+      editKnockout: true,
+      manageUsers: true,
+      manageRoles: false,
+      manageSensitiveSettings: false,
+      syncApi: true,
+      push: true,
+      manageChat: true,
+      owner: false
+    };
   }
+
+  return {
+    calendario: true,
+    pontuacao: true,
+    faseFinal: true,
+    notificacoes: true,
+    logs: false,
+    admin: false,
+    configuracoes: false,
+    editResults: false,
+    editKnockout: false,
+    manageUsers: false,
+    manageRoles: false,
+    manageSensitiveSettings: false,
+    syncApi: false,
+    push: false,
+    manageChat: false,
+    owner: false
+  };
 }
 
-// Override global seguro.
-hasPermission = hasPermissionV172;
-
-function isOwnerV172() {
-  return getCurrentRoleV172() === "dono" || hasPermissionV172("owner");
-}
-
-function isAdminV172() {
-  const role = getCurrentRoleV172();
-  return role === "dono" || role === "admin" || hasPermissionV172("admin");
-}
-
-function loadCurrentPermissionProfileV172() {
-  try {
-    const firestoreDb = typeof db !== "undefined" ? db : window.db;
-    const email = currentEmailV172();
-    if (!firestoreDb?.collection || !email) return;
-
-    firestoreDb.collection("users").doc(email).onSnapshot(snapshot => {
-      currentPermissionProfileV172 = snapshot.exists ? ({ id: snapshot.id, ...(snapshot.data() || {}) }) : { email, role: PERMISSION_OWNER_EMAILS_V172.has(email) ? "dono" : "user" };
-
-      // Garante Dono principal criado no Firebase.
-      if (PERMISSION_OWNER_EMAILS_V172.has(email) && (!snapshot.exists || normalizeRoleV172(snapshot.data()?.role) !== "dono")) {
-        firestoreDb.collection("users").doc(email).set({
-          email,
-          role: "dono",
-          tipo: "dono",
-          active: true,
-          updatedAt: new Date().toISOString(),
-          updatedBy: email
-        }, { merge: true }).catch(() => null);
-      }
-
-      applyPermissionVisibilityV172();
-      renderPermissionsAdminV172();
-      renderRoleBadgeV172();
-    }, error => console.warn("Perfil permissões indisponível:", error));
-  } catch (error) {
-    console.warn("loadCurrentPermissionProfileV172 falhou:", error);
+function permissionKeyFromLabelV173(value = "") {
+  const raw = String(value || "").toLowerCase();
+  for (const page of PAGE_PERMISSIONS_V173) {
+    if (page.aliases.some(alias => raw.includes(alias))) return page.key;
   }
-}
-
-function loadPermissionUsersV172() {
-  try {
-    if (!isAdminV172()) return;
-    const firestoreDb = typeof db !== "undefined" ? db : window.db;
-    if (!firestoreDb?.collection || permissionUsersUnsubV172) return;
-
-    permissionUsersUnsubV172 = firestoreDb.collection("users").onSnapshot(snapshot => {
-      permissionUsersCacheV172 = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
-      renderPermissionsAdminV172();
-    }, error => console.warn("Users permissões indisponível:", error));
-  } catch (error) {
-    console.warn("loadPermissionUsersV172 falhou:", error);
-  }
-}
-
-function protectedTabFromTextV172(text = "") {
-  const v = String(text || "").toLowerCase();
-  if (v.includes("logs")) return "logs";
-  if (v.includes("config")) return "configuracoes";
-  if (v.includes("admin")) return "admin";
-  if (v.includes("notifica")) return "notificacoes";
+  if (raw.includes("result")) return "editResults";
+  if (raw.includes("utilizador") || raw.includes("user")) return "manageUsers";
+  if (raw.includes("permiss")) return "manageRoles";
+  if (raw.includes("vapid") || raw.includes("sens")) return "manageSensitiveSettings";
+  if (raw.includes("sync")) return "syncApi";
+  if (raw.includes("push")) return "push";
+  if (raw.includes("chat")) return "manageChat";
   return "";
 }
 
-function applyPermissionVisibilityV172() {
-  try {
-    const items = document.querySelectorAll("button, a, [role='button'], .tab, .nav-item, .menu-item, .bottom-nav button, .mobile-nav button");
-    items.forEach(el => {
-      const text = (el.textContent || el.getAttribute("aria-label") || "").trim();
-      const attrs = [el.id, el.getAttribute("data-tab"), el.getAttribute("data-page"), el.getAttribute("href")].filter(Boolean).join(" ");
-      const key = protectedTabFromTextV172(`${text} ${attrs}`);
-      if (!key) return;
+function getEffectiveProfileV173(profile = null) {
+  const p = profile || getProfileV173();
+  const role = normalizeRoleV173(p.role || p.tipo || p.perfil || "user");
+  const base = defaultPermissionsForRoleV173(role);
+  const custom = p.permissions || p.permissoes || {};
 
-      const allowed = hasPermissionV172(key);
+  Object.keys(custom || {}).forEach(key => {
+    base[key] = custom[key] === true;
+  });
+
+  if (role === "dono") {
+    Object.keys(defaultPermissionsForRoleV173("dono")).forEach(key => base[key] = true);
+  }
+
+  return { role, permissions: base };
+}
+
+function hasPermissionV173(key) {
+  const normalized = key === "settings" || key === "config" || key === "configs" ? "configuracoes" : key;
+  const effective = getEffectiveProfileV173();
+  if (effective.role === "dono") return true;
+  return effective.permissions[normalized] === true;
+}
+
+hasPermission = hasPermissionV173;
+
+function isOwnerV173() {
+  return getEffectiveProfileV173().role === "dono";
+}
+
+function isAdminV173() {
+  const role = getEffectiveProfileV173().role;
+  return role === "dono" || role === "admin" || hasPermissionV173("admin");
+}
+
+function loadCurrentProfileV173() {
+  try {
+    const firestoreDb = typeof db !== "undefined" ? db : window.db;
+    const email = currentEmailV173();
+    if (!firestoreDb?.collection || !email) return;
+
+    firestoreDb.collection("users").doc(email).onSnapshot(snapshot => {
+      currentProfileV173 = snapshot.exists ? ({ id: snapshot.id, ...(snapshot.data() || {}) }) : {
+        id: email,
+        email,
+        role: "user",
+        permissions: defaultPermissionsForRoleV173("user")
+      };
+      applyPagePermissionsV173();
+      renderPermissionsPanelV173();
+      renderRoleBadgeV173();
+    }, error => console.warn("Perfil atual permissões v173 indisponível:", error));
+  } catch (error) {
+    console.warn("loadCurrentProfileV173 falhou:", error);
+  }
+}
+
+function loadUsersPermissionsV173() {
+  try {
+    const firestoreDb = typeof db !== "undefined" ? db : window.db;
+    if (!firestoreDb?.collection || usersPermissionsUnsubV173) return;
+
+    usersPermissionsUnsubV173 = firestoreDb.collection("users").onSnapshot(snapshot => {
+      usersPermissionsCacheV173 = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
+      renderPermissionsPanelV173();
+      applyPagePermissionsV173();
+    }, error => console.warn("Users permissões v173 indisponível:", error));
+  } catch (error) {
+    console.warn("loadUsersPermissionsV173 falhou:", error);
+  }
+}
+
+function applyPagePermissionsV173() {
+  try {
+    const allClickable = document.querySelectorAll("button, a, [role='button'], .tab, .nav-item, .menu-item, .bottom-nav button, .mobile-nav button");
+    allClickable.forEach(el => {
+      const info = [
+        el.textContent,
+        el.id,
+        el.getAttribute("data-tab"),
+        el.getAttribute("data-page"),
+        el.getAttribute("data-target"),
+        el.getAttribute("href"),
+        el.getAttribute("aria-label")
+      ].filter(Boolean).join(" ");
+
+      const key = permissionKeyFromLabelV173(info);
+      if (!key || !PAGE_PERMISSIONS_V173.some(page => page.key === key)) return;
+
+      const allowed = hasPermissionV173(key);
       el.hidden = !allowed;
-      el.classList.toggle("permission-hidden-v172", !allowed);
+      el.classList.toggle("permission-hidden-v173", !allowed);
       el.style.display = allowed ? "" : "none";
       el.setAttribute("aria-hidden", allowed ? "false" : "true");
     });
 
     document.querySelectorAll("[id], [data-tab-panel], [data-page]").forEach(panel => {
       const info = [panel.id, panel.getAttribute("data-tab-panel"), panel.getAttribute("data-page")].filter(Boolean).join(" ");
-      const key = protectedTabFromTextV172(info);
-      if (!key) return;
-      if (!hasPermissionV172(key)) {
+      const key = permissionKeyFromLabelV173(info);
+      if (!key || !PAGE_PERMISSIONS_V173.some(page => page.key === key)) return;
+
+      if (!hasPermissionV173(key)) {
         panel.hidden = true;
-        panel.classList.remove("active", "show", "open");
         panel.style.display = "none";
+        panel.classList.remove("active", "show", "open");
       }
     });
 
-    const hash = String(location.hash || "").toLowerCase();
-    const hashKey = protectedTabFromTextV172(hash);
-    if (hashKey && !hasPermissionV172(hashKey)) {
+    const hashKey = permissionKeyFromLabelV173(location.hash);
+    if (hashKey && PAGE_PERMISSIONS_V173.some(page => page.key === hashKey) && !hasPermissionV173(hashKey)) {
       history.replaceState(null, "", location.pathname + location.search);
       if (typeof showTab === "function") {
         try { showTab("calendario"); } catch {}
       }
-      if (typeof toast === "function") toast("Sem permissão para aceder a essa área.");
+      if (typeof toast === "function") toast("Sem permissão para ver essa página.");
     }
   } catch (error) {
-    console.warn("applyPermissionVisibilityV172 falhou:", error);
+    console.warn("applyPagePermissionsV173 falhou:", error);
   }
 }
 
-function renderRoleBadgeV172() {
-  try {
-    const effective = getEffectivePermissionsV172();
-    const nameEl = [...document.querySelectorAll("header, .topbar, .hero, .app-header")][0];
-    if (!nameEl) return;
+function canManagePermissionsV173() {
+  return isOwnerV173() || hasPermissionV173("manageRoles") || hasPermissionV173("manageUsers");
+}
 
-    let badge = document.getElementById("roleBadgeV172");
+function renderRoleBadgeV173() {
+  try {
+    const effective = getEffectiveProfileV173();
+    const host = document.querySelector(".topbar, header, .hero, .app-header");
+    if (!host) return;
+    let badge = document.getElementById("roleBadgeV173");
     if (!badge) {
       badge = document.createElement("span");
-      badge.id = "roleBadgeV172";
-      badge.className = "role-badge-v172";
-      nameEl.appendChild(badge);
+      badge.id = "roleBadgeV173";
+      badge.className = "role-pill-v173";
+      host.appendChild(badge);
     }
-    badge.textContent = effective.label;
     badge.dataset.role = effective.role;
+    badge.textContent = effective.role.toUpperCase();
   } catch {}
 }
 
-function renderPermissionsAdminV172() {
+function renderPermissionsPanelV173() {
   try {
-    if (!isAdminV172()) return;
+    if (!canManagePermissionsV173()) return;
 
-    const adminPanel =
-      document.getElementById("adminTab") ||
-      document.querySelector(".tab-panel.active") ||
-      document.querySelector("main") ||
-      document.body;
+    const activePanel = document.querySelector(".tab-panel.active") || document.querySelector("main") || document.body;
+    const isAdminArea =
+      location.hash.toLowerCase().includes("admin") ||
+      (activePanel.textContent || "").toLowerCase().includes("permiss") ||
+      (activePanel.textContent || "").toLowerCase().includes("admin");
 
-    const activeText = (document.querySelector(".tab-panel.active")?.textContent || document.body.textContent || "").toLowerCase();
-    const likelyAdmin = activeText.includes("permiss") || activeText.includes("admin") || location.hash.toLowerCase().includes("admin");
-    if (!likelyAdmin && !document.getElementById("permissionsPanelV172")) return;
+    if (!isAdminArea && !document.getElementById("permissionsPanelV173")) return;
 
-    let box = document.getElementById("permissionsPanelV172");
+    let box = document.getElementById("permissionsPanelV173");
     if (!box) {
       box = document.createElement("section");
-      box.id = "permissionsPanelV172";
-      box.className = "permissions-panel-v172";
-      const anchor = adminPanel.querySelector(".admin-section, .admin-card, .panel, .card") || adminPanel.firstElementChild;
+      box.id = "permissionsPanelV173";
+      box.className = "permissions-panel-v173";
+      const anchor = activePanel.querySelector(".admin-section, .admin-card, .panel, .card") || activePanel.firstElementChild;
       if (anchor?.insertAdjacentElement) anchor.insertAdjacentElement("beforebegin", box);
-      else adminPanel.prepend(box);
+      else activePanel.prepend(box);
     }
 
-    const canManageRoles = hasPermissionV172("manageRoles");
-    const users = [...permissionUsersCacheV172];
-    const currentEmail = currentEmailV172();
-
-    if (!users.some(user => String(user.email || user.id || "").toLowerCase() === currentEmail)) {
-      users.unshift({ id: currentEmail, email: currentEmail, role: getCurrentRoleV172(), active: true });
+    const currentEmail = currentEmailV173();
+    const users = [...usersPermissionsCacheV173];
+    if (!users.some(u => String(u.email || u.id || "").toLowerCase() === currentEmail)) {
+      users.unshift({ id: currentEmail, email: currentEmail, role: getEffectiveProfileV173().role, permissions: getEffectiveProfileV173().permissions });
     }
 
     box.innerHTML = `
-      <div class="permissions-head-v172">
+      <div class="permissions-head-v173">
         <div>
-          <strong>Sistema de permissões</strong>
-          <span>Dono, Admin e User com permissões centralizadas.</span>
+          <strong>Permissões de utilizadores</strong>
+          <span>Escolhe quem é Dono/Admin/User e o que cada um pode ver.</span>
         </div>
-        <span class="role-badge-v172" data-role="${getCurrentRoleV172()}">${getEffectivePermissionsV172().label}</span>
+        <span class="role-pill-v173" data-role="${getEffectiveProfileV173().role}">${getEffectiveProfileV173().role.toUpperCase()}</span>
       </div>
 
-      <div class="permissions-roles-v172">
-        <div><b>Dono</b><span>Acesso total e configurações sensíveis.</span></div>
-        <div><b>Admin</b><span>Gestão operacional, resultados e users.</span></div>
-        <div><b>User</b><span>Uso normal da app.</span></div>
-      </div>
-
-      <div class="permissions-list-v172">
+      <div class="permissions-table-v173">
         ${users.map(user => {
           const email = String(user.email || user.id || "").toLowerCase();
-          const role = normalizeRoleV172(user.role || user.tipo || "user");
-          const disabled = !canManageRoles || (email === currentEmail && role === "dono");
+          const role = normalizeRoleV173(user.role || user.tipo || "user");
+          const effective = getEffectiveProfileV173(user);
+          const locked = !canManagePermissionsV173();
+
           return `
-            <div class="permission-user-row-v172">
-              <div>
-                <strong>${escapeHtml(user.name || user.nome || email || "Sem email")}</strong>
-                <span>${escapeHtml(email)}</span>
+            <div class="permission-user-card-v173" data-user-card-v173="${escapeHtml(email)}">
+              <div class="permission-user-top-v173">
+                <div>
+                  <strong>${escapeHtml(user.name || user.nome || email || "Sem email")}</strong>
+                  <span>${escapeHtml(email)}</span>
+                </div>
+                <select data-role-select-v173="${escapeHtml(email)}" ${locked ? "disabled" : ""}>
+                  <option value="user" ${role === "user" ? "selected" : ""}>User</option>
+                  <option value="admin" ${role === "admin" ? "selected" : ""}>Admin</option>
+                  <option value="dono" ${role === "dono" ? "selected" : ""}>Dono</option>
+                </select>
               </div>
-              <select data-permission-user-role-v172="${escapeHtml(email)}" ${disabled ? "disabled" : ""}>
-                <option value="user" ${role === "user" ? "selected" : ""}>User</option>
-                <option value="admin" ${role === "admin" ? "selected" : ""}>Admin</option>
-                <option value="dono" ${role === "dono" ? "selected" : ""}>Dono</option>
-              </select>
-              <button type="button" data-save-role-v172="${escapeHtml(email)}" ${disabled ? "disabled" : ""}>Guardar</button>
+
+              <div class="permission-section-title-v173">Páginas visíveis</div>
+              <div class="permission-check-grid-v173">
+                ${PAGE_PERMISSIONS_V173.map(page => `
+                  <label>
+                    <input type="checkbox" data-permission-check-v173="${escapeHtml(email)}" data-permission-key-v173="${page.key}" ${effective.permissions[page.key] ? "checked" : ""} ${role === "dono" || locked ? "disabled" : ""}/>
+                    ${escapeHtml(page.label)}
+                  </label>
+                `).join("")}
+              </div>
+
+              <div class="permission-section-title-v173">Ações</div>
+              <div class="permission-check-grid-v173">
+                ${ACTION_PERMISSIONS_V173.map(action => `
+                  <label>
+                    <input type="checkbox" data-permission-check-v173="${escapeHtml(email)}" data-permission-key-v173="${action.key}" ${effective.permissions[action.key] ? "checked" : ""} ${role === "dono" || locked ? "disabled" : ""}/>
+                    ${escapeHtml(action.label)}
+                  </label>
+                `).join("")}
+              </div>
+
+              <button type="button" data-save-permissions-v173="${escapeHtml(email)}" ${locked ? "disabled" : ""}>Guardar permissões</button>
             </div>
           `;
         }).join("")}
       </div>
     `;
   } catch (error) {
-    console.warn("renderPermissionsAdminV172 falhou:", error);
+    console.warn("renderPermissionsPanelV173 falhou:", error);
   }
 }
 
-async function saveUserRoleV172(email) {
+async function savePermissionsV173(email) {
   try {
-    if (!hasPermissionV172("manageRoles")) return toast("Só o Dono pode alterar roles.");
-    email = normalizeEmailV171 ? normalizeEmailV171(email) : String(email || "").trim().toLowerCase();
-    const select = document.querySelector(`[data-permission-user-role-v172="${CSS.escape(email)}"]`);
-    const role = normalizeRoleV172(select?.value || "user");
+    if (!canManagePermissionsV173()) return toast("Sem permissão para alterar permissões.");
+
+    email = String(email || "").trim().toLowerCase();
+    if (!email) return toast("Utilizador inválido.");
+
+    const role = normalizeRoleV173(document.querySelector(`[data-role-select-v173="${CSS.escape(email)}"]`)?.value || "user");
+    const permissions = role === "dono" ? defaultPermissionsForRoleV173("dono") : {};
+    document.querySelectorAll(`[data-permission-check-v173="${CSS.escape(email)}"]`).forEach(input => {
+      permissions[input.getAttribute("data-permission-key-v173")] = input.checked === true;
+    });
 
     const firestoreDb = typeof db !== "undefined" ? db : window.db;
     if (!firestoreDb?.collection) return toast("Firebase ainda não está pronto.");
@@ -11034,37 +11013,41 @@ async function saveUserRoleV172(email) {
       email,
       role,
       tipo: role,
+      permissions,
+      permissoes: permissions,
       active: true,
       updatedAt: new Date().toISOString(),
-      updatedBy: currentEmailV172()
+      updatedBy: currentEmailV173()
     }, { merge: true });
 
-    toast(`Role atualizado: ${email} → ${ROLE_PERMISSIONS_V172[role].label}`);
+    toast(`Permissões guardadas para ${email}.`);
+    renderPermissionsPanelV173();
+    applyPagePermissionsV173();
   } catch (error) {
-    console.error("saveUserRoleV172 falhou:", error);
-    toast(`Não consegui guardar role: ${error.message || "erro"}`);
+    console.error("savePermissionsV173 falhou:", error);
+    toast(`Erro ao guardar permissões: ${error.message || "erro"}`);
   }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(loadCurrentPermissionProfileV172, 300);
-  setTimeout(loadPermissionUsersV172, 800);
-  setTimeout(applyPermissionVisibilityV172, 900);
-  setTimeout(renderPermissionsAdminV172, 1400);
-  setTimeout(renderRoleBadgeV172, 1600);
+  setTimeout(loadCurrentProfileV173, 300);
+  setTimeout(loadUsersPermissionsV173, 700);
+  setTimeout(applyPagePermissionsV173, 1200);
+  setTimeout(renderPermissionsPanelV173, 1500);
+  setTimeout(renderRoleBadgeV173, 1600);
 });
 document.addEventListener("click", event => {
-  const btn = event.target.closest?.("[data-save-role-v172]");
-  if (btn) {
+  const saveBtn = event.target.closest?.("[data-save-permissions-v173]");
+  if (saveBtn) {
     event.preventDefault();
-    saveUserRoleV172(btn.getAttribute("data-save-role-v172"));
+    savePermissionsV173(saveBtn.getAttribute("data-save-permissions-v173"));
   }
-  setTimeout(loadPermissionUsersV172, 120);
-  setTimeout(applyPermissionVisibilityV172, 150);
-  setTimeout(renderPermissionsAdminV172, 220);
-  setTimeout(renderRoleBadgeV172, 220);
+  setTimeout(loadUsersPermissionsV173, 120);
+  setTimeout(applyPagePermissionsV173, 180);
+  setTimeout(renderPermissionsPanelV173, 260);
+  setTimeout(renderRoleBadgeV173, 260);
 }, true);
 window.addEventListener("hashchange", () => {
-  setTimeout(applyPermissionVisibilityV172, 80);
-  setTimeout(renderPermissionsAdminV172, 180);
+  setTimeout(applyPagePermissionsV173, 80);
+  setTimeout(renderPermissionsPanelV173, 180);
 });
