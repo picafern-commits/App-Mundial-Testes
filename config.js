@@ -1,5 +1,5 @@
 window.MUNDIAL_CONFIG = {
-  appVersion: "170.0",
+  appVersion: "171.0",
   adminPin: "1234",
   adminEmails: ["pica.fern@gmail.com"],
   firebase: {
@@ -11,6 +11,6 @@ window.MUNDIAL_CONFIG = {
     appId: "1:143980254410:web:0f48873c3aa4c9ad201033"
   },
   messaging: {
-    vapidKey: "BDynYivUCLHhauPk1jnzAZy44Fw3dJ6JcQGjyNQq3Ce6_64l4PU1IJFQjbKj1ayV6RkxQ0tj1KFhOkTiaYBhDiY"
+    vapidKey: ""
   }
 };

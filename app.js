@@ -10373,3 +10373,104 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(bindSettingsButtonsV170, 2200);
 });
 document.addEventListener("click", () => setTimeout(bindSettingsButtonsV170, 120));
+
+
+// v171 — Fix Guardar VAPID: lê corretamente o input visível e nunca remove por engano.
+const PUSH_VAPID_LOCAL_KEY_FIX_V171 = `${STORAGE_KEY}_push_vapid_key_v169`;
+
+function getVisibleVapidInputV171() {
+  const candidates = [
+    document.getElementById("pushVapidInputV169"),
+    document.getElementById("pushVapidInputV171"),
+    document.getElementById("ownerVapidInputV171"),
+    ...Array.from(document.querySelectorAll('input[placeholder*="VAPID" i], input[id*="vapid" i], input[name*="vapid" i]'))
+  ].filter(Boolean);
+
+  return candidates.find(input => {
+    const rect = input.getBoundingClientRect?.();
+    const style = window.getComputedStyle?.(input);
+    return input.offsetParent !== null || (rect && rect.width > 0 && rect.height > 0 && style?.display !== "none" && style?.visibility !== "hidden");
+  }) || candidates[0] || null;
+}
+
+function getTypedVapidValueV171() {
+  try {
+    const input = getVisibleVapidInputV171();
+    return String(input?.value || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function getConfigVapidKeyFixV171() {
+  try {
+    return String(
+      getTypedVapidValueV171() ||
+      localStorage.getItem(PUSH_VAPID_LOCAL_KEY_FIX_V171) ||
+      localStorage.getItem(`${STORAGE_KEY}_push_vapid_key_v171`) ||
+      window.MUNDIAL_CONFIG?.messaging?.vapidKey ||
+      APP_CONFIG?.messaging?.vapidKey ||
+      ""
+    ).trim();
+  } catch {
+    return "";
+  }
+}
+
+getConfigVapidKeyV170 = getConfigVapidKeyFixV171;
+
+async function saveVapidKeyFixV171() {
+  try {
+    const typed = getTypedVapidValueV171();
+
+    if (!typed) {
+      if (typeof appToastV170 === "function") {
+        appToastV170("Cola a VAPID key no campo antes de guardar.");
+      } else if (typeof toast === "function") {
+        toast("Cola a VAPID key no campo antes de guardar.");
+      } else {
+        alert("Cola a VAPID key no campo antes de guardar.");
+      }
+      return;
+    }
+
+    localStorage.setItem(PUSH_VAPID_LOCAL_KEY_FIX_V171, typed);
+    localStorage.setItem(`${STORAGE_KEY}_push_vapid_key_v171`, typed);
+
+    const input = getVisibleVapidInputV171();
+    if (input) input.value = typed;
+
+    if (typeof appToastV170 === "function") {
+      appToastV170("VAPID guardada neste dispositivo.");
+    } else if (typeof toast === "function") {
+      toast("VAPID guardada neste dispositivo.");
+    }
+
+    setTimeout(() => {
+      try {
+        if (typeof renderPushNotificationsPanelV169 === "function") renderPushNotificationsPanelV169();
+        if (typeof renderPushNotificationsPanelV165 === "function") renderPushNotificationsPanelV165();
+      } catch {}
+    }, 100);
+  } catch (error) {
+    console.error("saveVapidKeyFixV171 falhou:", error);
+    if (typeof appToastV170 === "function") appToastV170(`Não consegui guardar VAPID: ${error.message || "erro"}`);
+    else if (typeof toast === "function") toast(`Não consegui guardar VAPID: ${error.message || "erro"}`);
+  }
+}
+
+// Override da função antiga: nunca remove VAPID quando o input está vazio.
+saveVapidKeyV169 = saveVapidKeyFixV171;
+
+document.addEventListener("click", event => {
+  const btn = event.target.closest?.("button, [role='button']");
+  if (!btn) return;
+
+  const txt = String(btn.textContent || btn.getAttribute("aria-label") || btn.id || "").toLowerCase();
+  if (txt.includes("guardar vapid")) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    saveVapidKeyFixV171();
+  }
+}, true);
