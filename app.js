@@ -10664,3 +10664,133 @@ document.addEventListener("click", event => {
     savePushPreferencesLocalV175();
   }
 }, true);
+
+
+// v176 — Push via Firebase Functions: contorna bloqueio de Firestore Rules.
+const PUSH_FUNCTION_BASE_URL_V176 = "https://us-central1-app-mundial2026.cloudfunctions.net";
+
+async function postPushFunctionV176(name, payload = {}) {
+  const url = `${PUSH_FUNCTION_BASE_URL_V176}/${name}`;
+  const body = {
+    ...payload,
+    uid: currentUser?.uid || firebaseAuth?.currentUser?.uid || "",
+    email: normalizeEmail?.(currentUser?.email || firebaseAuth?.currentUser?.email || "") || "",
+    appVersion: "176.0",
+    source: "app"
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+
+  let data = null;
+  try { data = await response.json(); } catch {}
+
+  if (!response.ok || data?.ok === false) {
+    throw new Error(data?.error || `Function ${name} respondeu ${response.status}`);
+  }
+
+  return data || { ok: true };
+}
+
+function getPushPrefsV176() {
+  const textHasChecked = (labelText) => {
+    const labels = Array.from(document.querySelectorAll("label, .push-pref, button, .checkbox, .toggle"));
+    const found = labels.find(el => (el.textContent || "").toLowerCase().includes(labelText));
+    const input = found?.querySelector?.('input[type="checkbox"]');
+    return input ? input.checked === true : true;
+  };
+
+  return {
+    gameStarted: textHasChecked("jogo começou"),
+    gameFinished: textHasChecked("jogo acabou"),
+    teamGoal: textHasChecked("golo"),
+    quietHours: textHasChecked("silenciar")
+  };
+}
+
+async function savePushTokenViaFunctionV176(token) {
+  if (!token) throw new Error("Token push vazio.");
+
+  localStorage.setItem(`${STORAGE_KEY}_push_last_token_v176`, token);
+  localStorage.setItem(`${STORAGE_KEY}_push_enabled_v170`, "1");
+
+  const payload = {
+    token,
+    preferences: getPushPrefsV176(),
+    userAgent: navigator.userAgent,
+    platform: /iphone|ipad|ipod/i.test(navigator.userAgent) ? "ios" : "web"
+  };
+
+  try {
+    await postPushFunctionV176("registerPushToken", payload);
+  } catch (error) {
+    console.warn("registerPushToken function falhou:", error);
+    // Último fallback local para a app não rebentar, mas avisa claramente.
+    throw new Error(`Function registerPushToken falhou: ${error.message || "erro"}`);
+  }
+}
+
+async function sendTestPushViaFunctionV176() {
+  try {
+    const token = localStorage.getItem(`${STORAGE_KEY}_push_last_token_v176`) || localStorage.getItem(`${STORAGE_KEY}_push_last_token_v175`) || "";
+    await postPushFunctionV176("requestPushTest", {
+      token,
+      preferences: getPushPrefsV176()
+    });
+    appToastV170?.("Teste push pedido pela Function.");
+  } catch (error) {
+    console.error("sendTestPushViaFunctionV176 falhou:", error);
+    appToastV170?.(`Não consegui pedir teste push: ${error.message || "erro"}`);
+  }
+}
+
+async function savePushPreferencesViaFunctionV176() {
+  try {
+    const prefs = getPushPrefsV176();
+    localStorage.setItem(`${STORAGE_KEY}_push_preferences_v176`, JSON.stringify(prefs));
+    await postPushFunctionV176("savePushPreferences", {
+      preferences: prefs
+    }).catch(error => {
+      console.warn("savePushPreferences function falhou; preferências ficam locais:", error);
+    });
+    appToastV170?.("Preferências push guardadas.");
+  } catch (error) {
+    console.error("savePushPreferencesViaFunctionV176 falhou:", error);
+    appToastV170?.(`Não consegui guardar preferências: ${error.message || "erro"}`);
+  }
+}
+
+savePushTokenPreferencesV165 = savePushTokenViaFunctionV176;
+if (typeof savePushPreferencesV174 !== "undefined") savePushPreferencesV174 = savePushPreferencesViaFunctionV176;
+if (typeof savePushPreferencesV165 !== "undefined") savePushPreferencesV165 = savePushPreferencesViaFunctionV176;
+if (typeof savePushNotificationPreferencesV165 !== "undefined") savePushNotificationPreferencesV165 = savePushPreferencesViaFunctionV176;
+if (typeof sendTestPushV170 !== "undefined") sendTestPushV170 = sendTestPushViaFunctionV176;
+if (typeof sendTestPushV169 !== "undefined") sendTestPushV169 = sendTestPushViaFunctionV176;
+if (typeof sendTestPushV165 !== "undefined") sendTestPushV165 = sendTestPushViaFunctionV176;
+
+document.addEventListener("click", event => {
+  const btn = event.target.closest?.("button, [role='button']");
+  if (!btn) return;
+  const txt = String(btn.textContent || btn.id || btn.getAttribute("aria-label") || "").toLowerCase();
+
+  if (txt.includes("guardar prefer")) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    savePushPreferencesViaFunctionV176();
+    return;
+  }
+
+  if (txt.includes("enviar teste")) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    sendTestPushViaFunctionV176();
+    return;
+  }
+}, true);

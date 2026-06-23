@@ -1,3 +1,6 @@
+const admin = require("firebase-admin");
+
+admin.initializeApp();
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -966,5 +969,105 @@ exports.syncFootballDataWorldCupScheduled = onSchedule({
   } catch (error) {
     logger.error("Football-data 24/7 sync falhou", error);
     throw error;
+  }
+});
+
+
+
+// v176 — Push via HTTP Functions. Estas writes usam Admin SDK e não dependem das Firestore Rules.
+function setCorsV176(res) {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+}
+
+function readJsonBodyV176(req) {
+  if (req.body && typeof req.body === "object") return req.body;
+  try {
+    return JSON.parse(req.rawBody?.toString("utf8") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+exports.registerPushToken = onRequest({ cors: true, region: "us-central1" }, async (req, res) => {
+  setCorsV176(res);
+  if (req.method === "OPTIONS") return res.status(204).send("");
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "method-not-allowed" });
+
+  try {
+    const body = readJsonBodyV176(req);
+    const token = String(body.token || "").trim();
+    if (!token) return res.status(400).json({ ok: false, error: "missing-token" });
+
+    const safeId = Buffer.from(token).toString("base64url").slice(0, 180);
+    const now = new Date().toISOString();
+
+    await admin.firestore().collection("notificationTokens").doc(safeId).set({
+      token,
+      uid: String(body.uid || ""),
+      email: String(body.email || "").toLowerCase(),
+      enabled: true,
+      platform: String(body.platform || "web"),
+      userAgent: String(body.userAgent || ""),
+      preferences: body.preferences || {},
+      appVersion: String(body.appVersion || ""),
+      updatedAt: now,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    return res.json({ ok: true, id: safeId });
+  } catch (error) {
+    console.error("registerPushToken error", error);
+    return res.status(500).json({ ok: false, error: error.message || "internal" });
+  }
+});
+
+exports.savePushPreferences = onRequest({ cors: true, region: "us-central1" }, async (req, res) => {
+  setCorsV176(res);
+  if (req.method === "OPTIONS") return res.status(204).send("");
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "method-not-allowed" });
+
+  try {
+    const body = readJsonBodyV176(req);
+    const uid = String(body.uid || body.email || "anonymous").trim() || "anonymous";
+    const safeId = Buffer.from(uid).toString("base64url").slice(0, 120);
+
+    await admin.firestore().collection("notificationPreferences").doc(safeId).set({
+      uid: String(body.uid || ""),
+      email: String(body.email || "").toLowerCase(),
+      preferences: body.preferences || {},
+      appVersion: String(body.appVersion || ""),
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+
+    return res.json({ ok: true, id: safeId });
+  } catch (error) {
+    console.error("savePushPreferences error", error);
+    return res.status(500).json({ ok: false, error: error.message || "internal" });
+  }
+});
+
+exports.requestPushTest = onRequest({ cors: true, region: "us-central1" }, async (req, res) => {
+  setCorsV176(res);
+  if (req.method === "OPTIONS") return res.status(204).send("");
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "method-not-allowed" });
+
+  try {
+    const body = readJsonBodyV176(req);
+    await admin.firestore().collection("notificationTests").add({
+      uid: String(body.uid || ""),
+      email: String(body.email || "").toLowerCase(),
+      token: String(body.token || ""),
+      preferences: body.preferences || {},
+      source: "requestPushTest-v176",
+      appVersion: String(body.appVersion || ""),
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error("requestPushTest error", error);
+    return res.status(500).json({ ok: false, error: error.message || "internal" });
   }
 });
