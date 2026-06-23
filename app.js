@@ -10209,7 +10209,7 @@ async function enablePushV170() {
       return;
     }
 
-    const vapidKey = getConfigVapidKeyV170();
+    const vapidKey = (typeof getVapidKeyV171 === 'function' ? getVapidKeyV171() : getConfigVapidKeyV170());
     if (!vapidKey) {
       appToastV170("VAPID key em falta no config.js.");
       return;
@@ -10373,3 +10373,277 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(bindSettingsButtonsV170, 2200);
 });
 document.addEventListener("click", () => setTimeout(bindSettingsButtonsV170, 120));
+
+
+// v171 — Role Dono + VAPID gerida pela app/Firebase.
+const OWNER_EMAILS_V171 = new Set(["pica.fern@gmail.com"]);
+const APP_CONFIG_DOC_V171 = "appConfig";
+let appSecureSettingsV171 = { messaging: { vapidKey: "" } };
+let appSecureSettingsUnsubV171 = null;
+
+function normalizeEmailV171(value) {
+  try { if (typeof normalizeEmail === "function") return normalizeEmail(value); } catch {}
+  return String(value || "").trim().toLowerCase();
+}
+
+function isOwnerV171() {
+  try {
+    const email = normalizeEmailV171(currentUser?.email || "");
+    if (OWNER_EMAILS_V171.has(email)) return true;
+
+    const profile =
+      (typeof currentUserProfile !== "undefined" && currentUserProfile) ||
+      (typeof userProfile !== "undefined" && userProfile) ||
+      (typeof activeUser !== "undefined" && activeUser) ||
+      null;
+
+    const role = String(profile?.role || profile?.tipo || profile?.perfil || "").trim().toLowerCase();
+    return ["dono", "owner", "proprietario", "proprietário", "master"].includes(role);
+  } catch {
+    return false;
+  }
+}
+
+function getVapidKeyV171() {
+  try {
+    return String(
+      appSecureSettingsV171?.messaging?.vapidKey ||
+      window.MUNDIAL_CONFIG?.messaging?.vapidKey ||
+      APP_CONFIG?.messaging?.vapidKey ||
+      localStorage.getItem(`${STORAGE_KEY}_push_vapid_key_v171`) ||
+      localStorage.getItem(`${STORAGE_KEY}_push_vapid_key_v169`) ||
+      ""
+    ).trim();
+  } catch {
+    return "";
+  }
+}
+
+if (typeof getConfigVapidKeyV170 === "function") {
+  getConfigVapidKeyV170 = getVapidKeyV171;
+}
+
+async function loadSecureAppSettingsV171() {
+  try {
+    const firestoreDb = typeof db !== "undefined" ? db : window.db;
+    if (!firestoreDb?.collection) return;
+    if (appSecureSettingsUnsubV171) return;
+
+    appSecureSettingsUnsubV171 = firestoreDb.collection("settings").doc(APP_CONFIG_DOC_V171).onSnapshot(snapshot => {
+      const data = snapshot.exists ? (snapshot.data() || {}) : {};
+      appSecureSettingsV171 = {
+        ...appSecureSettingsV171,
+        ...data,
+        messaging: {
+          ...(appSecureSettingsV171.messaging || {}),
+          ...(data.messaging || {})
+        }
+      };
+
+      if (data.messaging?.vapidKey) {
+        localStorage.setItem(`${STORAGE_KEY}_push_vapid_key_v171`, data.messaging.vapidKey);
+      }
+
+      renderOwnerSettingsPanelV171();
+      renderPushNotificationsPanelV171();
+    }, error => console.warn("settings/appConfig indisponível:", error));
+  } catch (error) {
+    console.warn("loadSecureAppSettingsV171 falhou:", error);
+  }
+}
+
+function appToastV171(message) {
+  try { if (typeof appToastV170 === "function") return appToastV170(message); } catch {}
+  try { if (typeof toast === "function") return toast(message); } catch {}
+  alert(message);
+}
+
+async function saveVapidToFirebaseV171() {
+  try {
+    if (!isOwnerV171()) return appToastV171("Só o Dono pode alterar a VAPID da app.");
+
+    const input = document.getElementById("ownerVapidInputV171") || document.getElementById("pushVapidInputV169");
+    const key = String(input?.value || "").trim();
+    if (!key) return appToastV171("Cola a VAPID key antes de guardar.");
+
+    const firestoreDb = typeof db !== "undefined" ? db : window.db;
+    if (!firestoreDb?.collection) return appToastV171("Firebase ainda não está pronto.");
+
+    await firestoreDb.collection("settings").doc(APP_CONFIG_DOC_V171).set({
+      messaging: {
+        vapidKey: key,
+        updatedAt: new Date().toISOString(),
+        updatedBy: currentUser?.email || ""
+      }
+    }, { merge: true });
+
+    localStorage.setItem(`${STORAGE_KEY}_push_vapid_key_v171`, key);
+    appSecureSettingsV171.messaging.vapidKey = key;
+
+    appToastV171("VAPID guardada na app. Agora podes ativar notificações.");
+    renderOwnerSettingsPanelV171();
+    renderPushNotificationsPanelV171();
+  } catch (error) {
+    console.error("saveVapidToFirebaseV171 falhou:", error);
+    const msg = String(error?.message || error || "erro");
+    if (msg.includes("permission-denied")) return appToastV171("Sem permissão no Firestore para guardar settings/appConfig.");
+    appToastV171(`Não consegui guardar VAPID: ${msg.slice(0, 120)}`);
+  }
+}
+
+async function clearVapidFromFirebaseV171() {
+  try {
+    if (!isOwnerV171()) return appToastV171("Só o Dono pode remover a VAPID da app.");
+    if (!confirm("Remover a VAPID da app?")) return;
+
+    const firestoreDb = typeof db !== "undefined" ? db : window.db;
+    if (!firestoreDb?.collection) return appToastV171("Firebase ainda não está pronto.");
+
+    await firestoreDb.collection("settings").doc(APP_CONFIG_DOC_V171).set({
+      messaging: {
+        vapidKey: "",
+        updatedAt: new Date().toISOString(),
+        updatedBy: currentUser?.email || ""
+      }
+    }, { merge: true });
+
+    localStorage.removeItem(`${STORAGE_KEY}_push_vapid_key_v171`);
+    appSecureSettingsV171.messaging.vapidKey = "";
+
+    appToastV171("VAPID removida da app.");
+    renderOwnerSettingsPanelV171();
+    renderPushNotificationsPanelV171();
+  } catch (error) {
+    console.error("clearVapidFromFirebaseV171 falhou:", error);
+    appToastV171(`Não consegui remover VAPID: ${error.message || "erro"}`);
+  }
+}
+
+async function makeUserOwnerV171(email) {
+  try {
+    if (!isOwnerV171()) return appToastV171("Só o Dono pode criar outro Dono.");
+    const targetEmail = normalizeEmailV171(email || prompt("Email do novo Dono:"));
+    if (!targetEmail) return;
+
+    const firestoreDb = typeof db !== "undefined" ? db : window.db;
+    if (!firestoreDb?.collection) return appToastV171("Firebase ainda não está pronto.");
+
+    await firestoreDb.collection("users").doc(targetEmail).set({
+      email: targetEmail,
+      role: "dono",
+      tipo: "dono",
+      active: true,
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentUser?.email || ""
+    }, { merge: true });
+
+    appToastV171(`Utilizador ${targetEmail} definido como Dono.`);
+  } catch (error) {
+    console.error("makeUserOwnerV171 falhou:", error);
+    appToastV171(`Não consegui criar Dono: ${error.message || "erro"}`);
+  }
+}
+
+function renderOwnerSettingsPanelV171() {
+  try {
+    const activePanel = document.querySelector(".tab-panel.active") || document.querySelector("main") || document.body;
+    const isSettings = (activePanel?.textContent || "").toLowerCase().includes("configura") || location.hash.toLowerCase().includes("config");
+    if (!isSettings && !document.getElementById("ownerSettingsPanelV171")) return;
+
+    let box = document.getElementById("ownerSettingsPanelV171");
+    if (!box) {
+      box = document.createElement("section");
+      box.id = "ownerSettingsPanelV171";
+      box.className = "owner-settings-panel-v171";
+      const anchor = document.getElementById("pushNotificationsPanelV165") || activePanel.querySelector(".card,.panel") || activePanel.firstElementChild;
+      if (anchor?.insertAdjacentElement) anchor.insertAdjacentElement("afterend", box);
+      else activePanel.prepend(box);
+    }
+
+    if (!isOwnerV171()) {
+      box.hidden = true;
+      box.style.display = "none";
+      return;
+    }
+
+    const vapid = getVapidKeyV171();
+    box.hidden = false;
+    box.style.display = "";
+    box.innerHTML = `
+      <div class="owner-settings-head-v171">
+        <div>
+          <strong>Área Dono</strong>
+          <span>Configurações sensíveis da app.</span>
+        </div>
+        <span class="owner-badge-v171">Dono</span>
+      </div>
+      <div class="owner-setting-card-v171">
+        <strong>VAPID das notificações</strong>
+        <small>Guardada no Firebase e usada por todos os dispositivos.</small>
+        <div class="owner-vapid-row-v171">
+          <input id="ownerVapidInputV171" type="text" value="${escapeHtml(vapid)}" placeholder="Cola aqui a VAPID key" />
+          <button id="ownerSaveVapidBtnV171" type="button">Guardar na app</button>
+          <button id="ownerClearVapidBtnV171" type="button">Remover</button>
+        </div>
+      </div>
+      <div class="owner-setting-card-v171">
+        <strong>Roles</strong>
+        <small>O Dono tem acesso total e gere configurações sensíveis.</small>
+        <button id="ownerMakeUserOwnerBtnV171" type="button">Adicionar Dono</button>
+      </div>
+    `;
+
+    box.querySelector("#ownerSaveVapidBtnV171")?.addEventListener("click", saveVapidToFirebaseV171);
+    box.querySelector("#ownerClearVapidBtnV171")?.addEventListener("click", clearVapidFromFirebaseV171);
+    box.querySelector("#ownerMakeUserOwnerBtnV171")?.addEventListener("click", () => makeUserOwnerV171());
+  } catch (error) {
+    console.warn("renderOwnerSettingsPanelV171 falhou:", error);
+  }
+}
+
+function renderPushNotificationsPanelV171() {
+  try {
+    if (typeof renderPushNotificationsPanelV169 === "function") renderPushNotificationsPanelV169();
+
+    const vapid = getVapidKeyV171();
+    document.querySelectorAll(".push-status-v165 span").forEach(span => {
+      if ((span.textContent || "").toLowerCase().includes("vapid")) {
+        span.textContent = vapid ? "VAPID configurada" : "VAPID em falta";
+      }
+    });
+
+    const missingBox = document.querySelector(".push-vapid-box-v169");
+    if (missingBox && vapid) missingBox.style.display = "none";
+  } catch (error) {
+    console.warn("renderPushNotificationsPanelV171 falhou:", error);
+  }
+}
+
+if (typeof renderPushNotificationsPanelV165 === "function") {
+  renderPushNotificationsPanelV165 = renderPushNotificationsPanelV171;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(loadSecureAppSettingsV171, 300);
+  setTimeout(renderOwnerSettingsPanelV171, 800);
+  setTimeout(renderPushNotificationsPanelV171, 1000);
+  setTimeout(renderOwnerSettingsPanelV171, 2400);
+});
+document.addEventListener("click", event => {
+  const target = event.target;
+  if (target?.id === "ownerSaveVapidBtnV171") {
+    event.preventDefault();
+    saveVapidToFirebaseV171();
+  }
+  if (target?.id === "ownerClearVapidBtnV171") {
+    event.preventDefault();
+    clearVapidFromFirebaseV171();
+  }
+  if (target?.id === "ownerMakeUserOwnerBtnV171") {
+    event.preventDefault();
+    makeUserOwnerV171();
+  }
+  setTimeout(loadSecureAppSettingsV171, 120);
+  setTimeout(renderOwnerSettingsPanelV171, 180);
+  setTimeout(renderPushNotificationsPanelV171, 180);
+}, true);
