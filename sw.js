@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v179-artifacts-policy";
+const CACHE_NAME = "mundial-pontos-2026-v180-workflow-seguro";
 const APP_SHELL = [
   "./",
   "./index.html",
