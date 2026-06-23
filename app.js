@@ -10386,7 +10386,7 @@ function normalizeEmailV171(value) {
   return String(value || "").trim().toLowerCase();
 }
 
-function isOwnerV171() {
+function isOwnerV171LegacyDisabled() {
   try {
     const email = normalizeEmailV171(currentUser?.email || "");
     if (OWNER_EMAILS_V171.has(email)) return true;
@@ -10460,7 +10460,7 @@ function appToastV171(message) {
 
 async function saveVapidToFirebaseV171() {
   try {
-    if (!isOwnerV171()) return appToastV171("Só o Dono pode alterar a VAPID da app.");
+    if (!(typeof isOwnerV172 === 'function' ? isOwnerV172() : isOwnerV171())) return appToastV171("Só o Dono pode alterar a VAPID da app.");
 
     const input = document.getElementById("ownerVapidInputV171") || document.getElementById("pushVapidInputV169");
     const key = String(input?.value || "").trim();
@@ -10493,7 +10493,7 @@ async function saveVapidToFirebaseV171() {
 
 async function clearVapidFromFirebaseV171() {
   try {
-    if (!isOwnerV171()) return appToastV171("Só o Dono pode remover a VAPID da app.");
+    if (!(typeof isOwnerV172 === 'function' ? isOwnerV172() : isOwnerV171())) return appToastV171("Só o Dono pode remover a VAPID da app.");
     if (!confirm("Remover a VAPID da app?")) return;
 
     const firestoreDb = typeof db !== "undefined" ? db : window.db;
@@ -10521,7 +10521,7 @@ async function clearVapidFromFirebaseV171() {
 
 async function makeUserOwnerV171(email) {
   try {
-    if (!isOwnerV171()) return appToastV171("Só o Dono pode criar outro Dono.");
+    if (!(typeof isOwnerV172 === 'function' ? isOwnerV172() : isOwnerV171())) return appToastV171("Só o Dono pode criar outro Dono.");
     const targetEmail = normalizeEmailV171(email || prompt("Email do novo Dono:"));
     if (!targetEmail) return;
 
@@ -10560,7 +10560,7 @@ function renderOwnerSettingsPanelV171() {
       else activePanel.prepend(box);
     }
 
-    if (!isOwnerV171()) {
+    if (!(typeof isOwnerV172 === 'function' ? isOwnerV172() : isOwnerV171())) {
       box.hidden = true;
       box.style.display = "none";
       return;
@@ -10647,3 +10647,424 @@ document.addEventListener("click", event => {
   setTimeout(renderOwnerSettingsPanelV171, 180);
   setTimeout(renderPushNotificationsPanelV171, 180);
 }, true);
+
+
+// v172 — Sistema novo de permissões com Dono/Admin/User.
+const PERMISSION_OWNER_EMAILS_V172 = new Set(["pica.fern@gmail.com"]);
+
+const ROLE_PERMISSIONS_V172 = {
+  dono: {
+    label: "Dono",
+    level: 100,
+    permissions: {
+      dashboard: true,
+      calendario: true,
+      pontuacao: true,
+      faseFinal: true,
+      notificacoes: true,
+      logs: true,
+      admin: true,
+      configuracoes: true,
+      manageUsers: true,
+      manageRoles: true,
+      manageSensitiveSettings: true,
+      editResults: true,
+      editKnockout: true,
+      useChat: true,
+      manageChat: true,
+      syncApi: true,
+      push: true,
+      owner: true
+    }
+  },
+  admin: {
+    label: "Admin",
+    level: 50,
+    permissions: {
+      dashboard: true,
+      calendario: true,
+      pontuacao: true,
+      faseFinal: true,
+      notificacoes: true,
+      logs: true,
+      admin: true,
+      configuracoes: false,
+      manageUsers: true,
+      manageRoles: false,
+      manageSensitiveSettings: false,
+      editResults: true,
+      editKnockout: true,
+      useChat: true,
+      manageChat: true,
+      syncApi: true,
+      push: true,
+      owner: false
+    }
+  },
+  user: {
+    label: "User",
+    level: 10,
+    permissions: {
+      dashboard: true,
+      calendario: true,
+      pontuacao: true,
+      faseFinal: true,
+      notificacoes: true,
+      logs: false,
+      admin: false,
+      configuracoes: false,
+      manageUsers: false,
+      manageRoles: false,
+      manageSensitiveSettings: false,
+      editResults: false,
+      editKnockout: false,
+      useChat: true,
+      manageChat: false,
+      syncApi: false,
+      push: false,
+      owner: false
+    }
+  }
+};
+
+const PERMISSION_ALIASES_V172 = {
+  settings: "configuracoes",
+  configs: "configuracoes",
+  config: "configuracoes",
+  configuração: "configuracoes",
+  configurações: "configuracoes",
+  resultados: "editResults",
+  editarResultados: "editResults",
+  editResults: "editResults",
+  knockout: "editKnockout",
+  fasefinal: "faseFinal",
+  faseFinal: "faseFinal",
+  users: "manageUsers",
+  utilizadores: "manageUsers",
+  permissoes: "manageRoles",
+  permissões: "manageRoles",
+  sensitive: "manageSensitiveSettings",
+  vapid: "manageSensitiveSettings",
+  chatAdmin: "manageChat",
+  sync: "syncApi"
+};
+
+let currentPermissionProfileV172 = null;
+let permissionUsersCacheV172 = [];
+let permissionUsersUnsubV172 = null;
+
+function normalizeRoleV172(role) {
+  const r = String(role || "").trim().toLowerCase();
+  if (["dono", "owner", "proprietario", "proprietário", "master"].includes(r)) return "dono";
+  if (["admin", "administrador", "admin master"].includes(r)) return "admin";
+  return "user";
+}
+
+function normalizePermissionKeyV172(key) {
+  const raw = String(key || "").trim();
+  const lower = raw.toLowerCase();
+  return PERMISSION_ALIASES_V172[raw] || PERMISSION_ALIASES_V172[lower] || raw;
+}
+
+function currentEmailV172() {
+  try {
+    if (typeof normalizeEmailV171 === "function") return normalizeEmailV171(currentUser?.email || "");
+  } catch {}
+  try {
+    if (typeof normalizeEmail === "function") return normalizeEmail(currentUser?.email || "");
+  } catch {}
+  return String(currentUser?.email || "").trim().toLowerCase();
+}
+
+function getRawUserProfileV172() {
+  try {
+    return (
+      currentPermissionProfileV172 ||
+      (typeof currentUserProfile !== "undefined" && currentUserProfile) ||
+      (typeof userProfile !== "undefined" && userProfile) ||
+      (typeof activeUser !== "undefined" && activeUser) ||
+      {}
+    );
+  } catch {
+    return {};
+  }
+}
+
+function getCurrentRoleV172() {
+  const email = currentEmailV172();
+  if (PERMISSION_OWNER_EMAILS_V172.has(email)) return "dono";
+  const profile = getRawUserProfileV172();
+  return normalizeRoleV172(profile.role || profile.tipo || profile.perfil || "user");
+}
+
+function getEffectivePermissionsV172(profile = null) {
+  const email = String(profile?.email || profile?.id || currentEmailV172() || "").trim().toLowerCase();
+  const forcedOwner = PERMISSION_OWNER_EMAILS_V172.has(email);
+  const role = forcedOwner ? "dono" : normalizeRoleV172(profile?.role || profile?.tipo || profile?.perfil || getCurrentRoleV172());
+  const base = { ...(ROLE_PERMISSIONS_V172[role]?.permissions || ROLE_PERMISSIONS_V172.user.permissions) };
+  const custom = profile?.permissions || profile?.permissoes || {};
+  Object.keys(custom || {}).forEach(key => {
+    base[normalizePermissionKeyV172(key)] = custom[key] === true;
+  });
+  if (role === "dono") Object.keys(ROLE_PERMISSIONS_V172.dono.permissions).forEach(key => base[key] = true);
+  return { role, label: ROLE_PERMISSIONS_V172[role]?.label || "User", level: ROLE_PERMISSIONS_V172[role]?.level || 0, permissions: base };
+}
+
+function hasPermissionV172(key) {
+  try {
+    const normalized = normalizePermissionKeyV172(key);
+    const effective = getEffectivePermissionsV172();
+    if (effective.role === "dono") return true;
+    return effective.permissions[normalized] === true;
+  } catch {
+    return false;
+  }
+}
+
+// Override global seguro.
+hasPermission = hasPermissionV172;
+
+function isOwnerV172() {
+  return getCurrentRoleV172() === "dono" || hasPermissionV172("owner");
+}
+
+function isAdminV172() {
+  const role = getCurrentRoleV172();
+  return role === "dono" || role === "admin" || hasPermissionV172("admin");
+}
+
+function loadCurrentPermissionProfileV172() {
+  try {
+    const firestoreDb = typeof db !== "undefined" ? db : window.db;
+    const email = currentEmailV172();
+    if (!firestoreDb?.collection || !email) return;
+
+    firestoreDb.collection("users").doc(email).onSnapshot(snapshot => {
+      currentPermissionProfileV172 = snapshot.exists ? ({ id: snapshot.id, ...(snapshot.data() || {}) }) : { email, role: PERMISSION_OWNER_EMAILS_V172.has(email) ? "dono" : "user" };
+
+      // Garante Dono principal criado no Firebase.
+      if (PERMISSION_OWNER_EMAILS_V172.has(email) && (!snapshot.exists || normalizeRoleV172(snapshot.data()?.role) !== "dono")) {
+        firestoreDb.collection("users").doc(email).set({
+          email,
+          role: "dono",
+          tipo: "dono",
+          active: true,
+          updatedAt: new Date().toISOString(),
+          updatedBy: email
+        }, { merge: true }).catch(() => null);
+      }
+
+      applyPermissionVisibilityV172();
+      renderPermissionsAdminV172();
+      renderRoleBadgeV172();
+    }, error => console.warn("Perfil permissões indisponível:", error));
+  } catch (error) {
+    console.warn("loadCurrentPermissionProfileV172 falhou:", error);
+  }
+}
+
+function loadPermissionUsersV172() {
+  try {
+    if (!isAdminV172()) return;
+    const firestoreDb = typeof db !== "undefined" ? db : window.db;
+    if (!firestoreDb?.collection || permissionUsersUnsubV172) return;
+
+    permissionUsersUnsubV172 = firestoreDb.collection("users").onSnapshot(snapshot => {
+      permissionUsersCacheV172 = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
+      renderPermissionsAdminV172();
+    }, error => console.warn("Users permissões indisponível:", error));
+  } catch (error) {
+    console.warn("loadPermissionUsersV172 falhou:", error);
+  }
+}
+
+function protectedTabFromTextV172(text = "") {
+  const v = String(text || "").toLowerCase();
+  if (v.includes("logs")) return "logs";
+  if (v.includes("config")) return "configuracoes";
+  if (v.includes("admin")) return "admin";
+  if (v.includes("notifica")) return "notificacoes";
+  return "";
+}
+
+function applyPermissionVisibilityV172() {
+  try {
+    const items = document.querySelectorAll("button, a, [role='button'], .tab, .nav-item, .menu-item, .bottom-nav button, .mobile-nav button");
+    items.forEach(el => {
+      const text = (el.textContent || el.getAttribute("aria-label") || "").trim();
+      const attrs = [el.id, el.getAttribute("data-tab"), el.getAttribute("data-page"), el.getAttribute("href")].filter(Boolean).join(" ");
+      const key = protectedTabFromTextV172(`${text} ${attrs}`);
+      if (!key) return;
+
+      const allowed = hasPermissionV172(key);
+      el.hidden = !allowed;
+      el.classList.toggle("permission-hidden-v172", !allowed);
+      el.style.display = allowed ? "" : "none";
+      el.setAttribute("aria-hidden", allowed ? "false" : "true");
+    });
+
+    document.querySelectorAll("[id], [data-tab-panel], [data-page]").forEach(panel => {
+      const info = [panel.id, panel.getAttribute("data-tab-panel"), panel.getAttribute("data-page")].filter(Boolean).join(" ");
+      const key = protectedTabFromTextV172(info);
+      if (!key) return;
+      if (!hasPermissionV172(key)) {
+        panel.hidden = true;
+        panel.classList.remove("active", "show", "open");
+        panel.style.display = "none";
+      }
+    });
+
+    const hash = String(location.hash || "").toLowerCase();
+    const hashKey = protectedTabFromTextV172(hash);
+    if (hashKey && !hasPermissionV172(hashKey)) {
+      history.replaceState(null, "", location.pathname + location.search);
+      if (typeof showTab === "function") {
+        try { showTab("calendario"); } catch {}
+      }
+      if (typeof toast === "function") toast("Sem permissão para aceder a essa área.");
+    }
+  } catch (error) {
+    console.warn("applyPermissionVisibilityV172 falhou:", error);
+  }
+}
+
+function renderRoleBadgeV172() {
+  try {
+    const effective = getEffectivePermissionsV172();
+    const nameEl = [...document.querySelectorAll("header, .topbar, .hero, .app-header")][0];
+    if (!nameEl) return;
+
+    let badge = document.getElementById("roleBadgeV172");
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.id = "roleBadgeV172";
+      badge.className = "role-badge-v172";
+      nameEl.appendChild(badge);
+    }
+    badge.textContent = effective.label;
+    badge.dataset.role = effective.role;
+  } catch {}
+}
+
+function renderPermissionsAdminV172() {
+  try {
+    if (!isAdminV172()) return;
+
+    const adminPanel =
+      document.getElementById("adminTab") ||
+      document.querySelector(".tab-panel.active") ||
+      document.querySelector("main") ||
+      document.body;
+
+    const activeText = (document.querySelector(".tab-panel.active")?.textContent || document.body.textContent || "").toLowerCase();
+    const likelyAdmin = activeText.includes("permiss") || activeText.includes("admin") || location.hash.toLowerCase().includes("admin");
+    if (!likelyAdmin && !document.getElementById("permissionsPanelV172")) return;
+
+    let box = document.getElementById("permissionsPanelV172");
+    if (!box) {
+      box = document.createElement("section");
+      box.id = "permissionsPanelV172";
+      box.className = "permissions-panel-v172";
+      const anchor = adminPanel.querySelector(".admin-section, .admin-card, .panel, .card") || adminPanel.firstElementChild;
+      if (anchor?.insertAdjacentElement) anchor.insertAdjacentElement("beforebegin", box);
+      else adminPanel.prepend(box);
+    }
+
+    const canManageRoles = hasPermissionV172("manageRoles");
+    const users = [...permissionUsersCacheV172];
+    const currentEmail = currentEmailV172();
+
+    if (!users.some(user => String(user.email || user.id || "").toLowerCase() === currentEmail)) {
+      users.unshift({ id: currentEmail, email: currentEmail, role: getCurrentRoleV172(), active: true });
+    }
+
+    box.innerHTML = `
+      <div class="permissions-head-v172">
+        <div>
+          <strong>Sistema de permissões</strong>
+          <span>Dono, Admin e User com permissões centralizadas.</span>
+        </div>
+        <span class="role-badge-v172" data-role="${getCurrentRoleV172()}">${getEffectivePermissionsV172().label}</span>
+      </div>
+
+      <div class="permissions-roles-v172">
+        <div><b>Dono</b><span>Acesso total e configurações sensíveis.</span></div>
+        <div><b>Admin</b><span>Gestão operacional, resultados e users.</span></div>
+        <div><b>User</b><span>Uso normal da app.</span></div>
+      </div>
+
+      <div class="permissions-list-v172">
+        ${users.map(user => {
+          const email = String(user.email || user.id || "").toLowerCase();
+          const role = normalizeRoleV172(user.role || user.tipo || "user");
+          const disabled = !canManageRoles || (email === currentEmail && role === "dono");
+          return `
+            <div class="permission-user-row-v172">
+              <div>
+                <strong>${escapeHtml(user.name || user.nome || email || "Sem email")}</strong>
+                <span>${escapeHtml(email)}</span>
+              </div>
+              <select data-permission-user-role-v172="${escapeHtml(email)}" ${disabled ? "disabled" : ""}>
+                <option value="user" ${role === "user" ? "selected" : ""}>User</option>
+                <option value="admin" ${role === "admin" ? "selected" : ""}>Admin</option>
+                <option value="dono" ${role === "dono" ? "selected" : ""}>Dono</option>
+              </select>
+              <button type="button" data-save-role-v172="${escapeHtml(email)}" ${disabled ? "disabled" : ""}>Guardar</button>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  } catch (error) {
+    console.warn("renderPermissionsAdminV172 falhou:", error);
+  }
+}
+
+async function saveUserRoleV172(email) {
+  try {
+    if (!hasPermissionV172("manageRoles")) return toast("Só o Dono pode alterar roles.");
+    email = normalizeEmailV171 ? normalizeEmailV171(email) : String(email || "").trim().toLowerCase();
+    const select = document.querySelector(`[data-permission-user-role-v172="${CSS.escape(email)}"]`);
+    const role = normalizeRoleV172(select?.value || "user");
+
+    const firestoreDb = typeof db !== "undefined" ? db : window.db;
+    if (!firestoreDb?.collection) return toast("Firebase ainda não está pronto.");
+
+    await firestoreDb.collection("users").doc(email).set({
+      email,
+      role,
+      tipo: role,
+      active: true,
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentEmailV172()
+    }, { merge: true });
+
+    toast(`Role atualizado: ${email} → ${ROLE_PERMISSIONS_V172[role].label}`);
+  } catch (error) {
+    console.error("saveUserRoleV172 falhou:", error);
+    toast(`Não consegui guardar role: ${error.message || "erro"}`);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(loadCurrentPermissionProfileV172, 300);
+  setTimeout(loadPermissionUsersV172, 800);
+  setTimeout(applyPermissionVisibilityV172, 900);
+  setTimeout(renderPermissionsAdminV172, 1400);
+  setTimeout(renderRoleBadgeV172, 1600);
+});
+document.addEventListener("click", event => {
+  const btn = event.target.closest?.("[data-save-role-v172]");
+  if (btn) {
+    event.preventDefault();
+    saveUserRoleV172(btn.getAttribute("data-save-role-v172"));
+  }
+  setTimeout(loadPermissionUsersV172, 120);
+  setTimeout(applyPermissionVisibilityV172, 150);
+  setTimeout(renderPermissionsAdminV172, 220);
+  setTimeout(renderRoleBadgeV172, 220);
+}, true);
+window.addEventListener("hashchange", () => {
+  setTimeout(applyPermissionVisibilityV172, 80);
+  setTimeout(renderPermissionsAdminV172, 180);
+});
