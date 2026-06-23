@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v183";
+const APP_VERSION_LABEL = "v184";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -9845,11 +9845,34 @@ async function enablePushNotificationsV181(options = {}) {
   }
 }
 
+function currentPushTestPayloadV184() {
+  const type = $("pushTestTypeInputV184")?.value || "custom";
+  const team = String($("pushTestTeamInputV184")?.value || "Portugal").trim();
+  const game = String($("pushTestGameInputV184")?.value || "Portugal vs Uzbequistão").trim();
+  const custom = String($("pushTestMessageInputV184")?.value || "").trim();
+  const defaults = {
+    gameStart: { title: "Jogo começou", body: `${game} já começou.` },
+    gameEnd: { title: "Jogo acabou", body: `${game} terminou.` },
+    goals: { title: `Golo ${team}`, body: `Golo de ${team} no jogo ${game}.` },
+    custom: { title: "Teste push Mundial", body: custom || "As notificações push estão a funcionar." }
+  };
+  const selected = defaults[type] || defaults.custom;
+  return {
+    testType: type,
+    team,
+    game,
+    title: selected.title,
+    body: custom || selected.body,
+    ignoreQuietHours: true
+  };
+}
+
 async function sendTestPushV181() {
   try {
     if (!hasPermission("admin")) return toast("Só o Admin pode testar push.");
-    const data = await callPushFunctionV181("requestPushTest", { allDevices: true, preferences: currentPushPreferencesV181() });
-    toast(`Teste push pedido para ${data.sent || 0} dispositivo(s).`);
+    const payload = currentPushTestPayloadV184();
+    const data = await callPushFunctionV181("requestPushTest", { ...payload, allDevices: true, preferences: currentPushPreferencesV181() });
+    toast(`Teste ${payload.title} pedido para ${data.sent || 0} dispositivo(s).`);
   } catch (error) {
     console.error("sendTestPushV181 falhou:", error);
     toast(`Não consegui pedir teste push: ${String(error?.message || error || "erro").slice(0, 140)}`);
@@ -9949,7 +9972,7 @@ function renderPushNotificationsPanelV165() {
       </div>
       <div class="push-panel-actions-v165">
         <button id="enablePushBtnV165" class="primary" type="button">Ativar neste dispositivo</button>
-        <button id="testPushBtnV165" class="secondary" type="button">Enviar teste</button>
+        <button id="testPushBtnV165" class="secondary" type="button">Enviar teste dos campos</button>
       </div>
     </div>
     <div class="push-status-v165">
@@ -9964,6 +9987,25 @@ function renderPushNotificationsPanelV165() {
       <label><input id="pushGoalsInputV181" type="checkbox" ${preferences.goals ? "checked" : ""} /> Golo da equipa</label>
       <label><input id="pushQuietHoursInputV181" type="checkbox" ${preferences.quietHours?.enabled !== false ? "checked" : ""} /> Silenciar 23h-09h</label>
       <button id="savePushPrefsBtnV181" class="secondary" type="button">Guardar preferências</button>
+    </div>
+    <div class="push-test-fields-v184">
+      <label>Tipo
+        <select id="pushTestTypeInputV184">
+          <option value="gameStart">Jogo começou</option>
+          <option value="gameEnd">Jogo acabou</option>
+          <option value="goals">Golo da equipa</option>
+          <option value="custom">Mensagem livre</option>
+        </select>
+      </label>
+      <label>Equipa
+        <input id="pushTestTeamInputV184" type="text" value="Portugal" />
+      </label>
+      <label>Jogo
+        <input id="pushTestGameInputV184" type="text" value="Portugal vs Uzbequistão" />
+      </label>
+      <label>Mensagem opcional
+        <input id="pushTestMessageInputV184" type="text" placeholder="Vazio usa o texto automático" />
+      </label>
     </div>
     <p class="push-note-v165">Diagnóstico: ${escapeHtml(pushDiagnosticV181())}</p>
   `;

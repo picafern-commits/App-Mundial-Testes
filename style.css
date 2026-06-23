@@ -9157,6 +9157,37 @@ body.modal-open-v162{
   height:18px!important;
 }
 
+.push-test-fields-v184{
+  display:grid!important;
+  grid-template-columns:180px minmax(140px,.7fr) minmax(220px,1fr) minmax(260px,1.2fr)!important;
+  gap:10px!important;
+  align-items:end!important;
+  padding:12px!important;
+  border:1px solid rgba(255,255,255,.12)!important;
+  border-radius:10px!important;
+  background:rgba(255,255,255,.045)!important;
+}
+
+.push-test-fields-v184 label{
+  display:grid!important;
+  gap:6px!important;
+  color:rgba(255,255,255,.72)!important;
+  font-size:12px!important;
+  font-weight:900!important;
+}
+
+.push-test-fields-v184 input,
+.push-test-fields-v184 select{
+  width:100%!important;
+  min-height:38px!important;
+  border:1px solid rgba(255,255,255,.12)!important;
+  border-radius:9px!important;
+  background:#0b1320!important;
+  color:#fff!important;
+  padding:9px 10px!important;
+  font-weight:850!important;
+}
+
 .push-optin-v182{
   display:flex!important;
   align-items:center!important;
@@ -9278,6 +9309,10 @@ body.modal-open-v162{
   .push-optin-v182{
     align-items:stretch!important;
     flex-direction:column!important;
+  }
+
+  .push-test-fields-v184{
+    grid-template-columns:1fr!important;
   }
 
   .push-panel-actions-v165 button,

@@ -129,7 +129,7 @@ function tokenInQuietHours(tokenData) {
   return isHourInRange(lisbonHourNow(), start, end);
 }
 
-async function loadEnabledTokens({ room = "", pref = "", adminOnly = false, excludeUid = "", onlyUid = "" } = {}) {
+async function loadEnabledTokens({ room = "", pref = "", adminOnly = false, excludeUid = "", onlyUid = "", ignoreQuietHours = false } = {}) {
   const snap = await db.collection("notificationTokens").where("enabled", "==", true).get();
   return snap.docs
     .map(doc => ({ id: doc.id, ref: doc.ref, data: doc.data() || {} }))
@@ -137,7 +137,7 @@ async function loadEnabledTokens({ room = "", pref = "", adminOnly = false, excl
     .filter(item => !onlyUid || item.data.uid === onlyUid)
     .filter(item => !excludeUid || item.data.uid !== excludeUid)
     .filter(item => !pref || item.data.preferences?.[pref] !== false)
-    .filter(item => !tokenInQuietHours(item.data))
+    .filter(item => ignoreQuietHours || !tokenInQuietHours(item.data))
     .filter(item => !room || item.data.rooms?.[room] === true)
     .filter(item => !adminOnly || item.data.rooms?.admin === true || ADMIN_EMAILS.has(cleanString(item.data.email).toLowerCase()));
 }
@@ -1033,6 +1033,33 @@ function isPushAdmin(identity = {}) {
   return ADMIN_EMAILS.has(normalizeEmail(identity.email));
 }
 
+function cleanPushTestPayload(body = {}) {
+  const requestedType = cleanString(body.testType || body.type || "test");
+  const type = ["gameStart", "gameEnd", "goals", "custom"].includes(requestedType) ? requestedType : "test";
+  const team = shortText(body.team || body.goalTeam || "Portugal", 60);
+  const game = shortText(body.game || body.match || "Portugal vs Uzbequistao", 90);
+  const customTitle = shortText(body.title, 90);
+  const customBody = shortText(body.body || body.message, 180);
+
+  const defaults = {
+    gameStart: { title: "Jogo começou", body: `${game} já começou.`, dataType: "game-start", pref: "gameStart" },
+    gameEnd: { title: "Jogo acabou", body: `${game} terminou.`, dataType: "game-end", pref: "gameEnd" },
+    goals: { title: `Golo ${team}`, body: `Golo de ${team} no jogo ${game}.`, dataType: "goal", pref: "goals" },
+    custom: { title: "Teste push Mundial", body: "As notificações push estão a funcionar.", dataType: "test", pref: "" },
+    test: { title: "Teste push Mundial", body: "As notificações push estão a funcionar neste dispositivo.", dataType: "test", pref: "" }
+  };
+
+  const selected = defaults[type] || defaults.test;
+  return {
+    title: customTitle || selected.title,
+    body: customBody || selected.body,
+    dataType: selected.dataType,
+    pref: selected.pref,
+    team,
+    game
+  };
+}
+
 exports.registerPushToken = onRequest({ cors: true, region: "us-central1" }, async (req, res) => {
   setCorsPush(res);
   if (req.method === "OPTIONS") return res.status(204).send("");
@@ -1119,29 +1146,33 @@ exports.requestPushTest = onRequest({ cors: true, region: "us-central1" }, async
     const directToken = cleanString(body.token);
     const quietHours = cleanQuietHours(body.quietHours || body.preferences?.quietHours || {});
     const sendAllDevices = body.allDevices === true || body.allDevices === "true";
+    const ignoreQuietHours = body.ignoreQuietHours !== false;
+    const testPayload = cleanPushTestPayload(body);
     let sent = 0;
 
-    const title = "Teste push Mundial";
-    const messageBody = "As notificações push estão a funcionar neste dispositivo.";
+    const title = testPayload.title;
+    const messageBody = testPayload.body;
     const payload = {
       notification: { title, body: messageBody },
       data: {
-        type: "test",
+        type: testPayload.dataType,
         title,
         body: messageBody,
+        team: testPayload.team,
+        game: testPayload.game,
         tag: `mundial-push-test-${Date.now()}`,
         url: notificationUrl("notifications", "test")
       }
     };
 
-    if (directToken && !sendAllDevices && !tokenInQuietHours({ quietHours })) {
+    if (directToken && !sendAllDevices && (ignoreQuietHours || !tokenInQuietHours({ quietHours }))) {
       await messaging.send({ token: directToken, ...payload });
       sent = 1;
     } else {
       const tokens = isPushAdmin(identity)
-        ? await loadEnabledTokens()
+        ? await loadEnabledTokens({ pref: testPayload.pref, ignoreQuietHours })
         : identity.uid
-          ? await loadEnabledTokens({ onlyUid: identity.uid })
+          ? await loadEnabledTokens({ onlyUid: identity.uid, pref: testPayload.pref, ignoreQuietHours })
           : [];
       sent = await sendTokenNotifications(tokens, () => payload);
     }
@@ -1151,12 +1182,15 @@ exports.requestPushTest = onRequest({ cors: true, region: "us-central1" }, async
       email: identity.email,
       hasDirectToken: Boolean(directToken),
       sent,
+      testType: testPayload.dataType,
+      title,
+      body: messageBody,
       source: "requestPushTest-clean",
       appVersion: cleanString(body.appVersion),
       createdAt: FieldValue.serverTimestamp()
     });
 
-    return res.json({ ok: true, sent });
+    return res.json({ ok: true, sent, title, body: messageBody, type: testPayload.dataType });
   } catch (error) {
     logger.error("requestPushTest error", error);
     return res.status(500).json({ ok: false, error: error.message || "internal" });
