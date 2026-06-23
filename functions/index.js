@@ -348,6 +348,7 @@ exports.notifyKnockoutUpdated = onDocumentWritten("settings/main", async event =
 exports.notifyTestNotification = onDocumentCreated("notificationTests/{testId}", async event => {
   const test = event.data?.data() || {};
   if (!test.uid) return;
+  if (test.source === "requestPushTest-clean") return;
 
   const title = "Teste Firebase";
   const body = "As notificacoes da app estao a funcionar neste dispositivo.";
@@ -972,14 +973,14 @@ exports.syncFootballDataWorldCupScheduled = onSchedule({
 
 
 
-// v177 — Push HTTP Functions. Admin SDK inicializado uma única vez acima.
-function setCorsV177(res) {
+// Push HTTP Functions limpas. Admin SDK inicializado uma única vez no topo.
+function setCorsPush(res) {
   res.set("Access-Control-Allow-Origin", "*");
   res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
-function readJsonBodyV177(req) {
+function readJsonBodyPush(req) {
   if (req.body && typeof req.body === "object") return req.body;
   try {
     return JSON.parse(req.rawBody?.toString("utf8") || "{}");
@@ -988,83 +989,167 @@ function readJsonBodyV177(req) {
   }
 }
 
+async function requestIdentityPush(req, body) {
+  const authHeader = String(req.get("Authorization") || "");
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (token) {
+    try {
+      const decoded = await auth.verifyIdToken(token);
+      return { uid: decoded.uid || "", email: normalizeEmail(decoded.email || body.email || "") };
+    } catch (error) {
+      logger.warn("Push auth token inválido; vou usar body fallback", { code: error?.code });
+    }
+  }
+  return { uid: cleanString(body.uid), email: normalizeEmail(body.email) };
+}
+
+function safeDocIdPush(...parts) {
+  const raw = parts.map(part => cleanString(part)).filter(Boolean).join("_") || `anon_${Date.now()}`;
+  return raw.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 180);
+}
+
+function cleanPushPreferences(input = {}) {
+  return {
+    gameStart: input.gameStart !== false,
+    gameEnd: input.gameEnd !== false,
+    goals: input.goals !== false,
+    results: input.results !== false,
+    knockout: input.knockout !== false,
+    chatGeneral: input.chatGeneral === true,
+    chatAdmin: input.chatAdmin !== false
+  };
+}
+
+function cleanQuietHours(input = {}) {
+  return {
+    enabled: input.enabled !== false,
+    startHour: Number.isFinite(Number(input.startHour)) ? Number(input.startHour) : DEFAULT_QUIET_START_HOUR,
+    endHour: Number.isFinite(Number(input.endHour)) ? Number(input.endHour) : DEFAULT_QUIET_END_HOUR,
+    timezone: cleanString(input.timezone, QUIET_TZ)
+  };
+}
+
 exports.registerPushToken = onRequest({ cors: true, region: "us-central1" }, async (req, res) => {
-  setCorsV177(res);
+  setCorsPush(res);
   if (req.method === "OPTIONS") return res.status(204).send("");
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "method-not-allowed" });
 
   try {
-    const body = readJsonBodyV177(req);
-    const token = String(body.token || "").trim();
+    const body = readJsonBodyPush(req);
+    const token = cleanString(body.token);
     if (!token) return res.status(400).json({ ok: false, error: "missing-token" });
 
-    const safeId = Buffer.from(token).toString("base64url").slice(0, 180);
+    const identity = await requestIdentityPush(req, body);
+    if (!identity.uid && !identity.email) return res.status(400).json({ ok: false, error: "missing-user" });
 
-    await admin.firestore().collection("notificationTokens").doc(safeId).set({
+    const preferences = cleanPushPreferences(body.preferences || {});
+    const quietHours = cleanQuietHours(body.quietHours || body.preferences?.quietHours || {});
+    const docId = safeDocIdPush(identity.uid || identity.email, body.deviceId || Buffer.from(token).toString("base64url").slice(0, 32));
+
+    await db.collection("notificationTokens").doc(docId).set({
       token,
-      uid: String(body.uid || ""),
-      email: String(body.email || "").toLowerCase(),
+      uid: identity.uid,
+      email: identity.email,
       enabled: true,
-      platform: String(body.platform || "web"),
-      userAgent: String(body.userAgent || ""),
-      preferences: body.preferences || {},
-      appVersion: String(body.appVersion || ""),
+      platform: cleanString(body.platform, "web"),
+      deviceId: cleanString(body.deviceId),
+      userAgent: cleanString(body.userAgent),
+      preferences,
+      quietHours,
+      rooms: { general: false, admin: true },
+      appVersion: cleanString(body.appVersion),
       updatedAt: new Date().toISOString(),
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp()
     }, { merge: true });
 
-    return res.json({ ok: true, id: safeId });
+    return res.json({ ok: true, id: docId });
   } catch (error) {
-    console.error("registerPushToken error", error);
+    logger.error("registerPushToken error", error);
     return res.status(500).json({ ok: false, error: error.message || "internal" });
   }
 });
 
 exports.savePushPreferences = onRequest({ cors: true, region: "us-central1" }, async (req, res) => {
-  setCorsV177(res);
+  setCorsPush(res);
   if (req.method === "OPTIONS") return res.status(204).send("");
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "method-not-allowed" });
 
   try {
-    const body = readJsonBodyV177(req);
-    const uid = String(body.uid || body.email || "anonymous").trim() || "anonymous";
-    const safeId = Buffer.from(uid).toString("base64url").slice(0, 120);
+    const body = readJsonBodyPush(req);
+    const identity = await requestIdentityPush(req, body);
+    if (!identity.uid && !identity.email) return res.status(400).json({ ok: false, error: "missing-user" });
 
-    await admin.firestore().collection("notificationPreferences").doc(safeId).set({
-      uid: String(body.uid || ""),
-      email: String(body.email || "").toLowerCase(),
-      preferences: body.preferences || {},
-      appVersion: String(body.appVersion || ""),
+    const preferences = cleanPushPreferences(body.preferences || {});
+    const quietHours = cleanQuietHours(body.quietHours || body.preferences?.quietHours || {});
+    const docId = safeDocIdPush(identity.uid || identity.email);
+
+    await db.collection("notificationPreferences").doc(docId).set({
+      uid: identity.uid,
+      email: identity.email,
+      preferences,
+      quietHours,
+      appVersion: cleanString(body.appVersion),
       updatedAt: new Date().toISOString()
     }, { merge: true });
 
-    return res.json({ ok: true, id: safeId });
+    const tokens = await db.collection("notificationTokens")
+      .where(identity.uid ? "uid" : "email", "==", identity.uid || identity.email)
+      .get();
+    await Promise.all(tokens.docs.map(doc => doc.ref.set({ preferences, quietHours, updatedAt: new Date().toISOString() }, { merge: true })));
+
+    return res.json({ ok: true, id: docId, updatedTokens: tokens.size });
   } catch (error) {
-    console.error("savePushPreferences error", error);
+    logger.error("savePushPreferences error", error);
     return res.status(500).json({ ok: false, error: error.message || "internal" });
   }
 });
 
 exports.requestPushTest = onRequest({ cors: true, region: "us-central1" }, async (req, res) => {
-  setCorsV177(res);
+  setCorsPush(res);
   if (req.method === "OPTIONS") return res.status(204).send("");
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "method-not-allowed" });
 
   try {
-    const body = readJsonBodyV177(req);
-    await admin.firestore().collection("notificationTests").add({
-      uid: String(body.uid || ""),
-      email: String(body.email || "").toLowerCase(),
-      token: String(body.token || ""),
-      preferences: body.preferences || {},
-      source: "requestPushTest-v177",
-      appVersion: String(body.appVersion || ""),
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    const body = readJsonBodyPush(req);
+    const identity = await requestIdentityPush(req, body);
+    const directToken = cleanString(body.token);
+    const quietHours = cleanQuietHours(body.quietHours || body.preferences?.quietHours || {});
+    let sent = 0;
+
+    const title = "Teste push Mundial";
+    const messageBody = "As notificações push estão a funcionar neste dispositivo.";
+    const payload = {
+      notification: { title, body: messageBody },
+      data: {
+        type: "test",
+        title,
+        body: messageBody,
+        tag: `mundial-push-test-${Date.now()}`,
+        url: notificationUrl("notifications", "test")
+      }
+    };
+
+    if (directToken && !tokenInQuietHours({ quietHours })) {
+      await messaging.send({ token: directToken, ...payload });
+      sent = 1;
+    } else if (identity.uid) {
+      const tokens = await loadEnabledTokens({ onlyUid: identity.uid });
+      sent = await sendTokenNotifications(tokens, () => payload);
+    }
+
+    await db.collection("notificationTests").add({
+      uid: identity.uid,
+      email: identity.email,
+      hasDirectToken: Boolean(directToken),
+      sent,
+      source: "requestPushTest-clean",
+      appVersion: cleanString(body.appVersion),
+      createdAt: FieldValue.serverTimestamp()
     });
 
-    return res.json({ ok: true });
+    return res.json({ ok: true, sent });
   } catch (error) {
-    console.error("requestPushTest error", error);
+    logger.error("requestPushTest error", error);
     return res.status(500).json({ ok: false, error: error.message || "internal" });
   }
 });

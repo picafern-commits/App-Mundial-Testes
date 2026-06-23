@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="pt" class="desktop-fullscreen-instant-v148 pc-fullscreen-instant-v168">
+<head>
+  <meta charset="UTF-8">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Mundial Pontos 2026 · Push Limpo</title>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Mundial 2026" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="theme-color" content="#070b13" />
+  <meta name="msapplication-TileColor" content="#070b13" />
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="application-name" content="Mundial Pontos 2026" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="desktop-fullscreen-instant-v148 pc-fullscreen-instant-v168">
+
+  <section id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <div class="login-brand">
+        <span>🏆</span>
+        <div>
+          <p class="eyebrow">Mundial Pontos 2026</p>
+          <h1>Entrar na app</h1>
+        </div>
+      </div>
+
+      <div id="loginStatusBox" class="login-status">Usa o teu email e password para entrar.</div>
+
+      <div class="login-form">
+        <label>Email
+          <input id="loginEmailInput" type="email" autocomplete="email" placeholder="email@exemplo.com" />
+        </label>
+        <label>Password
+          <input id="loginPasswordInput" type="password" autocomplete="current-password" placeholder="Password" />
+        </label>
+        <label class="remember-account-row">
+          <input id="rememberEmailInput" type="checkbox" checked />
+          Memorizar este email neste dispositivo
+        </label>
+      </div>
+
+      <div class="login-actions">
+        <button id="loginBtn" class="primary" type="button">Entrar</button>
+        <button id="createAccountBtn" class="secondary" type="button">Criar conta</button>
+      </div>
+
+      <p class="login-help">As contas novas ficam como User normal. O Admin pode alterar permissões depois.</p>
+      <div id="iosInstallHint" class="ios-install-hint hidden">
+        <strong>iPhone:</strong> abre no Safari, toca em Partilhar e escolhe “Adicionar ao Ecrã Principal”.
+      </div>
+    </div>
+  </section>
+
+  <div id="appShell" class="app-shell auth-hidden">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Calendário da Fase de Grupos</p>
+        <h1>Mundial Pontos 2026</h1>
+      </div>
+
+      <button id="chatAdminToggleBtn" class="topbar-btn chat-admin-toggle hidden" type="button" title="Ativar/desativar chat">
+        Chat: <span id="chatAdminToggleLabel">...</span>
+      </button>
+
+      <button id="chatOpenBtn" class="secondary chat-open-btn" type="button">
+        Chat <span id="chatUnreadBadge" class="chat-unread-badge hidden">0</span>
+      </button>
+
+      <div id="sessionBox" class="session-box hidden">
+        <span id="sessionUserLabel">Sem login</span>
+        <button id="logoutBtn" class="secondary small" type="button">Sair</button>
+      </div>
+
+      <div class="copy-actions" aria-label="Copiar para WhatsApp">
+        <button id="calendarMissingResultsBtn" class="primary" type="button">Faltam resultados</button>
+        <button id="calendarPlayedGamesBtn" class="secondary" type="button">Já jogaram</button>
+        <button id="calendarAllGamesBtn" class="secondary" type="button">Todos os jogos</button>
+        <details id="onlineUsersPanel" class="online-users-panel topbar-online-users">
+          <summary class="secondary online-users-trigger">
+            <span class="online-users-trigger-label">Users</span>
+            <span id="onlineUsersBadge" class="online-users-badge">0 online</span>
+          </summary>
+          <div id="onlineUsersList" class="online-users-list">
+            <div class="online-users-popup-head">
+              <strong>Utilizadores online</strong>
+              <button id="closeOnlineUsersBtn" class="online-users-close" type="button" aria-label="Fechar utilizadores online" onclick="return window.closeOnlineUsersPanelNow(event)">×</button>
+            </div>
+            <div class="empty small-empty">A carregar utilizadores...</div>
+          </div>
+        </details>
+        <button id="copyScoreBtn" class="secondary hidden" type="button">Copiar pontuação</button>
+        <button id="refreshAppBtn" class="secondary refresh-app-btn hidden" type="button">Atualizar app</button>
+        <button id="installAppBtn" class="secondary install-btn hidden" type="button">Instalar app</button>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Navegação principal">
+      <button class="tab active" type="button" data-tab="calendarTab">Calendário</button>
+      <button class="tab" type="button" data-tab="scoreTab">Pontuação</button>
+      <button class="tab" type="button" data-tab="knockoutTab">Fase Final</button>
+      <button class="tab" type="button" data-tab="notificationsTab">Notificações <span id="notificationsBadgeV164" class="tab-badge-v164 hidden">0</span></button>
+      <button class="tab" type="button" data-tab="logsTab">Logs</button>
+      <button class="tab" type="button" data-tab="adminTab">Admin</button>
+      <button class="tab" type="button" data-tab="settingsTab">Configurações</button>
+    </nav>
+
+    <main>
+<section id="calendarTab" class="tab-panel active">
+        <div class="section-head compact">
+          <div>
+            <h2>Fase de Grupos</h2>
+            <p>Jogos por data, com horas de Portugal.</p>
+          </div>
+          <input id="searchInput" class="search" type="search" placeholder="" />
+        </div>
+        <div id="gamesList" class="calendar-list"></div>
+      </section>
+
+      <section id="scoreTab" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <h2>Pontuação</h2>
+            <p>Classificação com total e detalhe dos jogos de cada jogador.</p>
+          </div>
+        </div>
+        <div id="scoreSummary" class="score-summary leaderboard"></div>
+      </section>
+
+      <section id="knockoutTab" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <h2>Fase Final</h2>
+            <p>Define manualmente a primeira ronda; nos jogos empatados, preenche também os penáltis.</p>
+          </div>
+        </div>
+        <div id="knockoutLockNotice" class="knockout-lock-notice"></div>
+        <div id="knockoutBracket" class="knockout-bracket"></div>
+      </section>
+
+      <section id="notificationsTab" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <h2>Centro de notificações</h2>
+            <p>Alertas Admin, push para Android/iPhone, resultados, golos e sincronização.</p>
+          </div>
+          <div class="collapse-actions">
+            <button id="markNotificationsReadBtnV164" class="secondary" type="button">Marcar como vistas</button>
+            <button id="openNotificationSettingsBtnV164" class="secondary" type="button">Instalação</button>
+          </div>
+        </div>
+        <div id="pushNotificationsPanelV165" class="push-panel-v165"></div>
+        <div id="notificationsSummaryV164" class="notifications-summary-v164"></div>
+        <div id="notificationsListV164" class="notifications-list-v164"></div>
+      </section>
+
+      <section id="logsTab" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <h2>Logs do sistema</h2>
+            <p>Histórico em tempo real das ações importantes feitas na app.</p>
+          </div>
+        </div>
+
+        <div id="logsLockedPanel" class="logs-lock-card">
+          <h3>Aba protegida</h3>
+          <p>Introduz o PIN para consultar os logs desta sessão.</p>
+          <div class="pin-row">
+            <input id="logsPinInput" type="password" inputmode="numeric" placeholder="PIN dos logs" />
+            <button id="unlockLogsBtn" class="primary" type="button">Abrir logs</button>
+          </div>
+        </div>
+
+        <div id="logsUnlockedPanel" class="logs-live-panel hidden">
+          <div class="logs-toolbar">
+            <div>
+              <strong>Logs em tempo real</strong>
+              <span>Atualiza automaticamente quando a app sincroniza.</span>
+            </div>
+            <div class="collapse-actions">
+              <label class="logs-filter-control">Tipo
+                <select id="logsTypeFilter">
+                  <option value="all">Todos</option>
+                  <option value="results">Resultados</option>
+                  <option value="knockout">Fase Final</option>
+                  <option value="users">Utilizadores</option>
+                  <option value="sync">Firebase / Sync</option>
+                  <option value="admin">Admin</option>
+                  <option value="errors">Erros</option>
+                </select>
+              </label>
+              <label class="logs-filter-control">Pesquisar
+                <input id="logsSearchInput" type="search" placeholder="Ação, utilizador ou detalhe" />
+              </label>
+              <button id="exportLogsBtn" class="secondary" type="button">Exportar logs</button>
+              <button id="clearLogsBtn" class="secondary danger-soft" type="button">Limpar logs</button>
+              <button id="lockLogsBtn" class="secondary" type="button">Bloquear</button>
+            </div>
+          </div>
+          <div id="logsSummaryV162" class="logs-summary-v162"></div>
+          <div id="systemLogsList" class="system-logs-list"></div>
+        </div>
+      </section>
+
+      <section id="adminTab" class="tab-panel">
+        <div id="adminLocked" class="admin-lock">
+          <h2>Admin</h2>
+          <p>Introduz o PIN para lançar ou limpar resultados.</p>
+          <div class="pin-row">
+            <input id="adminPinInput" type="password" inputmode="numeric" placeholder="PIN" />
+            <button id="unlockAdminBtn" class="primary" type="button">Entrar</button>
+          </div>
+        </div>
+
+        <div id="adminUnlocked" class="hidden admin-stack admin-accordion">
+          <div id="firebaseStatusBox" class="firebase-status-box">Firebase: a iniciar ligação...</div>
+          <div id="adminOverviewV162" class="admin-overview-v162"></div>
+
+          <details class="admin-card admin-collapse">
+            <summary>
+              <div>
+                <h2>Permissões de utilizadores</h2>
+                <p>Define quem é Admin ou User normal e que páginas/ações cada conta pode usar.</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+
+            <div class="permissions-tools">
+              <div class="permission-add-grid">
+                <label>Email do utilizador
+                  <input id="permissionEmailInput" type="email" placeholder="email@exemplo.com" />
+                </label>
+                <label>Nome visível
+                  <input id="permissionNameInput" type="text" placeholder="Ex: Ricardo" />
+                </label>
+                <label>Tipo
+                  <select id="permissionRoleInput">
+                    <option value="user">User normal</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </label>
+                <button id="addPermissionUserBtn" class="primary" type="button">Guardar utilizador</button>
+              </div>
+              <div id="permissionsUsersList" class="permissions-users-list"></div>
+            </div>
+          </details>
+
+
+          <details class="admin-card admin-collapse">
+            <summary>
+              <div>
+                <h2>Fase Final</h2>
+                <p>Define manualmente os jogos da primeira ronda. As rondas seguintes são preenchidas automaticamente pelos vencedores.</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+            <div class="knockout-admin-tools">
+              <label class="check-row">
+                <input id="adminKnockoutUnlockedInput" type="checkbox" />
+                Ativar Fase Final no Calendário antes de todos os jogos terem resultado
+              </label>
+              <button id="saveKnockoutUnlockBtn" class="primary" type="button">Guardar bloqueio</button>
+            </div>
+            <div id="knockoutAdminPanel" class="knockout-admin-panel"></div>
+          </details>
+
+          <details class="admin-card admin-collapse">
+            <summary>
+              <div>
+                <h2>Editar resultados por utilizador</h2>
+                <p>Escolhe um user e edita todas as apostas dele diretamente na app, incluindo MVP, Melhor Marcador e Equipa Vencedora.</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+
+            <div class="user-editor-toolbar">
+              <label>Utilizador
+                <select id="editUserSelect"></select>
+              </label>
+              <button id="saveUserBetsBtn" class="primary" type="button">Guardar alterações</button>
+            
+          <button id="openKnockoutLayoutBtn" class="secondary knockout-adjust-top-btn" type="button">Ajustar cards</button>
+        </div>
+
+            <div id="userBetsEditor" class="user-bets-editor"></div>
+          </details>
+
+
+          <details class="admin-card admin-collapse">
+            <summary>
+              <div>
+                <h2>Exportar Pontos</h2>
+                <p>Gera o ficheiro Excel com a pontuação atual calculada pela app.</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+            <div class="collapse-actions">
+              <button id="exportPontosBtn" class="primary" type="button">Exportar Pontos Excel</button>
+            </div>
+          </details>
+
+<details class="admin-card admin-collapse">
+            <summary>
+              <div>
+                <h2>Users do Jogo</h2>
+                <p>Adiciona aqui os nomes de quem vai participar. Também aparecem automaticamente quando importas o Excel.</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+            <div class="collapse-actions"></div>
+            <div class="user-add-row">
+              <input id="newUserNameInput" type="text" placeholder="Nome do user. Ex: João" />
+              <button id="addUserBtn" class="primary" type="button">Adicionar user</button>
+            </div>
+            <div id="usersList" class="users-list"></div>
+          </details>
+
+          <details class="admin-card admin-collapse">
+            <summary>
+              <div>
+                <h2>Importar Excel Resultados</h2>
+                <p>Exporta o Excel Resultados, corrige no Excel e volta a importar aqui.</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+            <div class="collapse-actions">
+              <button id="exportResultadosBtn" class="secondary" type="button">Exportar Excel Resultados</button>
+                <button id="searchAllResultsBtn" class="secondary admin-only search-results-admin-btn" type="button">Pesquisar resultados</button>
+              <button id="syncFootballDataBtn" class="primary" type="button">Atualizar resultados automáticos</button>
+              <button id="openExcelModalBtn" class="primary" type="button">Importar Excel Resultados</button>
+            </div>
+            <div id="importStatusBox" class="import-status-box idle">Ainda não foi feita nenhuma importação.</div>
+            <div id="importSummary" class="import-summary">Ainda não foi feita importação nesta sessão.</div>
+          </details>
+
+          <details class="admin-card admin-collapse">
+            <summary>
+              <div>
+                <h2>Sistema de Pontos</h2>
+                <p>O Admin pode editar quantos pontos vale cada campo. Resultado exato não acumula com o ponto da equipa vencedora/empate.</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+            <div class="collapse-actions">
+              <button id="savePointsSettingsBtn" class="primary" type="button">Guardar pontos</button>
+            </div>
+            <div class="points-settings-grid">
+              <label>Resultado exato
+                <input id="pointsExactInput" type="number" min="0" step="1" />
+              </label>
+              <label>Equipa vencedora / empate
+                <input id="pointsWinnerInput" type="number" min="0" step="1" />
+              </label>
+              <label>MVP
+                <input id="pointsMvpInput" type="number" min="0" step="1" />
+              </label>
+              <label>Melhor marcador
+                <input id="pointsTopScorerInput" type="number" min="0" step="1" />
+              </label>
+              <label>Equipa vencedora
+                <input id="pointsChampionInput" type="number" min="0" step="1" />
+              </label>
+            </div>
+            <div class="points-settings-separator">
+              <h3>Sistema de Pontos da Fase Final</h3>
+              <p>Valores usados apenas nos jogos da Fase Final. O acerto nos penáltis soma aos pontos do resultado/vencedor.</p>
+            </div>
+            <div class="points-settings-grid">
+              <label>Resultado exato
+                <input id="knockoutPointsExactInput" type="number" min="0" step="1" />
+              </label>
+              <label>Equipa vencedora
+                <input id="knockoutPointsWinnerInput" type="number" min="0" step="1" />
+              </label>
+              <label>Acerto nos penáltis
+                <input id="knockoutPointsPenaltiesInput" type="number" min="0" step="1" />
+              </label>
+              <label>MVP
+                <input id="knockoutPointsMvpInput" type="number" min="0" step="1" />
+              </label>
+              <label>Melhor marcador
+                <input id="knockoutPointsTopScorerInput" type="number" min="0" step="1" />
+              </label>
+              <label>Equipa vencedora final
+                <input id="knockoutPointsChampionInput" type="number" min="0" step="1" />
+              </label>
+            </div>
+          </details>
+
+          <details class="admin-card admin-collapse">
+            <summary>
+              <div>
+                <h2>Resultados especiais</h2>
+                <p>Mete aqui os vencedores finais para atribuir pontos extra aos users.</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+            <div class="collapse-actions">
+              <button id="saveExtraResultsBtn" class="primary" type="button">Guardar extras</button>
+            </div>
+            <div class="points-settings-grid">
+              <label>MVP final
+                <input id="finalMvpInput" type="text" placeholder="Ex: Vitinha" />
+              </label>
+              <label>Melhor marcador final
+                <input id="finalTopScorerInput" type="text" placeholder="Ex: Ronaldo" />
+              </label>
+              <label>Equipa vencedora final
+                <input id="finalChampionInput" type="text" placeholder="Ex: Portugal" />
+              </label>
+            </div>
+          </details>
+
+          <details class="admin-card admin-collapse">
+            <summary>
+              <div>
+                <h2>Resultados dos jogos</h2>
+                <p id="storageStatus">A carregar dados...</p>
+              </div>
+              <span class="collapse-icon">⌄</span>
+            </summary>
+            <div id="adminGamesList" class="admin-list"></div>
+          </details>
+        </div>
+      </section>
+
+      <section id="settingsTab" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <h2>Configurações</h2>
+            <p>Estado da app, instalação PWA, cache e atalhos de manutenção.</p>
+          </div>
+        </div>
+
+        <div class="settings-grid-v162">
+          <article class="settings-card-v162">
+            <span>Versão</span>
+            <strong id="appVersionLabelV162">v181</strong>
+            <p id="pwaUpdateStateV162">A verificar atualizações...</p>
+            <div class="settings-actions-v162">
+              <button id="forceUpdateAppBtnV162" class="primary" type="button">Atualizar app</button>
+              <button id="clearCacheBtnV162" class="secondary" type="button">Limpar cache</button>
+            </div>
+          </article>
+
+          <article class="settings-card-v162">
+            <span>Instalação</span>
+            <strong id="pwaInstallStateV162">PWA pronta</strong>
+            <p id="pwaStandaloneStateV162">A app pode ser instalada no iPhone, Android e PC.</p>
+            <div class="settings-actions-v162">
+              <button id="installAppFromSettingsBtnV162" class="primary" type="button">Instalar app</button>
+            </div>
+          </article>
+
+          <article class="settings-card-v162">
+            <span>Dados</span>
+            <strong id="storageModeLabelV162">A carregar...</strong>
+            <p id="settingsSyncLabelV162">Estado da sincronização e cache local.</p>
+            <div class="settings-actions-v162">
+              <button id="openLogsFromSettingsBtnV162" class="secondary" type="button">Abrir logs</button>
+              <button id="openAdminFromSettingsBtnV162" class="secondary" type="button">Abrir Admin</button>
+            </div>
+          </article>
+        </div>
+        <div id="installGuideV164" class="install-guide-v164"></div>
+      </section>
+    </main>
+  </div>
+
+
+  <div id="excelModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="excelModalTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="excelModalTitle">Importar Excel dos Users</h2>
+          <p>Importa o ficheiro de apostas (<strong>Resultados.xlsx</strong>). Depois mete os resultados reais manualmente no Admin.</p>
+        </div>
+        <button id="closeExcelModalBtn" class="icon-button" type="button" aria-label="Fechar">×</button>
+      </div>
+
+      <div class="modal-grid">
+        <label>Excel Resultados
+          <input id="resultadosExcelInput" type="file" accept=".xlsx,.xls,.csv" />
+          <small>Apostas dos users por jogo.</small>
+        </label>
+        <label>Excel Pontos
+          <input id="pontosExcelInput" type="file" accept=".xlsx,.xls,.csv" />
+          <small>Pontos/resultados já obtidos até agora.</small>
+        </label>
+      </div>
+
+      <label class="check-row">
+        <input id="replaceExcelBetsInput" type="checkbox" checked />
+        Substituir apostas importadas anteriormente
+      </label>
+
+      <div id="excelPreview" class="excel-preview">
+        Seleciona os ficheiros e carrega em “Pré-visualizar”.
+      </div>
+
+      <div class="modal-actions">
+        <button id="previewExcelBtn" class="secondary" type="button">Pré-visualizar</button>
+        <button id="confirmExcelImportBtn" class="primary" type="button" disabled>Confirmar importação</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="resultModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="resultModalTitle">
+    <div class="modal-card result-modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="resultModalTitle">Adicionar resultado</h2>
+          <p id="resultModalSubtitle">Mete o resultado real do jogo. A pontuação recalcula automaticamente.</p>
+        </div>
+        <button id="closeResultModalBtn" class="icon-button" type="button" aria-label="Fechar">×</button>
+      </div>
+
+      <input id="resultGameIdInput" type="hidden" />
+
+      <div class="result-game-preview">
+        <div class="result-team">
+          <span id="resultHomeFlag">🏳️</span>
+          <strong id="resultHomeTeam">Equipa casa</strong>
+        </div>
+        <div class="result-vs">VS</div>
+        <div class="result-team right">
+          <span id="resultAwayFlag">🏳️</span>
+          <strong id="resultAwayTeam">Equipa fora</strong>
+        </div>
+      </div>
+
+      <div class="result-fields-grid">
+        <label>Grupo
+          <input id="resultGroupInput" type="text" disabled />
+        </label>
+        <label>Data / Hora Portugal
+          <input id="resultDateInput" type="text" disabled />
+        </label>
+        <label>Resultado casa
+          <input id="modalHomeScoreInput" type="number" min="0" inputmode="numeric" placeholder="0" />
+        </label>
+        <label>Resultado fora
+          <input id="modalAwayScoreInput" type="number" min="0" inputmode="numeric" placeholder="0" />
+        </label>
+      </div>
+
+      <div class="result-points-preview" id="resultPointsPreview">
+        Sem resultado guardado.
+      </div>
+
+      <div class="modal-actions">
+        <button id="clearModalResultBtn" class="secondary danger-soft" type="button">Limpar resultado</button>
+        <button id="saveModalResultBtn" class="primary" type="button">Guardar resultado</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="betsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="betsModalTitle">
+    <div class="modal-card bets-modal-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="betsModalTitle">Apostas do jogo</h2>
+          <p id="betsModalSubtitle">Consulta as apostas dos users e os pontos atribuídos.</p>
+        </div>
+        <button id="closeBetsModalBtn" class="icon-button" type="button" aria-label="Fechar">×</button>
+      </div>
+
+      <div id="betsGameSummary" class="bets-game-summary"></div>
+      <div id="betsModalBody" class="bets-modal-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script type="module" src="app.js"></script>
+
+      <div id="chatPanel" class="chat-panel hidden">
+        <div class="chat-header">
+          <div>
+            <strong>Chat Mundial</strong>
+            <span id="chatSubtitle">Conversa geral dos users</span>
+          </div>
+          <button id="chatCloseBtn" class="chat-close-btn" type="button" aria-label="Fechar chat" onclick="return window.closeChatMobileClean(event)">×</button>
+        </div>
+
+        <div class="chat-room-switch">
+          <button id="chatGeneralTab" class="chat-room-btn active" type="button" data-chat-room="general">Geral</button>
+          <button id="chatAdminTab" class="chat-room-btn admin-chat-tab hidden" type="button" data-chat-room="admin">Admin</button>
+        </div>
+
+        <div class="chat-search-wrap">
+          <input id="chatSearchInput" type="search" autocomplete="off" placeholder="Pesquisar no chat..." />
+        </div>
+
+        <div id="chatPinnedBox" class="chat-pinned-box hidden"></div>
+        <div id="chatTypingBox" class="chat-typing-box hidden"></div>
+
+        <div id="chatMessages" class="chat-messages">
+          <div class="empty small-empty">A carregar chat...</div>
+        </div>
+
+        <div id="chatReplyPreview" class="chat-reply-preview hidden">
+          <div>
+            <span>A responder a <strong id="chatReplyName"></strong></span>
+            <p id="chatReplyText"></p>
+          </div>
+          <button id="chatReplyCancelBtn" type="button" aria-label="Cancelar resposta">×</button>
+        </div>
+
+        <form id="chatForm" class="chat-form">
+          <button id="chatImageBtn" class="chat-attach-btn" type="button" aria-label="Enviar imagem">＋</button>
+          <input id="chatImageInput" type="file" accept="image/*" class="hidden" />
+          <input id="chatInput" type="text" maxlength="500" autocomplete="off" placeholder="Mensagem" />
+          <button id="chatSendBtn" class="primary" type="submit" aria-label="Enviar mensagem">➤</button>
+        </form>
+      </div>
+      <div id="chatActionMenu" class="chat-action-menu hidden">
+        <button id="chatActionReplyBtn" type="button">Responder</button>
+        <button id="chatActionPinBtn" type="button">Fixar</button>
+        <button id="chatActionDeleteBtn" type="button">Apagar</button>
+        <div class="chat-reaction-bar" id="chatReactionBar">
+          <button type="button" data-chat-reaction="😂">😂</button>
+          <button type="button" data-chat-reaction="⚽">⚽</button>
+          <button type="button" data-chat-reaction="🏆">🏆</button>
+          <button type="button" data-chat-reaction="🔥">🔥</button>
+          <button type="button" data-chat-reaction="👀">👀</button>
+          <button type="button" data-chat-reaction="👍">👍</button>
+        </div>
+      </div>
+      <div id="chatImageViewer" class="chat-image-viewer hidden" aria-modal="true" role="dialog">
+        <button id="chatImageViewerClose" class="chat-image-viewer-close" type="button" aria-label="Fechar imagem">×</button>
+        <img id="chatImageViewerImg" alt="Imagem do chat" />
+      </div>
+</body>
+</html>
