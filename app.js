@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v188";
+const APP_VERSION_LABEL = "v189";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -21,6 +21,8 @@ let firebaseAuth = null;
 let firebaseAuthApi = null;
 let firebaseMessaging = null;
 let firebaseMessagingApi = null;
+let firebaseAppInstance = null;
+let lastFirebaseInitError = "";
 let currentUser = null;
 let currentProfile = null;
 let permissionsCache = [];
@@ -815,33 +817,58 @@ async function showForegroundPushNotificationV183(payload = {}) {
     console.warn("Nao consegui mostrar notificacao foreground:", error);
   }
 }
+async function importFirebaseModuleV189(file) {
+  return import(`https://www.gstatic.com/firebasejs/10.12.5/firebase-${file}.js`);
+}
+
 async function initFirebase() {
   setTimeout(installFirestoreEconomyModeV114, 0);
   const config = APP_CONFIG.firebase || {};
+  lastFirebaseInitError = "";
 
   if (!config.apiKey || !config.projectId) {
     db = null;
     firebaseApi = null;
     firebaseAuth = null;
     firebaseAuthApi = null;
+    firebaseAppInstance = null;
     storageMode = "local";
+    lastFirebaseInitError = "config.js sem apiKey/projectId";
     setFirebaseStatus("error", "Firebase: configuração em falta no config.js");
     setLoginStatus("Firebase: configuração em falta no config.js", "error");
     return false;
   }
 
   try {
-    setFirebaseStatus("loading", "Firebase: a ligar...");
-    const [appModule, authModule, firestoreModule] = await Promise.all([
-      import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js"),
-      import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js"),
-      import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js")
+    setFirebaseStatus("loading", "Firebase: a ligar Auth...");
+    setLoginStatus("A ligar ao Firebase Auth...", "loading");
+
+    const [appModule, authModule] = await Promise.all([
+      importFirebaseModuleV189("app"),
+      importFirebaseModuleV189("auth")
     ]);
 
-    const app = appModule.initializeApp(config);
-    firebaseAuth = authModule.getAuth(app);
+    firebaseAppInstance = appModule.getApps?.().length ? appModule.getApp() : appModule.initializeApp(config);
+    firebaseAuth = authModule.getAuth(firebaseAppInstance);
     firebaseAuthApi = authModule;
-    db = firestoreModule.getFirestore(app);
+    setLoginStatus("Firebase Auth ligado. Faz login.", "success");
+  } catch (error) {
+    console.error("Firebase Auth não ligou:", error);
+    db = null;
+    firebaseApi = null;
+    firebaseAuth = null;
+    firebaseAuthApi = null;
+    firebaseAppInstance = null;
+    storageMode = "local";
+    lastFirebaseInitError = error?.message || String(error || "erro");
+    setFirebaseStatus("error", `Firebase Auth: não ligou (${lastFirebaseInitError})`);
+    setLoginStatus(`Firebase Auth não ligou: ${lastFirebaseInitError}`, "error");
+    return false;
+  }
+
+  try {
+    const firestoreModule = await importFirebaseModuleV189("firestore");
+    db = firestoreModule.getFirestore(firebaseAppInstance);
     firebaseApi = firestoreModule;
     storageMode = "firebase";
     installFirestoreEconomyModeV114();
@@ -850,42 +877,38 @@ async function initFirebase() {
     } catch (persistenceError) {
       console.warn("Cache persistente Firestore indisponível:", persistenceError?.code || persistenceError?.message || persistenceError);
     }
-    try {
-      const messagingModule = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging.js");
-      const supported = await messagingModule.isSupported().catch(() => false);
-      if (supported) {
-        firebaseMessaging = messagingModule.getMessaging(app);
-        firebaseMessagingApi = messagingModule;
-        messagingModule.onMessage(firebaseMessaging, payload => {
-          const title = payload?.notification?.title || payload?.data?.title || "Notificação Mundial";
-          const body = payload?.notification?.body || payload?.data?.body || "";
-          showForegroundPushNotificationV183(payload);
-          toast(body ? `${title}: ${body}` : title);
-          renderNotificationsCenterV164();
-        });
-      }
-    } catch (messagingError) {
-      console.warn("Firebase Messaging indisponível:", messagingError);
-      firebaseMessaging = null;
-      firebaseMessagingApi = null;
-    }
-
     setFirebaseStatus("success", `Firebase: ligado ao projeto ${config.projectId}`);
-    setLoginStatus("Firebase ligado. Faz login.", "success");
-    return true;
-  } catch (error) {
-    console.error("Firebase não ligou:", error);
+  } catch (firestoreError) {
+    console.error("Firestore não ligou:", firestoreError);
     db = null;
     firebaseApi = null;
-    firebaseAuth = null;
-    firebaseAuthApi = null;
     storageMode = "local";
-    setFirebaseStatus("error", `Firebase: não ligou  ${error.message || "erro"}`);
-    setLoginStatus(`Firebase não ligou  ${error.message || "erro"}`, "error");
-    return false;
+    lastFirebaseInitError = firestoreError?.message || String(firestoreError || "erro");
+    setFirebaseStatus("error", `Firebase Auth ligado; Firestore indisponível (${lastFirebaseInitError})`);
   }
-}
 
+  try {
+    const messagingModule = await importFirebaseModuleV189("messaging");
+    const supported = await messagingModule.isSupported().catch(() => false);
+    if (supported) {
+      firebaseMessaging = messagingModule.getMessaging(firebaseAppInstance);
+      firebaseMessagingApi = messagingModule;
+      messagingModule.onMessage(firebaseMessaging, payload => {
+        const title = payload?.notification?.title || payload?.data?.title || "Notificação Mundial";
+        const body = payload?.notification?.body || payload?.data?.body || "";
+        showForegroundPushNotificationV183(payload);
+        toast(body ? `${title}: ${body}` : title);
+        renderNotificationsCenterV164();
+      });
+    }
+  } catch (messagingError) {
+    console.warn("Firebase Messaging indisponível:", messagingError);
+    firebaseMessaging = null;
+    firebaseMessagingApi = null;
+  }
+
+  return true;
+}
 async function ensureFirebaseAuthReadyV188() {
   if (firebaseAuthApi && firebaseAuth) return true;
 
@@ -901,7 +924,8 @@ async function ensureFirebaseAuthReadyV188() {
 
   if (!ok || !firebaseAuthApi || !firebaseAuth) {
     firebaseReadyPromise = null;
-    setLoginStatus("Firebase/Auth ainda nÃ£o estÃ¡ pronto. Verifica a internet e tenta novamente.", "error");
+    const detail = lastFirebaseInitError ? ` (${lastFirebaseInitError})` : "";
+    setLoginStatus(`Firebase/Auth ainda não está pronto${detail}. Verifica a internet e tenta novamente.`, "error");
     return false;
   }
 
@@ -5776,7 +5800,7 @@ async function loadPushStatsV187(force = false) {
     tests.sort((a, b) => new Date(b.createdAt || b.at || 0).getTime() - new Date(a.createdAt || a.at || 0).getTime());
     pushStatsCacheV187 = { loadedAt: Date.now(), tokens, tests: tests.slice(0, 20), loading: false };
   } catch (error) {
-    console.warn("NÃ£o foi possÃ­vel carregar estatÃ­sticas push:", error);
+    console.warn("Não foi possível carregar estatísticas push:", error);
     pushStatsCacheV187 = { ...pushStatsCacheV187, loadedAt: Date.now(), loading: false, error: shortFirebaseError(error) };
   }
   return pushStatsCacheV187;
@@ -5804,7 +5828,7 @@ function renderFirebaseHealthPanelV187() {
   panel.innerHTML = `
     <div class="firebase-health-head-v187">
       <div>
-        <span>SaÃºde da app</span>
+        <span>Saúde da app</span>
         <strong>Firebase e push</strong>
       </div>
       <button id="refreshHealthV187" class="secondary" type="button">Atualizar</button>
@@ -5833,12 +5857,12 @@ function renderFirebaseHealthPanelV187() {
       <article class="${enabledTokens ? "ok" : "warn"}">
         <span>Push ativos</span>
         <strong>${enabledTokens}</strong>
-        <p>${escapeHtml(Object.entries(platforms).map(([key, value]) => `${key}: ${value}`).join(" Â· ") || "Sem tokens lidos")}</p>
+        <p>${escapeHtml(Object.entries(platforms).map(([key, value]) => `${key}: ${value}`).join(" · ") || "Sem tokens lidos")}</p>
       </article>
       <article>
-        <span>Ãšltimo teste</span>
+        <span>Último teste</span>
         <strong>${escapeHtml(lastTest?.type || lastTest?.testType || "-")}</strong>
-        <p>${escapeHtml(lastTest ? `${lastTest.sent || 0} enviados Â· ${shortDateTimeV187(lastTest.createdAt || lastTest.at)}` : "Sem testes recentes")}</p>
+        <p>${escapeHtml(lastTest ? `${lastTest.sent || 0} enviados · ${shortDateTimeV187(lastTest.createdAt || lastTest.at)}` : "Sem testes recentes")}</p>
       </article>
     </div>
   `;
@@ -5880,7 +5904,7 @@ function renderPushHistoryPanelV187() {
   panel.innerHTML = `
     <div class="push-history-head-v187">
       <div>
-        <span>HistÃ³rico push</span>
+        <span>Histórico push</span>
         <strong>Testes e envios recentes</strong>
       </div>
       <button id="refreshPushHistoryV187" class="secondary" type="button">Atualizar</button>
