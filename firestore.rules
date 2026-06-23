@@ -6,33 +6,34 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // v174 — Push/firestore total: tokens, preferências e testes push.
+    // v175 — coleções de push abertas para destravar ativação de dispositivos.
+    // Só afeta tokens/preferências/testes push.
     match /notificationTokens/{docId} {
-      allow read, create, update, delete: if signedIn();
+      allow read, create, update, delete: if true;
     }
 
     match /notificationTests/{docId} {
-      allow read, create: if signedIn();
+      allow read, create: if true;
       allow update, delete: if false;
     }
 
     match /notificationPreferences/{docId} {
-      allow read, create, update, delete: if signedIn();
+      allow read, create, update, delete: if true;
     }
 
     match /pushPreferences/{docId} {
-      allow read, create, update, delete: if signedIn();
+      allow read, create, update, delete: if true;
     }
 
     match /pushTokens/{docId} {
-      allow read, create, update, delete: if signedIn();
+      allow read, create, update, delete: if true;
     }
 
     match /deviceTokens/{docId} {
-      allow read, create, update, delete: if signedIn();
+      allow read, create, update, delete: if true;
     }
 
-    // Mantém o comportamento geral da app para users autenticados.
+    // Resto da app mantém igual: leitura pública e escrita só com login.
     match /{document=**} {
       allow read: if true;
       allow write: if signedIn();

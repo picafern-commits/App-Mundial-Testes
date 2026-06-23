@@ -10268,7 +10268,7 @@ async function enablePushV170() {
     console.error("enablePushV170 falhou:", error);
     const msg = String(error?.message || error || "erro");
     if (msg.includes("invalid-vapid-key")) return appToastV170("VAPID key inválida.");
-    if (msg.includes("permission-denied")) return appToastV170("Sem permissão no Firestore para guardar notificationTokens. Confirma se o deploy das regras foi para app-mundial2026.");
+    if (msg.includes("permission-denied")) return appToastV170("Firestore bloqueou notificationTokens. Confirma Rules no Firebase ou faz deploy da v175.");
     appToastV170(`Não consegui ativar push: ${msg.slice(0, 130)}`);
   }
 }
@@ -10543,7 +10543,7 @@ async function savePushPreferencesV174() {
     console.error("savePushPreferencesV174 falhou:", error);
     const msg = String(error?.message || error || "erro");
     if (msg.includes("permission") || msg.includes("insufficient")) {
-      appToastV170?.("Sem permissão no Firestore para guardar preferências push. Faz deploy das regras v174.");
+      appToastV170?.("Preferências guardadas localmente. Se o Firestore bloquear, o push continua a tentar ativar.");
       return;
     }
     appToastV170?.(`Não consegui guardar preferências push: ${msg.slice(0, 120)}`);
@@ -10571,5 +10571,96 @@ document.addEventListener("click", event => {
     event.stopPropagation();
     event.stopImmediatePropagation();
     savePushPreferencesV174();
+  }
+}, true);
+
+
+// v175 — Push sem bloqueio: preferências locais e token com fallback.
+function getPushPrefsFromUiV175() {
+  const byText = (txt) => {
+    txt = txt.toLowerCase();
+    const labels = Array.from(document.querySelectorAll("label, button, .checkbox, .toggle"));
+    const label = labels.find(el => (el.textContent || "").toLowerCase().includes(txt));
+    return label?.querySelector?.('input[type="checkbox"]')?.checked ?? true;
+  };
+  return {
+    gameStarted: byText("jogo começou"),
+    gameFinished: byText("jogo acabou"),
+    teamGoal: byText("golo"),
+    quietHours: byText("silenciar"),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+async function savePushPreferencesLocalV175() {
+  try {
+    const prefs = getPushPrefsFromUiV175();
+    localStorage.setItem(`${STORAGE_KEY}_push_preferences_v175`, JSON.stringify(prefs));
+    localStorage.setItem(`${STORAGE_KEY}_push_preferences_v174`, JSON.stringify(prefs));
+    localStorage.setItem(`${STORAGE_KEY}_push_preferences`, JSON.stringify(prefs));
+
+    // Tenta Firestore em background, mas nunca bloqueia o user.
+    try {
+      await ensurePushAuthV174?.();
+      const user = currentUser || firebaseAuth?.currentUser;
+      if (user?.uid && db && firebaseApi?.setDoc && firebaseApi?.doc) {
+        await firebaseApi.setDoc(firebaseApi.doc(db, "notificationPreferences", user.uid), {
+          ...prefs,
+          uid: user.uid,
+          email: normalizeEmail?.(user.email || "") || ""
+        }, { merge: true });
+      }
+    } catch (e) {
+      console.warn("Preferências push ficaram só locais:", e);
+    }
+
+    appToastV170?.("Preferências push guardadas neste dispositivo.");
+  } catch (error) {
+    console.error("savePushPreferencesLocalV175 falhou:", error);
+    appToastV170?.(`Não consegui guardar preferências: ${error.message || "erro"}`);
+  }
+}
+
+savePushPreferencesV174 = savePushPreferencesLocalV175;
+if (typeof savePushPreferencesV165 === "function") savePushPreferencesV165 = savePushPreferencesLocalV175;
+if (typeof savePushNotificationPreferencesV165 === "function") savePushNotificationPreferencesV165 = savePushPreferencesLocalV175;
+
+async function savePushTokenPreferencesNoBlockV175(token) {
+  const user = currentUser || firebaseAuth?.currentUser;
+  const uid = user?.uid || `local-${Date.now()}`;
+  const email = normalizeEmail?.(user?.email || currentUser?.email || "") || "";
+  const data = {
+    token,
+    uid,
+    email,
+    enabled: true,
+    platform: /iphone|ipad|ipod/i.test(navigator.userAgent) ? "ios" : "web",
+    userAgent: navigator.userAgent,
+    updatedAt: new Date().toISOString(),
+    preferences: getPushPrefsFromUiV175()
+  };
+
+  localStorage.setItem(`${STORAGE_KEY}_push_last_token_v175`, token);
+  localStorage.setItem(`${STORAGE_KEY}_push_enabled_v170`, "1");
+
+  if (!db || !firebaseApi?.setDoc || !firebaseApi?.doc) {
+    console.warn("Firestore não pronto; token só local.");
+    return;
+  }
+
+  await firebaseApi.setDoc(firebaseApi.doc(db, "notificationTokens", token), data, { merge: true });
+}
+
+savePushTokenPreferencesV165 = savePushTokenPreferencesNoBlockV175;
+
+document.addEventListener("click", event => {
+  const btn = event.target.closest?.("button, [role='button']");
+  if (!btn) return;
+  const txt = String(btn.textContent || btn.id || btn.getAttribute("aria-label") || "").toLowerCase();
+  if (txt.includes("guardar prefer")) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    savePushPreferencesLocalV175();
   }
 }, true);
