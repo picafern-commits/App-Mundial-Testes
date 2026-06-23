@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v173-push-ok";
+const CACHE_NAME = "mundial-pontos-2026-v174-push-total";
 const APP_SHELL = [
   "./",
   "./index.html",

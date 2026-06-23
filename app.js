@@ -10220,8 +10220,9 @@ async function enablePushV170() {
       return;
     }
 
+    await ensurePushAuthV174();
     if (!currentUser) {
-      appToastV170("Tens de estar com login feito.");
+      appToastV170("Login ainda não está pronto. Fecha e abre a app e tenta novamente.");
       return;
     }
 
@@ -10484,3 +10485,91 @@ function explainPushPermissionErrorV172(error) {
   }
   return msg;
 }
+
+
+// v174 — Push Firestore Total: garante auth antes de gravar tokens/preferências.
+async function ensurePushAuthV174() {
+  try {
+    if (currentUser?.uid) return currentUser;
+
+    if (firebaseAuth?.currentUser?.uid) {
+      currentUser = firebaseAuth.currentUser;
+      return currentUser;
+    }
+
+    if (firebaseApi?.signInAnonymously && firebaseAuth) {
+      const cred = await firebaseApi.signInAnonymously(firebaseAuth);
+      currentUser = cred.user;
+      return currentUser;
+    }
+
+    return null;
+  } catch (error) {
+    console.error("ensurePushAuthV174 falhou:", error);
+    return null;
+  }
+}
+
+async function savePushPreferencesV174() {
+  try {
+    const user = await ensurePushAuthV174();
+    if (!user?.uid) {
+      appToastV170?.("Login ainda não está pronto. Fecha e abre a app e tenta novamente.");
+      return;
+    }
+
+    if (!db || !firebaseApi?.setDoc || !firebaseApi?.doc) {
+      appToastV170?.("Firebase ainda não está pronto.");
+      return;
+    }
+
+    const prefs = {
+      uid: user.uid,
+      email: normalizeEmail?.(user.email || currentUser?.email || "") || "",
+      gameStarted: !!document.querySelector('input[type="checkbox"][data-push-pref="gameStarted"], input[type="checkbox"][data-pref="gameStarted"]')?.checked,
+      gameFinished: !!document.querySelector('input[type="checkbox"][data-push-pref="gameFinished"], input[type="checkbox"][data-pref="gameFinished"]')?.checked,
+      teamGoal: !!document.querySelector('input[type="checkbox"][data-push-pref="teamGoal"], input[type="checkbox"][data-pref="teamGoal"]')?.checked,
+      quietHours: !!document.querySelector('input[type="checkbox"][data-push-pref="quietHours"], input[type="checkbox"][data-pref="quietHours"]')?.checked,
+      updatedAt: new Date().toISOString()
+    };
+
+    // mantém compatível com nomes possíveis
+    await firebaseApi.setDoc(firebaseApi.doc(db, "notificationPreferences", user.uid), prefs, { merge: true });
+    await firebaseApi.setDoc(firebaseApi.doc(db, "pushPreferences", user.uid), prefs, { merge: true }).catch(() => null);
+
+    localStorage.setItem(`${STORAGE_KEY}_push_preferences_v174`, JSON.stringify(prefs));
+    appToastV170?.("Preferências push guardadas.");
+  } catch (error) {
+    console.error("savePushPreferencesV174 falhou:", error);
+    const msg = String(error?.message || error || "erro");
+    if (msg.includes("permission") || msg.includes("insufficient")) {
+      appToastV170?.("Sem permissão no Firestore para guardar preferências push. Faz deploy das regras v174.");
+      return;
+    }
+    appToastV170?.(`Não consegui guardar preferências push: ${msg.slice(0, 120)}`);
+  }
+}
+
+// Override preferências antigas se existirem.
+if (typeof savePushPreferencesV165 === "function") savePushPreferencesV165 = savePushPreferencesV174;
+if (typeof savePushNotificationPreferencesV165 === "function") savePushNotificationPreferencesV165 = savePushPreferencesV174;
+if (typeof savePushTokenPreferencesV165 === "function") {
+  const originalSavePushTokenPreferencesV165 = savePushTokenPreferencesV165;
+  savePushTokenPreferencesV165 = async function(token) {
+    const user = await ensurePushAuthV174();
+    if (!user?.uid) throw new Error("Login ainda não está pronto para guardar token push.");
+    return originalSavePushTokenPreferencesV165(token);
+  };
+}
+
+document.addEventListener("click", event => {
+  const btn = event.target.closest?.("button, [role='button']");
+  if (!btn) return;
+  const txt = String(btn.textContent || btn.id || btn.getAttribute("aria-label") || "").toLowerCase();
+  if (txt.includes("guardar prefer")) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    savePushPreferencesV174();
+  }
+}, true);
