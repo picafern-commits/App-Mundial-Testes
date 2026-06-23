@@ -7,16 +7,18 @@ service cloud.firestore {
     }
 
     match /notificationTokens/{docId} {
-      allow read, create, update, delete: if true;
-    }
-
-    match /notificationTests/{docId} {
-      allow read, create: if true;
-      allow update, delete: if false;
+      allow read: if signedIn();
+      allow create, update, delete: if false;
     }
 
     match /notificationPreferences/{docId} {
-      allow read, create, update, delete: if true;
+      allow read: if signedIn();
+      allow create, update, delete: if false;
+    }
+
+    match /notificationTests/{docId} {
+      allow read, create: if signedIn();
+      allow update, delete: if false;
     }
 
     match /{document=**} {

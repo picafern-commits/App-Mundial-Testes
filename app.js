@@ -10220,9 +10220,8 @@ async function enablePushV170() {
       return;
     }
 
-    await ensurePushAuthV174();
     if (!currentUser) {
-      appToastV170("Login ainda não está pronto. Fecha e abre a app e tenta novamente.");
+      appToastV170("Tens de estar com login feito.");
       return;
     }
 
@@ -10268,7 +10267,7 @@ async function enablePushV170() {
     console.error("enablePushV170 falhou:", error);
     const msg = String(error?.message || error || "erro");
     if (msg.includes("invalid-vapid-key")) return appToastV170("VAPID key inválida.");
-    if (msg.includes("permission-denied")) return appToastV170("Firestore bloqueou notificationTokens. Confirma Rules no Firebase ou faz deploy da v175.");
+    if (msg.includes("permission-denied")) return appToastV170("Sem permissão no Firestore para guardar notificationTokens.");
     appToastV170(`Não consegui ativar push: ${msg.slice(0, 130)}`);
   }
 }
@@ -10291,7 +10290,7 @@ async function sendTestPushV170() {
   } catch (error) {
     console.error("sendTestPushV170 falhou:", error);
     const msg = String(error?.message || error || "erro");
-    if (msg.includes("permission-denied")) return appToastV170("Sem permissão para criar notificationTests. É preciso fazer deploy das regras firestore.rules.");
+    if (msg.includes("permission-denied")) return appToastV170("Sem permissão para criar notificationTests.");
     appToastV170(`Não consegui enviar teste: ${msg.slice(0, 130)}`);
   }
 }
@@ -10376,402 +10375,104 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("click", () => setTimeout(bindSettingsButtonsV170, 120));
 
 
-// v171 — Fix Guardar VAPID: lê corretamente o input visível e nunca remove por engano.
-const PUSH_VAPID_LOCAL_KEY_FIX_V171 = `${STORAGE_KEY}_push_vapid_key_v169`;
+// v177 — Push via Functions limpo, sem Firestore direto para token.
+const PUSH_FUNCTIONS_BASE_V177 = "https://us-central1-app-mundial2026.cloudfunctions.net";
 
-function getVisibleVapidInputV171() {
-  const candidates = [
-    document.getElementById("pushVapidInputV169"),
-    document.getElementById("pushVapidInputV171"),
-    document.getElementById("ownerVapidInputV171"),
-    ...Array.from(document.querySelectorAll('input[placeholder*="VAPID" i], input[id*="vapid" i], input[name*="vapid" i]'))
-  ].filter(Boolean);
+async function callPushFunctionV177(functionName, payload = {}) {
+  const res = await fetch(`${PUSH_FUNCTIONS_BASE_V177}/${functionName}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...payload,
+      uid: currentUser?.uid || firebaseAuth?.currentUser?.uid || "",
+      email: normalizeEmail?.(currentUser?.email || firebaseAuth?.currentUser?.email || "") || "",
+      appVersion: "177.0",
+      userAgent: navigator.userAgent
+    })
+  });
 
-  return candidates.find(input => {
-    const rect = input.getBoundingClientRect?.();
-    const style = window.getComputedStyle?.(input);
-    return input.offsetParent !== null || (rect && rect.width > 0 && rect.height > 0 && style?.display !== "none" && style?.visibility !== "hidden");
-  }) || candidates[0] || null;
+  let data = {};
+  try { data = await res.json(); } catch {}
+
+  if (!res.ok || data.ok === false) {
+    throw new Error(data.error || `Function ${functionName} respondeu ${res.status}`);
+  }
+  return data;
 }
 
-function getTypedVapidValueV171() {
+function getPushPreferencesV177() {
+  const findChecked = (needle, fallback = true) => {
+    const text = needle.toLowerCase();
+    const labels = Array.from(document.querySelectorAll("label, .push-pref, .toggle, .checkbox"));
+    const el = labels.find(x => (x.textContent || "").toLowerCase().includes(text));
+    const input = el?.querySelector?.('input[type="checkbox"]');
+    return input ? input.checked === true : fallback;
+  };
+
+  return {
+    gameStarted: findChecked("jogo começou"),
+    gameFinished: findChecked("jogo acabou"),
+    teamGoal: findChecked("golo"),
+    quietHours: findChecked("silenciar", false)
+  };
+}
+
+async function savePushTokenViaFunctionV177(token) {
+  if (!token) throw new Error("Token push vazio.");
+
+  localStorage.setItem(`${STORAGE_KEY}_push_last_token_v177`, token);
+  localStorage.setItem(`${STORAGE_KEY}_push_enabled_v170`, "1");
+
+  await callPushFunctionV177("registerPushToken", {
+    token,
+    preferences: getPushPreferencesV177(),
+    platform: /iphone|ipad|ipod/i.test(navigator.userAgent) ? "ios" : "web"
+  });
+}
+
+async function savePushPreferencesV177() {
   try {
-    const input = getVisibleVapidInputV171();
-    return String(input?.value || "").trim();
-  } catch {
-    return "";
-  }
-}
+    const preferences = getPushPreferencesV177();
+    localStorage.setItem(`${STORAGE_KEY}_push_preferences_v177`, JSON.stringify(preferences));
 
-function getConfigVapidKeyFixV171() {
-  try {
-    return String(
-      getTypedVapidValueV171() ||
-      localStorage.getItem(PUSH_VAPID_LOCAL_KEY_FIX_V171) ||
-      localStorage.getItem(`${STORAGE_KEY}_push_vapid_key_v171`) ||
-      window.MUNDIAL_CONFIG?.messaging?.vapidKey ||
-      APP_CONFIG?.messaging?.vapidKey ||
-      ""
-    ).trim();
-  } catch {
-    return "";
-  }
-}
+    await callPushFunctionV177("savePushPreferences", { preferences }).catch(error => {
+      console.warn("Preferências ficaram locais porque Function falhou:", error);
+    });
 
-getConfigVapidKeyV170 = getConfigVapidKeyFixV171;
-
-async function saveVapidKeyFixV171() {
-  try {
-    const typed = getTypedVapidValueV171();
-
-    if (!typed) {
-      if (typeof appToastV170 === "function") {
-        appToastV170("Cola a VAPID key no campo antes de guardar.");
-      } else if (typeof toast === "function") {
-        toast("Cola a VAPID key no campo antes de guardar.");
-      } else {
-        alert("Cola a VAPID key no campo antes de guardar.");
-      }
-      return;
-    }
-
-    localStorage.setItem(PUSH_VAPID_LOCAL_KEY_FIX_V171, typed);
-    localStorage.setItem(`${STORAGE_KEY}_push_vapid_key_v171`, typed);
-
-    const input = getVisibleVapidInputV171();
-    if (input) input.value = typed;
-
-    if (typeof appToastV170 === "function") {
-      appToastV170("VAPID guardada neste dispositivo.");
-    } else if (typeof toast === "function") {
-      toast("VAPID guardada neste dispositivo.");
-    }
-
-    setTimeout(() => {
-      try {
-        if (typeof renderPushNotificationsPanelV169 === "function") renderPushNotificationsPanelV169();
-        if (typeof renderPushNotificationsPanelV165 === "function") renderPushNotificationsPanelV165();
-      } catch {}
-    }, 100);
-  } catch (error) {
-    console.error("saveVapidKeyFixV171 falhou:", error);
-    if (typeof appToastV170 === "function") appToastV170(`Não consegui guardar VAPID: ${error.message || "erro"}`);
-    else if (typeof toast === "function") toast(`Não consegui guardar VAPID: ${error.message || "erro"}`);
-  }
-}
-
-// Override da função antiga: nunca remove VAPID quando o input está vazio.
-saveVapidKeyV169 = saveVapidKeyFixV171;
-
-document.addEventListener("click", event => {
-  const btn = event.target.closest?.("button, [role='button']");
-  if (!btn) return;
-
-  const txt = String(btn.textContent || btn.getAttribute("aria-label") || btn.id || "").toLowerCase();
-  if (txt.includes("guardar vapid")) {
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    saveVapidKeyFixV171();
-  }
-}, true);
-
-
-// v172 — Diagnóstico extra para permissões Firestore do push.
-function explainPushPermissionErrorV172(error) {
-  const msg = String(error?.message || error || "");
-  if (msg.toLowerCase().includes("permission") || msg.toLowerCase().includes("insufficient")) {
-    return "Sem permissão no Firestore para guardar notificationTokens. Faz deploy das regras firestore.rules desta versão.";
-  }
-  return msg;
-}
-
-
-// v174 — Push Firestore Total: garante auth antes de gravar tokens/preferências.
-async function ensurePushAuthV174() {
-  try {
-    if (currentUser?.uid) return currentUser;
-
-    if (firebaseAuth?.currentUser?.uid) {
-      currentUser = firebaseAuth.currentUser;
-      return currentUser;
-    }
-
-    if (firebaseApi?.signInAnonymously && firebaseAuth) {
-      const cred = await firebaseApi.signInAnonymously(firebaseAuth);
-      currentUser = cred.user;
-      return currentUser;
-    }
-
-    return null;
-  } catch (error) {
-    console.error("ensurePushAuthV174 falhou:", error);
-    return null;
-  }
-}
-
-async function savePushPreferencesV174() {
-  try {
-    const user = await ensurePushAuthV174();
-    if (!user?.uid) {
-      appToastV170?.("Login ainda não está pronto. Fecha e abre a app e tenta novamente.");
-      return;
-    }
-
-    if (!db || !firebaseApi?.setDoc || !firebaseApi?.doc) {
-      appToastV170?.("Firebase ainda não está pronto.");
-      return;
-    }
-
-    const prefs = {
-      uid: user.uid,
-      email: normalizeEmail?.(user.email || currentUser?.email || "") || "",
-      gameStarted: !!document.querySelector('input[type="checkbox"][data-push-pref="gameStarted"], input[type="checkbox"][data-pref="gameStarted"]')?.checked,
-      gameFinished: !!document.querySelector('input[type="checkbox"][data-push-pref="gameFinished"], input[type="checkbox"][data-pref="gameFinished"]')?.checked,
-      teamGoal: !!document.querySelector('input[type="checkbox"][data-push-pref="teamGoal"], input[type="checkbox"][data-pref="teamGoal"]')?.checked,
-      quietHours: !!document.querySelector('input[type="checkbox"][data-push-pref="quietHours"], input[type="checkbox"][data-pref="quietHours"]')?.checked,
-      updatedAt: new Date().toISOString()
-    };
-
-    // mantém compatível com nomes possíveis
-    await firebaseApi.setDoc(firebaseApi.doc(db, "notificationPreferences", user.uid), prefs, { merge: true });
-    await firebaseApi.setDoc(firebaseApi.doc(db, "pushPreferences", user.uid), prefs, { merge: true }).catch(() => null);
-
-    localStorage.setItem(`${STORAGE_KEY}_push_preferences_v174`, JSON.stringify(prefs));
     appToastV170?.("Preferências push guardadas.");
   } catch (error) {
-    console.error("savePushPreferencesV174 falhou:", error);
-    const msg = String(error?.message || error || "erro");
-    if (msg.includes("permission") || msg.includes("insufficient")) {
-      appToastV170?.("Preferências guardadas localmente. Se o Firestore bloquear, o push continua a tentar ativar.");
-      return;
-    }
-    appToastV170?.(`Não consegui guardar preferências push: ${msg.slice(0, 120)}`);
-  }
-}
-
-// Override preferências antigas se existirem.
-if (typeof savePushPreferencesV165 === "function") savePushPreferencesV165 = savePushPreferencesV174;
-if (typeof savePushNotificationPreferencesV165 === "function") savePushNotificationPreferencesV165 = savePushPreferencesV174;
-if (typeof savePushTokenPreferencesV165 === "function") {
-  const originalSavePushTokenPreferencesV165 = savePushTokenPreferencesV165;
-  savePushTokenPreferencesV165 = async function(token) {
-    const user = await ensurePushAuthV174();
-    if (!user?.uid) throw new Error("Login ainda não está pronto para guardar token push.");
-    return originalSavePushTokenPreferencesV165(token);
-  };
-}
-
-document.addEventListener("click", event => {
-  const btn = event.target.closest?.("button, [role='button']");
-  if (!btn) return;
-  const txt = String(btn.textContent || btn.id || btn.getAttribute("aria-label") || "").toLowerCase();
-  if (txt.includes("guardar prefer")) {
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    savePushPreferencesV174();
-  }
-}, true);
-
-
-// v175 — Push sem bloqueio: preferências locais e token com fallback.
-function getPushPrefsFromUiV175() {
-  const byText = (txt) => {
-    txt = txt.toLowerCase();
-    const labels = Array.from(document.querySelectorAll("label, button, .checkbox, .toggle"));
-    const label = labels.find(el => (el.textContent || "").toLowerCase().includes(txt));
-    return label?.querySelector?.('input[type="checkbox"]')?.checked ?? true;
-  };
-  return {
-    gameStarted: byText("jogo começou"),
-    gameFinished: byText("jogo acabou"),
-    teamGoal: byText("golo"),
-    quietHours: byText("silenciar"),
-    updatedAt: new Date().toISOString()
-  };
-}
-
-async function savePushPreferencesLocalV175() {
-  try {
-    const prefs = getPushPrefsFromUiV175();
-    localStorage.setItem(`${STORAGE_KEY}_push_preferences_v175`, JSON.stringify(prefs));
-    localStorage.setItem(`${STORAGE_KEY}_push_preferences_v174`, JSON.stringify(prefs));
-    localStorage.setItem(`${STORAGE_KEY}_push_preferences`, JSON.stringify(prefs));
-
-    // Tenta Firestore em background, mas nunca bloqueia o user.
-    try {
-      await ensurePushAuthV174?.();
-      const user = currentUser || firebaseAuth?.currentUser;
-      if (user?.uid && db && firebaseApi?.setDoc && firebaseApi?.doc) {
-        await firebaseApi.setDoc(firebaseApi.doc(db, "notificationPreferences", user.uid), {
-          ...prefs,
-          uid: user.uid,
-          email: normalizeEmail?.(user.email || "") || ""
-        }, { merge: true });
-      }
-    } catch (e) {
-      console.warn("Preferências push ficaram só locais:", e);
-    }
-
-    appToastV170?.("Preferências push guardadas neste dispositivo.");
-  } catch (error) {
-    console.error("savePushPreferencesLocalV175 falhou:", error);
+    console.error("savePushPreferencesV177 falhou:", error);
     appToastV170?.(`Não consegui guardar preferências: ${error.message || "erro"}`);
   }
 }
 
-savePushPreferencesV174 = savePushPreferencesLocalV175;
-if (typeof savePushPreferencesV165 === "function") savePushPreferencesV165 = savePushPreferencesLocalV175;
-if (typeof savePushNotificationPreferencesV165 === "function") savePushNotificationPreferencesV165 = savePushPreferencesLocalV175;
-
-async function savePushTokenPreferencesNoBlockV175(token) {
-  const user = currentUser || firebaseAuth?.currentUser;
-  const uid = user?.uid || `local-${Date.now()}`;
-  const email = normalizeEmail?.(user?.email || currentUser?.email || "") || "";
-  const data = {
-    token,
-    uid,
-    email,
-    enabled: true,
-    platform: /iphone|ipad|ipod/i.test(navigator.userAgent) ? "ios" : "web",
-    userAgent: navigator.userAgent,
-    updatedAt: new Date().toISOString(),
-    preferences: getPushPrefsFromUiV175()
-  };
-
-  localStorage.setItem(`${STORAGE_KEY}_push_last_token_v175`, token);
-  localStorage.setItem(`${STORAGE_KEY}_push_enabled_v170`, "1");
-
-  if (!db || !firebaseApi?.setDoc || !firebaseApi?.doc) {
-    console.warn("Firestore não pronto; token só local.");
-    return;
-  }
-
-  await firebaseApi.setDoc(firebaseApi.doc(db, "notificationTokens", token), data, { merge: true });
-}
-
-savePushTokenPreferencesV165 = savePushTokenPreferencesNoBlockV175;
-
-document.addEventListener("click", event => {
-  const btn = event.target.closest?.("button, [role='button']");
-  if (!btn) return;
-  const txt = String(btn.textContent || btn.id || btn.getAttribute("aria-label") || "").toLowerCase();
-  if (txt.includes("guardar prefer")) {
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    savePushPreferencesLocalV175();
-  }
-}, true);
-
-
-// v176 — Push via Firebase Functions: contorna bloqueio de Firestore Rules.
-const PUSH_FUNCTION_BASE_URL_V176 = "https://us-central1-app-mundial2026.cloudfunctions.net";
-
-async function postPushFunctionV176(name, payload = {}) {
-  const url = `${PUSH_FUNCTION_BASE_URL_V176}/${name}`;
-  const body = {
-    ...payload,
-    uid: currentUser?.uid || firebaseAuth?.currentUser?.uid || "",
-    email: normalizeEmail?.(currentUser?.email || firebaseAuth?.currentUser?.email || "") || "",
-    appVersion: "176.0",
-    source: "app"
-  };
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(body)
-  });
-
-  let data = null;
-  try { data = await response.json(); } catch {}
-
-  if (!response.ok || data?.ok === false) {
-    throw new Error(data?.error || `Function ${name} respondeu ${response.status}`);
-  }
-
-  return data || { ok: true };
-}
-
-function getPushPrefsV176() {
-  const textHasChecked = (labelText) => {
-    const labels = Array.from(document.querySelectorAll("label, .push-pref, button, .checkbox, .toggle"));
-    const found = labels.find(el => (el.textContent || "").toLowerCase().includes(labelText));
-    const input = found?.querySelector?.('input[type="checkbox"]');
-    return input ? input.checked === true : true;
-  };
-
-  return {
-    gameStarted: textHasChecked("jogo começou"),
-    gameFinished: textHasChecked("jogo acabou"),
-    teamGoal: textHasChecked("golo"),
-    quietHours: textHasChecked("silenciar")
-  };
-}
-
-async function savePushTokenViaFunctionV176(token) {
-  if (!token) throw new Error("Token push vazio.");
-
-  localStorage.setItem(`${STORAGE_KEY}_push_last_token_v176`, token);
-  localStorage.setItem(`${STORAGE_KEY}_push_enabled_v170`, "1");
-
-  const payload = {
-    token,
-    preferences: getPushPrefsV176(),
-    userAgent: navigator.userAgent,
-    platform: /iphone|ipad|ipod/i.test(navigator.userAgent) ? "ios" : "web"
-  };
-
+async function sendTestPushV177() {
   try {
-    await postPushFunctionV176("registerPushToken", payload);
-  } catch (error) {
-    console.warn("registerPushToken function falhou:", error);
-    // Último fallback local para a app não rebentar, mas avisa claramente.
-    throw new Error(`Function registerPushToken falhou: ${error.message || "erro"}`);
-  }
-}
+    const token =
+      localStorage.getItem(`${STORAGE_KEY}_push_last_token_v177`) ||
+      localStorage.getItem(`${STORAGE_KEY}_push_last_token_v175`) ||
+      localStorage.getItem(`${STORAGE_KEY}_push_last_token_v170`) ||
+      "";
 
-async function sendTestPushViaFunctionV176() {
-  try {
-    const token = localStorage.getItem(`${STORAGE_KEY}_push_last_token_v176`) || localStorage.getItem(`${STORAGE_KEY}_push_last_token_v175`) || "";
-    await postPushFunctionV176("requestPushTest", {
+    await callPushFunctionV177("requestPushTest", {
       token,
-      preferences: getPushPrefsV176()
+      preferences: getPushPreferencesV177()
     });
-    appToastV170?.("Teste push pedido pela Function.");
+
+    appToastV170?.("Teste push pedido.");
   } catch (error) {
-    console.error("sendTestPushViaFunctionV176 falhou:", error);
+    console.error("sendTestPushV177 falhou:", error);
     appToastV170?.(`Não consegui pedir teste push: ${error.message || "erro"}`);
   }
 }
 
-async function savePushPreferencesViaFunctionV176() {
-  try {
-    const prefs = getPushPrefsV176();
-    localStorage.setItem(`${STORAGE_KEY}_push_preferences_v176`, JSON.stringify(prefs));
-    await postPushFunctionV176("savePushPreferences", {
-      preferences: prefs
-    }).catch(error => {
-      console.warn("savePushPreferences function falhou; preferências ficam locais:", error);
-    });
-    appToastV170?.("Preferências push guardadas.");
-  } catch (error) {
-    console.error("savePushPreferencesViaFunctionV176 falhou:", error);
-    appToastV170?.(`Não consegui guardar preferências: ${error.message || "erro"}`);
-  }
-}
-
-savePushTokenPreferencesV165 = savePushTokenViaFunctionV176;
-if (typeof savePushPreferencesV174 !== "undefined") savePushPreferencesV174 = savePushPreferencesViaFunctionV176;
-if (typeof savePushPreferencesV165 !== "undefined") savePushPreferencesV165 = savePushPreferencesViaFunctionV176;
-if (typeof savePushNotificationPreferencesV165 !== "undefined") savePushNotificationPreferencesV165 = savePushPreferencesViaFunctionV176;
-if (typeof sendTestPushV170 !== "undefined") sendTestPushV170 = sendTestPushViaFunctionV176;
-if (typeof sendTestPushV169 !== "undefined") sendTestPushV169 = sendTestPushViaFunctionV176;
-if (typeof sendTestPushV165 !== "undefined") sendTestPushV165 = sendTestPushViaFunctionV176;
+// Override único dos pontos antigos.
+savePushTokenPreferencesV165 = savePushTokenViaFunctionV177;
+if (typeof savePushPreferencesV165 !== "undefined") savePushPreferencesV165 = savePushPreferencesV177;
+if (typeof savePushNotificationPreferencesV165 !== "undefined") savePushNotificationPreferencesV165 = savePushPreferencesV177;
+if (typeof sendTestPushV165 !== "undefined") sendTestPushV165 = sendTestPushV177;
+if (typeof sendTestPushV169 !== "undefined") sendTestPushV169 = sendTestPushV177;
+if (typeof sendTestPushV170 !== "undefined") sendTestPushV170 = sendTestPushV177;
 
 document.addEventListener("click", event => {
   const btn = event.target.closest?.("button, [role='button']");
@@ -10782,15 +10483,13 @@ document.addEventListener("click", event => {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
-    savePushPreferencesViaFunctionV176();
-    return;
+    savePushPreferencesV177();
   }
 
   if (txt.includes("enviar teste")) {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
-    sendTestPushViaFunctionV176();
-    return;
+    sendTestPushV177();
   }
 }, true);

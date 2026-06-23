@@ -9380,10 +9380,3 @@ button,
 [role="button"]{
   touch-action: manipulation;
 }
-
-
-/* v171-vapid-fix */
-.push-vapid-box-v169 input,
-input[id*="vapid" i]{
-  user-select:text!important;
-}

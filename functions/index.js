@@ -1,7 +1,7 @@
 const admin = require("firebase-admin");
 
-admin.initializeApp();
-const { initializeApp } = require("firebase-admin/app");
+
+if (!admin.apps.length) admin.initializeApp();
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 const { getAuth } = require("firebase-admin/auth");
@@ -10,8 +10,6 @@ const { onRequest } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onDocumentCreated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const logger = require("firebase-functions/logger");
-
-initializeApp();
 setGlobalOptions({ region: "europe-west1", maxInstances: 10 });
 
 const db = getFirestore();
@@ -974,14 +972,14 @@ exports.syncFootballDataWorldCupScheduled = onSchedule({
 
 
 
-// v176 — Push via HTTP Functions. Estas writes usam Admin SDK e não dependem das Firestore Rules.
-function setCorsV176(res) {
+// v177 — Push HTTP Functions. Admin SDK inicializado uma única vez acima.
+function setCorsV177(res) {
   res.set("Access-Control-Allow-Origin", "*");
   res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
-function readJsonBodyV176(req) {
+function readJsonBodyV177(req) {
   if (req.body && typeof req.body === "object") return req.body;
   try {
     return JSON.parse(req.rawBody?.toString("utf8") || "{}");
@@ -991,17 +989,16 @@ function readJsonBodyV176(req) {
 }
 
 exports.registerPushToken = onRequest({ cors: true, region: "us-central1" }, async (req, res) => {
-  setCorsV176(res);
+  setCorsV177(res);
   if (req.method === "OPTIONS") return res.status(204).send("");
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "method-not-allowed" });
 
   try {
-    const body = readJsonBodyV176(req);
+    const body = readJsonBodyV177(req);
     const token = String(body.token || "").trim();
     if (!token) return res.status(400).json({ ok: false, error: "missing-token" });
 
     const safeId = Buffer.from(token).toString("base64url").slice(0, 180);
-    const now = new Date().toISOString();
 
     await admin.firestore().collection("notificationTokens").doc(safeId).set({
       token,
@@ -1012,7 +1009,7 @@ exports.registerPushToken = onRequest({ cors: true, region: "us-central1" }, asy
       userAgent: String(body.userAgent || ""),
       preferences: body.preferences || {},
       appVersion: String(body.appVersion || ""),
-      updatedAt: now,
+      updatedAt: new Date().toISOString(),
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
@@ -1024,12 +1021,12 @@ exports.registerPushToken = onRequest({ cors: true, region: "us-central1" }, asy
 });
 
 exports.savePushPreferences = onRequest({ cors: true, region: "us-central1" }, async (req, res) => {
-  setCorsV176(res);
+  setCorsV177(res);
   if (req.method === "OPTIONS") return res.status(204).send("");
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "method-not-allowed" });
 
   try {
-    const body = readJsonBodyV176(req);
+    const body = readJsonBodyV177(req);
     const uid = String(body.uid || body.email || "anonymous").trim() || "anonymous";
     const safeId = Buffer.from(uid).toString("base64url").slice(0, 120);
 
@@ -1049,18 +1046,18 @@ exports.savePushPreferences = onRequest({ cors: true, region: "us-central1" }, a
 });
 
 exports.requestPushTest = onRequest({ cors: true, region: "us-central1" }, async (req, res) => {
-  setCorsV176(res);
+  setCorsV177(res);
   if (req.method === "OPTIONS") return res.status(204).send("");
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "method-not-allowed" });
 
   try {
-    const body = readJsonBodyV176(req);
+    const body = readJsonBodyV177(req);
     await admin.firestore().collection("notificationTests").add({
       uid: String(body.uid || ""),
       email: String(body.email || "").toLowerCase(),
       token: String(body.token || ""),
       preferences: body.preferences || {},
-      source: "requestPushTest-v176",
+      source: "requestPushTest-v177",
       appVersion: String(body.appVersion || ""),
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
