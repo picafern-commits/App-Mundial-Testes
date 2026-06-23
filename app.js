@@ -2757,9 +2757,7 @@ function fireChatLongPress(messageId, event) {
     event.preventDefault();
     event.stopPropagation();
   }
-  if (navigator.vibrate) {
-    try { navigator.vibrate(15); } catch {}
-  }
+  safeVibrateV192(15);
   openChatActionMenu(messageId, event);
 }
 
@@ -3086,9 +3084,7 @@ function playChatNotification(message) {
   chatLastNotifiedId = message.id;
   localStorage.setItem("mundial_chat_last_notified_id", message.id || "");
 
-  if (navigator.vibrate) {
-    try { navigator.vibrate(25); } catch {}
-  }
+  safeVibrateV192(25);
 
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -7799,9 +7795,7 @@ setupSearchResultsAdminButton();
       pressStart = { ...point, row };
       pressTimer = setTimeout(() => {
         if (!pressStart || pressStart.row !== row) return;
-        if (navigator.vibrate) {
-          try { navigator.vibrate(15); } catch {}
-        }
+        safeVibrateV192(15);
         openMenuForRow(row, point);
       }, 620);
     }, { capture: true, passive: false });
@@ -10687,3 +10681,89 @@ document.addEventListener("DOMContentLoaded", () => {
     renderAdminSectionsV190();
   }, 1200);
 });
+
+
+// v192 — vibração segura: evita erro de "user hasn't tapped".
+function safeVibrateV192(pattern) {
+  try {
+    if (!navigator?.vibrate) return false;
+    if (!document.hasFocus?.()) return false;
+    return navigator.vibrate(pattern);
+  } catch (error) {
+    return false;
+  }
+}
+
+// v192 — permissões: torna checkboxes clicáveis e marca o card como alterado.
+function markPermissionCardDirtyV192(input) {
+  try {
+    const card = input?.closest?.("[data-permission-card]");
+    if (!card) return;
+    card.classList.add("permissions-dirty-v192");
+    const save = card.querySelector("[data-save-permissions]");
+    if (save) {
+      save.classList.add("needs-save-v192");
+      save.textContent = "Guardar alterações";
+    }
+  } catch {}
+}
+
+document.addEventListener("click", event => {
+  const permLabel = event.target.closest?.(".perm-check");
+  if (permLabel && !event.target.matches("input")) {
+    const input = permLabel.querySelector('input[type="checkbox"][data-perm-key]');
+    if (input && !input.disabled) {
+      input.checked = !input.checked;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
+}, true);
+
+document.addEventListener("change", event => {
+  const input = event.target.closest?.('[data-perm-key], [data-active-email]');
+  if (!input) return;
+  markPermissionCardDirtyV192(input);
+}, true);
+
+document.addEventListener("click", event => {
+  const saveBtn = event.target.closest?.("[data-save-permissions]");
+  if (!saveBtn) return;
+  event.preventDefault();
+  event.stopPropagation();
+  savePermissionUser(saveBtn.dataset.savePermissions);
+}, true);
+
+// v192 — reforça visual do filtro ativo.
+function applyCalendarFilterHighlightV192() {
+  try {
+    const map = {
+      missing: $("calendarMissingResultsBtn"),
+      played: $("calendarPlayedGamesBtn"),
+      all: $("calendarAllGamesBtn")
+    };
+    Object.entries(map).forEach(([key, btn]) => {
+      if (!btn) return;
+      const active = calendarViewMode === key;
+      btn.classList.toggle("active-filter", active);
+      btn.classList.toggle("calendar-filter-active-v192", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  } catch {}
+}
+
+const renderCalendarFilterStateOriginalV192 = typeof renderCalendarFilterState === "function" ? renderCalendarFilterState : null;
+if (renderCalendarFilterStateOriginalV192) {
+  renderCalendarFilterState = function renderCalendarFilterStateV192() {
+    renderCalendarFilterStateOriginalV192();
+    applyCalendarFilterHighlightV192();
+  };
+}
+
+document.addEventListener("click", event => {
+  if (event.target.closest?.("#calendarMissingResultsBtn,#calendarPlayedGamesBtn,#calendarAllGamesBtn")) {
+    setTimeout(applyCalendarFilterHighlightV192, 30);
+    setTimeout(applyCalendarFilterHighlightV192, 180);
+  }
+}, true);
