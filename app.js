@@ -1,5 +1,5 @@
 // v139 football-data resultados automaticos via Firebase Function
-﻿const APP_CONFIG = window.MUNDIAL_CONFIG || {};
+const APP_CONFIG = window.MUNDIAL_CONFIG || {};
 const ADMIN_PIN = APP_CONFIG.adminPin || "1234";
 const STORAGE_KEY = "mundial_pontos_2026_import_id_jogo_v32";
 const PENDING_FIREBASE_KEY = `${STORAGE_KEY}_pending_games_v1`;
@@ -10,12 +10,16 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v162";
+const APP_VERSION_LABEL = "v166";
+const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
+const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 
 let db = null;
 let firebaseApi = null;
 let firebaseAuth = null;
 let firebaseAuthApi = null;
+let firebaseMessaging = null;
+let firebaseMessagingApi = null;
 let currentUser = null;
 let currentProfile = null;
 let permissionsCache = [];
@@ -126,54 +130,54 @@ const MATCH_ROWS = [
 ];
 
 const FLAGS = {
-  "Portugal": "🇵🇹",
-  "África do Sul": "🇿🇦",
-  "México": "🇲🇽",
-  "Coreia do Sul": "🇰🇷",
-  "Chéquia": "🇨🇿",
-  "Canadá": "🇨🇦",
-  "Bósnia": "🇧🇦",
-  "Estados Unidos": "🇺🇸",
-  "Paraguai": "🇵🇾",
-  "Qatar": "🇶🇦",
-  "Suíça": "🇨🇭",
-  "Brasil": "🇧🇷",
-  "Marrocos": "🇲🇦",
-  "Haiti": "🇭🇹",
-  "Escócia": "🏴",
-  "Austrália": "🇦🇺",
-  "Turquia": "🇹🇷",
-  "Alemanha": "🇩🇪",
-  "Curaçao": "🇨🇼",
-  "Países Baixos": "🇳🇱",
-  "Japão": "🇯🇵",
-  "Costa do Marfim": "🇨🇮",
-  "Equador": "🇪🇨",
-  "Suécia": "🇸🇪",
-  "Tunísia": "🇹🇳",
-  "Espanha": "🇪🇸",
-  "Cabo Verde": "🇨🇻",
-  "Bélgica": "🇧🇪",
-  "Egito": "🇪🇬",
-  "Arábia Saudita": "🇸🇦",
-  "Uruguai": "🇺🇾",
-  "Irão": "🇮🇷",
-  "Nova Zelândia": "🇳🇿",
-  "França": "🇫🇷",
-  "Senegal": "🇸🇳",
-  "Iraque": "🇮🇶",
-  "Noruega": "🇳🇴",
-  "Argentina": "🇦🇷",
-  "Argélia": "🇩🇿",
-  "Áustria": "🇦🇹",
-  "Jordânia": "🇯🇴",
-  "RD Congo": "🇨🇩",
-  "Inglaterra": "🏴",
-  "Croácia": "🇭🇷",
-  "Gana": "🇬🇭",
-  "Panamá": "🇵🇦",
-  "Uzbequistão": "🇺🇿",
-  "Colômbia": "🇨🇴"
+  "Portugal": "",
+  "África do Sul": "",
+  "México": "",
+  "Coreia do Sul": "",
+  "Chéquia": "",
+  "Canadá": "",
+  "Bósnia": "",
+  "Estados Unidos": "",
+  "Paraguai": "",
+  "Qatar": "",
+  "Suíça": "",
+  "Brasil": "",
+  "Marrocos": "",
+  "Haiti": "",
+  "Escócia": "",
+  "Austrália": "",
+  "Turquia": "",
+  "Alemanha": "",
+  "Curaçao": "",
+  "Países Baixos": "",
+  "Japão": "",
+  "Costa do Marfim": "",
+  "Equador": "",
+  "Suécia": "",
+  "Tunísia": "",
+  "Espanha": "",
+  "Cabo Verde": "",
+  "Bélgica": "",
+  "Egito": "",
+  "Arábia Saudita": "",
+  "Uruguai": "",
+  "Irão": "",
+  "Nova Zelândia": "",
+  "França": "",
+  "Senegal": "",
+  "Iraque": "",
+  "Noruega": "",
+  "Argentina": "",
+  "Argélia": "",
+  "Áustria": "",
+  "Jordânia": "",
+  "RD Congo": "",
+  "Inglaterra": "",
+  "Croácia": "",
+  "Gana": "",
+  "Panamá": "",
+  "Uzbequistão": "",
+  "Colômbia": ""
 };
 
 const TEAM_ALIASES = {
@@ -206,7 +210,7 @@ const SEED_GAMES = MATCH_ROWS.map(([group, homeTeam, awayTeam, matchDate], index
 const $ = id => document.getElementById(id);
 const clone = value => JSON.parse(JSON.stringify(value));
 const hasResult = game => game.homeScore !== null && game.homeScore !== undefined && game.awayScore !== null && game.awayScore !== undefined;
-const flag = team => FLAGS[team] || "🏳ï¸";
+const flag = team => FLAGS[team] || "ï¸";
 const outcome = (home, away) => Number(home) > Number(away) ? "home" : Number(home) < Number(away) ? "away" : "draw";
 const normalizeKey = value => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const normalizeComparable = value => normalizeKey(value);
@@ -645,7 +649,7 @@ function setFirebaseStatus(type, message) {
 
 
 
-// v114 — Modo económico Firebase oficial.
+// v114  Modo económico Firebase oficial.
 // Reduz listeners de snapshot trocando onSnapshot permanentes por leitura inicial + polling lento.
 const FIRESTORE_ECONOMY_V114 = {
   installed: false,
@@ -788,6 +792,24 @@ async function initFirebase() {
     db = firestoreModule.getFirestore(app);
     firebaseApi = firestoreModule;
     storageMode = "firebase";
+    try {
+      const messagingModule = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging.js");
+      const supported = await messagingModule.isSupported().catch(() => false);
+      if (supported) {
+        firebaseMessaging = messagingModule.getMessaging(app);
+        firebaseMessagingApi = messagingModule;
+        messagingModule.onMessage(firebaseMessaging, payload => {
+          const title = payload?.notification?.title || payload?.data?.title || "Notificação Mundial";
+          const body = payload?.notification?.body || payload?.data?.body || "";
+          toast(body ? `${title}: ${body}` : title);
+          renderNotificationsCenterV164();
+        });
+      }
+    } catch (messagingError) {
+      console.warn("Firebase Messaging indisponível:", messagingError);
+      firebaseMessaging = null;
+      firebaseMessagingApi = null;
+    }
 
     setFirebaseStatus("success", `Firebase: ligado ao projeto ${config.projectId}`);
     setLoginStatus("Firebase ligado. Faz login.", "success");
@@ -799,8 +821,8 @@ async function initFirebase() {
     firebaseAuth = null;
     firebaseAuthApi = null;
     storageMode = "local";
-    setFirebaseStatus("error", `Firebase: não ligou — ${error.message || "erro"}`);
-    setLoginStatus(`Firebase não ligou — ${error.message || "erro"}`, "error");
+    setFirebaseStatus("error", `Firebase: não ligou  ${error.message || "erro"}`);
+    setLoginStatus(`Firebase não ligou  ${error.message || "erro"}`, "error");
     return false;
   }
 }
@@ -919,7 +941,7 @@ async function loadData() {
     appSettings = mergeSettings(local.settings || local.appSettings);
     ensureKnockoutSettings();
     storageMode = "local";
-    setFirebaseStatus("error", `Firebase: erro ao carregar — ${error.message || "ver consola"}`);
+    setFirebaseStatus("error", `Firebase: erro ao carregar  ${error.message || "ver consola"}`);
     renderAll();
   }
 }
@@ -1337,7 +1359,7 @@ async function saveGameFastToFirebase(game, options = {}) {
   saveLocalData("saveGameFast local");
 
   if (!db || !firebaseApi || storageMode !== "firebase") {
-    setFirebaseStatus("error", "Firebase: não está ligado — resultado ficou só local");
+    setFirebaseStatus("error", "Firebase: não está ligado  resultado ficou só local");
     throw new Error("Firebase não está ligado");
   }
 
@@ -1831,9 +1853,10 @@ function permissionTabAllowed(tabId) {
   if (tabId === "calendarTab") return hasPermission("calendar");
   if (tabId === "scoreTab") return hasPermission("score");
   if (tabId === "knockoutTab") return hasPermission("knockout");
+  if (tabId === "notificationsTab") return hasPermission("admin");
   if (tabId === "adminTab") return hasPermission("admin");
-  if (tabId === "logsTab") return true;
-  if (tabId === "settingsTab") return true;
+  if (tabId === "logsTab") return hasPermission("admin");
+  if (tabId === "settingsTab") return hasPermission("admin");
   return true;
 }
 
@@ -1852,9 +1875,13 @@ function applyPermissionsToUi() {
   document.querySelector('[data-tab="calendarTab"]')?.classList.toggle("hidden", !hasPermission("calendar"));
   document.querySelector('[data-tab="scoreTab"]')?.classList.toggle("hidden", !hasPermission("score"));
   document.querySelector('[data-tab="knockoutTab"]')?.classList.toggle("hidden", !hasPermission("knockout"));
-  document.querySelector('[data-tab="logsTab"]')?.classList.toggle("hidden", false);
+  document.querySelector('[data-tab="notificationsTab"]')?.classList.toggle("hidden", !hasPermission("admin"));
+  document.querySelector('[data-tab="logsTab"]')?.classList.toggle("hidden", !hasPermission("admin"));
   document.querySelector('[data-tab="adminTab"]')?.classList.toggle("hidden", !hasPermission("admin"));
-  document.querySelector('[data-tab="settingsTab"]')?.classList.toggle("hidden", false);
+  document.querySelector('[data-tab="settingsTab"]')?.classList.toggle("hidden", !hasPermission("admin"));
+
+  const activeTab = document.querySelector(".tab.active");
+  if (activeTab && !permissionTabAllowed(activeTab.dataset.tab)) switchToFirstAllowedTab();
 
   $("adminTab")?.classList.toggle("no-access", !hasPermission("admin"));
 
@@ -2149,7 +2176,7 @@ function onlineUsersPopupHeader() {
   return `
     <div class="online-users-popup-head">
       <strong>Utilizadores online</strong>
-      <button id="closeOnlineUsersBtn" class="online-users-close" type="button" aria-label="Fechar utilizadores online" onclick="return window.closeOnlineUsersPanelNow(event)">×</button>
+      <button id="closeOnlineUsersBtn" class="online-users-close" type="button" aria-label="Fechar utilizadores online" onclick="return window.closeOnlineUsersPanelNow(event)"></button>
     </div>`;
 }
 
@@ -2171,7 +2198,7 @@ function renderOnlineUsers() {
       <div class="online-users-row online-users-head">
         <span>User</span>
         <span>Estado</span>
-        <span>Última atividade</span>
+        <span>ltima atividade</span>
       </div>
       ${onlineUsersCache.map(user => {
         const online = isOnlinePresence(user);
@@ -2183,7 +2210,7 @@ function renderOnlineUsers() {
               <strong>${escapeHtml(name)}</strong>
               <small>${escapeHtml(user.device || "")}</small>
             </span>
-            <span class="online-state">${online ? "Online 🟢" : "Offline ⚪"}</span>
+            <span class="online-state">${online ? "Online " : "Offline "}</span>
             <span class="online-last">${escapeHtml(timeAgoLabel(user.lastActiveAt))}</span>
           </div>
         `;
@@ -2428,7 +2455,7 @@ function renderChatPinnedMessage() {
   box.innerHTML = `
     <div class="chat-pinned-content">
       <div>
-        <span>📌 Mensagem fixada</span>
+        <span> Mensagem fixada</span>
         <strong>${escapeHtml(chatPinnedMessage.name || "Admin")}</strong>
         <p>${escapeHtml(chatPinnedMessage.text || "")}</p>
       </div>
@@ -2824,7 +2851,7 @@ function chatReplyMarkup(message) {
 
 function chatMessageMetaMarkup(message, mine) {
   const time = chatTimeLabel(chatMessageDateValue(message));
-  const status = message.failed ? "erro" : (message.pending ? "a enviar" : (mine ? "✓✓" : ""));
+  const status = message.failed ? "erro" : (message.pending ? "a enviar" : (mine ? "" : ""));
   const statusClass = message.failed ? " failed" : (message.pending ? " pending" : "");
   return `
     <span class="chat-message-meta${statusClass}">
@@ -3123,7 +3150,7 @@ function renderChatMessages() {
   const visibleMessages = chatMessagesCache.filter(chatMessageMatchesSearch);
 
   if (!visibleMessages.length) {
-    box.innerHTML = `<div class="empty small-empty">${chatSearchTerm ? "Nenhuma mensagem encontrada." : "Ainda não há mensagens. Escreve a primeira 🙂"}</div>`;
+    box.innerHTML = `<div class="empty small-empty">${chatSearchTerm ? "Nenhuma mensagem encontrada." : "Ainda não há mensagens. Escreve a primeira "}</div>`;
     updateChatUnreadBadge();
     chatNotifyNewMessages();
     renderChatPinnedMessage();
@@ -3864,7 +3891,7 @@ function renderKnockout() {
 
 }
 
-// v121 — Fase Final mobile por rondas. PC mantém layout original.
+// v121  Fase Final mobile por rondas. PC mantém layout original.
 let knockoutMobileSelectedRoundV121 = localStorage.getItem("mundial_ko_mobile_round_v121") || "";
 
 function knockoutRoundsForMobileV121() {
@@ -4128,20 +4155,20 @@ function renderKnockoutMobileV121() {
 
             <div class="ko-mobile-team ${winner && winner === home ? "winner" : ""}">
               <span>${escapeHtml(home)}</span>
-              <b>${homeScore === null ? "—" : homeScore}</b>
+              <b>${homeScore === null ? "" : homeScore}</b>
             </div>
 
             <div class="ko-mobile-versus">vs</div>
 
             <div class="ko-mobile-team ${winner && winner === away ? "winner" : ""}">
               <span>${escapeHtml(away)}</span>
-              <b>${awayScore === null ? "—" : awayScore}</b>
+              <b>${awayScore === null ? "" : awayScore}</b>
             </div>
 
             ${pens ? `<div class="ko-mobile-pens">Penáltis: <strong>${pens.home} - ${pens.away}</strong></div>` : ""}
 
             <div class="ko-mobile-status ${winner ? "done" : "waiting"}">
-              ${winner ? `✅ Vencedor: <strong>${escapeHtml(winner)}</strong>` : "⏳ A aguardar resultado/equipas"}
+              ${winner ? ` Vencedor: <strong>${escapeHtml(winner)}</strong>` : "⏳ A aguardar resultado/equipas"}
             </div>
 
             ${renderKnockoutInlineEditor(match, "mobile")}
@@ -4163,8 +4190,8 @@ function renderKnockoutMobileV121() {
     <div class="ko-mobile-list ko-mobile-list-page-v137">${cards}</div>
 
     <div class="ko-mobile-nav ko-mobile-round-nav-v137">
-      ${prevRound ? `<button type="button" class="secondary" data-ko-mobile-round="${escapeHtml(prevRound.name)}">← ${escapeHtml(prevRound.name)}</button>` : ""}
-      ${nextRound ? `<button type="button" class="primary" data-ko-mobile-round="${escapeHtml(nextRound.name)}">${escapeHtml(nextRound.name)} →</button>` : ""}
+      ${prevRound ? `<button type="button" class="secondary" data-ko-mobile-round="${escapeHtml(prevRound.name)}"> ${escapeHtml(prevRound.name)}</button>` : ""}
+      ${nextRound ? `<button type="button" class="primary" data-ko-mobile-round="${escapeHtml(nextRound.name)}">${escapeHtml(nextRound.name)} </button>` : ""}
     </div>
   `;
 
@@ -4626,7 +4653,7 @@ function renderAll() {
   setupSearchResultsAdminButton();
   setTimeout(addSearchButtonsToResultCards, 0);
   setupOnlineUsersCloseControls();
-  setupKnockoutAdjustTopButton(); renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSystemLogs(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); renderAdminOverviewV162(); renderAppSettingsPanelV162(); applyPermissionsToUi(); updateActiveAppSection(); 
+  setupKnockoutAdjustTopButton(); renderAdminState(); renderCalendar(); renderScore(); renderKnockout(); renderAdmin(); renderSystemLogs(); renderNotificationsCenterV164(); renderSettingsForm(); renderUsers(); renderUserBetsEditor(); renderKnockoutAdmin(); renderCalendarFilterState(); renderAdminOverviewV162(); renderAppSettingsPanelV162(); renderInstallGuideV164(); applyPermissionsToUi(); updateActiveAppSection(); 
   setTimeout(addSearchButtonsToResultCards, 250);
 }
 
@@ -4917,7 +4944,7 @@ function renderScore() {
                 <span>${row.exact} exatos · ${row.winner} vencedor · ${row.penalties || 0} penáltis · ${settled} jogos com resultado · ${withBets} apostas</span>
               </div>
               <div class="player-total">${row.points} pts</div>
-              <div class="player-arrow">⌄</div>
+              <div class="player-arrow"></div>
             </summary>
 
             <div class="player-games-table">
@@ -5127,7 +5154,7 @@ function renderSettingsForm() {
   $("finalTopScorerInput").value = appSettings.extraResults.topScorer || "";
   $("finalChampionInput").value = appSettings.extraResults.champion || "";
   if (appSettings.lastImport) {
-    $("importSummary").innerHTML = `<strong>Última importação:</strong> ${escapeHtml(new Date(appSettings.lastImport.at).toLocaleString("pt-PT"))} · ${appSettings.lastImport.bets || 0} apostas · ${appSettings.lastImport.players || 0} users · ${appSettings.lastImport.results || 0} resultados.`;
+    $("importSummary").innerHTML = `<strong>ltima importação:</strong> ${escapeHtml(new Date(appSettings.lastImport.at).toLocaleString("pt-PT"))} · ${appSettings.lastImport.bets || 0} apostas · ${appSettings.lastImport.players || 0} users · ${appSettings.lastImport.results || 0} resultados.`;
   }
 }
 
@@ -5140,7 +5167,7 @@ function renderApiSettings() {
   const summary = $("apiSyncSummary");
   if (summary) {
     summary.innerHTML = api.lastSync
-      ? `<strong>Última sincronização:</strong> ${escapeHtml(new Date(api.lastSync.at).toLocaleString("pt-PT"))} · ${api.lastSync.updated || 0} resultados atualizados · ${api.lastSync.matched || 0} jogos encontrados na app.`
+      ? `<strong>ltima sincronização:</strong> ${escapeHtml(new Date(api.lastSync.at).toLocaleString("pt-PT"))} · ${api.lastSync.updated || 0} resultados atualizados · ${api.lastSync.matched || 0} jogos encontrados na app.`
       : "Ainda não foi feita sincronização automática.";
   }
 }
@@ -5593,7 +5620,7 @@ function parseScore(value) {
   if (!raw) return null;
 
   // formatos aceites: 2-1, 2 - 1, 2:1, 2/1, 2 x 1
-  const normal = raw.replace(/[–—]/g, "-").replace(/\s+/g, " ");
+  const normal = raw.replace(/[]/g, "-").replace(/\s+/g, " ");
   const match = normal.match(/(^|\D)(\d{1,2})\s*(?:-|:|\/|x)\s*(\d{1,2})(\D|$)/i);
   if (!match) return null;
 
@@ -5603,17 +5630,17 @@ function splitMatchLabel(label) {
   const raw = String(label || "").trim();
   if (!raw) return null;
 
-  const scoreMatch = raw.match(/\s+(\d+\s*[-–:\/x]\s*\d+)\s*$/i);
+  const scoreMatch = raw.match(/\s+(\d+\s*[-:\/x]\s*\d+)\s*$/i);
   const score = scoreMatch ? parseScore(scoreMatch[1]) : null;
   const cleanLabel = scoreMatch ? raw.slice(0, scoreMatch.index).trim() : raw;
 
-  const directParts = cleanLabel.split(/\s+(?:-|–|—|vs|v\.?|x)\s+/i);
+  const directParts = cleanLabel.split(/\s+(?:-|||vs|v\.?|x)\s+/i);
   if (directParts.length >= 2) {
     return { home: canonicalTeam(directParts[0]), away: canonicalTeam(directParts.slice(1).join(" - ")), score };
   }
 
   // Caso venha sem espaços: "Colômbia-RD Congo"
-  const looseParts = cleanLabel.split(/\s*(?:-|–|—)\s*/).filter(Boolean);
+  const looseParts = cleanLabel.split(/\s*(?:-||)\s*/).filter(Boolean);
   if (looseParts.length >= 2) {
     return { home: canonicalTeam(looseParts[0]), away: canonicalTeam(looseParts.slice(1).join(" - ")), score };
   }
@@ -5834,7 +5861,7 @@ async function previewExcelImport() {
   importStatusFromResult(combined);
 preview.innerHTML = `
       <div class="preview-grid"><div><strong>${combined.bets.length}</strong><span>apostas lidas</span></div><div><strong>${players.size}</strong><span>users</span></div><div><strong>${combined.results.length}</strong><span>resultados de jogos</span></div><div><strong>${Object.keys(combined.extras).length}</strong><span>extras</span></div></div>
-      ${combined.errors.length ? `<details open><summary>${combined.errors.length} avisos — estas linhas não foram importadas</summary><ul>${combined.errors.slice(0, 80).map(err => `<li>${escapeHtml(err)}</li>`).join("")}</ul></details>` : `<p class="ok-line">Sem erros críticos encontrados.</p>`}
+      ${combined.errors.length ? `<details open><summary>${combined.errors.length} avisos  estas linhas não foram importadas</summary><ul>${combined.errors.slice(0, 80).map(err => `<li>${escapeHtml(err)}</li>`).join("")}</ul></details>` : `<p class="ok-line">Sem erros críticos encontrados.</p>`}
     `;
     $("confirmExcelImportBtn").disabled = false;
   } catch (error) {
@@ -6018,7 +6045,7 @@ function exportResultadosExcel() {
     ["Users", players.length],
     ["Jogos", games.length],
     ["Apostas importadas", bets.length],
-    ["Última exportação", new Date().toLocaleString("pt-PT")]
+    ["ltima exportação", new Date().toLocaleString("pt-PT")]
   ];
   const wsResumo = XLSX.utils.aoa_to_sheet(resumo);
   wsResumo["!cols"] = [{ wch: 22 }, { wch: 18 }];
@@ -6378,8 +6405,9 @@ document.querySelectorAll(".tab").forEach(button => {
     $(button.dataset.tab).classList.add("active");
     updateActiveAppSection();
     if (button.dataset.tab === "knockoutTab") renderKnockout();
+    if (button.dataset.tab === "notificationsTab") renderNotificationsCenterV164();
     if (button.dataset.tab === "logsTab") renderSystemLogs();
-    if (button.dataset.tab === "settingsTab") renderAppSettingsPanelV162();
+    if (button.dataset.tab === "settingsTab") { renderAppSettingsPanelV162(); renderInstallGuideV164(); }
   });
 });
 $("unlockAdminBtn").addEventListener("click", () => {
@@ -6501,7 +6529,7 @@ function setupPwaInstall() {
 
   installBtn.addEventListener("click", async () => {
     if (!deferredInstallPrompt) {
-      toast("No Edge: menu ⋯ > Apps > Instalar este site como aplicação.");
+      toast("No Edge: menu  > Apps > Instalar este site como aplicação.");
       return;
     }
 
@@ -6546,6 +6574,8 @@ function showRefreshAppButton(message = "Nova versao disponivel.") {
   button.classList.remove("hidden");
   button.classList.add("has-update");
   button.title = message;
+  renderNotificationsCenterV164();
+  renderAppSettingsPanelV162();
 }
 
 async function refreshAppNow() {
@@ -6694,7 +6724,7 @@ setupSearchResultsAdminButton();
 
 
 
-// v89 — Chat mobile limpo: sem capturas globais agressivas.
+// v89  Chat mobile limpo: sem capturas globais agressivas.
 (function setupChatMobileCleanV89(){
   if (window.__chatMobileCleanV89) return;
   window.__chatMobileCleanV89 = true;
@@ -6907,7 +6937,7 @@ setupSearchResultsAdminButton();
 })();
 
 
-// v91 — fixes sobre base v89: menu por toque e imagem acima do chat.
+// v91  fixes sobre base v89: menu por toque e imagem acima do chat.
 (function setupChatMenuImageV91(){
   if (window.__chatMenuImageV91) return;
   window.__chatMenuImageV91 = true;
@@ -7018,7 +7048,7 @@ setupSearchResultsAdminButton();
 })();
 
 
-// v92 — Força visualizador de imagem por cima do chat mobile.
+// v92  Força visualizador de imagem por cima do chat mobile.
 (function setupImageAboveChatV92(){
   if (window.__imageAboveChatV92) return;
   window.__imageAboveChatV92 = true;
@@ -7115,7 +7145,7 @@ setupSearchResultsAdminButton();
 })();
 
 
-// v93 — visualizador usa SEMPRE o src real do <img>, seguro no iPhone/Safari.
+// v93  visualizador usa SEMPRE o src real do <img>, seguro no iPhone/Safari.
 (function setupChatImageSrcRealV93(){
   if (window.__chatImageSrcRealV93) return;
   window.__chatImageSrcRealV93 = true;
@@ -7646,7 +7676,7 @@ setupSearchResultsAdminButton();
 })();
 
 
-// v98 — Sistema de chat ativado/desativado por admin.
+// v98  Sistema de chat ativado/desativado por admin.
 let chatSystemEnabled = false;
 let chatSettingsUnsubscribeV98 = null;
 let chatSettingsLoadedV98 = false;
@@ -7865,7 +7895,7 @@ document.addEventListener("DOMContentLoaded", () => {
 })();
 
 
-// v107 — diagnóstico rápido no console.
+// v107  diagnóstico rápido no console.
 window.firestoreReadsOptimizerInfo = function firestoreReadsOptimizerInfo() {
   return {
     realtimeListeners: Array.isArray(realtimeUnsubscribers) ? realtimeUnsubscribers.length : null,
@@ -7890,7 +7920,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-// v116 — barra de pesquisa funcional sem guardar texto.
+// v116  barra de pesquisa funcional sem guardar texto.
 function setupSearchBarNoPersistV116() {
   const candidates = [
     "searchInput",
@@ -7967,7 +7997,7 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("click", () => setTimeout(addSearchButtonsToResultCards, 150));
 
 
-// v137 — Fase Final mobile limpa: lista completa da ronda e scroll normal do documento.
+// v137  Fase Final mobile limpa: lista completa da ronda e scroll normal do documento.
 function cleanupKnockoutMobileLegacyClassesV137() {
   const legacyClasses = [
     "ko-mobile-scroll-page-v122",
@@ -8038,7 +8068,7 @@ window.addEventListener("resize", () => setTimeout(syncKnockoutMobilePageV137, 1
 window.addEventListener("orientationchange", () => setTimeout(syncKnockoutMobilePageV137, 260));
 
 
-// v139 — resultados automáticos via football-data.org + Firebase Function.
+// v139  resultados automáticos via football-data.org + Firebase Function.
 function footballDataFunctionUrlV139() {
   const projectId = APP_CONFIG?.firebase?.projectId || "";
   return projectId ? `https://europe-west1-${projectId}.cloudfunctions.net/syncFootballDataWorldCup` : "";
@@ -8213,7 +8243,7 @@ document.addEventListener("DOMContentLoaded", () => setTimeout(setupFootballData
 document.addEventListener("click", () => setTimeout(setupFootballDataButtonV139, 100));
 
 
-// v142 — garante botão Football-data no Admin, sem depender do HTML original.
+// v142  garante botão Football-data no Admin, sem depender do HTML original.
 function canUseFootballDataSyncV142() {
   try {
     if (typeof hasPermission === "function" && hasPermission("editResults")) return true;
@@ -8310,7 +8340,7 @@ document.addEventListener("click", () => {
 });
 
 
-// v143 — botão fixo no topo do Admin, independente do layout interno.
+// v143  botão fixo no topo do Admin, independente do layout interno.
 function isAdminPageActiveV143() {
   try {
     const adminTabActive = document.querySelector('.tab.active[data-tab="admin"], .nav-btn.active[data-tab="admin"], button.active[data-tab="admin"]');
@@ -8409,7 +8439,7 @@ document.addEventListener("click", () => {
 });
 
 
-// v144 — força layout desktop a ocupar a largura toda.
+// v144  força layout desktop a ocupar a largura toda.
 function enablePcFullWidthV144() {
   try {
     const isDesktop = window.matchMedia("(min-width: 900px)").matches;
@@ -8425,7 +8455,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-// v147 — força ecrã todo no PC/GitHub Pages, mesmo com wrappers antigos.
+// v147  força ecrã todo no PC/GitHub Pages, mesmo com wrappers antigos.
 function forceDesktopFullscreenV147() {
   try {
     const desktop = window.innerWidth >= 900;
@@ -8460,7 +8490,7 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("click", () => setTimeout(forceDesktopFullscreenV147, 120));
 
 
-// v149 — football-data free: automático clean, sem funcionalidades premium.
+// v149  football-data free: automático clean, sem funcionalidades premium.
 const FOOTBALL_FREE_AUTO_V149 = {
   minMinutesBetweenAutoSync: 45,
   storageKey: "mundial_football_free_last_auto_v149"
@@ -8484,7 +8514,7 @@ function footballFreeCanAutoSyncV149() {
 }
 
 function footballFreeFormatDateV149(value) {
-  if (!value) return "—";
+  if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   return date.toLocaleString("pt-PT", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
@@ -8509,7 +8539,7 @@ function renderFootballFreeStatusV149(data = null) {
     box.innerHTML = `
       <div class="football-free-status-head-v149">
         <strong>Football-data Free</strong>
-        <span>${last ? `Última sync: ${footballFreeFormatDateV149(last)}` : "Pronto para sincronizar"}</span>
+        <span>${last ? `ltima sync: ${footballFreeFormatDateV149(last)}` : "Pronto para sincronizar"}</span>
       </div>
       <div class="football-free-status-grid-v149">
         <div><b>${Number(data?.updatedGames?.length || 0) + Number(data?.updatedKnockoutMatches?.length || 0)}</b><span>resultados encontrados</span></div>
@@ -8520,7 +8550,7 @@ function renderFootballFreeStatusV149(data = null) {
         <div class="football-free-upcoming-v149">
           <small>Próximos jogos pela API</small>
           ${upcoming.map(match => `
-            <p><span>${footballFreeFormatDateV149(match.utcDate)}</span><strong>${escapeHtml(match.homeTeam || "—")} vs ${escapeHtml(match.awayTeam || "—")}</strong></p>
+            <p><span>${footballFreeFormatDateV149(match.utcDate)}</span><strong>${escapeHtml(match.homeTeam || "")} vs ${escapeHtml(match.awayTeam || "")}</strong></p>
           `).join("")}
         </div>
       ` : ""}
@@ -8643,7 +8673,7 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("click", () => setTimeout(setupFootballFreeAutoV149, 180));
 
 
-// v150 — desbloqueia e fecha modais/abas presas na Fase Final mobile.
+// v150  desbloqueia e fecha modais/abas presas na Fase Final mobile.
 function closeStuckFinalPhaseModalV150(reason = "") {
   try {
     const selectors = [
@@ -8793,7 +8823,7 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("click", () => setTimeout(installFinalPhaseModalCloseFixV150, 80));
 
 
-// v151 — aviso visual discreto da sync 24/7.
+// v151  aviso visual discreto da sync 24/7.
 function updateFootball247LabelV151() {
   try {
     const box = document.getElementById("footballFreeStatusBoxV149");
@@ -8811,13 +8841,13 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("click", () => setTimeout(updateFootball247LabelV151, 220));
 
 
-// v156 — indicador em tempo real da sync 24/7 via Firestore.
+// v156  indicador em tempo real da sync 24/7 via Firestore.
 let footballRealtimeSyncUnsubV156 = null;
 let footballRealtimeSyncLastDataV156 = null;
 let footballRealtimeSyncTimerV156 = null;
 
 function footballRealtimeSyncFormatV156(value) {
-  if (!value) return "—";
+  if (!value) return "";
   let date = null;
 
   try {
@@ -8872,10 +8902,10 @@ function footballRealtimeSyncEnsureBoxV156() {
       </div>
     </div>
     <div class="football-realtime-sync-grid-v156">
-      <div><b id="footballRealtimeSyncLastV156">—</b><span>Última sync</span></div>
-      <div><b id="footballRealtimeSyncMatchesV156">—</b><span>Jogos API</span></div>
-      <div><b id="footballRealtimeSyncFinishedV156">—</b><span>Terminados</span></div>
-      <div><b id="footballRealtimeSyncUpdatedV156">—</b><span>Atualizados</span></div>
+      <div><b id="footballRealtimeSyncLastV156"></b><span>ltima sync</span></div>
+      <div><b id="footballRealtimeSyncMatchesV156"></b><span>Jogos API</span></div>
+      <div><b id="footballRealtimeSyncFinishedV156"></b><span>Terminados</span></div>
+      <div><b id="footballRealtimeSyncUpdatedV156"></b><span>Atualizados</span></div>
     </div>
   `;
 
@@ -9000,7 +9030,7 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("click", () => setTimeout(footballRealtimeSyncStartV156, 180));
 
 
-// v157 — transforma a zona Football-data em modo automático/clean.
+// v157  transforma a zona Football-data em modo automático/clean.
 function setupAutomaticSyncVisualV157() {
   try {
     const activePanel = document.querySelector(".tab-panel.active") || document.querySelector("main") || document.body;
@@ -9047,7 +9077,7 @@ function setupAutomaticSyncVisualV157() {
 
       const gridLabels = box.querySelectorAll(".football-realtime-sync-grid-v156 span");
       if (gridLabels?.length >= 4) {
-        gridLabels[0].textContent = "Última execução";
+        gridLabels[0].textContent = "ltima execução";
         gridLabels[1].textContent = "Jogos lidos";
         gridLabels[2].textContent = "Terminados";
         gridLabels[3].textContent = "Alterações";
@@ -9095,7 +9125,7 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("click", () => setTimeout(setupAutomaticSyncVisualV157, 160));
 
 
-// v158 — marcador parcial separado do resultado final.
+// v158  marcador parcial separado do resultado final.
 function getDisplayScoreV158(game) {
   const apiStatus = String(game?.footballDataStatus || "").toUpperCase();
   if (["IN_PLAY", "PAUSED", "LIVE"].includes(apiStatus)) {
@@ -9108,7 +9138,7 @@ function getDisplayScoreV158(game) {
 }
 
 
-// v159 — Admin: marcar/remover jogo suspenso manualmente.
+// v159  Admin: marcar/remover jogo suspenso manualmente.
 function getAllEditableGamesV159() {
   try {
     const list = [];
@@ -9118,7 +9148,7 @@ function getAllEditableGamesV159() {
         list.push({
           type: "group",
           id: String(game.id || game.gameId || ""),
-          label: `${game.matchDate || ""} · ${game.homeTeam || "—"} vs ${game.awayTeam || "—"}`,
+          label: `${game.matchDate || ""} · ${game.homeTeam || ""} vs ${game.awayTeam || ""}`,
           game
         });
       });
@@ -9132,7 +9162,7 @@ function getAllEditableGamesV159() {
         list.push({
           type: "knockout",
           id: String(game.id || game.gameId || ""),
-          label: `${game.round || "Fase final"} · ${game.homeTeam || "—"} vs ${game.awayTeam || "—"}`,
+          label: `${game.round || "Fase final"} · ${game.homeTeam || ""} vs ${game.awayTeam || ""}`,
           game
         });
       });
@@ -9388,6 +9418,379 @@ function closeTopModalV162() {
   return true;
 }
 
+function notificationReadAtV164() {
+  return Number(localStorage.getItem(NOTIFICATIONS_READ_KEY_V164) || "0") || 0;
+}
+
+function notificationTypeLabelV164(type) {
+  return ({
+    result: "Resultado",
+    knockout: "Fase Final",
+    sync: "Sincronização",
+    install: "Instalação",
+    suspended: "Suspenso",
+    admin: "Admin",
+    warning: "Aviso"
+  })[type] || "Notificação";
+}
+
+function notificationFromLogV164(log) {
+  const category = logCategoryV162(log);
+  const type = category === "results" ? "result" :
+    category === "knockout" ? "knockout" :
+    category === "sync" ? "sync" :
+    category === "errors" ? "warning" :
+    "admin";
+
+  return {
+    id: `log:${log.id || log.at || log.action}`,
+    type,
+    at: log.at || new Date().toISOString(),
+    title: log.action || "Ação registada",
+    detail: log.detail || "A app registou uma alteração.",
+    actor: log.actorName || "Sistema"
+  };
+}
+
+function buildNotificationsV164() {
+  const notes = [];
+  const missing = games.filter(needsFinalResult).length;
+  const suspended = games.filter(isSuspendedGame);
+
+  if (!isStandaloneMode()) {
+    notes.push({
+      id: "install:pwa",
+      type: "install",
+      at: "2000-01-01T00:00:00.000Z",
+      title: "Instala a app neste dispositivo",
+      detail: isIosDevice()
+        ? "No iPhone, usa Safari > Partilhar > Adicionar ao Ecrã Principal."
+        : "No Android ou PC, usa o botão Instalar app quando o navegador o mostrar.",
+      actor: "PWA"
+    });
+  }
+
+  if ($("refreshAppBtn")?.classList.contains("has-update")) {
+    notes.push({
+      id: "app:update-ready",
+      type: "sync",
+      at: new Date().toISOString(),
+      title: "Nova versão disponível",
+      detail: "Toca em Atualizar app para aplicar a versão mais recente.",
+      actor: "Sistema"
+    });
+  }
+
+  if (!navigator.onLine) {
+    notes.push({
+      id: "device:offline",
+      type: "warning",
+      at: new Date().toISOString(),
+      title: "Dispositivo offline",
+      detail: "As alterações ficam guardadas localmente até a ligação voltar.",
+      actor: "Sistema"
+    });
+  }
+
+  if (suspended.length) {
+    const latest = suspended.map(game => game.suspendedAt || game.updatedAt || game.matchDate).filter(Boolean).sort().at(-1);
+    notes.push({
+      id: "games:suspended",
+      type: "suspended",
+      at: latest || new Date().toISOString(),
+      title: `${suspended.length} jogo${suspended.length === 1 ? "" : "s"} suspenso${suspended.length === 1 ? "" : "s"}`,
+      detail: "Continuam em Faltam resultados até serem fechados com resultado final.",
+      actor: "Admin"
+    });
+  }
+
+  if (missing) {
+    notes.push({
+      id: "games:missing-results",
+      type: "result",
+      at: "2000-01-01T00:00:00.000Z",
+      title: `${missing} jogo${missing === 1 ? "" : "s"} sem resultado final`,
+      detail: "Usa o filtro Faltam resultados para fechar os jogos pendentes.",
+      actor: "Calendário"
+    });
+  }
+
+  if (hasPermission("admin")) {
+    systemLogs().slice(0, 18).forEach(log => notes.push(notificationFromLogV164(log)));
+  }
+
+  return notes
+    .filter(note => note.title)
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+}
+
+function renderNotificationsCenterV164() {
+  const list = $("notificationsListV164");
+  const summary = $("notificationsSummaryV164");
+  const badge = $("notificationsBadgeV164");
+  renderPushNotificationsPanelV165();
+  if (!list || !summary) {
+    if (badge) badge.classList.add("hidden");
+    return;
+  }
+
+  const notes = buildNotificationsV164();
+  const readAt = notificationReadAtV164();
+  const unread = notes.filter(note => new Date(note.at).getTime() > readAt).length;
+  const important = notes.filter(note => ["warning", "suspended", "sync"].includes(note.type)).length;
+
+  if (badge) {
+    badge.textContent = String(unread);
+    badge.classList.toggle("hidden", unread <= 0);
+  }
+
+  summary.innerHTML = `
+    <article><span>Por ver</span><strong>${unread}</strong><p>Notificações desde a última leitura</p></article>
+    <article><span>Total</span><strong>${notes.length}</strong><p>Alertas recentes e estado da app</p></article>
+    <article><span>Importantes</span><strong>${important}</strong><p>Offline, suspensos ou atualização</p></article>
+  `;
+
+  if (!notes.length) {
+    list.innerHTML = `<div class="empty small-empty">Ainda não há notificações.</div>`;
+    return;
+  }
+
+  list.innerHTML = notes.map(note => {
+    const isUnread = new Date(note.at).getTime() > readAt;
+    return `
+      <article class="notification-row-v164 ${escapeHtml(note.type)} ${isUnread ? "unread" : ""}">
+        <div>
+          <span>${escapeHtml(notificationTypeLabelV164(note.type))} · ${escapeHtml(formatLogTime(note.at))}</span>
+          <strong>${escapeHtml(note.title)}</strong>
+          <p>${escapeHtml(note.detail || "")}</p>
+        </div>
+        <small>${escapeHtml(note.actor || "Sistema")}</small>
+      </article>
+    `;
+  }).join("");
+}
+
+function markNotificationsReadV164() {
+  localStorage.setItem(NOTIFICATIONS_READ_KEY_V164, String(Date.now()));
+  renderNotificationsCenterV164();
+  toast("Notificações marcadas como vistas.");
+}
+
+function renderInstallGuideV164() {
+  const container = $("installGuideV164");
+  if (!container) return;
+
+  const standalone = isStandaloneMode();
+  const installText = standalone ? "Instalada" : "Por instalar";
+  const swText = "serviceWorker" in navigator ? "Service Worker disponível" : "Service Worker indisponível";
+  const connectionText = navigator.onLine ? "Online" : "Offline";
+
+  container.innerHTML = `
+    <div class="install-guide-head-v164">
+      <div>
+        <h3>Guia de instalação</h3>
+        <p>Passos rápidos para instalar a PWA em iPhone, Android e PC.</p>
+      </div>
+      <button type="button" class="primary" data-install-now-v164>Instalar agora</button>
+    </div>
+    <div class="install-status-v164">
+      <span>${escapeHtml(installText)}</span>
+      <span>${escapeHtml(swText)}</span>
+      <span>${escapeHtml(connectionText)}</span>
+    </div>
+    <div class="install-steps-v164">
+      <article>
+        <strong>iPhone</strong>
+        <p>Abre no Safari, toca em Partilhar e escolhe Adicionar ao Ecrã Principal.</p>
+      </article>
+      <article>
+        <strong>Android</strong>
+        <p>Abre no Chrome, toca no menu e escolhe Instalar app ou Adicionar ao ecrã principal.</p>
+      </article>
+      <article>
+        <strong>PC</strong>
+        <p>No Edge ou Chrome, usa o ícone de instalação na barra de endereço ou o menu Apps.</p>
+      </article>
+    </div>
+  `;
+}
+
+function pushDeviceIdV165() {
+  let id = localStorage.getItem(PUSH_DEVICE_KEY_V165);
+  if (!id) {
+    id = `device_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(PUSH_DEVICE_KEY_V165, id);
+  }
+  return id;
+}
+
+function pushTokenDocIdV165() {
+  if (!currentUser?.uid) return "";
+  return `${currentUser.uid}_${pushDeviceIdV165()}`;
+}
+
+function pushSupportV165() {
+  const permission = typeof Notification === "undefined" ? "unsupported" : Notification.permission;
+  const standalone = isStandaloneMode();
+  const ios = isIosDevice();
+  const vapidKey = String(APP_CONFIG?.messaging?.vapidKey || "").trim();
+  return {
+    supported: Boolean(firebaseMessaging && firebaseMessagingApi && "serviceWorker" in navigator && typeof Notification !== "undefined"),
+    permission,
+    standalone,
+    ios,
+    vapidKey,
+    hasVapid: Boolean(vapidKey),
+    needsIosInstall: ios && !standalone
+  };
+}
+
+function pushPrefsV165() {
+  return {
+    gameStart: $("pushGameStartInputV165")?.checked !== false,
+    gameEnd: $("pushGameEndInputV165")?.checked !== false,
+    goals: $("pushGoalsInputV165")?.checked !== false,
+    results: true,
+    knockout: true,
+    chatGeneral: false,
+    chatAdmin: true
+  };
+}
+
+function pushQuietHoursV166() {
+  return {
+    enabled: $("pushQuietHoursInputV166")?.checked !== false,
+    startHour: 23,
+    endHour: 9,
+    timezone: "Europe/Lisbon"
+  };
+}
+
+async function savePushTokenPreferencesV165(token) {
+  if (!db || !firebaseApi || !currentUser) return false;
+  const docId = pushTokenDocIdV165();
+  if (!docId) return false;
+  const payload = {
+    uid: currentUser.uid,
+    email: normalizeEmail(currentUser.email),
+    name: currentProfile?.name || displayNameFromEmail(currentUser.email),
+    platform: pushSupportV165().ios ? "ios" : /android/i.test(navigator.userAgent) ? "android" : "desktop",
+    userAgent: navigator.userAgent,
+    preferences: pushPrefsV165(),
+    quietHours: pushQuietHoursV166(),
+    rooms: { general: false, admin: true },
+    updatedAt: new Date().toISOString()
+  };
+  if (token !== undefined) {
+    payload.token = token;
+    payload.enabled = Boolean(token);
+  }
+  await firebaseApi.setDoc(firebaseApi.doc(db, "notificationTokens", docId), payload, { merge: true });
+  return true;
+}
+
+async function enablePushNotificationsV165() {
+  if (!hasPermission("admin")) return toast("Só o Admin pode ativar notificações push.");
+  const support = pushSupportV165();
+  if (!support.supported) return toast("Este navegador ainda não suporta push nesta app.");
+  if (support.needsIosInstall) return toast("No iPhone, instala primeiro a app no Ecrã Principal.");
+  if (!support.hasVapid) return toast("Falta configurar a VAPID key do Firebase Messaging no config.js.");
+
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") {
+    renderPushNotificationsPanelV165();
+    return toast("Permissão de notificações não autorizada.");
+  }
+
+  const registration = await navigator.serviceWorker.ready;
+  const token = await firebaseMessagingApi.getToken(firebaseMessaging, {
+    vapidKey: support.vapidKey,
+    serviceWorkerRegistration: registration
+  });
+
+  if (!token) return toast("Não foi possível criar o token de notificações.");
+  await savePushTokenPreferencesV165(token);
+  renderPushNotificationsPanelV165();
+  toast("Notificações push ativas neste dispositivo.");
+}
+
+async function savePushPreferencesOnlyV165() {
+  if (!hasPermission("admin")) return;
+  try {
+    await savePushTokenPreferencesV165();
+    toast("Preferências de notificações guardadas.");
+  } catch (error) {
+    console.warn("Preferências push não guardadas:", error);
+    toast("Não consegui guardar as preferências push.");
+  }
+}
+
+async function sendTestPushV165() {
+  if (!hasPermission("admin")) return toast("Só o Admin pode testar push.");
+  if (!db || !firebaseApi || !currentUser) return toast("Firebase não está ligado.");
+  try {
+    await firebaseApi.addDoc(firebaseApi.collection(db, "notificationTests"), {
+      uid: currentUser.uid,
+      email: normalizeEmail(currentUser.email),
+      createdAt: new Date().toISOString(),
+      source: "push-panel-v165"
+    });
+    toast("Teste enviado. Se o dispositivo estiver ativo, vais receber uma notificação.");
+  } catch (error) {
+    console.warn("Teste push falhou:", error);
+    toast("Não consegui enviar o teste push.");
+  }
+}
+
+function renderPushNotificationsPanelV165() {
+  const panel = $("pushNotificationsPanelV165");
+  if (!panel) return;
+  if (!hasPermission("admin")) {
+    panel.innerHTML = "";
+    return;
+  }
+
+  const support = pushSupportV165();
+  const permissionText = support.permission === "granted" ? "Permitidas" :
+    support.permission === "denied" ? "Bloqueadas" :
+    support.permission === "unsupported" ? "Não suportadas" :
+    "Por ativar";
+  const deviceText = support.ios ? (support.standalone ? "iPhone PWA instalada" : "iPhone: instalar no Ecrã Principal") :
+    /android/i.test(navigator.userAgent) ? "Android" : "PC / Browser";
+  const vapidText = support.hasVapid ? "VAPID configurada" : "VAPID em falta";
+
+  panel.innerHTML = `
+    <div class="push-panel-head-v165">
+      <div>
+        <strong>Push Android / iPhone</strong>
+        <span>Eventos preparados: Jogo começou, Jogo acabou e Golo da equipa.</span>
+        <small>Funciona com a app fechada quando o dispositivo está subscrito e a VAPID key está configurada.</small>
+      </div>
+      <div class="push-panel-actions-v165">
+        <button id="enablePushBtnV165" class="primary" type="button">Ativar neste dispositivo</button>
+        <button id="testPushBtnV165" class="secondary" type="button">Enviar teste</button>
+      </div>
+    </div>
+    <div class="push-status-v165">
+      <span>${escapeHtml(permissionText)}</span>
+      <span>${escapeHtml(deviceText)}</span>
+      <span>${escapeHtml(vapidText)}</span>
+    </div>
+    <div class="push-options-v165">
+      <label><input id="pushGameStartInputV165" type="checkbox" checked /> Jogo começou</label>
+      <label><input id="pushGameEndInputV165" type="checkbox" checked /> Jogo acabou</label>
+      <label><input id="pushGoalsInputV165" type="checkbox" checked /> Golo da equipa</label>
+      <label><input id="pushQuietHoursInputV166" type="checkbox" checked /> Silenciar 23h-09h</label>
+      <button id="savePushPrefsBtnV165" class="secondary" type="button">Guardar preferências</button>
+    </div>
+    <p class="push-note-v165">No iPhone, as notificações Web Push exigem a app instalada no Ecrã Principal e uma versão recente do iOS. O servidor não envia push entre as 23h e as 09h de Lisboa quando o silêncio está ativo.</p>
+  `;
+
+  $("enablePushBtnV165")?.addEventListener("click", enablePushNotificationsV165);
+  $("testPushBtnV165")?.addEventListener("click", sendTestPushV165);
+  $("savePushPrefsBtnV165")?.addEventListener("click", savePushPreferencesOnlyV165);
+}
+
 function setupV162Controls() {
   if (window.__mundialV162ControlsBound) return;
   window.__mundialV162ControlsBound = true;
@@ -9403,6 +9806,11 @@ function setupV162Controls() {
   }
 
   document.addEventListener("click", event => {
+    if (event.target.closest("[data-install-now-v164]")) {
+      $("installAppBtn")?.click() || toast("Usa o menu do navegador para instalar a app neste dispositivo.");
+      return;
+    }
+
     const chip = event.target.closest("[data-log-filter]");
     if (chip) {
       const select = $("logsTypeFilter");
@@ -9430,15 +9838,538 @@ function setupV162Controls() {
   $("clearCacheBtnV162")?.addEventListener("click", clearAppCachesV162);
   $("installAppFromSettingsBtnV162")?.addEventListener("click", () => $("installAppBtn")?.click());
   $("openLogsFromSettingsBtnV162")?.addEventListener("click", () => openTabV162("logsTab"));
+  $("markNotificationsReadBtnV164")?.addEventListener("click", markNotificationsReadV164);
+  $("openNotificationSettingsBtnV164")?.addEventListener("click", () => {
+    if (hasPermission("admin")) openTabV162("settingsTab");
+    else $("installAppBtn")?.click() || toast("No iPhone usa Safari > Partilhar > Adicionar ao Ecrã Principal.");
+  });
   $("openAdminFromSettingsBtnV162")?.addEventListener("click", () => openTabV162("adminTab") || toast("Sem permissão para abrir Admin."));
 
-  window.addEventListener("online", renderAppSettingsPanelV162);
-  window.addEventListener("offline", renderAppSettingsPanelV162);
+  window.addEventListener("online", () => { renderAppSettingsPanelV162(); renderNotificationsCenterV164(); });
+  window.addEventListener("offline", () => { renderAppSettingsPanelV162(); renderNotificationsCenterV164(); });
   setInterval(setupModalStateV162, 600);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   setupV162Controls();
+  renderNotificationsCenterV164();
   renderAdminOverviewV162();
   renderAppSettingsPanelV162();
+  renderInstallGuideV164();
 });
+
+
+// v169 — Push: diagnóstico claro + VAPID local se config.js estiver vazio.
+const PUSH_VAPID_LOCAL_KEY_V169 = `${STORAGE_KEY}_push_vapid_key_v169`;
+const PUSH_ENABLED_LOCAL_KEY_V169 = `${STORAGE_KEY}_push_enabled_v169`;
+
+function pushVapidKeyV169() {
+  return String(APP_CONFIG?.messaging?.vapidKey || localStorage.getItem(PUSH_VAPID_LOCAL_KEY_V169) || "").trim();
+}
+
+function pushDiagnosticMessageV169() {
+  const support = pushSupportV165();
+  const parts = [];
+  parts.push(`Permissão: ${support.permission || "?"}`);
+  parts.push(`Firebase Messaging: ${firebaseMessaging && firebaseMessagingApi ? "OK" : "não ligado"}`);
+  parts.push(`Service Worker: ${"serviceWorker" in navigator ? "OK" : "não suportado"}`);
+  parts.push(`VAPID: ${pushVapidKeyV169() ? "OK" : "em falta"}`);
+  if (support.needsIosInstall) parts.push("iPhone: instalar no Ecrã Principal");
+  return parts.join(" · ");
+}
+
+// Reforça a função de suporte sem quebrar a antiga.
+const pushSupportOriginalV169 = typeof pushSupportV165 === "function" ? pushSupportV165 : null;
+function pushSupportV169() {
+  const original = pushSupportOriginalV169 ? pushSupportOriginalV169() : {};
+  const vapidKey = pushVapidKeyV169();
+  return {
+    ...original,
+    vapidKey,
+    hasVapid: Boolean(vapidKey),
+    supported: Boolean(firebaseMessaging && firebaseMessagingApi && "serviceWorker" in navigator && typeof Notification !== "undefined")
+  };
+}
+
+// Substitui a função global usada pelo painel.
+pushSupportV165 = pushSupportV169;
+
+async function enablePushNotificationsV169() {
+  try {
+    if (!hasPermission("admin")) return toast("Só o Admin pode ativar notificações push.");
+
+    if (!db || !firebaseApi || !currentUser) {
+      return toast("Firebase/login ainda não está pronto. Aguarda uns segundos e tenta novamente.");
+    }
+
+    const support = pushSupportV169();
+
+    if (!support.supported) {
+      console.warn("Push não suportado:", pushDiagnosticMessageV169());
+      return toast(`Push indisponível: ${pushDiagnosticMessageV169()}`);
+    }
+
+    if (support.needsIosInstall) {
+      return toast("No iPhone, instala primeiro a app no Ecrã Principal.");
+    }
+
+    if (!support.hasVapid) {
+      renderPushNotificationsPanelV169();
+      return toast("Falta a VAPID key. Cola a chave no campo das notificações e guarda.");
+    }
+
+    if (!navigator.serviceWorker?.ready) {
+      return toast("Service Worker ainda não está pronto. Atualiza a app e tenta novamente.");
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      renderPushNotificationsPanelV169();
+      return toast("Permissão de notificações não autorizada no navegador.");
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+
+    const token = await firebaseMessagingApi.getToken(firebaseMessaging, {
+      vapidKey: support.vapidKey,
+      serviceWorkerRegistration: registration
+    });
+
+    if (!token) {
+      return toast("Não foi possível criar o token de notificações.");
+    }
+
+    await savePushTokenPreferencesV165(token);
+    localStorage.setItem(PUSH_ENABLED_LOCAL_KEY_V169, "1");
+    localStorage.setItem(`${PUSH_ENABLED_LOCAL_KEY_V169}_last`, new Date().toISOString());
+
+    renderPushNotificationsPanelV169();
+    toast("Notificações push ativas neste dispositivo.");
+  } catch (error) {
+    console.error("Ativar push falhou:", error);
+    const msg = String(error?.message || error || "erro");
+    if (msg.includes("messaging/permission-blocked")) return toast("Notificações bloqueadas no navegador. Ativa nas permissões do site.");
+    if (msg.includes("messaging/unsupported-browser")) return toast("Este navegador não suporta Firebase Push nesta app.");
+    if (msg.includes("messaging/invalid-vapid-key")) return toast("VAPID key inválida. Confirma a chave no Firebase.");
+    if (msg.includes("permission-denied")) return toast("Sem permissão no Firestore para guardar notificationTokens.");
+    toast(`Não consegui ativar push: ${msg.slice(0, 120)}`);
+  }
+}
+
+async function saveVapidKeyV169() {
+  try {
+    const input = $("pushVapidInputV169");
+    const key = String(input?.value || "").trim();
+    if (!key) {
+      localStorage.removeItem(PUSH_VAPID_LOCAL_KEY_V169);
+      toast("VAPID local removida.");
+    } else {
+      localStorage.setItem(PUSH_VAPID_LOCAL_KEY_V169, key);
+      toast("VAPID guardada neste dispositivo.");
+    }
+    renderPushNotificationsPanelV169();
+  } catch (error) {
+    console.warn("Guardar VAPID falhou:", error);
+    toast("Não consegui guardar a VAPID.");
+  }
+}
+
+async function sendTestPushV169() {
+  try {
+    if (!hasPermission("admin")) return toast("Só o Admin pode testar push.");
+    if (!db || !firebaseApi || !currentUser) return toast("Firebase/login ainda não está pronto.");
+
+    const enabled = localStorage.getItem(PUSH_ENABLED_LOCAL_KEY_V169) === "1";
+    if (!enabled) {
+      return toast("Ativa primeiro este dispositivo antes de enviar teste.");
+    }
+
+    await firebaseApi.addDoc(firebaseApi.collection(db, "notificationTests"), {
+      uid: currentUser.uid,
+      email: normalizeEmail(currentUser.email),
+      createdAt: new Date().toISOString(),
+      source: "push-panel-v169"
+    });
+
+    toast("Teste enviado. Se o token estiver ativo, vais receber a notificação.");
+  } catch (error) {
+    console.error("Teste push falhou:", error);
+    const msg = String(error?.message || error || "erro");
+    if (msg.includes("permission-denied")) return toast("Sem permissão no Firestore para criar notificationTests.");
+    toast(`Não consegui enviar o teste push: ${msg.slice(0, 120)}`);
+  }
+}
+
+function renderPushNotificationsPanelV169() {
+  const panel = $("pushNotificationsPanelV165");
+  if (!panel) return;
+  if (!hasPermission("admin")) {
+    panel.innerHTML = "";
+    return;
+  }
+
+  const support = pushSupportV169();
+  const enabled = localStorage.getItem(PUSH_ENABLED_LOCAL_KEY_V169) === "1";
+  const permissionText = support.permission === "granted" ? "Permitidas" :
+    support.permission === "denied" ? "Bloqueadas" :
+    support.permission === "unsupported" ? "Não suportadas" :
+    "Por ativar";
+  const deviceText = support.ios ? (support.standalone ? "iPhone PWA instalada" : "iPhone: instalar no Ecrã Principal") :
+    /android/i.test(navigator.userAgent) ? "Android" : "PC / Browser";
+  const vapidText = support.hasVapid ? "VAPID configurada" : "VAPID em falta";
+  const tokenText = enabled ? "Dispositivo ativo" : "Dispositivo por ativar";
+  const localVapid = localStorage.getItem(PUSH_VAPID_LOCAL_KEY_V169) || "";
+
+  panel.innerHTML = `
+    <div class="push-panel-head-v165">
+      <div>
+        <strong>Push Android / iPhone</strong>
+        <span>Eventos preparados: Jogo começou, Jogo acabou e Golo da equipa.</span>
+        <small>Funciona com a app fechada quando o dispositivo está subscrito e a VAPID key está configurada.</small>
+      </div>
+      <div class="push-panel-actions-v165">
+        <button id="enablePushBtnV165" class="primary" type="button">Ativar neste dispositivo</button>
+        <button id="testPushBtnV165" class="secondary" type="button">Enviar teste</button>
+      </div>
+    </div>
+
+    <div class="push-status-v165">
+      <span>${escapeHtml(permissionText)}</span>
+      <span>${escapeHtml(deviceText)}</span>
+      <span>${escapeHtml(vapidText)}</span>
+      <span>${escapeHtml(tokenText)}</span>
+    </div>
+
+    ${support.hasVapid ? "" : `
+      <div class="push-vapid-box-v169">
+        <strong>VAPID key em falta</strong>
+        <span>Vai ao Firebase → Project settings → Cloud Messaging → Web Push certificates e copia a Key pair.</span>
+        <div>
+          <input id="pushVapidInputV169" type="text" placeholder="Cola aqui a VAPID key" value="${escapeHtml(localVapid)}" />
+          <button id="saveVapidBtnV169" type="button">Guardar VAPID</button>
+        </div>
+      </div>
+    `}
+
+    <div class="push-options-v165">
+      <label><input id="pushGameStartInputV165" type="checkbox" checked /> Jogo começou</label>
+      <label><input id="pushGameEndInputV165" type="checkbox" checked /> Jogo acabou</label>
+      <label><input id="pushGoalsInputV165" type="checkbox" checked /> Golo da equipa</label>
+      <label><input id="pushQuietHoursInputV166" type="checkbox" checked /> Silenciar 23h-09h</label>
+      <button id="savePushPrefsBtnV165" class="secondary" type="button">Guardar preferências</button>
+    </div>
+
+    <p class="push-note-v165">Diagnóstico: ${escapeHtml(pushDiagnosticMessageV169())}</p>
+  `;
+
+  $("enablePushBtnV165")?.addEventListener("click", enablePushNotificationsV169);
+  $("testPushBtnV165")?.addEventListener("click", sendTestPushV169);
+  $("savePushPrefsBtnV165")?.addEventListener("click", savePushPreferencesOnlyV165);
+  $("saveVapidBtnV169")?.addEventListener("click", saveVapidKeyV169);
+}
+
+// Substitui painel antigo por painel com diagnóstico.
+renderPushNotificationsPanelV165 = renderPushNotificationsPanelV169;
+enablePushNotificationsV165 = enablePushNotificationsV169;
+sendTestPushV165 = sendTestPushV169;
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(renderPushNotificationsPanelV169, 500);
+  setTimeout(renderPushNotificationsPanelV169, 1600);
+  setTimeout(renderPushNotificationsPanelV169, 3200);
+});
+document.addEventListener("click", event => {
+  if (event.target?.id === "enablePushBtnV165") {
+    event.preventDefault();
+    enablePushNotificationsV169();
+  }
+  if (event.target?.id === "testPushBtnV165") {
+    event.preventDefault();
+    sendTestPushV169();
+  }
+  if (event.target?.id === "saveVapidBtnV169") {
+    event.preventDefault();
+    saveVapidKeyV169();
+  }
+}, true);
+
+
+// v170 — Configurações: botões sempre funcionais + push VAPID robusto.
+function getConfigVapidKeyV170() {
+  try {
+    return String(
+      APP_CONFIG?.messaging?.vapidKey ||
+      window.MUNDIAL_CONFIG?.messaging?.vapidKey ||
+      localStorage.getItem(`${STORAGE_KEY}_push_vapid_key_v169`) ||
+      ""
+    ).trim();
+  } catch {
+    return "";
+  }
+}
+
+function appToastV170(message) {
+  try {
+    if (typeof toast === "function") return toast(message);
+  } catch {}
+  try { alert(message); } catch {}
+}
+
+async function clearAppCacheV170() {
+  try {
+    if ("caches" in window) {
+      const names = await caches.keys();
+      await Promise.all(names.map(name => caches.delete(name)));
+    }
+
+    if (navigator.serviceWorker?.getRegistrations) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      // Não desregista por defeito para não matar push; força só update.
+      await Promise.all(regs.map(reg => reg.update().catch(() => null)));
+    }
+
+    localStorage.setItem(`${STORAGE_KEY}_last_cache_clear_v170`, new Date().toISOString());
+    appToastV170("Cache limpa. Fecha e abre a app novamente.");
+  } catch (error) {
+    console.error("Limpar cache falhou:", error);
+    appToastV170(`Não consegui limpar cache: ${error.message || "erro"}`);
+  }
+}
+
+async function updateAppV170() {
+  try {
+    if (navigator.serviceWorker?.getRegistration) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) await reg.update();
+    }
+    if ("caches" in window) {
+      const names = await caches.keys();
+      await Promise.all(names.map(name => caches.delete(name)));
+    }
+    appToastV170("Atualização preparada. A app vai recarregar.");
+    setTimeout(() => location.reload(true), 500);
+  } catch (error) {
+    console.error("Atualizar app falhou:", error);
+    appToastV170(`Não consegui atualizar: ${error.message || "erro"}`);
+  }
+}
+
+async function installAppV170() {
+  try {
+    if (window.deferredInstallPrompt) {
+      window.deferredInstallPrompt.prompt();
+      await window.deferredInstallPrompt.userChoice.catch(() => null);
+      window.deferredInstallPrompt = null;
+      appToastV170("Pedido de instalação enviado.");
+      return;
+    }
+
+    const ua = navigator.userAgent || "";
+    if (/iphone|ipad|ipod/i.test(ua)) {
+      appToastV170("No iPhone: Safari → Partilhar → Adicionar ao Ecrã Principal.");
+    } else if (/edg/i.test(ua)) {
+      appToastV170("No Edge: menu ⋯ → Apps → Instalar este site como aplicação.");
+    } else if (/chrome/i.test(ua)) {
+      appToastV170("No Chrome: menu ⋮ → Instalar app ou Adicionar ao ecrã principal.");
+    } else {
+      appToastV170("Usa o menu do navegador para instalar a app/PWA.");
+    }
+  } catch (error) {
+    console.error("Instalar app falhou:", error);
+    appToastV170(`Não consegui iniciar instalação: ${error.message || "erro"}`);
+  }
+}
+
+function openLogsV170() {
+  try {
+    if (typeof showTab === "function") return showTab("logs");
+    const btn = [...document.querySelectorAll("button,a,[role='button']")].find(el => (el.textContent || "").toLowerCase().includes("logs"));
+    if (btn) return btn.click();
+    location.hash = "#logs";
+  } catch {
+    location.hash = "#logs";
+  }
+}
+
+function openAdminV170() {
+  try {
+    if (typeof showTab === "function") return showTab("admin");
+    const btn = [...document.querySelectorAll("button,a,[role='button']")].find(el => (el.textContent || "").toLowerCase().includes("admin"));
+    if (btn) return btn.click();
+    location.hash = "#admin";
+  } catch {
+    location.hash = "#admin";
+  }
+}
+
+async function enablePushV170() {
+  try {
+    if (!("Notification" in window)) {
+      appToastV170("Este navegador não suporta notificações.");
+      return;
+    }
+
+    const vapidKey = getConfigVapidKeyV170();
+    if (!vapidKey) {
+      appToastV170("VAPID key em falta no config.js.");
+      return;
+    }
+
+    if (!firebaseMessaging || !firebaseMessagingApi) {
+      appToastV170("Firebase Messaging ainda não está pronto. Aguarda uns segundos.");
+      return;
+    }
+
+    if (!currentUser) {
+      appToastV170("Tens de estar com login feito.");
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      appToastV170("Permissão de notificações não autorizada.");
+      return;
+    }
+
+    if (!navigator.serviceWorker?.ready) {
+      appToastV170("Service Worker ainda não está pronto.");
+      return;
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+    const token = await firebaseMessagingApi.getToken(firebaseMessaging, {
+      vapidKey,
+      serviceWorkerRegistration: registration
+    });
+
+    if (!token) {
+      appToastV170("Não foi possível criar token push.");
+      return;
+    }
+
+    if (typeof savePushTokenPreferencesV165 === "function") {
+      await savePushTokenPreferencesV165(token);
+    } else if (db && firebaseApi?.setDoc && firebaseApi?.doc) {
+      await firebaseApi.setDoc(firebaseApi.doc(db, "notificationTokens", token), {
+        token,
+        uid: currentUser.uid,
+        email: normalizeEmail(currentUser.email),
+        updatedAt: new Date().toISOString(),
+        userAgent: navigator.userAgent
+      }, { merge: true });
+    } else {
+      throw new Error("Firestore não está pronto para guardar notificationTokens.");
+    }
+
+    localStorage.setItem(`${STORAGE_KEY}_push_enabled_v170`, "1");
+    appToastV170("Notificações push ativas neste dispositivo.");
+  } catch (error) {
+    console.error("enablePushV170 falhou:", error);
+    const msg = String(error?.message || error || "erro");
+    if (msg.includes("invalid-vapid-key")) return appToastV170("VAPID key inválida.");
+    if (msg.includes("permission-denied")) return appToastV170("Sem permissão no Firestore para guardar notificationTokens.");
+    appToastV170(`Não consegui ativar push: ${msg.slice(0, 130)}`);
+  }
+}
+
+async function sendTestPushV170() {
+  try {
+    if (!currentUser || !db || !firebaseApi?.addDoc || !firebaseApi?.collection) {
+      appToastV170("Firebase/login ainda não está pronto.");
+      return;
+    }
+
+    await firebaseApi.addDoc(firebaseApi.collection(db, "notificationTests"), {
+      uid: currentUser.uid,
+      email: normalizeEmail(currentUser.email),
+      createdAt: new Date().toISOString(),
+      source: "settings-v170"
+    });
+
+    appToastV170("Teste push pedido. Verifica se recebes a notificação.");
+  } catch (error) {
+    console.error("sendTestPushV170 falhou:", error);
+    const msg = String(error?.message || error || "erro");
+    if (msg.includes("permission-denied")) return appToastV170("Sem permissão para criar notificationTests.");
+    appToastV170(`Não consegui enviar teste: ${msg.slice(0, 130)}`);
+  }
+}
+
+function bindSettingsButtonsV170() {
+  try {
+    if (document.body.dataset.settingsButtonsV170 === "1") return;
+    document.body.dataset.settingsButtonsV170 = "1";
+
+    window.addEventListener("beforeinstallprompt", event => {
+      event.preventDefault();
+      window.deferredInstallPrompt = event;
+    });
+
+    document.addEventListener("click", event => {
+      const btn = event.target.closest?.("button, a, [role='button']");
+      if (!btn) return;
+
+      const id = String(btn.id || "").toLowerCase();
+      const label = String(btn.textContent || btn.getAttribute("aria-label") || "").trim().toLowerCase();
+      const data = [
+        btn.getAttribute("data-action"),
+        btn.getAttribute("data-tab"),
+        btn.getAttribute("data-page"),
+        btn.getAttribute("href")
+      ].filter(Boolean).join(" ").toLowerCase();
+
+      const all = `${id} ${label} ${data}`;
+
+      if (all.includes("atualizar app") || all.includes("update app") || id.includes("update")) {
+        event.preventDefault();
+        updateAppV170();
+        return;
+      }
+
+      if (all.includes("limpar cache") || all.includes("clear cache") || id.includes("cache")) {
+        event.preventDefault();
+        clearAppCacheV170();
+        return;
+      }
+
+      if (all.includes("instalar agora") || all.includes("instalar app") || all.includes("install app")) {
+        event.preventDefault();
+        installAppV170();
+        return;
+      }
+
+      if (all.includes("abrir logs")) {
+        event.preventDefault();
+        openLogsV170();
+        return;
+      }
+
+      if (all.includes("abrir admin")) {
+        event.preventDefault();
+        openAdminV170();
+        return;
+      }
+
+      if (all.includes("ativar neste dispositivo") || all.includes("ativar push")) {
+        event.preventDefault();
+        enablePushV170();
+        return;
+      }
+
+      if (all.includes("enviar teste")) {
+        event.preventDefault();
+        sendTestPushV170();
+        return;
+      }
+    }, true);
+  } catch (error) {
+    console.warn("bindSettingsButtonsV170 falhou:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(bindSettingsButtonsV170, 100);
+  setTimeout(bindSettingsButtonsV170, 900);
+  setTimeout(bindSettingsButtonsV170, 2200);
+});
+document.addEventListener("click", () => setTimeout(bindSettingsButtonsV170, 120));

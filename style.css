@@ -8962,3 +8962,421 @@ body.modal-open-v162{
     font-size:24px!important;
   }
 }
+
+/* v164 - centro de notificacoes, instalacao guiada e acesso admin. */
+.tab-badge-v164{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-width:20px!important;
+  height:20px!important;
+  margin-left:6px!important;
+  border-radius:999px!important;
+  padding:0 6px!important;
+  color:#fff!important;
+  background:linear-gradient(135deg,#3b82f6,#8b5cf6)!important;
+  font-size:11px!important;
+  font-weight:1000!important;
+}
+
+.notifications-summary-v164{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:12px!important;
+  margin-bottom:12px!important;
+}
+
+.notifications-summary-v164 article,
+.notification-row-v164,
+.install-guide-v164{
+  border:1px solid rgba(255,255,255,.13)!important;
+  border-radius:10px!important;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.035)),
+    rgba(12,19,32,.92)!important;
+  box-shadow:0 14px 36px rgba(0,0,0,.18)!important;
+}
+
+.notifications-summary-v164 article{
+  padding:14px!important;
+}
+
+.notifications-summary-v164 span{
+  display:block!important;
+  color:rgba(255,255,255,.64)!important;
+  font-size:11px!important;
+  font-weight:950!important;
+  text-transform:uppercase!important;
+}
+
+.notifications-summary-v164 strong{
+  display:block!important;
+  margin-top:6px!important;
+  color:#fff!important;
+  font-size:28px!important;
+  line-height:1!important;
+  font-weight:1000!important;
+}
+
+.notifications-summary-v164 p{
+  margin:8px 0 0!important;
+  color:rgba(255,255,255,.68)!important;
+  font-size:13px!important;
+  font-weight:750!important;
+}
+
+.notifications-list-v164{
+  display:grid!important;
+  gap:10px!important;
+}
+
+.notification-row-v164{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  gap:12px!important;
+  align-items:start!important;
+  padding:14px!important;
+  border-left:3px solid rgba(139,92,246,.62)!important;
+}
+
+.notification-row-v164.unread{
+  background:
+    linear-gradient(90deg,rgba(59,130,246,.16),rgba(139,92,246,.08)),
+    rgba(12,19,32,.94)!important;
+}
+
+.notification-row-v164.result{ border-left-color:#3b82f6!important; }
+.notification-row-v164.knockout{ border-left-color:#8b5cf6!important; }
+.notification-row-v164.sync{ border-left-color:#fbbf24!important; }
+.notification-row-v164.install{ border-left-color:#22d3ee!important; }
+.notification-row-v164.suspended,
+.notification-row-v164.warning{ border-left-color:#fb7185!important; }
+
+.notification-row-v164 span,
+.notification-row-v164 small{
+  color:rgba(255,255,255,.62)!important;
+  font-size:12px!important;
+  font-weight:850!important;
+}
+
+.notification-row-v164 strong{
+  display:block!important;
+  margin-top:3px!important;
+  color:#fff!important;
+  font-size:15px!important;
+  font-weight:1000!important;
+}
+
+.notification-row-v164 p{
+  margin:5px 0 0!important;
+  color:rgba(255,255,255,.72)!important;
+  font-size:13px!important;
+  font-weight:750!important;
+}
+
+.install-guide-v164{
+  display:grid!important;
+  gap:14px!important;
+  margin-top:14px!important;
+  padding:16px!important;
+}
+
+.push-panel-v165{
+  display:grid!important;
+  gap:12px!important;
+  margin-bottom:12px!important;
+  padding:16px!important;
+  border:1px solid rgba(255,255,255,.13)!important;
+  border-radius:10px!important;
+  background:
+    radial-gradient(circle at top left,rgba(34,211,238,.12),transparent 34%),
+    linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.035)),
+    rgba(12,19,32,.94)!important;
+  box-shadow:0 14px 36px rgba(0,0,0,.18)!important;
+}
+
+.push-panel-head-v165{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+}
+
+.push-panel-head-v165 strong{
+  display:block!important;
+  color:#fff!important;
+  font-size:18px!important;
+  font-weight:1000!important;
+}
+
+.push-panel-head-v165 span,
+.push-note-v165{
+  display:block!important;
+  margin-top:4px!important;
+  color:rgba(255,255,255,.68)!important;
+  font-size:13px!important;
+  font-weight:750!important;
+}
+
+.push-panel-actions-v165,
+.push-options-v165,
+.push-status-v165{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:8px!important;
+  align-items:center!important;
+}
+
+.push-status-v165 span{
+  min-height:30px!important;
+  border:1px solid rgba(255,255,255,.13)!important;
+  border-radius:999px!important;
+  padding:6px 10px!important;
+  color:#fff!important;
+  background:rgba(255,255,255,.065)!important;
+  font-size:12px!important;
+  font-weight:950!important;
+}
+
+.push-options-v165 label{
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  min-height:38px!important;
+  border:1px solid rgba(255,255,255,.12)!important;
+  border-radius:9px!important;
+  padding:8px 10px!important;
+  color:#fff!important;
+  background:rgba(255,255,255,.055)!important;
+  font-size:13px!important;
+  font-weight:900!important;
+}
+
+.push-options-v165 input{
+  width:18px!important;
+  height:18px!important;
+}
+
+.install-guide-head-v164{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+}
+
+.install-guide-head-v164 h3{
+  margin:0!important;
+  color:#fff!important;
+  font-size:18px!important;
+  font-weight:1000!important;
+}
+
+.install-guide-head-v164 p{
+  margin:4px 0 0!important;
+  color:rgba(255,255,255,.68)!important;
+  font-size:13px!important;
+  font-weight:750!important;
+}
+
+.install-status-v164,
+.install-steps-v164{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:10px!important;
+}
+
+.install-status-v164 span,
+.install-steps-v164 article{
+  border:1px solid rgba(255,255,255,.12)!important;
+  border-radius:9px!important;
+  background:rgba(255,255,255,.055)!important;
+  padding:11px!important;
+}
+
+.install-status-v164 span{
+  color:#fff!important;
+  font-size:12px!important;
+  font-weight:950!important;
+  text-align:center!important;
+}
+
+.install-steps-v164 strong{
+  display:block!important;
+  color:#fff!important;
+  font-size:14px!important;
+  font-weight:1000!important;
+}
+
+.install-steps-v164 p{
+  margin:6px 0 0!important;
+  color:rgba(255,255,255,.70)!important;
+  font-size:13px!important;
+  font-weight:750!important;
+}
+
+@media(max-width:760px){
+  .notifications-summary-v164,
+  .install-status-v164,
+  .install-steps-v164{
+    grid-template-columns:1fr!important;
+  }
+
+  .notification-row-v164{
+    grid-template-columns:1fr!important;
+  }
+
+  .install-guide-head-v164{
+    align-items:stretch!important;
+    flex-direction:column!important;
+  }
+
+  .push-panel-head-v165,
+  .push-panel-actions-v165,
+  .push-options-v165{
+    align-items:stretch!important;
+    flex-direction:column!important;
+  }
+
+  .push-panel-actions-v165 button,
+  .push-options-v165 button{
+    width:100%!important;
+  }
+}
+
+
+/* v168 — PC fullscreen instant: sem flash de ecrã pequeno */
+@media (min-width: 900px) {
+  html,
+  body,
+  html.pc-fullscreen-instant-v168,
+  body.pc-fullscreen-instant-v168 {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  body.pc-fullscreen-instant-v168 > *,
+  #app,
+  .app,
+  .app-root,
+  .app-shell,
+  .shell,
+  .page-shell,
+  .layout,
+  .layout-shell,
+  .workspace,
+  .main-container,
+  main,
+  .main,
+  .content,
+  .app-content,
+  .page-content,
+  .tab-content,
+  .tabs-content,
+  .tab-panel,
+  .tab-panel.active,
+  .view,
+  .views,
+  .screen,
+  .page {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  main,
+  .main,
+  .content,
+  .app-content,
+  .page-content,
+  .tab-content,
+  .tab-panel.active,
+  .page {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  header,
+  .topbar,
+  .app-header,
+  .hero,
+  .tabs,
+  .tabbar,
+  .nav,
+  .panel,
+  .card,
+  .admin-section,
+  .admin-card,
+  .day-block,
+  .calendar-day,
+  .leaderboard-table,
+  .football-free-status-box-v149,
+  .football-realtime-sync-box-v156,
+  #footballDataAdminFixedBoxV143 {
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+  }
+}
+
+
+/* v169 — VAPID / diagnóstico push */
+.push-vapid-box-v169{
+  margin:10px 0!important;
+  padding:12px!important;
+  border-radius:14px!important;
+  background:rgba(255,212,90,.08)!important;
+  border:1px solid rgba(255,212,90,.28)!important;
+}
+.push-vapid-box-v169 strong{
+  display:block!important;
+  color:#ffe390!important;
+  font-size:13px!important;
+  margin-bottom:4px!important;
+}
+.push-vapid-box-v169 span{
+  display:block!important;
+  color:rgba(255,255,255,.68)!important;
+  font-size:12px!important;
+  margin-bottom:8px!important;
+}
+.push-vapid-box-v169 div{
+  display:flex!important;
+  gap:8px!important;
+}
+.push-vapid-box-v169 input{
+  flex:1!important;
+  min-width:0!important;
+  border-radius:12px!important;
+  border:1px solid rgba(255,255,255,.12)!important;
+  background:#0b1320!important;
+  color:#fff!important;
+  padding:10px 12px!important;
+}
+.push-vapid-box-v169 button{
+  border-radius:12px!important;
+  border:1px solid rgba(255,212,90,.32)!important;
+  background:rgba(255,212,90,.14)!important;
+  color:#ffe390!important;
+  font-weight:950!important;
+  padding:10px 12px!important;
+}
+@media(max-width:760px){
+  .push-vapid-box-v169 div{
+    flex-direction:column!important;
+  }
+}
+
+
+/* v170-settings-buttons-fix */
+button,
+[role="button"]{
+  touch-action: manipulation;
+}

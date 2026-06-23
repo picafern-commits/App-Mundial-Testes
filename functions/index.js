@@ -16,6 +16,9 @@ const messaging = getMessaging();
 const auth = getAuth();
 const ADMIN_EMAILS = new Set(["pica.fern@gmail.com"]);
 const FOOTBALL_SYSTEM_ACTOR_V151 = { uid: "scheduler", email: "sistema@app-mundial2026" };
+const QUIET_TZ = "Europe/Lisbon";
+const DEFAULT_QUIET_START_HOUR = 23;
+const DEFAULT_QUIET_END_HOUR = 9;
 function cleanString(value, fallback = "") {
   return String(value || fallback).trim();
 }
@@ -47,6 +50,38 @@ function scoreChanged(before, after) {
     String(before?.awayScore ?? "") !== String(after?.awayScore ?? "");
 }
 
+function gameStatus(value) {
+  return cleanString(value?.footballDataStatus || value?.statusApi || value?.status).toUpperCase();
+}
+
+function isLiveGameStatus(value) {
+  return ["IN_PLAY", "PAUSED", "LIVE"].includes(gameStatus(value));
+}
+
+function isFinishedGameStatus(value) {
+  return ["FINISHED", "AWARDED"].includes(gameStatus(value));
+}
+
+function numberOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function effectiveGameScore(value) {
+  const liveHome = numberOrNull(value?.liveHomeScore);
+  const liveAway = numberOrNull(value?.liveAwayScore);
+  if (liveHome !== null && liveAway !== null) return { home: liveHome, away: liveAway };
+  const home = numberOrNull(value?.homeScore);
+  const away = numberOrNull(value?.awayScore);
+  if (home !== null && away !== null) return { home, away };
+  return null;
+}
+
+function gameLabel(value) {
+  return `${cleanString(value?.homeTeam, "Casa")} vs ${cleanString(value?.awayTeam, "Fora")}`;
+}
+
 function notificationUrl(open, type, room = "") {
   const params = new URLSearchParams();
   params.set("open", open);
@@ -70,6 +105,29 @@ function messageMentionsToken(text, tokenData) {
   return tokenAliases(tokenData).some(alias => normalizedText.includes(`@${alias}`));
 }
 
+function lisbonHourNow() {
+  const parts = new Intl.DateTimeFormat("pt-PT", {
+    timeZone: QUIET_TZ,
+    hour: "2-digit",
+    hour12: false
+  }).formatToParts(new Date());
+  return Number(parts.find(part => part.type === "hour")?.value || "0");
+}
+
+function isHourInRange(hour, start, end) {
+  if (start === end) return false;
+  if (start < end) return hour >= start && hour < end;
+  return hour >= start || hour < end;
+}
+
+function tokenInQuietHours(tokenData) {
+  const quiet = tokenData?.quietHours || {};
+  if (quiet.enabled === false) return false;
+  const start = Number.isFinite(Number(quiet.startHour)) ? Number(quiet.startHour) : DEFAULT_QUIET_START_HOUR;
+  const end = Number.isFinite(Number(quiet.endHour)) ? Number(quiet.endHour) : DEFAULT_QUIET_END_HOUR;
+  return isHourInRange(lisbonHourNow(), start, end);
+}
+
 async function loadEnabledTokens({ room = "", pref = "", adminOnly = false, excludeUid = "", onlyUid = "" } = {}) {
   const snap = await db.collection("notificationTokens").where("enabled", "==", true).get();
   return snap.docs
@@ -78,6 +136,7 @@ async function loadEnabledTokens({ room = "", pref = "", adminOnly = false, excl
     .filter(item => !onlyUid || item.data.uid === onlyUid)
     .filter(item => !excludeUid || item.data.uid !== excludeUid)
     .filter(item => !pref || item.data.preferences?.[pref] !== false)
+    .filter(item => !tokenInQuietHours(item.data))
     .filter(item => !room || item.data.rooms?.[room] === true)
     .filter(item => !adminOnly || item.data.rooms?.admin === true || ADMIN_EMAILS.has(cleanString(item.data.email).toLowerCase()));
 }
@@ -175,6 +234,74 @@ exports.notifyResultSaved = onDocumentWritten("games/{gameId}", async event => {
     }
   }));
   logger.info("Notificacoes de resultado enviadas", { gameId: event.params.gameId, sent });
+});
+
+exports.notifyGameLiveEvents = onDocumentWritten("games/{gameId}", async event => {
+  const before = event.data?.before?.data() || null;
+  const after = event.data?.after?.data() || null;
+  if (!after) return;
+
+  const home = cleanString(after.homeTeam, "Casa");
+  const away = cleanString(after.awayTeam, "Fora");
+  const label = `${home} vs ${away}`;
+  const beforeScore = effectiveGameScore(before);
+  const afterScore = effectiveGameScore(after);
+  const started = !isLiveGameStatus(before) && isLiveGameStatus(after);
+  const finished = !isFinishedGameStatus(before) && isFinishedGameStatus(after);
+  const goalHome = afterScore && (afterScore.home > (beforeScore?.home ?? 0)) && (isLiveGameStatus(after) || isLiveGameStatus(before));
+  const goalAway = afterScore && (afterScore.away > (beforeScore?.away ?? 0)) && (isLiveGameStatus(after) || isLiveGameStatus(before));
+
+  const jobs = [];
+
+  if (started) {
+    jobs.push({
+      pref: "gameStart",
+      title: "Jogo começou",
+      body: label,
+      type: "game_start",
+      tag: `mundial-game-start-${event.params.gameId}`
+    });
+  }
+
+  if (goalHome || goalAway) {
+    const scorer = goalHome && goalAway ? "Golos no jogo" : `Golo ${goalHome ? home : away}`;
+    const score = afterScore ? `${afterScore.home}-${afterScore.away}` : "";
+    jobs.push({
+      pref: "goals",
+      title: scorer,
+      body: score ? `${home} ${score} ${away}` : label,
+      type: "goal",
+      tag: `mundial-goal-${event.params.gameId}-${afterScore?.home ?? "x"}-${afterScore?.away ?? "x"}`
+    });
+  }
+
+  if (finished) {
+    const score = afterScore ? `${afterScore.home}-${afterScore.away}` : "";
+    jobs.push({
+      pref: "gameEnd",
+      title: "Jogo acabou",
+      body: score ? `${home} ${score} ${away}` : label,
+      type: "game_end",
+      tag: `mundial-game-end-${event.params.gameId}`
+    });
+  }
+
+  for (const job of jobs) {
+    const tokens = await loadEnabledTokens({ pref: job.pref, excludeUid: after.updatedBy || "" });
+    const sent = await sendTokenNotifications(tokens, () => ({
+      notification: { title: job.title, body: job.body },
+      data: {
+        type: job.type,
+        id: event.params.gameId,
+        uid: cleanString(after.updatedBy),
+        title: job.title,
+        body: job.body,
+        tag: job.tag,
+        url: notificationUrl("calendar", job.type)
+      }
+    }));
+    logger.info("Notificacoes de evento de jogo enviadas", { gameId: event.params.gameId, type: job.type, sent });
+  }
 });
 
 function knockoutSignal(settings) {

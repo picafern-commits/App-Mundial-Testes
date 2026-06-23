@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="pt" class="desktop-fullscreen-instant-v148">
+<html lang="pt" class="desktop-fullscreen-instant-v148 pc-fullscreen-instant-v168">
 <head>
+  <meta charset="UTF-8">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Mundial Pontos 2026 · Gestão Pro v162</title>
+  <title>Mundial Pontos 2026 · Config Fix</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Mundial 2026" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -20,7 +21,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
   <link rel="stylesheet" href="style.css" />
 </head>
-<body class="desktop-fullscreen-instant-v148">
+<body class="desktop-fullscreen-instant-v148 pc-fullscreen-instant-v168">
 
   <section id="loginScreen" class="login-screen">
     <div class="login-card">
@@ -106,6 +107,7 @@
       <button class="tab active" type="button" data-tab="calendarTab">Calendário</button>
       <button class="tab" type="button" data-tab="scoreTab">Pontuação</button>
       <button class="tab" type="button" data-tab="knockoutTab">Fase Final</button>
+      <button class="tab" type="button" data-tab="notificationsTab">Notificações <span id="notificationsBadgeV164" class="tab-badge-v164 hidden">0</span></button>
       <button class="tab" type="button" data-tab="logsTab">Logs</button>
       <button class="tab" type="button" data-tab="adminTab">Admin</button>
       <button class="tab" type="button" data-tab="settingsTab">Configurações</button>
@@ -142,6 +144,22 @@
         </div>
         <div id="knockoutLockNotice" class="knockout-lock-notice"></div>
         <div id="knockoutBracket" class="knockout-bracket"></div>
+      </section>
+
+      <section id="notificationsTab" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <h2>Centro de notificações</h2>
+            <p>Alertas Admin, push para Android/iPhone, resultados, golos e sincronização.</p>
+          </div>
+          <div class="collapse-actions">
+            <button id="markNotificationsReadBtnV164" class="secondary" type="button">Marcar como vistas</button>
+            <button id="openNotificationSettingsBtnV164" class="secondary" type="button">Instalação</button>
+          </div>
+        </div>
+        <div id="pushNotificationsPanelV165" class="push-panel-v165"></div>
+        <div id="notificationsSummaryV164" class="notifications-summary-v164"></div>
+        <div id="notificationsListV164" class="notifications-list-v164"></div>
       </section>
 
       <section id="logsTab" class="tab-panel">
@@ -425,7 +443,7 @@
         <div class="settings-grid-v162">
           <article class="settings-card-v162">
             <span>Versão</span>
-            <strong id="appVersionLabelV162">v162</strong>
+            <strong id="appVersionLabelV162">v166</strong>
             <p id="pwaUpdateStateV162">A verificar atualizações...</p>
             <div class="settings-actions-v162">
               <button id="forceUpdateAppBtnV162" class="primary" type="button">Atualizar app</button>
@@ -452,6 +470,7 @@
             </div>
           </article>
         </div>
+        <div id="installGuideV164" class="install-guide-v164"></div>
       </section>
     </main>
   </div>

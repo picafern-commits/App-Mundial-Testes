@@ -1,5 +1,5 @@
 window.MUNDIAL_CONFIG = {
-  appVersion: "159.0",
+  appVersion: "170.0",
   adminPin: "1234",
   adminEmails: ["pica.fern@gmail.com"],
   firebase: {
@@ -9,5 +9,8 @@ window.MUNDIAL_CONFIG = {
     storageBucket: "app-mundial2026.firebasestorage.app",
     messagingSenderId: "143980254410",
     appId: "1:143980254410:web:0f48873c3aa4c9ad201033"
+  },
+  messaging: {
+    vapidKey: ""
   }
 };
