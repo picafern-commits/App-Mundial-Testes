@@ -10267,7 +10267,7 @@ async function enablePushV170() {
     console.error("enablePushV170 falhou:", error);
     const msg = String(error?.message || error || "erro");
     if (msg.includes("invalid-vapid-key")) return appToastV170("VAPID key inválida.");
-    if (msg.includes("permission-denied")) return appToastV170("Sem permissão no Firestore para guardar notificationTokens. É preciso fazer deploy das regras firestore.rules.");
+    if (msg.includes("permission-denied")) return appToastV170("Sem permissão no Firestore para guardar notificationTokens. Confirma se o deploy das regras foi para app-mundial2026.");
     appToastV170(`Não consegui ativar push: ${msg.slice(0, 130)}`);
   }
 }

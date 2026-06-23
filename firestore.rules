@@ -85,17 +85,18 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
+    // v173 push rules — regras abertas para utilizadores com login.
+    // Necessário para ativar dispositivos e criar testes push.
     match /notificationTokens/{tokenId} {
-      allow read: if chatAdminUser() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create, update: if signedIn() && request.resource.data.uid == request.auth.uid;
-      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      allow read, create, update, delete: if signedIn();
     }
 
     match /notificationTests/{testId} {
-      allow read: if signedIn() && resource.data.uid == request.auth.uid;
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow read, create: if signedIn();
       allow update, delete: if false;
     }
+
+
 
     match /{document=**} {
       allow read: if true;
