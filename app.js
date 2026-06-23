@@ -4953,7 +4953,16 @@ function renderMatchRow(game) {
   const status = statusOf(game);
   const finalResult = hasFinalResult(game);
   const suspended = isSuspendedGame(game);
-  const scoreText = finalResult ? `${game.homeScore}-${game.awayScore}` : (suspended ? "Suspenso" : "VS");
+  const hasVisibleScore =
+    game.homeScore !== null &&
+    game.homeScore !== undefined &&
+    game.awayScore !== null &&
+    game.awayScore !== undefined &&
+    game.homeScore !== "" &&
+    game.awayScore !== "" &&
+    Number.isFinite(Number(game.homeScore)) &&
+    Number.isFinite(Number(game.awayScore));
+  const scoreText = hasVisibleScore ? `${Number(game.homeScore)}-${Number(game.awayScore)}` : (suspended ? "Suspenso" : "VS");
   const gameBets = betsForGame(game.id);
   const settledText = finalResult ? `${gameBets.length} apostas · pontos atribuídos` : `${gameBets.length} apostas importadas`;
   const resultButtonText = finalResult ? "Editar resultado" : "Adicionar resultado";
