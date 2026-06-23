@@ -11,6 +11,6 @@ window.MUNDIAL_CONFIG = {
     appId: "1:143980254410:web:0f48873c3aa4c9ad201033"
   },
   messaging: {
-    vapidKey: ""
+    vapidKey: "BDynYivUCLHhauPk1jnzAZy44Fw3dJ6JcQGjyNQq3Ce6_64l4PU1IJFQjbKj1ayV6RkxQ0tj1KFhOkTiaYBhDiY"
   }
 };
