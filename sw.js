@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v191-firebase-botoes-status";
+const CACHE_NAME = "mundial-pontos-2026-v192-nova-base-fix";
 const APP_SHELL = [
   "./",
   "./index.html",

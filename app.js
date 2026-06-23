@@ -251,14 +251,15 @@ function statusOf(game) {
   if (["IN_PLAY", "PAUSED", "LIVE", "1H", "2H", "HT", "ET", "PEN_LIVE"].includes(apiStatus)) {
     return { text: "A Decorrer", className: "live" };
   }
+
   if (["SUSPENDED"].includes(apiStatus)) return { text: "Suspenso", className: "suspended" };
   if (["POSTPONED", "CANCELLED"].includes(apiStatus)) return { text: "Adiado", className: "locked" };
   if (["FINISHED", "AWARDED"].includes(apiStatus)) return { text: "Jogado", className: "played" };
 
   if (!hasApiStatus && hasResult(game)) return { text: "Jogado", className: "played" };
 
-  // v191: sem resultado final não é "A Decorrer".
-  // O jogo fica como "Falta resultado" para o Admin colocar resultado.
+  // v192: o facto de a hora do jogo já ter passado não significa que esteja a decorrer.
+  // Enquanto não houver status live/API ou resultado final, fica pendente de resultado.
   return { text: "Falta resultado", className: "open" };
 }
 function isLocked(game) { return statusOf(game).className !== "open"; }
@@ -3691,8 +3692,8 @@ await initFirebase();
 setupAuthGate();
 
 
-// v191 — Users online: aguarda Firebase/Auth sem rebentar se ainda estiver a ligar.
-async function ensureFirebaseReadyForUsersV191() {
+// v192 — Users online: não rebenta nem marca offline antes do Firebase terminar o arranque.
+async function ensureFirebaseReadyForUsersV192() {
   try {
     if (db && firebaseApi && storageMode === "firebase" && (currentUser || firebaseAuth?.currentUser)) {
       if (!currentUser && firebaseAuth?.currentUser) currentUser = firebaseAuth.currentUser;
@@ -3701,12 +3702,13 @@ async function ensureFirebaseReadyForUsersV191() {
 
     if (typeof ensureFirebaseAuthReadyV188 === "function") {
       await ensureFirebaseAuthReadyV188().catch(error => {
-        console.warn("Firebase ready users v191 falhou:", error);
+        console.warn("Firebase/Auth ainda não pronto para users online:", error);
         return false;
       });
-    } else if (typeof initFirebase === "function") {
-      await initFirebase().catch(error => {
-        console.warn("initFirebase users v191 falhou:", error);
+    } else if (typeof initFirebase === "function" && !firebaseReadyPromise) {
+      firebaseReadyPromise = initFirebase();
+      await firebaseReadyPromise.catch(error => {
+        console.warn("Firebase init ainda não pronto para users online:", error);
         return false;
       });
     }
@@ -3714,60 +3716,27 @@ async function ensureFirebaseReadyForUsersV191() {
     if (!currentUser && firebaseAuth?.currentUser) currentUser = firebaseAuth.currentUser;
     return !!(db && firebaseApi && storageMode === "firebase" && (currentUser || firebaseAuth?.currentUser));
   } catch (error) {
-    console.warn("ensureFirebaseReadyForUsersV191 erro:", error);
+    console.warn("ensureFirebaseReadyForUsersV192 falhou:", error);
     return false;
   }
 }
 
-const loadOnlineUsersOriginalV191 = typeof loadOnlineUsers === "function" ? loadOnlineUsers : null;
-loadOnlineUsers = async function loadOnlineUsersV191() {
-  const list = $("onlineUsersList");
-  const badge = $("onlineUsersBadge");
+if (typeof loadOnlineUsers === "function" && !window.__loadOnlineUsersOriginalV192) {
+  window.__loadOnlineUsersOriginalV192 = loadOnlineUsers;
+  loadOnlineUsers = async function loadOnlineUsersV192() {
+    const list = $("onlineUsersList");
+    const badge = $("onlineUsersBadge");
 
-  if (!await ensureFirebaseReadyForUsersV191()) {
-    if (badge) badge.textContent = "a ligar";
-    if (list) {
-      const detail = lastFirebaseInitError ? `<br><small>${escapeHtml(lastFirebaseInitError)}</small>` : "";
-      list.innerHTML = `${onlineUsersPopupHeader()}<div class="empty small-empty">A ligar ao Firebase...${detail}</div>`;
+    if (!await ensureFirebaseReadyForUsersV192()) {
+      if (badge) badge.textContent = "a ligar";
+      if (list) {
+        const detail = lastFirebaseInitError ? `<br><small>${escapeHtml(lastFirebaseInitError)}</small>` : "";
+        list.innerHTML = `${onlineUsersPopupHeader()}<div class="empty small-empty">A ligar ao Firebase...${detail}</div>`;
+      }
+      setTimeout(() => loadOnlineUsers().catch(error => console.warn("retry users online v192", error)), 1500);
+      return;
     }
-    setTimeout(() => loadOnlineUsers().catch(error => console.warn("retry users v191", error)), 1500);
-    return;
-  }
 
-  if (loadOnlineUsersOriginalV191) return loadOnlineUsersOriginalV191();
-};
-
-// v191 — Status: jogo sem resultado final nunca deve aparecer como "A Decorrer" só por estar sem score.
-function shouldShowGameLiveV191(game) {
-  const status = String(game?.footballDataStatus || game?.apiStatus || game?.status || "").toUpperCase();
-  if (["IN_PLAY", "PAUSED", "LIVE", "1H", "2H", "HT", "ET", "PEN_LIVE"].includes(status)) return true;
-
-  const manual = String(game?.manualStatus || "").toUpperCase();
-  if (["IN_PLAY", "PAUSED", "LIVE", "A_DECORRER"].includes(manual)) return true;
-
-  return false;
+    return window.__loadOnlineUsersOriginalV192();
+  };
 }
-
-function shouldShowGameFinishedV191(game) {
-  const status = String(game?.footballDataStatus || game?.apiStatus || game?.status || "").toUpperCase();
-  if (["FINISHED", "AWARDED"].includes(status)) return true;
-  if (typeof hasFinalResult === "function" && hasFinalResult(game)) return true;
-  return false;
-}
-
-function gameStatusLabelV191(game) {
-  if (shouldShowGameFinishedV191(game)) return "Jogado";
-  if (shouldShowGameLiveV191(game)) return "A Decorrer";
-  return "Falta resultado";
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(() => {
-    try {
-      if (typeof renderCalendar === "function") renderCalendar();
-      if (typeof renderAll === "function") renderAll();
-    } catch (error) {
-      console.warn("render pós fix v191 falhou:", error);
-    }
-  }, 900);
-});
