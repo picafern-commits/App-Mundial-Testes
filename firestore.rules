@@ -6,24 +6,31 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    match /games/{gameId} {
+    match /notificationTokens/{docId} {
+      allow read: if signedIn();
+      allow create, update, delete: if false;
+    }
+
+    match /notificationPreferences/{docId} {
+      allow read: if signedIn();
+      allow create, update, delete: if false;
+    }
+
+    match /notificationTests/{docId} {
+      allow read, create: if signedIn();
+      allow update, delete: if false;
+    }
+
+    match /presence/{docId} {
       allow read: if true;
       allow create, update, delete: if signedIn();
     }
 
-    match /bets/{betId} {
-      allow read: if true;
-      allow create, update, delete: if signedIn();
-    }
 
-    match /settings/{docId} {
-      allow read: if true;
-      allow create, update, delete: if signedIn();
-    }
 
     match /{document=**} {
       allow read: if true;
-      allow write: if false;
+      allow write: if signedIn();
     }
   }
 }
