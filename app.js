@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v184";
+const APP_VERSION_LABEL = "v186";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -34,6 +34,8 @@ let selectedEditUser = "";
 let isAdmin = localStorage.getItem("mundial_admin_unlocked") === "1";
 let pendingExcelImport = null;
 let fullSyncTimer = null;
+let firebaseReconnectTimer = null;
+let firebaseLoadInFlight = null;
 let realtimeUnsubscribers = [];
 let realtimeRenderTimer = null;
 let onlineUsersCache = [];
@@ -648,6 +650,29 @@ function setFirebaseStatus(type, message) {
   box.textContent = message;
 }
 
+function applyLocalDataFast(reason = "cache local") {
+  const local = getLocalData();
+  games = normalizeGames(local.games);
+  bets = normalizeBets(local.bets);
+  appSettings = mergeSettings(local.settings || local.appSettings);
+  ensureKnockoutSettings();
+  renderAll();
+  setFirebaseStatus(navigator.onLine ? "loading" : "error", navigator.onLine ? `Firebase: a ligar... dados locais já visíveis` : "Offline: a mostrar dados guardados neste dispositivo");
+}
+
+function scheduleFirebaseReconnect(reason = "reconectar Firebase", delay = 3500) {
+  if (firebaseReconnectTimer) clearTimeout(firebaseReconnectTimer);
+  if (!navigator.onLine) {
+    setFirebaseStatus("error", "Firebase: offline; vou tentar quando houver internet");
+    return;
+  }
+  firebaseReconnectTimer = setTimeout(() => {
+    firebaseReconnectTimer = null;
+    if (!currentUser || !db || !firebaseApi) return;
+    loadData({ background: true, reason }).catch(error => console.warn("Retry Firebase falhou:", error));
+  }, delay);
+}
+
 
 
 // v114  Modo económico Firebase oficial.
@@ -804,9 +829,11 @@ async function initFirebase() {
 
   try {
     setFirebaseStatus("loading", "Firebase: a ligar...");
-    const appModule = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js");
-    const authModule = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");
-    const firestoreModule = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js");
+    const [appModule, authModule, firestoreModule] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js")
+    ]);
 
     const app = appModule.initializeApp(config);
     firebaseAuth = authModule.getAuth(app);
@@ -814,6 +841,12 @@ async function initFirebase() {
     db = firestoreModule.getFirestore(app);
     firebaseApi = firestoreModule;
     storageMode = "firebase";
+    installFirestoreEconomyModeV114();
+    try {
+      await firestoreModule.enableIndexedDbPersistence?.(db);
+    } catch (persistenceError) {
+      console.warn("Cache persistente Firestore indisponível:", persistenceError?.code || persistenceError?.message || persistenceError);
+    }
     try {
       const messagingModule = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging.js");
       const supported = await messagingModule.isSupported().catch(() => false);
@@ -897,76 +930,89 @@ function shortFirebaseError(error) {
   return text.slice(0, 90) || "erro desconhecido";
 }
 
-async function loadData() {
-  const local = getLocalData();
+async function loadData(options = {}) {
+  if (firebaseLoadInFlight && !options.force) return firebaseLoadInFlight;
 
-  if (!db || !firebaseApi || storageMode !== "firebase") {
-    games = normalizeGames(local.games);
-    bets = normalizeBets(local.bets);
-    appSettings = mergeSettings(local.settings || local.appSettings);
-    ensureKnockoutSettings();
-    renderAll();
-    return;
-  }
-
-  try {
-    setFirebaseStatus("loading", "Firebase: a carregar dados...");
-    const { collection, doc, getDocs, setDoc } = firebaseApi;
-
+  const run = (async () => {
+    const local = getLocalData();
     const localGames = normalizeGames(local.games || []);
     const localBets = normalizeBets(local.bets || []);
     const localSettings = mergeSettings(local.settings || local.appSettings || defaultSettings());
 
-    const gamesSnap = await withTimeout(getDocs(collection(db, "games")), 12000, "ler jogos");
-    const betsSnap = localBets.length
-      ? { docs: [], skipped: true }
-      : await withTimeout(getDocs(collection(db, "bets")), 12000, "ler apostas");
-    const settingsSnap = await withTimeout(getDocs(collection(db, "settings")), 12000, "ler configurações");
-
-    const remoteGames = gamesSnap.docs.map(item => ({ id: item.id, ...item.data() }));
-    const remoteBets = betsSnap.docs.map(item => ({ id: item.id, ...item.data() }));
-    const mainSettingsDoc = settingsSnap.docs.find(item => item.id === "main");
-
-    if (remoteGames.length) {
-      localGames.forEach(localGame => {
-        const remoteGame = remoteGames.find(item => item.id === localGame.id);
-        if (hasResult(localGame) && (!remoteGame || !hasResult(remoteGame) || gameUpdatedMillis(localGame) > gameUpdatedMillis(remoteGame))) {
-          markGamePending(localGame.id);
-        }
-      });
-      games = mergeGamesByNewest(remoteGames, localGames);
-    } else {
+    if (!options.background) {
       games = localGames.length ? localGames : clone(SEED_GAMES);
-      setTimeout(() => {
-        Promise.all(games.map(game => setDoc(doc(db, "games", game.id), game, { merge: true })))
-          .catch(error => console.warn("Não conseguiu criar jogos no Firebase", error));
-      }, 200);
+      bets = localBets;
+      appSettings = localSettings;
+      ensureKnockoutSettings();
+      renderAll();
     }
 
-    bets = normalizeBets(remoteBets.length ? remoteBets : localBets);
-    appSettings = mergeSettings(mainSettingsDoc ? mainSettingsDoc.data() : localSettings);
-    ensureKnockoutSettings();
-
-    saveLocalData("firebase carregado estável");
-    setFirebaseStatus("success", `Firebase: ligado · ${bets.length} apostas carregadas`);
-    renderAll();
-
-    if (!betsSnap.skipped && !remoteBets.length && localBets.length && pendingBetIds().length) {
-      setTimeout(() => saveBetsFastToFirebase("reenviar apostas locais").catch(console.warn), 400);
+    if (!db || !firebaseApi || storageMode !== "firebase") {
+      setFirebaseStatus("error", "Firebase: indisponível; a usar dados locais");
+      return;
     }
-    setTimeout(() => retryPendingGameSaves("arranque").catch(console.warn), 700);
-    setTimeout(() => retryPendingFullSync("arranque").catch(console.warn), 1000);
-    setupRealtimeSync();
-  } catch (error) {
-    console.error("Erro ao carregar Firebase:", error);
-    games = normalizeGames(local.games);
-    bets = normalizeBets(local.bets);
-    appSettings = mergeSettings(local.settings || local.appSettings);
-    ensureKnockoutSettings();
-    storageMode = "local";
-    setFirebaseStatus("error", `Firebase: erro ao carregar  ${error.message || "ver consola"}`);
-    renderAll();
-  }
+
+    try {
+      setFirebaseStatus("loading", options.background ? "Firebase: a atualizar em segundo plano..." : "Firebase: a carregar dados...");
+      const { collection, doc, getDocs, setDoc } = firebaseApi;
+
+      const gamesPromise = withTimeout(getDocs(collection(db, "games")), 9000, "ler jogos");
+      const settingsPromise = withTimeout(getDocs(collection(db, "settings")), 9000, "ler configurações");
+      const betsPromise = localBets.length
+        ? Promise.resolve({ docs: [], skipped: true })
+        : withTimeout(getDocs(collection(db, "bets")), 9000, "ler apostas");
+
+      const [gamesSnap, betsSnap, settingsSnap] = await Promise.all([gamesPromise, betsPromise, settingsPromise]);
+
+      const remoteGames = gamesSnap.docs.map(item => ({ id: item.id, ...item.data() }));
+      const remoteBets = betsSnap.docs.map(item => ({ id: item.id, ...item.data() }));
+      const mainSettingsDoc = settingsSnap.docs.find(item => item.id === "main");
+
+      if (remoteGames.length) {
+        localGames.forEach(localGame => {
+          const remoteGame = remoteGames.find(item => item.id === localGame.id);
+          if (hasResult(localGame) && (!remoteGame || !hasResult(remoteGame) || gameUpdatedMillis(localGame) > gameUpdatedMillis(remoteGame))) {
+            markGamePending(localGame.id);
+          }
+        });
+        games = mergeGamesByNewest(remoteGames, localGames);
+      } else {
+        games = localGames.length ? localGames : clone(SEED_GAMES);
+        setTimeout(() => {
+          Promise.all(games.map(game => setDoc(doc(db, "games", game.id), game, { merge: true })))
+            .catch(error => console.warn("Não conseguiu criar jogos no Firebase", error));
+        }, 200);
+      }
+
+      bets = normalizeBets(remoteBets.length ? remoteBets : localBets);
+      appSettings = mergeSettings(mainSettingsDoc ? mainSettingsDoc.data() : localSettings);
+      ensureKnockoutSettings();
+
+      storageMode = "firebase";
+      saveLocalData("firebase carregado rápido");
+      setFirebaseStatus("success", `Firebase: ligado · ${bets.length} apostas carregadas`);
+      renderAll();
+
+      if (!betsSnap.skipped && !remoteBets.length && localBets.length && pendingBetIds().length) {
+        setTimeout(() => saveBetsFastToFirebase("reenviar apostas locais").catch(console.warn), 400);
+      }
+      setTimeout(() => retryPendingGameSaves("arranque").catch(console.warn), 700);
+      setTimeout(() => retryPendingFullSync("arranque").catch(console.warn), 1000);
+      setupRealtimeSync();
+    } catch (error) {
+      console.error("Erro ao carregar Firebase:", error);
+      games = localGames.length ? localGames : games;
+      bets = localBets.length ? localBets : bets;
+      appSettings = localSettings || appSettings;
+      ensureKnockoutSettings();
+      setFirebaseStatus("error", `Firebase: ligação instável (${shortFirebaseError(error)}). A usar cache e vou tentar novamente.`);
+      renderAll();
+      scheduleFirebaseReconnect(options.reason || "loadData erro", 4500);
+    }
+  })();
+
+  firebaseLoadInFlight = run.finally(() => { firebaseLoadInFlight = null; });
+  return firebaseLoadInFlight;
 }
 
 function cleanupRealtimeSync() {
@@ -1038,15 +1084,17 @@ function setupRealtimeSync() {
     const wasPermissionsManager = hasPermission("managePermissions");
     const data = snap.data() || {};
     const configAdmin = isConfiguredAdmin(currentUser.email);
+    const storedRole = normalizeRole(data.role || (configAdmin ? "admin" : "user"));
+    const effectiveRole = configAdmin && storedRole !== "owner" ? "admin" : storedRole;
     currentProfile = {
       ...defaultProfileForUser(currentUser),
       ...data,
       uid: currentUser.uid,
       email: normalizeEmail(currentUser.email),
-      role: configAdmin ? "admin" : (data.role || "user"),
+      role: effectiveRole,
       active: data.active !== false,
       permissions: {
-        ...(data.role === "admin" || configAdmin ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS),
+        ...permissionsForRole(effectiveRole),
         ...(data.permissions || {})
       }
     };
@@ -1554,6 +1602,10 @@ const DEFAULT_PERMISSIONS = {
   calendar: true,
   score: true,
   knockout: true,
+  notifications: false,
+  logs: false,
+  settings: false,
+  adminTab: false,
   admin: false,
   editResults: false,
   importExcel: false,
@@ -1567,6 +1619,10 @@ const ADMIN_PERMISSIONS = {
   calendar: true,
   score: true,
   knockout: true,
+  notifications: true,
+  logs: true,
+  settings: true,
+  adminTab: true,
   admin: true,
   editResults: true,
   importExcel: true,
@@ -1575,6 +1631,31 @@ const ADMIN_PERMISSIONS = {
   editKnockout: true,
   managePermissions: true
 };
+
+const OWNER_PERMISSIONS = {
+  ...ADMIN_PERMISSIONS
+};
+
+function normalizeRole(role) {
+  const value = String(role || "user").toLowerCase().trim();
+  if (value === "owner" || value === "dono") return "owner";
+  if (value === "admin") return "admin";
+  return "user";
+}
+
+function permissionsForRole(role) {
+  const normalized = normalizeRole(role);
+  if (normalized === "owner") return { ...OWNER_PERMISSIONS };
+  if (normalized === "admin") return { ...ADMIN_PERMISSIONS };
+  return { ...DEFAULT_PERMISSIONS };
+}
+
+function roleLabel(role) {
+  const normalized = normalizeRole(role);
+  if (normalized === "owner") return "Dono";
+  if (normalized === "admin") return "Admin";
+  return "User";
+}
 
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
@@ -1607,12 +1688,12 @@ function defaultProfileForUser(user) {
 
 function hasPermission(permission) {
   if (!currentProfile?.active) return false;
-  if (currentProfile?.role === "admin") return true;
+  if (normalizeRole(currentProfile?.role) === "owner") return true;
   return Boolean(currentProfile?.permissions?.[permission]);
 }
 
 function isAdminProfile() {
-  return hasPermission("admin") || currentProfile?.role === "admin";
+  return hasPermission("admin") || normalizeRole(currentProfile?.role) === "owner";
 }
 
 function setLoginStatus(message, type = "info") {
@@ -1656,7 +1737,7 @@ function updateSessionBox() {
 
   box.classList.remove("hidden");
 
-  const role = currentProfile?.role === "admin" ? "Admin" : "User";
+  const role = roleLabel(currentProfile?.role);
   const visibleName = String(currentProfile?.name || "").trim() || displayNameFromEmail(currentUser.email) || currentUser.email || "Conta";
 
   label.textContent = `${visibleName} · ${role}`;
@@ -1679,21 +1760,23 @@ async function readUserProfile(user) {
 
     const data = snap.data() || {};
     const configAdmin = isConfiguredAdmin(user.email);
+    const storedRole = normalizeRole(data.role || (configAdmin ? "admin" : "user"));
+    const effectiveRole = configAdmin && storedRole !== "owner" ? "admin" : storedRole;
     const profile = {
       ...fallback,
       ...data,
       uid: user.uid,
       email: normalizeEmail(user.email),
       name: String(data.name || fallback.name || "").trim(),
-      role: configAdmin ? "admin" : (data.role || "user"),
+      role: effectiveRole,
       active: data.active !== false,
       permissions: {
-        ...(data.role === "admin" || configAdmin ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS),
+        ...permissionsForRole(effectiveRole),
         ...(data.permissions || {})
       }
     };
 
-    if (configAdmin && data.role !== "admin") {
+    if (configAdmin && normalizeRole(data.role) === "user") {
       await setDoc(ref, { role: "admin", active: true, permissions: ADMIN_PERMISSIONS, updatedAt: new Date().toISOString() }, { merge: true });
     }
 
@@ -1741,10 +1824,14 @@ function renderPermissionsUsers() {
   }
 
   const labels = {
-    calendar: "Calendário",
-    score: "Pontuação",
-    knockout: "Fase Final",
-    admin: "Admin",
+    calendar: "Ver Calendário",
+    score: "Ver Pontuação",
+    knockout: "Ver Fase Final",
+    notifications: "Ver Notificações",
+    logs: "Ver Logs",
+    settings: "Ver Configurações",
+    adminTab: "Ver Admin",
+    admin: "Poder Admin",
     editResults: "Editar resultados",
     importExcel: "Importar Excel",
     editUsers: "Users do jogo",
@@ -1756,9 +1843,9 @@ function renderPermissionsUsers() {
   list.innerHTML = permissionsCache.map(user => {
     const email = normalizeEmail(user.email || user.id);
     const visibleName = String(user.name || "").trim() || displayNameFromEmail(email);
-    const role = user.role === "admin" ? "admin" : "user";
-    const isAdminUser = role === "admin";
-    const perms = { ...(isAdminUser ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS), ...(user.permissions || {}) };
+    const role = normalizeRole(user.role);
+    const isOwnerUser = role === "owner";
+    const perms = { ...permissionsForRole(role), ...(user.permissions || {}) };
     const active = user.active !== false;
 
     return `
@@ -1766,7 +1853,7 @@ function renderPermissionsUsers() {
         <div class="permission-user-head">
           <div>
             <strong>${escapeHtml(visibleName)}</strong>
-            <span>${escapeHtml(email)} · ${isAdminUser ? "Admin" : "User normal"} · ${active ? "Ativo" : "Bloqueado"}</span>
+            <span>${escapeHtml(email)} · ${roleLabel(role)} · ${active ? "Ativo" : "Bloqueado"}</span>
           </div>
           <div class="permission-user-actions">
             <label class="permission-name-label">
@@ -1776,6 +1863,7 @@ function renderPermissionsUsers() {
             <select data-role-email="${escapeHtml(email)}">
               <option value="user" ${role === "user" ? "selected" : ""}>User normal</option>
               <option value="admin" ${role === "admin" ? "selected" : ""}>Admin</option>
+              <option value="owner" ${role === "owner" ? "selected" : ""}>Dono</option>
             </select>
             <label class="perm-active">
               <input type="checkbox" data-active-email="${escapeHtml(email)}" ${active ? "checked" : ""} />
@@ -1785,7 +1873,7 @@ function renderPermissionsUsers() {
           </div>
         </div>
         <div class="permission-grid">
-          ${Object.entries(labels).map(([key, label]) => renderPermissionCheckbox(email, key, label, perms[key], isAdminUser)).join("")}
+          ${Object.entries(labels).map(([key, label]) => renderPermissionCheckbox(email, key, label, perms[key], isOwnerUser)).join("")}
         </div>
       </article>
     `;
@@ -1802,16 +1890,16 @@ async function savePermissionUser(email) {
   const card = document.querySelector(`[data-permission-card="${CSS.escape(normalized)}"]`);
   const existingProfile = permissionsCache.find(user => normalizeEmail(user.email || user.id) === normalized) || {};
 
-  const role = document.querySelector(`[data-role-email="${CSS.escape(normalized)}"]`)?.value || $("permissionRoleInput")?.value || "user";
+  const role = normalizeRole(document.querySelector(`[data-role-email="${CSS.escape(normalized)}"]`)?.value || $("permissionRoleInput")?.value || "user");
   const activeInput = document.querySelector(`[data-active-email="${CSS.escape(normalized)}"]`);
   const active = activeInput ? activeInput.checked : true;
-  const isAdminUser = role === "admin";
+  const isOwnerUser = role === "owner";
 
   const nameInput = document.querySelector(`[data-name-email="${CSS.escape(normalized)}"]`) || $("permissionNameInput");
   const visibleName = String(nameInput?.value || existingProfile.name || displayNameFromEmail(normalized)).trim() || displayNameFromEmail(normalized);
 
-  const permissions = isAdminUser ? { ...ADMIN_PERMISSIONS } : { ...DEFAULT_PERMISSIONS };
-  if (card && !isAdminUser) {
+  const permissions = permissionsForRole(role);
+  if (card && !isOwnerUser) {
     card.querySelectorAll("[data-perm-key]").forEach(input => {
       permissions[input.dataset.permKey] = input.checked;
     });
@@ -1847,7 +1935,7 @@ async function savePermissionUser(email) {
     }
   }
 
-  addSystemLog("Utilizador guardado", `${visibleName} (${normalized}) ficou como ${role}${active ? "" : " bloqueado"}.`, { email: normalized, role, active }, { sync: true });
+  addSystemLog("Utilizador guardado", `${visibleName} (${normalized}) ficou como ${roleLabel(role)}${active ? "" : " bloqueado"}.`, { email: normalized, role, active }, { sync: true });
   toast("Utilizador guardado.");
   await loadPermissionsUsers();
   renderPermissionsUsers();
@@ -1876,10 +1964,10 @@ function permissionTabAllowed(tabId) {
   if (tabId === "calendarTab") return hasPermission("calendar");
   if (tabId === "scoreTab") return hasPermission("score");
   if (tabId === "knockoutTab") return hasPermission("knockout");
-  if (tabId === "notificationsTab") return hasPermission("admin");
-  if (tabId === "adminTab") return hasPermission("admin");
-  if (tabId === "logsTab") return hasPermission("admin");
-  if (tabId === "settingsTab") return hasPermission("admin");
+  if (tabId === "notificationsTab") return hasPermission("notifications");
+  if (tabId === "adminTab") return hasPermission("adminTab");
+  if (tabId === "logsTab") return hasPermission("logs");
+  if (tabId === "settingsTab") return hasPermission("settings");
   return true;
 }
 
@@ -1898,10 +1986,10 @@ function applyPermissionsToUi() {
   document.querySelector('[data-tab="calendarTab"]')?.classList.toggle("hidden", !hasPermission("calendar"));
   document.querySelector('[data-tab="scoreTab"]')?.classList.toggle("hidden", !hasPermission("score"));
   document.querySelector('[data-tab="knockoutTab"]')?.classList.toggle("hidden", !hasPermission("knockout"));
-  document.querySelector('[data-tab="notificationsTab"]')?.classList.toggle("hidden", !hasPermission("admin"));
-  document.querySelector('[data-tab="logsTab"]')?.classList.toggle("hidden", !hasPermission("admin"));
-  document.querySelector('[data-tab="adminTab"]')?.classList.toggle("hidden", !hasPermission("admin"));
-  document.querySelector('[data-tab="settingsTab"]')?.classList.toggle("hidden", !hasPermission("admin"));
+  document.querySelector('[data-tab="notificationsTab"]')?.classList.toggle("hidden", !hasPermission("notifications"));
+  document.querySelector('[data-tab="logsTab"]')?.classList.toggle("hidden", !hasPermission("logs"));
+  document.querySelector('[data-tab="adminTab"]')?.classList.toggle("hidden", !hasPermission("adminTab"));
+  document.querySelector('[data-tab="settingsTab"]')?.classList.toggle("hidden", !hasPermission("settings"));
 
   const activeTab = document.querySelector(".tab.active");
   if (activeTab && !permissionTabAllowed(activeTab.dataset.tab)) switchToFirstAllowedTab();
@@ -2443,7 +2531,7 @@ function updateChatUnreadBadge() {
 const CHAT_SETTINGS_COLLECTION = "chatSettings";
 
 function isChatAdmin() {
-  return hasPermission("editResults") || currentProfile?.role === "admin";
+  return hasPermission("editResults") || hasPermission("admin");
 }
 
 function canDeleteChatMessage(message) {
@@ -3497,7 +3585,9 @@ function setupAuthGate() {
 
       showAppScreen();
       updateSessionBox();
-      await loadPermissionsUsers();
+      loadPermissionsUsers()
+        .then(renderPermissionsUsers)
+        .catch(error => console.warn("Permissões em segundo plano falharam:", error));
       await loadData();
       applyPermissionsToUi();
       setLoginStatus("Login efetuado.", "success");
@@ -5156,8 +5246,9 @@ function addSearchButtonsToResultCards() {
 
 
 function renderAdminState() {
-  $("adminLocked").classList.toggle("hidden", isAdmin || isAdminProfile());
-  $("adminUnlocked").classList.toggle("hidden", !(isAdmin || isAdminProfile()));
+  const canUseAdminPanel = isAdminProfile() || (isAdmin && hasPermission("admin"));
+  $("adminLocked").classList.toggle("hidden", canUseAdminPanel);
+  $("adminUnlocked").classList.toggle("hidden", !canUseAdminPanel);
   const status = storageMode === "firebase" ? "Firebase online" : "Modo local";
   $("storageStatus").textContent = `${status}. Importa as apostas do Excel Resultados e mete os resultados reais manualmente.`;
 }
@@ -6436,6 +6527,7 @@ document.querySelectorAll(".tab").forEach(button => {
   });
 });
 $("unlockAdminBtn").addEventListener("click", () => {
+  if (!hasPermission("admin")) return toast("Sem permissão Admin.");
   if ($("adminPinInput").value !== ADMIN_PIN) return toast("PIN errado.");
   isAdmin = true; localStorage.setItem("mundial_admin_unlocked", "1"); renderAll();
 });
@@ -6696,10 +6788,12 @@ document.addEventListener("change", event => {
   if (roleSelect) {
     const email = roleSelect.dataset.roleEmail;
     const card = document.querySelector(`[data-permission-card="${CSS.escape(email)}"]`);
-    const isAdminRole = roleSelect.value === "admin";
+    const role = normalizeRole(roleSelect.value);
+    const isOwnerRole = role === "owner";
+    const defaults = permissionsForRole(role);
     card?.querySelectorAll("[data-perm-key]").forEach(input => {
-      input.disabled = isAdminRole;
-      if (isAdminRole) input.checked = true;
+      input.disabled = isOwnerRole;
+      input.checked = Boolean(defaults[input.dataset.permKey]);
     });
   }
 });
@@ -10064,13 +10158,22 @@ function setupV162Controls() {
   $("openLogsFromSettingsBtnV162")?.addEventListener("click", () => openTabV162("logsTab"));
   $("markNotificationsReadBtnV164")?.addEventListener("click", markNotificationsReadV164);
   $("openNotificationSettingsBtnV164")?.addEventListener("click", () => {
-    if (hasPermission("admin")) openTabV162("settingsTab");
+    if (hasPermission("settings")) openTabV162("settingsTab");
     else $("installAppBtn")?.click() || toast("No iPhone usa Safari > Partilhar > Adicionar ao Ecrã Principal.");
   });
   $("openAdminFromSettingsBtnV162")?.addEventListener("click", () => openTabV162("adminTab") || toast("Sem permissão para abrir Admin."));
 
-  window.addEventListener("online", () => { renderAppSettingsPanelV162(); renderNotificationsCenterV164(); });
-  window.addEventListener("offline", () => { renderAppSettingsPanelV162(); renderNotificationsCenterV164(); });
+  window.addEventListener("online", () => {
+    setFirebaseStatus("loading", "Firebase: internet voltou, a reconectar...");
+    scheduleFirebaseReconnect("online", 500);
+    renderAppSettingsPanelV162();
+    renderNotificationsCenterV164();
+  });
+  window.addEventListener("offline", () => {
+    setFirebaseStatus("error", "Firebase: offline; alterações ficam guardadas localmente");
+    renderAppSettingsPanelV162();
+    renderNotificationsCenterV164();
+  });
   setInterval(setupModalStateV162, 600);
 }
 
