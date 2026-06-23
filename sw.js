@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v189-auth-utf8-cache";
+const CACHE_NAME = "mundial-pontos-2026-v190-firebase-online";
 const APP_SHELL = [
   "./",
   "./index.html",

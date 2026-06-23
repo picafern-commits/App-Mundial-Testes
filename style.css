@@ -9603,3 +9603,33 @@ button,
     flex:0 0 auto!important;
   }
 }
+
+
+/* v190-admin-clean */
+.admin-section-tabs-v187{
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0;
+  background: rgba(7, 11, 19, .86);
+  backdrop-filter: blur(10px);
+}
+.admin-section-tabs-v187 button{
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.05);
+  color: rgba(255,255,255,.78);
+  border-radius: 12px;
+  padding: 9px 12px;
+  font-weight: 900;
+}
+.admin-section-tabs-v187 button.active{
+  background: linear-gradient(135deg, #ffd34f, #ffb300);
+  color: #101522;
+  border-color: transparent;
+}
+#adminUnlocked > .admin-card.admin-section-hidden-v187{
+  display: none !important;
+}

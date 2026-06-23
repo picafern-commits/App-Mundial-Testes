@@ -10574,3 +10574,165 @@ document.addEventListener("DOMContentLoaded", () => {
   renderAppSettingsPanelV162();
   renderInstallGuideV164();
 });
+
+
+// v190 — Corrige Users offline prematuro e limpa Admin por secções.
+async function ensureFirebaseOnlineForPresenceV190() {
+  try {
+    if (db && firebaseApi && storageMode === "firebase" && (currentUser || firebaseAuth?.currentUser)) {
+      if (!currentUser && firebaseAuth?.currentUser) currentUser = firebaseAuth.currentUser;
+      return true;
+    }
+
+    if (typeof ensureFirebaseAuthReadyV188 === "function") {
+      await ensureFirebaseAuthReadyV188().catch(error => {
+        console.warn("ensureFirebaseAuthReadyV188 falhou no presence:", error);
+        return false;
+      });
+    } else if (!firebaseReadyPromise && typeof initFirebase === "function") {
+      firebaseReadyPromise = initFirebase();
+      await firebaseReadyPromise.catch(error => {
+        console.warn("initFirebase falhou no presence:", error);
+        return false;
+      });
+    }
+
+    if (!currentUser && firebaseAuth?.currentUser) currentUser = firebaseAuth.currentUser;
+
+    return !!(db && firebaseApi && storageMode === "firebase" && (currentUser || firebaseAuth?.currentUser));
+  } catch (error) {
+    console.warn("ensureFirebaseOnlineForPresenceV190 falhou:", error);
+    return false;
+  }
+}
+
+async function loadOnlineUsersV190() {
+  const list = $("onlineUsersList");
+  const badge = $("onlineUsersBadge");
+
+  const ready = await ensureFirebaseOnlineForPresenceV190();
+
+  if (!ready) {
+    if (badge) badge.textContent = "a ligar";
+    if (list) {
+      const detail = lastFirebaseInitError ? `<br><small>${escapeHtml(lastFirebaseInitError)}</small>` : "";
+      list.innerHTML = `${onlineUsersPopupHeader()}<div class="empty small-empty">A ligar ao Firebase...${detail}</div>`;
+    }
+
+    setTimeout(() => {
+      if (typeof loadOnlineUsers === "function") {
+        loadOnlineUsers().catch(error => console.warn("Retry users online v190 falhou:", error));
+      }
+    }, 1400);
+
+    return;
+  }
+
+  try {
+    const { collection, getDocs } = firebaseApi;
+    const snap = await withTimeout(getDocs(collection(db, PRESENCE_COLLECTION)), 10000, "ler utilizadores online");
+
+    onlineUsersCache = snap.docs
+      .map(docSnap => {
+        const data = { id: docSnap.id, ...(docSnap.data() || {}) };
+        const email = normalizeEmail(data.email || data.id);
+        return {
+          ...data,
+          email,
+          name: data.name || displayNameFromEmail(email)
+        };
+      })
+      .sort((a, b) => {
+        const ao = isOnlinePresence(a) ? 0 : 1;
+        const bo = isOnlinePresence(b) ? 0 : 1;
+        if (ao !== bo) return ao - bo;
+
+        const at = presenceTimestampMs(a.lastActiveAt);
+        const bt = presenceTimestampMs(b.lastActiveAt);
+        if (bt !== at) return bt - at;
+
+        return String(a.email || "").localeCompare(String(b.email || ""), "pt");
+      });
+
+    renderOnlineUsers();
+  } catch (error) {
+    console.warn("Erro ao carregar utilizadores online v190:", error);
+    if (badge) badge.textContent = "sem acesso";
+    if (list) {
+      const message = shortFirebaseError ? shortFirebaseError(error?.message || error) : (error?.message || "erro");
+      list.innerHTML = `${onlineUsersPopupHeader()}
+        <div class="empty small-empty">
+          Não foi possível carregar utilizadores online: ${escapeHtml(message)}.
+        </div>`;
+    }
+  }
+}
+
+loadOnlineUsers = loadOnlineUsersV190;
+
+function ensureAdminSectionTabsV190() {
+  let tabs = $("adminSectionTabsV187");
+  const sections = [
+    ["users", "Users"],
+    ["results", "Resultados"],
+    ["points", "Pontos"],
+    ["knockout", "Fase Final"],
+    ["system", "Sistema"]
+  ];
+
+  if (!tabs) {
+    tabs = document.createElement("div");
+    tabs.id = "adminSectionTabsV187";
+    tabs.className = "admin-section-tabs-v187";
+  }
+
+  tabs.innerHTML = sections.map(([key, label]) => `<button type="button" data-admin-section-v187="${key}">${label}</button>`).join("");
+
+  const overview = $("adminOverviewV162");
+  if (!tabs.parentNode && overview?.parentNode) overview.parentNode.insertBefore(tabs, overview.nextSibling);
+
+  return tabs;
+}
+
+function renderAdminSectionsV190() {
+  const tabs = ensureAdminSectionTabsV190();
+  if (!tabs) return;
+
+  let active = localStorage.getItem(`${STORAGE_KEY}_admin_section_v187`) || "users";
+  if (active === "all") active = "users";
+
+  tabs.querySelectorAll("[data-admin-section-v187]").forEach(button => {
+    button.classList.toggle("active", button.dataset.adminSectionV187 === active);
+  });
+
+  document.querySelectorAll("#adminUnlocked > .admin-card").forEach(card => {
+    const section = adminSectionForCardV187(card);
+    card.dataset.adminSectionV187 = section;
+    const isActive = section === active;
+    card.classList.toggle("admin-section-hidden-v187", !isActive);
+    card.hidden = !isActive;
+
+    if (isActive && card.tagName?.toLowerCase() === "details") {
+      card.open = true;
+    }
+  });
+}
+
+renderAdminSectionsV187 = renderAdminSectionsV190;
+ensureAdminSectionTabsV187 = ensureAdminSectionTabsV190;
+
+document.addEventListener("click", event => {
+  const btn = event.target.closest?.("[data-admin-section-v187]");
+  if (!btn) return;
+  event.preventDefault();
+  const section = btn.dataset.adminSectionV187 || "users";
+  localStorage.setItem(`${STORAGE_KEY}_admin_section_v187`, section);
+  renderAdminSectionsV190();
+}, true);
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(() => {
+    loadOnlineUsers().catch(error => console.warn("Users online v190 inicial falhou:", error));
+    renderAdminSectionsV190();
+  }, 1200);
+});
