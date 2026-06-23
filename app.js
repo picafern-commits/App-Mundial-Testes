@@ -4949,20 +4949,31 @@ function renderCalendar() {
 
   renderCalendarFilterState();
 }
+
+function visibleScoreForCalendarV196(game) {
+  const numberOrNullLocal = value => {
+    if (value === null || value === undefined || value === "") return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  };
+
+  const liveHome = numberOrNullLocal(game?.liveHomeScore);
+  const liveAway = numberOrNullLocal(game?.liveAwayScore);
+  if (liveHome !== null && liveAway !== null) return { home: liveHome, away: liveAway, live: true };
+
+  const home = numberOrNullLocal(game?.homeScore);
+  const away = numberOrNullLocal(game?.awayScore);
+  if (home !== null && away !== null) return { home, away, live: false };
+
+  return null;
+}
+
 function renderMatchRow(game) {
   const status = statusOf(game);
   const finalResult = hasFinalResult(game);
   const suspended = isSuspendedGame(game);
-  const hasVisibleScore =
-    game.homeScore !== null &&
-    game.homeScore !== undefined &&
-    game.awayScore !== null &&
-    game.awayScore !== undefined &&
-    game.homeScore !== "" &&
-    game.awayScore !== "" &&
-    Number.isFinite(Number(game.homeScore)) &&
-    Number.isFinite(Number(game.awayScore));
-  const scoreText = hasVisibleScore ? `${Number(game.homeScore)}-${Number(game.awayScore)}` : (suspended ? "Suspenso" : "VS");
+  const visibleScore = visibleScoreForCalendarV196(game);
+  const scoreText = visibleScore ? `${visibleScore.home}-${visibleScore.away}` : (suspended ? "Suspenso" : "VS");
   const gameBets = betsForGame(game.id);
   const settledText = finalResult ? `${gameBets.length} apostas · pontos atribuídos` : `${gameBets.length} apostas importadas`;
   const resultButtonText = finalResult ? "Editar resultado" : "Adicionar resultado";
