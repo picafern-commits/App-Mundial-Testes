@@ -10267,7 +10267,7 @@ async function enablePushV170() {
     console.error("enablePushV170 falhou:", error);
     const msg = String(error?.message || error || "erro");
     if (msg.includes("invalid-vapid-key")) return appToastV170("VAPID key inválida.");
-    if (msg.includes("permission-denied")) return appToastV170("Sem permissão no Firestore para guardar notificationTokens.");
+    if (msg.includes("permission-denied")) return appToastV170("Sem permissão no Firestore para guardar notificationTokens. É preciso fazer deploy das regras firestore.rules.");
     appToastV170(`Não consegui ativar push: ${msg.slice(0, 130)}`);
   }
 }
@@ -10290,7 +10290,7 @@ async function sendTestPushV170() {
   } catch (error) {
     console.error("sendTestPushV170 falhou:", error);
     const msg = String(error?.message || error || "erro");
-    if (msg.includes("permission-denied")) return appToastV170("Sem permissão para criar notificationTests.");
+    if (msg.includes("permission-denied")) return appToastV170("Sem permissão para criar notificationTests. É preciso fazer deploy das regras firestore.rules.");
     appToastV170(`Não consegui enviar teste: ${msg.slice(0, 130)}`);
   }
 }
@@ -10474,3 +10474,13 @@ document.addEventListener("click", event => {
     saveVapidKeyFixV171();
   }
 }, true);
+
+
+// v172 — Diagnóstico extra para permissões Firestore do push.
+function explainPushPermissionErrorV172(error) {
+  const msg = String(error?.message || error || "");
+  if (msg.toLowerCase().includes("permission") || msg.toLowerCase().includes("insufficient")) {
+    return "Sem permissão no Firestore para guardar notificationTokens. Faz deploy das regras firestore.rules desta versão.";
+  }
+  return msg;
+}
