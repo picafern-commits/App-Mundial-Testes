@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v217";
+const APP_VERSION_LABEL = "v219";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -9971,7 +9971,7 @@ function renderInstallGuideV164() {
     <div class="install-guide-head-v164">
       <div>
         <h3>Guia de instalação</h3>
-        <p>Passos rápidos para instalar a PWA em iPhone, Android e PC.</p>
+        <p>Instalação em iPhone, Android e PC.</p>
       </div>
       <button type="button" class="primary" data-install-now-v164>Instalar agora</button>
     </div>
@@ -10337,15 +10337,15 @@ function renderPushNotificationsPanelV165() {
   const preferences = savedPushPreferencesV181();
   const hasToken = Boolean(localStorage.getItem(pushLastTokenStorageKeyV181()));
   const permissionText = support.permission === "granted" ? "Permitidas" : support.permission === "denied" ? "Bloqueadas" : support.permission === "unsupported" ? "Não suportadas" : "Por ativar";
-  const deviceText = support.ios ? (support.standalone ? "iPhone PWA instalada" : "iPhone: instalar no Ecrã Principal") : /android/i.test(navigator.userAgent) ? "Android" : "PC / Browser";
+  const deviceText = support.ios ? (support.standalone ? "iPhone PWA instalada" : "iPhone: instalar no Ecra Principal") : /android/i.test(navigator.userAgent) ? "Android" : "PC / Browser";
   const vapidText = support.hasVapid ? "VAPID configurada" : "VAPID default Firebase";
 
   panel.innerHTML = `
     <div class="push-panel-head-v165">
       <div>
         <strong>Push Android / iPhone</strong>
-        <span>Fluxo único via Firebase Functions: preferências, ativação e teste.</span>
-        <small>Funciona com a app fechada quando o dispositivo está subscrito. Silêncio por defeito: 23h-09h.</small>
+        <span>Preferências, ativação e teste.</span>
+        <small>Silêncio por defeito: 23h-09h.</small>
       </div>
       <div class="push-panel-actions-v165">
         <button id="enablePushBtnV165" class="primary" type="button">Ativar neste dispositivo</button>
@@ -10361,7 +10361,7 @@ function renderPushNotificationsPanelV165() {
     <div class="push-options-v165 push-options-v200">
       <div class="push-options-title-v200">
         <strong>Notificações</strong>
-        <span>Ativa/desativa individualmente cada tipo de alerta neste dispositivo.</span>
+        <span>Escolhe os alertas deste dispositivo.</span>
       </div>
       <label><input id="pushGameStartInputV181" type="checkbox" ${preferences.gameStart ? "checked" : ""} /> Jogo começou</label>
       <label><input id="pushGoalsInputV181" type="checkbox" ${preferences.goals ? "checked" : ""} /> Golos / alteração no marcador</label>
@@ -10395,10 +10395,10 @@ function renderPushNotificationsPanelV165() {
         <input id="pushTestGameInputV184" type="text" value="Portugal vs Uzbequistão" />
       </label>
       <label>Mensagem opcional
-        <input id="pushTestMessageInputV184" type="text" placeholder="Vazio usa o texto automático" />
+        <input id="pushTestMessageInputV184" type="text" placeholder="Vazio usa texto automatico" />
       </label>
     </div>
-    <p class="push-note-v165">Diagnóstico: ${escapeHtml(pushDiagnosticV181())}</p>
+    <p class="push-note-v165">Estado: ${escapeHtml(pushDiagnosticV181())}</p>
   `;
 
   $("savePushPrefsBtnV181")?.addEventListener("click", savePushPreferencesV181);
@@ -10494,7 +10494,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-// v190 — Corrige Users offline prematuro e limpa Admin por secções.
+// v190 - Corrige Users offline prematuro e limpa Admin por secções.
 async function ensureFirebaseOnlineForPresenceV190() {
   try {
     if (db && firebaseApi && storageMode === "firebase" && (currentUser || firebaseAuth?.currentUser)) {
@@ -10656,7 +10656,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-// v192 — vibração segura: evita erro de "user hasn't tapped".
+// v192 - vibração segura: evita erro de "user hasn't tapped".
 function safeVibrateV192(pattern) {
   try {
     if (!navigator?.vibrate) return false;
@@ -10667,7 +10667,7 @@ function safeVibrateV192(pattern) {
   }
 }
 
-// v192 — permissões: torna checkboxes clicáveis e marca o card como alterado.
+// v192 - permissões: torna checkboxes clicáveis e marca o card como alterado.
 function markPermissionCardDirtyV192(input) {
   try {
     const card = input?.closest?.("[data-permission-card]");
@@ -10708,7 +10708,7 @@ document.addEventListener("click", event => {
   savePermissionUser(saveBtn.dataset.savePermissions);
 }, true);
 
-// v192 — reforça visual do filtro ativo.
+// v192 - reforça visual do filtro ativo.
 function applyCalendarFilterHighlightV192() {
   try {
     const map = {
@@ -10742,7 +10742,7 @@ document.addEventListener("click", event => {
 }, true);
 
 
-// v201 — painel Admin: estado claro da sync inteligente football-data.org.
+// v201 - painel Admin: estado claro da sync inteligente football-data.org.
 function footballSmartSyncFormatAgeV201(value) {
   if (!value) return "nunca";
   const date = new Date(value);
@@ -10787,8 +10787,8 @@ footballRealtimeSyncRenderV156 = function footballRealtimeSyncRenderV201(data = 
       if (span) span.textContent = statusLabel;
     }
 
-    const nextLabel = current.nextSyncGame?.label || current.nextSyncGame || "—";
-    const nextAt = current.nextSyncStartsAt ? new Date(current.nextSyncStartsAt).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" }) : "—";
+    const nextLabel = current.nextSyncGame?.label || current.nextSyncGame || "-";
+    const nextAt = current.nextSyncStartsAt ? new Date(current.nextSyncStartsAt).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" }) : "-";
     const activeCount = Array.isArray(current.activeSyncGames) ? current.activeSyncGames.length : Number(current.activeSyncGamesCount || 0);
     const lastCheck = current.lastCheckIso || current.lastCheckAt || current.lastSyncIso || "";
     const lastReal = current.lastRealSyncIso || current.lastRealSyncAt || "";
@@ -10796,20 +10796,20 @@ footballRealtimeSyncRenderV156 = function footballRealtimeSyncRenderV201(data = 
     const provider = current.provider || "football-data";
 
     if (sub) {
-      sub.textContent = `Modo API: Inteligente · API: ${provider} · Estado: ${statusLabel}`;
+      sub.textContent = `API: ${provider} · ${statusLabel}`;
     }
 
     details.innerHTML = `
-      <div><span>Próximo jogo com sync</span><strong>${escapeHtml(String(nextLabel))}</strong></div>
-      <div><span>Sync começa</span><strong>${escapeHtml(String(nextAt))}</strong></div>
-      <div><span>Jogos ativos agora</span><strong>${escapeHtml(String(activeCount))}</strong></div>
-      <div><span>Última verificação</span><strong>${escapeHtml(footballSmartSyncFormatAgeV201(lastCheck))}</strong></div>
-      <div><span>Última sync real</span><strong>${escapeHtml(footballSmartSyncFormatAgeV201(lastReal))}</strong></div>
+      <div><span>Próximo jogo</span><strong>${escapeHtml(String(nextLabel))}</strong></div>
+      <div><span>Início</span><strong>${escapeHtml(String(nextAt))}</strong></div>
+      <div><span>Ativos</span><strong>${escapeHtml(String(activeCount))}</strong></div>
+      <div><span>Verificação</span><strong>${escapeHtml(footballSmartSyncFormatAgeV201(lastCheck))}</strong></div>
+      <div><span>Sync real</span><strong>${escapeHtml(footballSmartSyncFormatAgeV201(lastReal))}</strong></div>
       <div><span>Motivo</span><strong>${escapeHtml(String(reason))}</strong></div>
     `;
 
     const title = box.querySelector(".football-realtime-sync-top-v156 strong");
-    if (title) title.textContent = "API football-data.org · Sync inteligente";
+    if (title) title.textContent = "API football-data.org";
 
     box.dataset.smartStateV201 = status;
   } catch (error) {
@@ -10824,11 +10824,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // v213 - limpeza final: login robusto, Configuracoes organizadas e blocos tecnicos no sitio certo.
 const ADMIN_SECTION_CHOICES_V213 = [
-  ["users", "Users", "Permissões e participantes"],
-  ["results", "Resultados", "Importação, Excel e resultados dos jogos"],
-  ["points", "Pontos", "Sistema de pontos e resultados especiais"],
-  ["knockout", "Fase Final", "Gestão da fase final"],
-  ["system", "Sistema técnico", "Sempre tratado nas Configurações"]
+  ["users", "Users", "Contas e acessos"],
+  ["results", "Resultados", "Jogos e Excel"],
+  ["points", "Pontos", "Regras de pontos"],
+  ["knockout", "Fase Final", "Jogos a eliminar"],
+  ["system", "Sistema", "Fica nas Configurações"]
 ];
 
 const PAGE_LOCATION_CHOICES_V213 = [
@@ -10842,12 +10842,12 @@ const PAGE_LOCATION_CHOICES_V213 = [
 ];
 
 const SETTINGS_SECTIONS_V213 = [
-  ["organization", "Organização", "Escolhe o que aparece no Admin, Configurações e abas do topo."],
-  ["system", "Sistema, Firebase e API", "Sync football-data, saúde da app, push e ferramentas técnicas."],
-  ["install", "Instalação / PWA", "Versão, cache e instalação da app."],
-  ["preferences", "Preferências", "Preferências gerais e notificações."],
-  ["admin", "Ferramentas Admin", "Atalhos administrativos."],
-  ["other", "Outros", "Outras opções menos usadas."]
+  ["organization", "Organização", "Escolhe páginas e secções visíveis."],
+  ["system", "Sistema, Firebase e API", "Estado Firebase, API e push."],
+  ["install", "Instalação / PWA", "Versão, cache e instalação."],
+  ["preferences", "Preferências", "Preferências da app."],
+  ["admin", "Ferramentas Admin", "Ferramentas de gestão."],
+  ["other", "Outros", "Outras opções."]
 ];
 
 const TECHNICAL_BLOCK_IDS_V213 = [
@@ -11031,7 +11031,7 @@ function renderOrganizationPanelV213() {
     const value = settings.adminSections?.[key] || (key === "system" ? "settings" : "admin");
     const locked = key === "system";
     const control = locked
-      ? `<span class="settings-org-fixed-v215">Fixo em Configurações</span>`
+      ? `<span class="settings-org-fixed-v215">Fixo em Config.</span>`
       : `<select data-admin-section-location-v213="${escapeHtml(key)}">
           <option value="admin" ${value === "admin" ? "selected" : ""}>Mostrar no Admin</option>
           <option value="settings" ${value === "settings" ? "selected" : ""}>Mostrar em Configurações</option>
@@ -11054,7 +11054,7 @@ function renderOrganizationPanelV213() {
     <div class="settings-org-head-v213">
       <div>
         <strong>Organização da app</strong>
-        <span>Controla exatamente que páginas e secções aparecem na app.</span>
+        <span>Escolhe o que fica visível.</span>
       </div>
       <button type="button" class="secondary small" data-admin-layout-reset-v213>Repor</button>
     </div>
@@ -11066,11 +11066,11 @@ function renderOrganizationPanelV213() {
     </div>
     <div class="settings-org-grid-v213 settings-org-grid-v214">
       <div>
-        <h4>Destino das secções de gestão</h4>
+        <h4>Secções</h4>
         <div class="settings-org-table-v214">${sectionRows}</div>
       </div>
       <div>
-        <h4>Páginas no menu principal</h4>
+        <h4>Menu</h4>
         <div class="settings-org-pages-v213 settings-org-pages-v214">${pageRows}</div>
       </div>
     </div>
@@ -11159,7 +11159,7 @@ function ensureFootballDataSettingsBoxV213() {
     box.innerHTML = `
       <div>
         <strong>API football-data.org</strong>
-        <span>Sync inteligente dos resultados e live score.</span>
+        <span>Resultados e live score.</span>
       </div>
       <div class="settings-actions-v162" id="footballDataSettingsActionsV213"></div>
     `;

@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #070b13;
   --panel: #0d1522;
   --panel-soft: #111c2c;
@@ -221,7 +221,7 @@
 }
 
 #knockoutBracket .bracket-final-badge::before{
-  content:"🏆";
+  content:"Final";
   font-size:44px!important;
 }
 
@@ -2032,7 +2032,7 @@ button:disabled{
   text-align:center;
 }
 .bracket-champion-card::before{
-  content:"🏆";
+  content:"Final";
   font-size:34px;
 }
 .bracket-champion-card span{
@@ -7847,7 +7847,7 @@ summary:focus-visible{
 
 
 
-/* v139 — botão football-data */
+/* v139 - botão football-data */
 #syncFootballDataBtn{
   background:linear-gradient(135deg,rgba(16,185,129,.95),rgba(34,197,94,.82))!important;
   border-color:rgba(52,211,153,.45)!important;
@@ -7858,7 +7858,7 @@ summary:focus-visible{
 }
 
 
-/* v142 — caixa do botão football-data no Admin */
+/* v142 - caixa do botão football-data no Admin */
 .football-data-admin-box-v142{
   display:flex!important;
   align-items:center!important;
@@ -7904,7 +7904,7 @@ summary:focus-visible{
 }
 
 
-/* v143 — botão fixo de resultados automáticos no topo do Admin */
+/* v143 - botão fixo de resultados automáticos no topo do Admin */
 #footballDataAdminFixedBoxV143{
   display:flex!important;
   align-items:center!important;
@@ -7956,7 +7956,7 @@ summary:focus-visible{
 }
 
 
-/* v144 — PC ocupa o ecrã todo */
+/* v144 - PC ocupa o ecrã todo */
 @media(min-width:901px){
   html.pc-full-width-v144,
   body.pc-full-width-v144{
@@ -8032,7 +8032,7 @@ summary:focus-visible{
 }
 
 
-/* v147 — GitHub Pages / PC: ocupar o ecrã todo de verdade */
+/* v147 - GitHub Pages / PC: ocupar o ecrã todo de verdade */
 @media(min-width:900px){
   html.desktop-fullscreen-v147,
   body.desktop-fullscreen-v147,
@@ -8093,7 +8093,7 @@ summary:focus-visible{
 }
 
 
-/* v148 — PC ecrã todo imediato, sem esperar pelo JavaScript */
+/* v148 - PC ecrã todo imediato, sem esperar pelo JavaScript */
 @media(min-width:900px){
   html,
   body,
@@ -8168,7 +8168,7 @@ summary:focus-visible{
 }
 
 
-/* v149 — Football-data Free clean status */
+/* v149 - Football-data Free clean status */
 .football-free-status-box-v149{
   width:100%!important;
   box-sizing:border-box!important;
@@ -8268,7 +8268,7 @@ summary:focus-visible{
 }
 
 
-/* v150 — Fase Final mobile: fechar modal/aba sempre clicável */
+/* v150 - Fase Final mobile: fechar modal/aba sempre clicável */
 @media(max-width:760px){
   .modal,
   .dialog,
@@ -8319,7 +8319,7 @@ summary:focus-visible{
 }
 
 
-/* v151 — badge sync 24/7 */
+/* v151 - badge sync 24/7 */
 .football-247-badge-v151{
   margin-top:10px!important;
   display:inline-flex!important;
@@ -8336,7 +8336,7 @@ summary:focus-visible{
 }
 
 
-/* v153 — estados vindos da API */
+/* v153 - estados vindos da API */
 .status.live,
 .badge.live,
 .match-status.live{
@@ -8353,7 +8353,7 @@ summary:focus-visible{
 }
 
 
-/* v156 — caixa clean de sync em tempo real */
+/* v156 - caixa clean de sync em tempo real */
 .football-realtime-sync-box-v156{
   width:100%!important;
   box-sizing:border-box!important;
@@ -8462,7 +8462,7 @@ summary:focus-visible{
 }
 
 
-/* v157 — Sync API apresentada como automática, não manual */
+/* v157 - Sync API apresentada como automática, não manual */
 .football-manual-hidden-v157,
 .football-free-legacy-hidden-v157{
   display:none!important;
@@ -8520,7 +8520,7 @@ summary:focus-visible{
 }
 
 
-/* v158-live-score — marcador parcial não conta como Jogado */
+/* v158-live-score - marcador parcial não conta como Jogado */
 .live-score,
 .score-live,
 .partial-score{
@@ -8529,7 +8529,7 @@ summary:focus-visible{
 }
 
 
-/* v159 — Admin jogo suspenso */
+/* v159 - Admin jogo suspenso */
 .suspended-game-admin-box-v159{
   width:100%!important;
   max-width:760px!important;
@@ -8553,7 +8553,7 @@ summary:focus-visible{
 .status.suspended,.badge.suspended,.pill.suspended,.match-status.suspended{background:rgba(255,212,90,.11)!important;color:#ffe390!important;border-color:rgba(255,212,90,.38)!important}
 @media(max-width:760px){.suspended-game-admin-row-v159{grid-template-columns:1fr!important}}
 
-/* v160 — manter cores dos botões da app normal após importar tudo dos testes. */
+/* v160 - manter cores dos botões da app normal após importar tudo dos testes. */
 .tab,
 .primary,
 .secondary{
@@ -8593,7 +8593,7 @@ summary:focus-visible{
   background:rgba(255,98,98,.10)!important;
 }
 
-/* v161 — acabamento visual profissional + destaque de jogos suspensos. */
+/* v161 - acabamento visual profissional + destaque de jogos suspensos. */
 :root{
   --professional-panel:rgba(13,21,34,.88);
   --professional-panel-strong:rgba(17,28,44,.94);
@@ -9327,7 +9327,7 @@ body.modal-open-v162{
 }
 
 
-/* v168 — PC fullscreen instant: sem flash de ecrã pequeno */
+/* v168 - PC fullscreen instant: sem flash de ecrã pequeno */
 @media (min-width: 900px) {
   html,
   body,
@@ -9635,7 +9635,7 @@ button,
 }
 
 
-/* v201 — Estado da sync inteligente football-data.org */
+/* v201 - Estado da sync inteligente football-data.org */
 .football-smart-sync-details-v201{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
@@ -9675,7 +9675,7 @@ button,
 }
 
 
-/* v202 — Notificações individuais */
+/* v202 - Notificações individuais */
 .push-options-v200{
   grid-template-columns:repeat(auto-fit,minmax(230px,1fr))!important;
   align-items:center!important;
@@ -9698,7 +9698,7 @@ button,
   color:#101522!important;
 }
 
-/* v202 — Admin mais arrumado */
+/* v202 - Admin mais arrumado */
 #adminUnlocked{
   display:flex;
   flex-direction:column;
@@ -9722,7 +9722,7 @@ button,
   display:none!important;
 }
 
-/* v203 — blocos extra do Admin respeitam filtros internos */
+/* v203 - blocos extra do Admin respeitam filtros internos */
 #adminTab .admin-section-hidden-v187,
 #adminTab .admin-section-force-hidden-v202{
   display:none!important;
@@ -9732,7 +9732,7 @@ button,
 }
 
 
-/* v204 — Sistema só em Configurações */
+/* v204 - Sistema só em Configurações */
 .settings-system-only-area-v204{
   margin:14px 0;
   border:1px solid rgba(255,255,255,.09);
@@ -9768,7 +9768,7 @@ button,
   width:100%!important;
 }
 
-/* v204 — Abas internas do Admin colapsáveis */
+/* v204 - Abas internas do Admin colapsáveis */
 .admin-sections-collapse-v204{
   border:1px solid rgba(255,255,255,.09);
   border-radius:16px;
@@ -9799,7 +9799,7 @@ button,
   margin:0!important;
 }
 
-/* v204 — Cards do Admin colapsáveis */
+/* v204 - Cards do Admin colapsáveis */
 .admin-card-collapse-head-v204{
   width:100%;
   display:flex;
@@ -9832,7 +9832,7 @@ button,
 }
 
 
-/* v205 — Página Configurações clean e colapsável */
+/* v205 - Página Configurações clean e colapsável */
 #settingsTab.active{
   display:flex;
   flex-direction:column;
@@ -9943,7 +9943,7 @@ button,
 }
 
 
-/* v206 — proibido mostrar blocos técnicos no Admin */
+/* v206 - proibido mostrar blocos técnicos no Admin */
 #adminTab #footballRealtimeSyncBoxV156,
 #adminTab #footballManualFallbackV157,
 #adminTab #footballFreeStatusBoxV149,
@@ -9957,7 +9957,7 @@ button,
   display:none!important;
 }
 
-/* v206 — área técnica correta dentro de Configurações */
+/* v206 - área técnica correta dentro de Configurações */
 .configs-technical-only-root-v206{
   border:1px solid rgba(255,255,255,.09);
   border-radius:18px;
@@ -9995,7 +9995,7 @@ button,
 }
 
 
-/* v209 — blocos técnicos nunca aparecem no login */
+/* v209 - blocos técnicos nunca aparecem no login */
 .login-card #footballRealtimeSyncBoxV156,
 .auth-card #footballRealtimeSyncBoxV156,
 #loginView #footballRealtimeSyncBoxV156,
@@ -10009,7 +10009,7 @@ button,
 }
 
 
-/* v210 — proteção final Login/Admin/Configurações */
+/* v210 - proteção final Login/Admin/Configurações */
 .force-hide-technical-v210,
 #loginView #footballRealtimeSyncBoxV156,
 #loginScreen #footballRealtimeSyncBoxV156,
@@ -10335,4 +10335,267 @@ body.app-authenticated-v213 #appShell{
 #settingsTab.active{
   display:flex!important;
   flex-direction:column!important;
+}
+
+/* v219 - limpeza visual, texto simples e arranque sem flash */
+:root{
+  --bg:#060b14;
+  --panel:#0d1726;
+  --panel-soft:#101d30;
+  --line:rgba(148,163,184,.18);
+  --text:#f8fbff;
+  --muted:#a6b3c7;
+  --gold:#f8c84f;
+  --blue:#38bdf8;
+  --purple:#8b5cf6;
+  --shadow:0 18px 44px rgba(0,0,0,.28);
+}
+
+html{
+  background:#060b14!important;
+}
+
+body{
+  background:
+    radial-gradient(circle at 22% -12%,rgba(56,189,248,.13),transparent 34%),
+    radial-gradient(circle at 82% -18%,rgba(139,92,246,.16),transparent 36%),
+    linear-gradient(180deg,#060b14 0%,#08111e 48%,#060b14 100%)!important;
+  color:var(--text)!important;
+}
+
+body:not(.app-authenticated-v213) #appShell.auth-hidden,
+.tab-panel:not(.active),
+.hidden{
+  display:none!important;
+}
+
+.app-shell{
+  width:min(1500px,100%)!important;
+  padding:24px clamp(14px,2.4vw,34px) 56px!important;
+}
+
+.topbar{
+  align-items:center!important;
+  gap:18px!important;
+  padding:18px!important;
+  border:1px solid rgba(148,163,184,.16)!important;
+  border-radius:14px!important;
+  background:rgba(13,23,38,.88)!important;
+  box-shadow:0 18px 44px rgba(0,0,0,.18)!important;
+  backdrop-filter:blur(16px)!important;
+}
+
+.topbar h1{
+  font-size:clamp(28px,3vw,42px)!important;
+  line-height:1.02!important;
+}
+
+.eyebrow{
+  color:#facc15!important;
+  letter-spacing:.04em!important;
+}
+
+.copy-actions{
+  align-items:center!important;
+  gap:8px!important;
+}
+
+.tabs{
+  top:10px!important;
+  z-index:20!important;
+  margin:14px 0 16px!important;
+  padding:7px!important;
+  border:1px solid rgba(148,163,184,.14)!important;
+  border-radius:12px!important;
+  background:rgba(8,15,28,.92)!important;
+  box-shadow:0 14px 34px rgba(0,0,0,.18)!important;
+}
+
+.tab,
+.primary,
+.secondary,
+button{
+  border-radius:9px!important;
+  transition:border-color .15s ease,background .15s ease,transform .15s ease,box-shadow .15s ease!important;
+}
+
+.tab{
+  min-height:38px!important;
+  color:#aebbd0!important;
+  background:transparent!important;
+}
+
+.tab:hover{
+  color:#fff!important;
+  background:rgba(148,163,184,.10)!important;
+}
+
+.tab.active,
+.admin-section-tabs-v187 button.active{
+  color:#fff!important;
+  background:linear-gradient(135deg,#2563eb,#7c3aed)!important;
+  box-shadow:0 10px 24px rgba(37,99,235,.22)!important;
+}
+
+.primary{
+  color:#fff!important;
+  background:linear-gradient(135deg,#2563eb,#7c3aed)!important;
+  box-shadow:0 10px 24px rgba(37,99,235,.18)!important;
+}
+
+.secondary{
+  color:#dbeafe!important;
+  border:1px solid rgba(56,189,248,.24)!important;
+  background:rgba(15,23,42,.72)!important;
+}
+
+button:hover:not(:disabled){
+  transform:translateY(-1px)!important;
+}
+
+.section-head,
+.admin-card,
+.day-block,
+.leaderboard-table,
+.settings-section-v213,
+.settings-organization-single-v213,
+.configs-technical-card-v213,
+.logs-lock-card,
+.push-panel-v165,
+.push-history-v187,
+.notifications-summary-v164,
+.notifications-list-v164{
+  border:1px solid rgba(148,163,184,.16)!important;
+  border-radius:12px!important;
+  background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(8,15,28,.90))!important;
+  box-shadow:0 14px 34px rgba(0,0,0,.18)!important;
+}
+
+.section-head{
+  align-items:center!important;
+  margin:0 0 14px!important;
+  padding:15px 16px!important;
+}
+
+.section-head h2,
+.admin-card h2{
+  font-size:20px!important;
+}
+
+.section-head p,
+.admin-card p{
+  color:#aebbd0!important;
+}
+
+.calendar-list,
+.admin-stack,
+.settings-accordion-v213{
+  gap:14px!important;
+}
+
+.day-title{
+  background:linear-gradient(90deg,#f8c84f,rgba(248,200,79,.26))!important;
+  color:#07111d!important;
+}
+
+.match-card,
+.admin-match,
+.score-row,
+.leaderboard-row,
+.permission-user-card{
+  border-color:rgba(148,163,184,.14)!important;
+  background:rgba(15,23,42,.70)!important;
+}
+
+input,
+select,
+textarea{
+  border:1px solid rgba(148,163,184,.18)!important;
+  background:#070d18!important;
+  color:#f8fbff!important;
+}
+
+input:focus,
+select:focus,
+textarea:focus{
+  border-color:rgba(56,189,248,.72)!important;
+  box-shadow:0 0 0 3px rgba(56,189,248,.13)!important;
+  outline:none!important;
+}
+
+.login-screen{
+  min-height:100dvh!important;
+  padding:22px!important;
+  background:
+    radial-gradient(circle at 20% 0%,rgba(56,189,248,.16),transparent 34%),
+    radial-gradient(circle at 80% 0%,rgba(139,92,246,.18),transparent 36%),
+    #060b14!important;
+}
+
+.login-card{
+  border:1px solid rgba(148,163,184,.16)!important;
+  border-radius:16px!important;
+  background:linear-gradient(180deg,rgba(15,23,42,.95),rgba(8,15,28,.95))!important;
+  box-shadow:0 28px 80px rgba(0,0,0,.32)!important;
+}
+
+.login-brand > span{
+  display:grid!important;
+  place-items:center!important;
+  width:46px!important;
+  height:46px!important;
+  border-radius:12px!important;
+  background:linear-gradient(135deg,#2563eb,#7c3aed)!important;
+}
+
+.settings-section-v213 > summary{
+  min-height:56px!important;
+  padding:13px 16px!important;
+}
+
+.settings-section-v213 > summary::after{
+  background:rgba(148,163,184,.12)!important;
+}
+
+.settings-org-summary-v214 span,
+.settings-org-page-v214,
+.settings-org-row-v214{
+  border-color:rgba(148,163,184,.14)!important;
+  background:rgba(15,23,42,.58)!important;
+}
+
+@media(max-width:780px){
+  .app-shell{
+    padding:12px 10px 34px!important;
+  }
+
+  .topbar{
+    align-items:flex-start!important;
+    padding:14px!important;
+  }
+
+  .topbar h1{
+    font-size:28px!important;
+  }
+
+  .tabs{
+    position:sticky!important;
+    overflow-x:auto!important;
+    flex-wrap:nowrap!important;
+    scrollbar-width:none!important;
+  }
+
+  .tabs::-webkit-scrollbar{
+    display:none!important;
+  }
+
+  .tab{
+    flex:0 0 auto!important;
+    white-space:nowrap!important;
+  }
+
+  .section-head{
+    align-items:flex-start!important;
+    flex-direction:column!important;
+  }
 }

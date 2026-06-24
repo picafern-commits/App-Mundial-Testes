@@ -1,10 +1,9 @@
 <!doctype html>
 <html lang="pt" class="desktop-fullscreen-instant-v148 pc-fullscreen-instant-v168">
 <head>
-  <meta charset="UTF-8">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Mundial Pontos 2026 · Firebase Online</title>
+  <title>Mundial Pontos 2026</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Mundial 2026" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -19,14 +18,19 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="application-name" content="Mundial Pontos 2026" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="style.css?v=217" />
+  <style>
+    html{background:#070b13;color:#f7fbff}
+    .hidden,#appShell.auth-hidden,.tab-panel:not(.active){display:none!important}
+    body{margin:0;background:#070b13}
+  </style>
+  <link rel="stylesheet" href="style.css?v=219" />
 </head>
 <body class="desktop-fullscreen-instant-v148 pc-fullscreen-instant-v168">
 
   <section id="loginScreen" class="login-screen">
     <div class="login-card">
       <div class="login-brand">
-        <span>🏆</span>
+        <span>M26</span>
         <div>
           <p class="eyebrow">Mundial Pontos 2026</p>
           <h1>Entrar na app</h1>
@@ -53,9 +57,9 @@
         <button id="createAccountBtn" class="secondary" type="button">Criar conta</button>
       </div>
 
-      <p class="login-help">As contas novas ficam como User normal. O Admin pode alterar permissões depois.</p>
+      <p class="login-help">As contas novas entram como User. O Admin pode ajustar acessos depois.</p>
       <div id="iosInstallHint" class="ios-install-hint hidden">
-        <strong>iPhone:</strong> abre no Safari, toca em Partilhar e escolhe “Adicionar ao Ecrã Principal”.
+        <strong>iPhone:</strong> Safari, Partilhar, Adicionar ao Ecra Principal.
       </div>
     </div>
   </section>
@@ -63,7 +67,7 @@
   <div id="appShell" class="app-shell auth-hidden">
     <header class="topbar">
       <div>
-        <p class="eyebrow">Calendário da Fase de Grupos</p>
+        <p class="eyebrow">Mundial 2026</p>
         <h1>Mundial Pontos 2026</h1>
       </div>
 
@@ -92,7 +96,7 @@
           <div id="onlineUsersList" class="online-users-list">
             <div class="online-users-popup-head">
               <strong>Utilizadores online</strong>
-              <button id="closeOnlineUsersBtn" class="online-users-close" type="button" aria-label="Fechar utilizadores online" onclick="return window.closeOnlineUsersPanelNow(event)">×</button>
+              <button id="closeOnlineUsersBtn" class="online-users-close" type="button" aria-label="Fechar utilizadores online" onclick="return window.closeOnlineUsersPanelNow(event)">x</button>
             </div>
             <div class="empty small-empty">A carregar utilizadores...</div>
           </div>
@@ -129,7 +133,7 @@
         <div class="section-head">
           <div>
             <h2>Pontuação</h2>
-            <p>Classificação com total e detalhe dos jogos de cada jogador.</p>
+            <p>Total e detalhe por jogador.</p>
           </div>
         </div>
         <div id="scoreSummary" class="score-summary leaderboard"></div>
@@ -139,7 +143,7 @@
         <div class="section-head">
           <div>
             <h2>Fase Final</h2>
-            <p>Define manualmente a primeira ronda; nos jogos empatados, preenche também os penáltis.</p>
+            <p>Jogos, vencedores e penaltis.</p>
           </div>
         </div>
         <div id="knockoutLockNotice" class="knockout-lock-notice"></div>
@@ -150,7 +154,7 @@
         <div class="section-head">
           <div>
             <h2>Centro de notificações</h2>
-            <p>Alertas Admin, push para Android/iPhone, resultados, golos e sincronização.</p>
+            <p>Alertas e preferências.</p>
           </div>
           <div class="collapse-actions">
             <button id="markNotificationsReadBtnV164" class="secondary" type="button">Marcar como vistas</button>
@@ -167,7 +171,7 @@
         <div class="section-head">
           <div>
             <h2>Logs do sistema</h2>
-            <p>Histórico em tempo real das ações importantes feitas na app.</p>
+            <p>Ações importantes da app.</p>
           </div>
         </div>
 
@@ -184,7 +188,7 @@
           <div class="logs-toolbar">
             <div>
               <strong>Logs em tempo real</strong>
-              <span>Atualiza automaticamente quando a app sincroniza.</span>
+              <span>Em tempo real.</span>
             </div>
             <div class="collapse-actions">
               <label class="logs-filter-control">Tipo
@@ -214,7 +218,7 @@
       <section id="adminTab" class="tab-panel">
         <div id="adminLocked" class="admin-lock">
           <h2>Admin</h2>
-          <p>Introduz o PIN para lançar ou limpar resultados.</p>
+          <p>Introduz o PIN para abrir a gestão.</p>
           <div class="pin-row">
             <input id="adminPinInput" type="password" inputmode="numeric" placeholder="PIN" />
             <button id="unlockAdminBtn" class="primary" type="button">Entrar</button>
@@ -230,9 +234,9 @@
             <summary>
               <div>
                 <h2>Permissões de utilizadores</h2>
-                <p>Define quem é Admin ou User normal e que páginas/ações cada conta pode usar.</p>
+                <p>Gerir contas, cargos e acessos.</p>
               </div>
-              <span class="collapse-icon">⌄</span>
+              <span class="collapse-icon">+</span>
             </summary>
 
             <div class="permissions-tools">
@@ -261,9 +265,9 @@
             <summary>
               <div>
                 <h2>Fase Final</h2>
-                <p>Define manualmente os jogos da primeira ronda. As rondas seguintes são preenchidas automaticamente pelos vencedores.</p>
+                <p>Gerir jogos e vencedores.</p>
               </div>
-              <span class="collapse-icon">⌄</span>
+              <span class="collapse-icon">+</span>
             </summary>
             <div class="knockout-admin-tools">
               <label class="check-row">
@@ -279,9 +283,9 @@
             <summary>
               <div>
                 <h2>Editar resultados por utilizador</h2>
-                <p>Escolhe um user e edita todas as apostas dele diretamente na app, incluindo MVP, Melhor Marcador e Equipa Vencedora.</p>
+                <p>Editar apostas de um utilizador.</p>
               </div>
-              <span class="collapse-icon">⌄</span>
+              <span class="collapse-icon">+</span>
             </summary>
 
             <div class="user-editor-toolbar">
@@ -301,9 +305,9 @@
             <summary>
               <div>
                 <h2>Exportar Pontos</h2>
-                <p>Gera o ficheiro Excel com a pontuação atual calculada pela app.</p>
+                <p>Gerar Excel da pontuação.</p>
               </div>
-              <span class="collapse-icon">⌄</span>
+              <span class="collapse-icon">+</span>
             </summary>
             <div class="collapse-actions">
               <button id="exportPontosBtn" class="primary" type="button">Exportar Pontos Excel</button>
@@ -314,9 +318,9 @@
             <summary>
               <div>
                 <h2>Users do Jogo</h2>
-                <p>Adiciona aqui os nomes de quem vai participar. Também aparecem automaticamente quando importas o Excel.</p>
+                <p>Gerir participantes.</p>
               </div>
-              <span class="collapse-icon">⌄</span>
+              <span class="collapse-icon">+</span>
             </summary>
             <div class="collapse-actions"></div>
             <div class="user-add-row">
@@ -330,9 +334,9 @@
             <summary>
               <div>
                 <h2>Importar Excel Resultados</h2>
-                <p>Exporta o Excel Resultados, corrige no Excel e volta a importar aqui.</p>
+                <p>Importar ou exportar resultados.</p>
               </div>
-              <span class="collapse-icon">⌄</span>
+              <span class="collapse-icon">+</span>
             </summary>
             <div class="collapse-actions">
               <button id="exportResultadosBtn" class="secondary" type="button">Exportar Excel Resultados</button>
@@ -347,9 +351,9 @@
             <summary>
               <div>
                 <h2>Sistema de Pontos</h2>
-                <p>O Admin pode editar quantos pontos vale cada campo. Resultado exato não acumula com o ponto da equipa vencedora/empate.</p>
+                <p>Definir pontos por acerto.</p>
               </div>
-              <span class="collapse-icon">⌄</span>
+              <span class="collapse-icon">+</span>
             </summary>
             <div class="collapse-actions">
               <button id="savePointsSettingsBtn" class="primary" type="button">Guardar pontos</button>
@@ -373,7 +377,7 @@
             </div>
             <div class="points-settings-separator">
               <h3>Sistema de Pontos da Fase Final</h3>
-              <p>Valores usados apenas nos jogos da Fase Final. O acerto nos penáltis soma aos pontos do resultado/vencedor.</p>
+              <p>Pontos usados nos jogos a eliminar.</p>
             </div>
             <div class="points-settings-grid">
               <label>Resultado exato
@@ -401,9 +405,9 @@
             <summary>
               <div>
                 <h2>Resultados especiais</h2>
-                <p>Mete aqui os vencedores finais para atribuir pontos extra aos users.</p>
+                <p>Atribuir pontos extra finais.</p>
               </div>
-              <span class="collapse-icon">⌄</span>
+              <span class="collapse-icon">+</span>
             </summary>
             <div class="collapse-actions">
               <button id="saveExtraResultsBtn" class="primary" type="button">Guardar extras</button>
@@ -427,7 +431,7 @@
                 <h2>Resultados dos jogos</h2>
                 <p id="storageStatus">A carregar dados...</p>
               </div>
-              <span class="collapse-icon">⌄</span>
+              <span class="collapse-icon">+</span>
             </summary>
             <div id="adminGamesList" class="admin-list"></div>
           </details>
@@ -438,14 +442,14 @@
         <div class="section-head">
           <div>
             <h2>Configurações</h2>
-            <p>Estado da app, instalação PWA, cache e atalhos de manutenção.</p>
+            <p>Instalação, cache e estado da app.</p>
           </div>
         </div>
 
         <div class="settings-grid-v162">
           <article class="settings-card-v162">
             <span>Versão</span>
-            <strong id="appVersionLabelV162">v217</strong>
+            <strong id="appVersionLabelV162">v219</strong>
             <p id="pwaUpdateStateV162">A verificar atualizações...</p>
             <div class="settings-actions-v162">
               <button id="forceUpdateAppBtnV162" class="primary" type="button">Atualizar app</button>
@@ -465,7 +469,7 @@
           <article class="settings-card-v162">
             <span>Dados</span>
             <strong id="storageModeLabelV162">A carregar...</strong>
-            <p id="settingsSyncLabelV162">Estado da sincronização e cache local.</p>
+            <p id="settingsSyncLabelV162">Sincronização e cache local.</p>
             <div class="settings-actions-v162">
               <button id="openLogsFromSettingsBtnV162" class="secondary" type="button">Abrir logs</button>
               <button id="openAdminFromSettingsBtnV162" class="secondary" type="button">Abrir Admin</button>
@@ -483,9 +487,9 @@
       <div class="modal-head">
         <div>
           <h2 id="excelModalTitle">Importar Excel dos Users</h2>
-          <p>Importa o ficheiro de apostas (<strong>Resultados.xlsx</strong>). Depois mete os resultados reais manualmente no Admin.</p>
+          <p>Importa ficheiros Excel de apostas e pontos.</p>
         </div>
-        <button id="closeExcelModalBtn" class="icon-button" type="button" aria-label="Fechar">×</button>
+        <button id="closeExcelModalBtn" class="icon-button" type="button" aria-label="Fechar">x</button>
       </div>
 
       <div class="modal-grid">
@@ -505,7 +509,7 @@
       </label>
 
       <div id="excelPreview" class="excel-preview">
-        Seleciona os ficheiros e carrega em “Pré-visualizar”.
+        Seleciona os ficheiros e carrega em Pre-visualizar.
       </div>
 
       <div class="modal-actions">
@@ -521,21 +525,21 @@
       <div class="modal-head">
         <div>
           <h2 id="resultModalTitle">Adicionar resultado</h2>
-          <p id="resultModalSubtitle">Mete o resultado real do jogo. A pontuação recalcula automaticamente.</p>
+          <p id="resultModalSubtitle">Guarda o resultado real do jogo.</p>
         </div>
-        <button id="closeResultModalBtn" class="icon-button" type="button" aria-label="Fechar">×</button>
+        <button id="closeResultModalBtn" class="icon-button" type="button" aria-label="Fechar">x</button>
       </div>
 
       <input id="resultGameIdInput" type="hidden" />
 
       <div class="result-game-preview">
         <div class="result-team">
-          <span id="resultHomeFlag">🏳️</span>
+          <span id="resultHomeFlag"></span>
           <strong id="resultHomeTeam">Equipa casa</strong>
         </div>
         <div class="result-vs">VS</div>
         <div class="result-team right">
-          <span id="resultAwayFlag">🏳️</span>
+          <span id="resultAwayFlag"></span>
           <strong id="resultAwayTeam">Equipa fora</strong>
         </div>
       </div>
@@ -572,9 +576,9 @@
       <div class="modal-head">
         <div>
           <h2 id="betsModalTitle">Apostas do jogo</h2>
-          <p id="betsModalSubtitle">Consulta as apostas dos users e os pontos atribuídos.</p>
+          <p id="betsModalSubtitle">Consulta apostas e pontos.</p>
         </div>
-        <button id="closeBetsModalBtn" class="icon-button" type="button" aria-label="Fechar">×</button>
+        <button id="closeBetsModalBtn" class="icon-button" type="button" aria-label="Fechar">x</button>
       </div>
 
       <div id="betsGameSummary" class="bets-game-summary"></div>
@@ -583,9 +587,9 @@
   </div>
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-  <script src="config.js?v=217"></script>
+  <script src="config.js?v=219"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="app.js?v=217"></script>
+  <script type="module" src="app.js?v=219"></script>
 
       <div id="chatPanel" class="chat-panel hidden">
         <div class="chat-header">
@@ -593,7 +597,7 @@
             <strong>Chat Mundial</strong>
             <span id="chatSubtitle">Conversa geral dos users</span>
           </div>
-          <button id="chatCloseBtn" class="chat-close-btn" type="button" aria-label="Fechar chat" onclick="return window.closeChatMobileClean(event)">×</button>
+          <button id="chatCloseBtn" class="chat-close-btn" type="button" aria-label="Fechar chat" onclick="return window.closeChatMobileClean(event)">x</button>
         </div>
 
         <div class="chat-room-switch">
@@ -617,14 +621,14 @@
             <span>A responder a <strong id="chatReplyName"></strong></span>
             <p id="chatReplyText"></p>
           </div>
-          <button id="chatReplyCancelBtn" type="button" aria-label="Cancelar resposta">×</button>
+          <button id="chatReplyCancelBtn" type="button" aria-label="Cancelar resposta">x</button>
         </div>
 
         <form id="chatForm" class="chat-form">
-          <button id="chatImageBtn" class="chat-attach-btn" type="button" aria-label="Enviar imagem">＋</button>
+          <button id="chatImageBtn" class="chat-attach-btn" type="button" aria-label="Enviar imagem">+</button>
           <input id="chatImageInput" type="file" accept="image/*" class="hidden" />
           <input id="chatInput" type="text" maxlength="500" autocomplete="off" placeholder="Mensagem" />
-          <button id="chatSendBtn" class="primary" type="submit" aria-label="Enviar mensagem">➤</button>
+          <button id="chatSendBtn" class="primary" type="submit" aria-label="Enviar mensagem">Enviar</button>
         </form>
       </div>
       <div id="chatActionMenu" class="chat-action-menu hidden">
@@ -632,16 +636,16 @@
         <button id="chatActionPinBtn" type="button">Fixar</button>
         <button id="chatActionDeleteBtn" type="button">Apagar</button>
         <div class="chat-reaction-bar" id="chatReactionBar">
-          <button type="button" data-chat-reaction="😂">😂</button>
-          <button type="button" data-chat-reaction="⚽">⚽</button>
-          <button type="button" data-chat-reaction="🏆">🏆</button>
-          <button type="button" data-chat-reaction="🔥">🔥</button>
-          <button type="button" data-chat-reaction="👀">👀</button>
-          <button type="button" data-chat-reaction="👍">👍</button>
+          <button type="button" data-chat-reaction="Haha">Haha</button>
+          <button type="button" data-chat-reaction="Golo">Golo</button>
+          <button type="button" data-chat-reaction="Taca">Taca</button>
+          <button type="button" data-chat-reaction="Forca">Forca</button>
+          <button type="button" data-chat-reaction="Olhos">Olhos</button>
+          <button type="button" data-chat-reaction="Ok">Ok</button>
         </div>
       </div>
       <div id="chatImageViewer" class="chat-image-viewer hidden" aria-modal="true" role="dialog">
-        <button id="chatImageViewerClose" class="chat-image-viewer-close" type="button" aria-label="Fechar imagem">×</button>
+        <button id="chatImageViewerClose" class="chat-image-viewer-close" type="button" aria-label="Fechar imagem">x</button>
         <img id="chatImageViewerImg" alt="Imagem do chat" />
       </div>
 </body>
