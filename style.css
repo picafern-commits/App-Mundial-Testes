@@ -10599,3 +10599,59 @@ textarea:focus{
     flex-direction:column!important;
   }
 }
+
+
+/* v214 — janela Users sempre por cima das tabs/topbar/cards */
+.topbar{
+  position:relative!important;
+}
+.topbar .topbar-online-users{
+  z-index:2147482000!important;
+}
+.topbar .topbar-online-users[open]{
+  z-index:2147482500!important;
+}
+.topbar .topbar-online-users .online-users-list{
+  z-index:2147483000!important;
+}
+.topbar .topbar-online-users.online-users-floating-v214 .online-users-list,
+body.online-users-open-v214 #onlineUsersList.online-users-list{
+  position:fixed!important;
+  right:auto!important;
+  bottom:auto!important;
+  transform:none!important;
+  overflow:auto!important;
+  overscroll-behavior:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+  background:rgba(7,11,19,.99)!important;
+  border:1px solid rgba(148,163,184,.25)!important;
+  box-shadow:0 30px 90px rgba(0,0,0,.62)!important;
+  backdrop-filter:blur(18px)!important;
+  z-index:2147483000!important;
+  isolation:isolate!important;
+}
+body.online-users-open-v214 .tabs,
+body.online-users-open-v214 .topbar,
+body.online-users-open-v214 .copy-actions{
+  overflow:visible!important;
+}
+body.online-users-open-v214 #onlineUsersPanel{
+  overflow:visible!important;
+}
+#onlineUsersPanel[open] summary{
+  position:relative!important;
+  z-index:2147483100!important;
+}
+#onlineUsersList .online-users-popup-head{
+  z-index:2147483101!important;
+}
+@media(max-width:760px){
+  body.online-users-open-v214 #onlineUsersList.online-users-list{
+    left:8px!important;
+    right:8px!important;
+    top:max(68px, env(safe-area-inset-top))!important;
+    width:auto!important;
+    max-width:none!important;
+    max-height:calc(100dvh - 84px)!important;
+  }
+}

@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v219";
+const APP_VERSION_LABEL = "v214";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -11385,3 +11385,100 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => { if ($("settingsTab")?.classList.contains("active")) applySettingsLayoutV213(); }, 400);
   setTimeout(() => { if ($("adminTab")?.classList.contains("active")) applyAdminLayoutSettingsV213(); }, 700);
 });
+
+
+// v214 — Users popup sempre à frente, fora do stacking da topbar/tabs.
+function positionOnlineUsersPopupV214() {
+  const panel = $("onlineUsersPanel");
+  const list = $("onlineUsersList");
+  const trigger = panel?.querySelector("summary");
+  if (!panel || !list || !trigger || !panel.open) return;
+
+  const rect = trigger.getBoundingClientRect();
+  const margin = 12;
+  const viewportW = window.innerWidth || document.documentElement.clientWidth || 0;
+  const viewportH = window.innerHeight || document.documentElement.clientHeight || 0;
+
+  const desiredWidth = Math.min(520, Math.max(320, viewportW - margin * 2));
+  const left = Math.max(margin, Math.min(rect.right - desiredWidth, viewportW - desiredWidth - margin));
+  const top = Math.max(margin, Math.min(rect.bottom + 8, viewportH - 120));
+
+  list.style.position = "fixed";
+  list.style.left = `${Math.round(left)}px`;
+  list.style.right = "auto";
+  list.style.top = `${Math.round(top)}px`;
+  list.style.width = `${Math.round(desiredWidth)}px`;
+  list.style.maxWidth = `calc(100vw - ${margin * 2}px)`;
+  list.style.maxHeight = `${Math.max(220, Math.round(viewportH - top - margin))}px`;
+  list.style.zIndex = "2147483000";
+  list.style.transform = "none";
+  list.style.pointerEvents = "auto";
+
+  panel.classList.add("online-users-floating-v214");
+  document.body.classList.add("online-users-open-v214");
+}
+
+function closeOnlineUsersPanelV214(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const panel = $("onlineUsersPanel");
+  if (panel) panel.open = false;
+  document.body.classList.remove("online-users-open-v214");
+  return false;
+}
+
+window.closeOnlineUsersPanelNow = closeOnlineUsersPanelV214;
+
+function bindOnlineUsersPopupV214() {
+  const panel = $("onlineUsersPanel");
+  if (!panel || panel.dataset.usersPopupV214 === "1") return;
+  panel.dataset.usersPopupV214 = "1";
+
+  panel.addEventListener("toggle", () => {
+    if (panel.open) {
+      positionOnlineUsersPopupV214();
+      setTimeout(positionOnlineUsersPopupV214, 50);
+      setTimeout(positionOnlineUsersPopupV214, 250);
+    } else {
+      document.body.classList.remove("online-users-open-v214");
+      const list = $("onlineUsersList");
+      if (list) {
+        list.style.left = "";
+        list.style.top = "";
+        list.style.width = "";
+        list.style.maxHeight = "";
+        list.style.transform = "";
+      }
+    }
+  });
+
+  document.addEventListener("click", event => {
+    const opened = panel.open;
+    if (!opened) return;
+    if (event.target.closest?.("#onlineUsersPanel")) return;
+    panel.open = false;
+    document.body.classList.remove("online-users-open-v214");
+  }, true);
+
+  window.addEventListener("resize", positionOnlineUsersPopupV214, { passive: true });
+  window.addEventListener("scroll", positionOnlineUsersPopupV214, { passive: true });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  bindOnlineUsersPopupV214();
+  setTimeout(bindOnlineUsersPopupV214, 800);
+  setTimeout(positionOnlineUsersPopupV214, 900);
+});
+
+const renderOnlineUsersOriginalV214 = typeof renderOnlineUsers === "function" ? renderOnlineUsers : null;
+if (renderOnlineUsersOriginalV214 && !window.__renderOnlineUsersV214) {
+  window.__renderOnlineUsersV214 = true;
+  renderOnlineUsers = function renderOnlineUsersV214() {
+    renderOnlineUsersOriginalV214();
+    bindOnlineUsersPopupV214();
+    setTimeout(positionOnlineUsersPopupV214, 0);
+    setTimeout(positionOnlineUsersPopupV214, 120);
+  };
+}
