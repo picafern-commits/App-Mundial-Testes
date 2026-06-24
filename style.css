@@ -9633,3 +9633,20 @@ button,
 #adminUnlocked > .admin-card.admin-section-hidden-v187{
   display: none !important;
 }
+
+
+/* v197 — Toggle Fase Final */
+.ko-toggle-on-v197{
+  color:#ffd84d!important;
+}
+#saveKnockoutUnlockBtn.danger-soft{
+  border-color:rgba(255,99,99,.45)!important;
+  background:rgba(255,99,99,.12)!important;
+  color:#ffd2d2!important;
+}
+#adminKnockoutUnlockedInput{
+  width:20px!important;
+  height:20px!important;
+  accent-color:#16d1b3!important;
+  cursor:pointer!important;
+}

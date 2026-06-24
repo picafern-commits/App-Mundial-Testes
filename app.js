@@ -3695,8 +3695,14 @@ function ensureKnockoutSettings() {
   const existingMatches = Array.isArray(current.matches) ? current.matches : [];
   const existing = new Map(existingMatches.map(match => [match.id, match]));
 
+  const enabled =
+    typeof current.enabled === "boolean"
+      ? current.enabled
+      : Boolean(current.adminUnlocked);
+
   appSettings.knockout = {
-    adminUnlocked: Boolean(current.adminUnlocked),
+    enabled,
+    adminUnlocked: enabled,
     layout: { ...defaultKnockoutLayout(), ...(current.layout || {}) },
     matches: defaults.map(match => {
       const saved = existing.get(match.id) || {};
@@ -3732,6 +3738,8 @@ function groupStageFinished() {
 }
 
 function knockoutAvailable() {
+  ensureKnockoutSettings();
+  if (typeof appSettings.knockout?.enabled === "boolean") return Boolean(appSettings.knockout.enabled);
   return groupStageFinished() || Boolean(appSettings.knockout?.adminUnlocked);
 }
 
@@ -3961,7 +3969,9 @@ function renderKnockout() {
 
   if (!knockoutAvailable()) {
     const missing = games.filter(needsFinalResult).length;
-    if (notice) notice.innerHTML = `<strong>Fase Final bloqueada</strong><span>Faltam ${missing} resultado(s) da fase de grupos. O Admin pode ativar esta página para trabalhar.</span>`;
+    if (notice) {
+      notice.innerHTML = `<strong>Fase Final desativada</strong><span>O Admin pode ativar esta página no painel Admin. Faltam ${missing} resultado(s) da fase de grupos.</span>`;
+    }
     container.innerHTML = "";
     return;
   }
@@ -4503,7 +4513,16 @@ function renderKnockoutAdmin() {
   ensureKnockoutSettings();
 
   const toggle = $("adminKnockoutUnlockedInput");
-  if (toggle) toggle.checked = Boolean(appSettings.knockout?.adminUnlocked);
+  if (toggle) {
+    toggle.checked = Boolean(appSettings.knockout?.enabled ?? appSettings.knockout?.adminUnlocked);
+    toggle.closest("label")?.classList.toggle("ko-toggle-on-v197", toggle.checked);
+  }
+
+  const saveToggleBtn = $("saveKnockoutUnlockBtn");
+  if (saveToggleBtn) {
+    const active = Boolean(appSettings.knockout?.enabled ?? appSettings.knockout?.adminUnlocked);
+    saveToggleBtn.textContent = active ? "Desativar / guardar" : "Ativar / guardar";
+  }
 
   const panel = $("knockoutAdminPanel");
   if (!panel) return;
@@ -4557,14 +4576,40 @@ function renderKnockoutAdmin() {
 }
 
 async function saveKnockoutUnlock() {
-  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
+  if (!hasPermission("editKnockout")) {
+    toast("Sem permissão.");
+    return;
+  }
 
   ensureKnockoutSettings();
-  appSettings.knockout.adminUnlocked = Boolean($("adminKnockoutUnlockedInput")?.checked);
-  addSystemLog("Bloqueio Fase Final", appSettings.knockout.adminUnlocked ? "Fase Final desbloqueada pelo Admin." : "Fase Final voltou a ficar bloqueada até acabarem os grupos.", { unlocked: appSettings.knockout.adminUnlocked });
-  await persistSettings();
+
+  const enabled = Boolean($("adminKnockoutUnlockedInput")?.checked);
+  appSettings.knockout.enabled = enabled;
+  appSettings.knockout.adminUnlocked = enabled;
+
+  addSystemLog(
+    "Estado Fase Final",
+    enabled ? "Fase Final ativada pelo Admin." : "Fase Final desativada pelo Admin.",
+    { enabled },
+    { sync: true }
+  );
+
+  saveLocalData("fase final toggle local");
+  renderKnockoutAdmin();
+  renderCalendar();
+  renderKnockout();
+  renderActivePageV187();
+  toast(enabled ? "Fase Final ativada." : "Fase Final desativada.");
+
+  try {
+    await persistSettings();
+    setFirebaseStatus("success", "Firebase: estado da Fase Final guardado");
+  } catch (error) {
+    console.warn("Guardar estado da Fase Final falhou:", error);
+    setFirebaseStatus("error", "Firebase: estado da Fase Final ficou local/pendente");
+  }
+
   renderAll();
-  toast(appSettings.knockout.adminUnlocked ? "Fase Final desbloqueada para Admin." : "Fase Final volta a bloquear até acabarem os grupos.");
 }
 
 function applyKnockoutLayoutFromSettings() {
@@ -10787,3 +10832,44 @@ document.addEventListener("click", event => {
     setTimeout(applyCalendarFilterHighlightV192, 180);
   }
 }, true);
+
+
+// v197 — bind robusto do botão/checkbox da Fase Final, mesmo se o Admin for renderizado depois.
+function updateKnockoutToggleUiV197() {
+  try {
+    ensureKnockoutSettings();
+    const active = Boolean(appSettings.knockout?.enabled ?? appSettings.knockout?.adminUnlocked);
+    const toggle = $("adminKnockoutUnlockedInput");
+    const btn = $("saveKnockoutUnlockBtn");
+    if (toggle) {
+      toggle.checked = active;
+      toggle.closest("label")?.classList.toggle("ko-toggle-on-v197", active);
+    }
+    if (btn) {
+      btn.textContent = active ? "Desativar / guardar" : "Ativar / guardar";
+      btn.classList.toggle("danger-soft", active);
+    }
+  } catch (error) {
+    console.warn("Atualizar toggle Fase Final falhou:", error);
+  }
+}
+
+document.addEventListener("change", event => {
+  const toggle = event.target.closest?.("#adminKnockoutUnlockedInput");
+  if (!toggle) return;
+  toggle.closest("label")?.classList.toggle("ko-toggle-on-v197", toggle.checked);
+  const btn = $("saveKnockoutUnlockBtn");
+  if (btn) btn.textContent = toggle.checked ? "Desativar / guardar" : "Ativar / guardar";
+}, true);
+
+document.addEventListener("click", event => {
+  const btn = event.target.closest?.("#saveKnockoutUnlockBtn");
+  if (!btn) return;
+  event.preventDefault();
+  event.stopPropagation();
+  saveKnockoutUnlock();
+}, true);
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(updateKnockoutToggleUiV197, 500);
+});
