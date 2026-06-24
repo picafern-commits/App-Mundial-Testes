@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v214";
+const APP_VERSION_LABEL = "v215";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -10995,12 +10995,18 @@ function updateSettingsSectionCountsV213() {
 function renderOrganizationPanelV213() {
   const content = document.querySelector("#settingsSectionV213_organization .settings-section-content-v213") || $("settingsTab");
   if (!content) return;
-  let box = $("settingsOrganizationSingleV213");
+
+  const organizationBoxes = Array.from(document.querySelectorAll("#settingsOrganizationSingleV213"));
+  let box = organizationBoxes.find(el => el.parentElement === content) || organizationBoxes[0] || null;
+  organizationBoxes.forEach(el => {
+    if (el !== box) el.remove();
+  });
+
   if (!box) {
     box = document.createElement("section");
     box.id = "settingsOrganizationSingleV213";
-    box.className = "settings-organization-single-v213 admin-card";
   }
+  box.className = "settings-organization-single-v213";
 
   const settings = savedAdminLayoutSettingsV213();
   const adminCount = ADMIN_SECTION_CHOICES_V213.filter(([key]) => key !== "system" && settings.adminSections?.[key] === "admin").length;
@@ -11011,14 +11017,17 @@ function renderOrganizationPanelV213() {
   const sectionRows = ADMIN_SECTION_CHOICES_V213.map(([key, label, desc]) => {
     const value = settings.adminSections?.[key] || (key === "system" ? "settings" : "admin");
     const locked = key === "system";
-    return `
-      <label class="settings-org-row-v213 settings-org-row-v214">
-        <span><b>${escapeHtml(label)}</b><small>${escapeHtml(desc || "")}</small></span>
-        <select data-admin-section-location-v213="${escapeHtml(key)}" ${locked ? "disabled" : ""}>
+    const control = locked
+      ? `<span class="settings-org-fixed-v215">Fixo em Configurações</span>`
+      : `<select data-admin-section-location-v213="${escapeHtml(key)}">
           <option value="admin" ${value === "admin" ? "selected" : ""}>Mostrar no Admin</option>
           <option value="settings" ${value === "settings" ? "selected" : ""}>Mostrar em Configurações</option>
           <option value="hidden" ${value === "hidden" ? "selected" : ""}>Não mostrar</option>
-        </select>
+        </select>`;
+    return `
+      <label class="settings-org-row-v213 settings-org-row-v214">
+        <span><b>${escapeHtml(label)}</b><small>${escapeHtml(desc || "")}</small></span>
+        ${control}
       </label>`;
   }).join("");
 
@@ -11055,7 +11064,6 @@ function renderOrganizationPanelV213() {
   `;
 
   if (box.parentElement !== content) content.prepend(box);
-  document.querySelectorAll("#settingsOrganizationSingleV208,#settingsOrganizationSingleV210,#adminLayoutManagerSettingsV202,#adminLayoutManagerAdminV202,#settingsMovedAdminSectionsV202").forEach(el => el.remove());
 }
 
 function adminCardsV214() {
@@ -11177,7 +11185,7 @@ function moveTechnicalBlocksToSettingsV213() {
 
 function cleanupAdminTechnicalBlocksV213() {
   ensureFootballDataSettingsBoxV213();
-  document.querySelectorAll("#adminTab #settingsOrganizationSingleV213,#adminTab #settingsOrganizationSingleV208,#adminTab #settingsOrganizationSingleV210,#adminTab #adminLayoutManagerAdminV202,#adminTab #adminLayoutManagerSettingsV202").forEach(el => el.remove());
+  document.querySelectorAll("#adminTab #settingsOrganizationSingleV213").forEach(el => el.remove());
   TECHNICAL_BLOCK_IDS_V213.forEach(id => {
     const el = document.querySelector(`#adminTab #${CSS.escape(id)}, #loginScreen #${CSS.escape(id)}`);
     if (el) moveTechnicalBlocksToSettingsV213();
@@ -11324,8 +11332,14 @@ document.addEventListener("change", event => {
   const pageCheckbox = event.target.closest?.("[data-page-visible-v213]");
   if (!sectionSelect && !pageCheckbox) return;
   const settings = savedAdminLayoutSettingsV213();
-  if (sectionSelect) settings.adminSections[sectionSelect.dataset.adminSectionLocationV213] = sectionSelect.value;
-  if (pageCheckbox) settings.pages[pageCheckbox.dataset.pageVisibleV213] = pageCheckbox.checked;
+  if (sectionSelect) {
+    const sectionKey = sectionSelect.getAttribute("data-admin-section-location-v213");
+    if (sectionKey) settings.adminSections[sectionKey] = sectionSelect.value;
+  }
+  if (pageCheckbox) {
+    const pageKey = pageCheckbox.getAttribute("data-page-visible-v213");
+    if (pageKey) settings.pages[pageKey] = pageCheckbox.checked;
+  }
   saveAdminLayoutSettingsV213(settings);
   renderOrganizationPanelV213();
   applySettingsLayoutV213();

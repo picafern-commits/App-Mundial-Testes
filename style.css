@@ -9722,77 +9722,6 @@ button,
   display:none!important;
 }
 
-/* v202 — Organização Admin/Configurações */
-.admin-layout-manager-v202,
-.settings-moved-admin-v202{
-  border:1px solid rgba(255,255,255,.09);
-  border-radius:18px;
-  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));
-  padding:14px;
-  margin:12px 0;
-}
-.admin-layout-head-v202,
-.settings-moved-head-v202{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  margin-bottom:12px;
-}
-.admin-layout-head-v202 strong,
-.settings-moved-head-v202 strong{
-  display:block;
-  color:var(--gold);
-  font-size:15px;
-}
-.admin-layout-head-v202 span,
-.settings-moved-head-v202 span{
-  display:block;
-  color:var(--muted);
-  font-size:12px;
-  font-weight:800;
-  margin-top:3px;
-}
-.admin-layout-grid-v202{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:14px;
-}
-.admin-layout-grid-v202 h4{
-  margin:0 0 8px;
-  color:var(--text);
-}
-.admin-layout-row-v202,
-.admin-layout-page-v202{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  min-height:38px;
-  padding:8px 10px;
-  border:1px solid rgba(255,255,255,.075);
-  border-radius:12px;
-  background:rgba(255,255,255,.035);
-  color:var(--text);
-  font-weight:850;
-}
-.admin-layout-row-v202 select{
-  min-width:150px;
-}
-.admin-layout-pages-v202{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-  gap:8px;
-}
-.settings-admin-clone-v202{
-  margin-top:12px;
-}
-@media(max-width:760px){
-  .admin-layout-grid-v202{grid-template-columns:1fr;}
-  .admin-layout-head-v202{align-items:flex-start;flex-direction:column;}
-}
-
-
 /* v203 — blocos extra do Admin respeitam filtros internos */
 #adminTab .admin-section-hidden-v187,
 #adminTab .admin-section-force-hidden-v202{
@@ -10020,7 +9949,6 @@ button,
 #adminTab #footballFreeStatusBoxV149,
 #adminTab #footballDataAdminFixedBoxV143,
 #adminTab #suspendedGameAdminBoxV159,
-#adminTab #adminLayoutManagerAdminV202,
 #adminTab #firebaseHealthPanelV187,
 #adminTab #pushHealthPanelV187,
 #adminTab #notificationsHealthPanelV187,
@@ -10067,69 +9995,6 @@ button,
 }
 
 
-/* v207 — Configurações mais clean e sem duplicados */
-.settings-single-organization-v207{
-  border-radius:16px!important;
-  background:rgba(8,18,34,.72)!important;
-}
-#settingsTab #adminLayoutManagerAdminV202{
-  display:none!important;
-}
-.settings-section-v205 > summary{
-  background:rgba(255,255,255,.035);
-}
-.settings-section-v205[open] > summary{
-  border-bottom:1px solid rgba(255,255,255,.08);
-}
-.settings-section-v205 summary small{
-  max-width:720px;
-  line-height:1.3;
-}
-.settings-section-content-v205{
-  padding-top:14px!important;
-}
-#settingsSectionV205_organizar .admin-layout-manager-v202{
-  margin:0!important;
-}
-#settingsSectionV205_sistema .football-realtime-sync-box-v156{
-  margin-top:0!important;
-}
-.configs-technical-only-root-v206 > details > summary{
-  background:rgba(255,255,255,.035);
-}
-@media(min-width:900px){
-  #settingsSectionV205_organizar .admin-layout-grid-v202{
-    grid-template-columns:minmax(420px,1fr) minmax(420px,1fr);
-  }
-}
-
-
-/* v208 — Organização da app única */
-#adminTab #adminLayoutManagerAdminV202,
-#adminTab #adminLayoutManagerSettingsV202,
-#adminTab #settingsOrganizationSingleV208,
-#adminTab #settingsMovedAdminSectionsV202,
-#settingsTab #adminLayoutManagerAdminV202,
-#settingsTab #adminLayoutManagerSettingsV202{
-  display:none!important;
-}
-#settingsOrganizationSingleV208{
-  display:block!important;
-  width:100%!important;
-  max-width:none!important;
-  margin:0!important;
-  border-radius:16px!important;
-  background:rgba(8,18,34,.72)!important;
-}
-#settingsOrganizationSingleV208 .admin-layout-grid-v202{
-  gap:14px!important;
-}
-#settingsOrganizationSingleV208 select,
-#settingsOrganizationSingleV208 input{
-  pointer-events:auto!important;
-}
-
-
 /* v209 — blocos técnicos nunca aparecem no login */
 .login-card #footballRealtimeSyncBoxV156,
 .auth-card #footballRealtimeSyncBoxV156,
@@ -10159,79 +10024,8 @@ button,
 #adminTab #suspendedGameAdminBoxV159,
 #adminTab #firebaseHealthPanelV187,
 #adminTab #pushHealthPanelV187,
-#adminTab #notificationsHealthPanelV187,
-#adminTab #settingsOrganizationSingleV210,
-#adminTab #settingsOrganizationSingleV208{
+#adminTab #notificationsHealthPanelV187{
   display:none!important;
-}
-#settingsOrganizationSingleV210{
-  display:block!important;
-  width:100%!important;
-  max-width:none!important;
-  margin:0!important;
-  border:1px solid rgba(255,255,255,.09);
-  border-radius:18px;
-  background:linear-gradient(180deg,rgba(255,255,255,.052),rgba(255,255,255,.025));
-  padding:14px;
-}
-.settings-org-head-v210{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:12px;
-  margin-bottom:14px;
-}
-.settings-org-head-v210 strong{
-  display:block;
-  color:var(--gold);
-  font-size:15px;
-}
-.settings-org-head-v210 span{
-  display:block;
-  color:var(--muted);
-  font-size:12px;
-  font-weight:800;
-  margin-top:4px;
-}
-.settings-org-grid-v210{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:14px;
-}
-.settings-org-grid-v210 h4{
-  margin:0 0 8px;
-  color:var(--text);
-}
-.settings-org-row-v210,
-.settings-org-page-v210{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  min-height:38px;
-  padding:8px 10px;
-  border:1px solid rgba(255,255,255,.075);
-  border-radius:12px;
-  background:rgba(255,255,255,.035);
-  color:var(--text);
-  font-weight:850;
-}
-.settings-org-row-v210 select{
-  min-width:150px;
-}
-.settings-org-pages-v210{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-  gap:8px;
-}
-#settingsTab #settingsOrganizationSingleV208,
-#settingsTab #adminLayoutManagerSettingsV202,
-#settingsTab #adminLayoutManagerAdminV202{
-  display:none!important;
-}
-@media(max-width:760px){
-  .settings-org-grid-v210{grid-template-columns:1fr;}
-  .settings-org-head-v210{flex-direction:column;}
 }
 
 
@@ -10436,6 +10230,17 @@ body.app-authenticated-v213 #appShell{
 .settings-org-row-v214 select{
   width:210px!important;
   max-width:42vw!important;
+}
+
+.settings-org-fixed-v215{
+  border:1px solid rgba(255,255,255,.10)!important;
+  border-radius:8px!important;
+  background:rgba(255,255,255,.055)!important;
+  color:rgba(255,255,255,.78)!important;
+  padding:9px 11px!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
 }
 
 .settings-org-row-v214 select:disabled{
