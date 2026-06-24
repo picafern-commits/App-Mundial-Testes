@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v226";
+const APP_VERSION_LABEL = "v227";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -12389,3 +12389,146 @@ document.addEventListener("toggle", event => {
     }
   }
 }, true);
+
+
+// v227 — Corrige Configurações: ao abrir uma aba, ela não fecha logo sozinha.
+let settingsUserToggleV227 = null;
+
+function settingsDetailsTitleV227(details) {
+  return String(details?.querySelector?.(":scope > summary span")?.textContent || details?.querySelector?.(":scope > summary")?.textContent || "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function setSettingsDetailsLabelV227(details, open) {
+  const small = details?.querySelector?.(":scope > summary small");
+  if (!small) return;
+  if (small.textContent && small.textContent.includes("bloco")) return;
+  small.textContent = open ? "Aberto" : "Fechado";
+}
+
+function snapshotSettingsOpenStateV227() {
+  const settingsTab = $("settingsTab");
+  const state = new Map();
+  if (!settingsTab) return state;
+
+  [...settingsTab.querySelectorAll("details")].forEach((details, index) => {
+    const key = details.id || `${settingsDetailsTitleV227(details)}_${index}`;
+    state.set(key, details.open);
+  });
+
+  return state;
+}
+
+function restoreSettingsOpenStateV227(state) {
+  const settingsTab = $("settingsTab");
+  if (!settingsTab || !state) return;
+
+  [...settingsTab.querySelectorAll("details")].forEach((details, index) => {
+    const key = details.id || `${settingsDetailsTitleV227(details)}_${index}`;
+    if (!state.has(key)) return;
+    const open = state.get(key);
+    details.open = open;
+    setSettingsDetailsLabelV227(details, open);
+  });
+}
+
+function keepFirstSettingsOpenOnlyOnEnterV227() {
+  const settingsTab = $("settingsTab");
+  if (!settingsTab) return;
+
+  const details = [...settingsTab.querySelectorAll("details")].filter(item => {
+    try {
+      const style = window.getComputedStyle(item);
+      return style.display !== "none" && style.visibility !== "hidden";
+    } catch {
+      return true;
+    }
+  });
+
+  // Só garante a primeira principal aberta. Não fecha as outras que o user abriu.
+  const first = details.find(item => {
+    const title = settingsDetailsTitleV227(item).toLowerCase();
+    return title && title !== "configurações" && title !== "configuracoes";
+  });
+
+  if (first) {
+    first.open = true;
+    setSettingsDetailsLabelV227(first, true);
+  }
+}
+
+// Override da limpeza antiga: limpa duplicados/vazios, mas NÃO fecha todas as abas.
+const removeFakeSettingsOriginalV227 = typeof removeFakeSettingsCollapseSectionsV225 === "function" ? removeFakeSettingsCollapseSectionsV225 : null;
+if (removeFakeSettingsOriginalV227 && !window.__settingsCleanKeepStateV227) {
+  window.__settingsCleanKeepStateV227 = true;
+  removeFakeSettingsCollapseSectionsV225 = function removeFakeSettingsKeepStateV227() {
+    const before = snapshotSettingsOpenStateV227();
+    const result = removeFakeSettingsOriginalV227.apply(this, arguments);
+    setTimeout(() => {
+      restoreSettingsOpenStateV227(before);
+      keepFirstSettingsOpenOnlyOnEnterV227();
+    }, 0);
+    return result;
+  };
+}
+
+const applySettingsCleanOriginalV227 = typeof applySettingsCleanNoEmptyV225 === "function" ? applySettingsCleanNoEmptyV225 : null;
+if (applySettingsCleanOriginalV227 && !window.__applySettingsCleanKeepStateV227) {
+  window.__applySettingsCleanKeepStateV227 = true;
+  applySettingsCleanNoEmptyV225 = function applySettingsCleanKeepStateV227() {
+    const before = snapshotSettingsOpenStateV227();
+    const result = applySettingsCleanOriginalV227.apply(this, arguments);
+    setTimeout(() => {
+      restoreSettingsOpenStateV227(before);
+      keepFirstSettingsOpenOnlyOnEnterV227();
+    }, 0);
+    return result;
+  };
+}
+
+// Quando o user clica num summary em Configurações, esse clique manda.
+document.addEventListener("click", event => {
+  const summary = event.target.closest?.("#settingsTab details > summary");
+  if (!summary) return;
+
+  const details = summary.parentElement;
+  if (!(details instanceof HTMLDetailsElement)) return;
+
+  settingsUserToggleV227 = {
+    details,
+    shouldOpen: !details.open,
+    at: Date.now()
+  };
+
+  setTimeout(() => {
+    if (!settingsUserToggleV227 || settingsUserToggleV227.details !== details) return;
+    details.open = settingsUserToggleV227.shouldOpen;
+    setSettingsDetailsLabelV227(details, details.open);
+  }, 80);
+
+  setTimeout(() => {
+    if (!settingsUserToggleV227 || settingsUserToggleV227.details !== details) return;
+    details.open = settingsUserToggleV227.shouldOpen;
+    setSettingsDetailsLabelV227(details, details.open);
+  }, 260);
+
+  setTimeout(() => {
+    if (!settingsUserToggleV227 || settingsUserToggleV227.details !== details) return;
+    details.open = settingsUserToggleV227.shouldOpen;
+    setSettingsDetailsLabelV227(details, details.open);
+    settingsUserToggleV227 = null;
+  }, 650);
+}, true);
+
+// Ao entrar na página, abre a primeira. Depois disso, deixa o user controlar.
+document.addEventListener("click", event => {
+  if (event.target.closest?.("[data-tab='settingsTab']")) {
+    setTimeout(keepFirstSettingsOpenOnlyOnEnterV227, 250);
+    setTimeout(keepFirstSettingsOpenOnlyOnEnterV227, 600);
+  }
+}, true);
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(keepFirstSettingsOpenOnlyOnEnterV227, 1200);
+});

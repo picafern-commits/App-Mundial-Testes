@@ -10956,3 +10956,12 @@ body.settings-collapsed-v223 #settingsTab details:not([open]) > *:not(summary){
 #settingsTab details[open] > summary{
   color:var(--gold)!important;
 }
+
+
+/* v227 — Configurações respeita abertura manual das abas */
+#settingsTab details[open] > summary small{
+  color:rgba(255,216,87,.86)!important;
+}
+#settingsTab details > summary{
+  cursor:pointer!important;
+}
