@@ -10233,3 +10233,17 @@ button,
   .settings-org-grid-v210{grid-template-columns:1fr;}
   .settings-org-head-v210{flex-direction:column;}
 }
+
+
+/* v212 — impedir loop login/ecrã preto quando já há sessão */
+body.app-authenticated-v212 #loginScreen{
+  display:none!important;
+}
+body.app-authenticated-v212 #appShell{
+  display:block!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+body.app-authenticated-v212 #appShell.auth-hidden{
+  display:block!important;
+}

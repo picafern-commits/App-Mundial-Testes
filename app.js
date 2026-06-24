@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v211";
+const APP_VERSION_LABEL = "v212";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -1705,11 +1705,29 @@ function setLoginStatus(message, type = "info") {
 }
 
 function showLoginScreen() {
+  if (currentUser && document.body.classList.contains("app-authenticated-v212")) {
+    console.warn("showLoginScreen bloqueado: sessão Firebase ativa.");
+    forceShowAppAfterLoginV212();
+    return;
+  }
+
   try { cleanupRealtimeSync(); } catch (error) { console.warn("cleanupRealtimeSync falhou:", error); }
-  $("loginScreen")?.classList.remove("hidden");
-  $("appShell")?.classList.add("auth-hidden");
-  document.body.classList.remove("knockout-layout-active");
-  $("appShell")?.classList.remove("knockout-screen-active");
+
+  const login = $("loginScreen");
+  const shell = $("appShell");
+
+  if (login) {
+    login.classList.remove("hidden");
+    login.style.display = "";
+  }
+
+  if (shell) {
+    shell.classList.add("auth-hidden");
+    shell.style.display = "";
+  }
+
+  document.body.classList.remove("knockout-layout-active", "app-authenticated-v212");
+  shell?.classList.remove("knockout-screen-active");
 }
 
 function showAppScreen() {
@@ -3578,54 +3596,73 @@ function setupAuthGate() {
       return;
     }
 
+    setLoginStatus("A carregar perfil...", "loading");
+
+    // A partir daqui existe sessão Firebase. Erros visuais/dados NÃO podem mandar a app para o login.
     try {
-      setLoginStatus("A carregar permissões...", "loading");
       currentProfile = await readUserProfile(user);
+    } catch (profileError) {
+      console.warn("Perfil/permissões falharam; a usar perfil local:", profileError);
+      currentProfile = defaultProfileForUser(user);
+    }
 
-      if (!currentProfile.active) {
+    if (!currentProfile) currentProfile = defaultProfileForUser(user);
+
+    if (!currentProfile.active) {
+      try {
         await firebaseAuthApi.signOut(firebaseAuth);
-        setLoginStatus("Conta bloqueada pelo Admin.", "error");
-        return;
+      } catch (signOutError) {
+        console.warn("Sign out após conta bloqueada falhou:", signOutError);
       }
-
-      showAppScreen();
-      updateSessionBox();
-
-      loadPermissionsUsers()
-        .then(renderPermissionsUsers)
-        .catch(error => console.warn("Permissões em segundo plano falharam:", error));
-
-      try {
-        await loadData();
-      } catch (loadError) {
-        console.warn("Dados Firebase falharam no login; vou abrir com cache local:", loadError);
-        try {
-          applyLocalDataFast("fallback login v211");
-        } catch (localError) {
-          console.warn("Fallback local no login também falhou:", localError);
-        }
-      }
-
-      try {
-        applyPermissionsToUi();
-      } catch (permissionUiError) {
-        console.warn("Aplicar permissões no UI falhou, mas login continua:", permissionUiError);
-      }
-
-      setLoginStatus("Login efetuado.", "success");
-      startChatSafe();
-      startOnlineFeaturesSafe();
-      setTimeout(setupPushForCurrentUserV182, 900);
-
-      try {
-        addSystemLog("Sessão iniciada", `${currentProfile.name || currentUser.email} entrou na app.`, { email: currentUser.email }, { sync: true });
-      } catch (logError) {
-        console.warn("Log de sessão falhou sem bloquear login:", logError);
-      }
-    } catch (error) {
-      console.error("Erro no arranque com login:", error);
-      setLoginStatus("Erro ao carregar permissões.", "error");
+      setLoginStatus("Conta bloqueada pelo Admin.", "error");
       showLoginScreen();
+      return;
+    }
+
+    try {
+      showAppScreen();
+    } catch (screenError) {
+      console.warn("showAppScreen falhou; forçar ecrã app:", screenError);
+      forceShowAppAfterLoginV212();
+    }
+
+    try { forceShowAppAfterLoginV212(); } catch {}
+
+    try { updateSessionBox(); } catch (error) { console.warn("updateSessionBox falhou:", error); }
+
+    loadPermissionsUsers()
+      .then(renderPermissionsUsers)
+      .catch(error => console.warn("Permissões em segundo plano falharam:", error));
+
+    try {
+      await loadData();
+    } catch (loadError) {
+      console.warn("Dados Firebase falharam no login; vou abrir com cache local:", loadError);
+      try {
+        applyLocalDataFast("fallback login v212");
+      } catch (localError) {
+        console.warn("Fallback local no login também falhou:", localError);
+      }
+    }
+
+    try { applyPermissionsToUi(); } catch (error) { console.warn("applyPermissionsToUi falhou:", error); }
+    try { renderAll(); } catch (error) { console.warn("renderAll pós-login falhou:", error); }
+
+    try { forceShowAppAfterLoginV212(); } catch {}
+
+    setLoginStatus("Login efetuado.", "success");
+
+    try { startChatSafe(); } catch (error) { console.warn("Chat não iniciou:", error); }
+    try { startOnlineFeaturesSafe(); } catch (error) { console.warn("Online users não iniciou:", error); }
+
+    setTimeout(() => {
+      try { setupPushForCurrentUserV182(); } catch (error) { console.warn("Push pós-login falhou:", error); }
+    }, 900);
+
+    try {
+      addSystemLog("Sessão iniciada", `${currentProfile.name || currentUser.email} entrou na app.`, { email: currentUser.email }, { sync: true });
+    } catch (logError) {
+      console.warn("Log de sessão falhou sem bloquear login:", logError);
     }
   });
 }
@@ -12726,5 +12763,16 @@ if (typeof applyConfigsOnlyV206 === "function" && !window.__applyConfigsOnlySafe
   const originalApplyConfigsOnlyV211 = applyConfigsOnlyV206;
   applyConfigsOnlyV206 = function applyConfigsOnlySafeV211() {
     return safeRunV211("applyConfigsOnlyV206", originalApplyConfigsOnlyV211);
+  };
+}
+
+
+// v212 — app aberta se há currentUser/sessão ativa, mesmo que texto do login exista escondido no DOM.
+if (typeof appIsActuallyOpenV210 === "function" && !window.__appOpenV212) {
+  window.__appOpenV212 = true;
+  const originalAppIsOpenV210 = appIsActuallyOpenV210;
+  appIsActuallyOpenV210 = function appIsActuallyOpenV212() {
+    if (currentUser || document.body.classList.contains("app-authenticated-v212")) return true;
+    return originalAppIsOpenV210();
   };
 }
