@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v216";
+const APP_VERSION_LABEL = "v217";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -1735,6 +1735,7 @@ function showAppScreen() {
 }
 
 function updateActiveAppSection() {
+  normalizeActiveTabStateV217();
   const activeTabId = document.querySelector(".tab-panel.active")?.id || "calendarTab";
   const isKnockout = activeTabId === "knockoutTab";
   const mobileKnockout = isKnockout && window.matchMedia("(max-width: 760px)").matches;
@@ -1999,10 +2000,7 @@ function permissionTabAllowed(tabId) {
 function switchToFirstAllowedTab() {
   const allowed = [...document.querySelectorAll(".tab")].find(button => permissionTabAllowed(button.dataset.tab));
   if (!allowed) return;
-  document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
-  document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
-  allowed.classList.add("active");
-  $(allowed.dataset.tab)?.classList.add("active");
+  setActiveTabStateV217(allowed.dataset.tab);
 }
 
 function applyPermissionsToUi() {
@@ -3899,10 +3897,7 @@ function openKnockoutPage() {
     return;
   }
 
-  document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
-  document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
-  document.querySelector('[data-tab="knockoutTab"]')?.classList.add("active");
-  $("knockoutTab")?.classList.add("active");
+  setActiveTabStateV217("knockoutTab");
   updateActiveAppSection();
   renderKnockout();
 }
@@ -4825,10 +4820,7 @@ function openKnockoutEditInAdmin(matchId) {
     toast("Entra no Admin para editar a Fase Final.");
     return;
   }
-  document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
-  document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
-  document.querySelector('[data-tab="adminTab"]')?.classList.add("active");
-  $("adminTab")?.classList.add("active");
+  setActiveTabStateV217("adminTab");
   updateActiveAppSection();
   renderKnockoutAdmin();
   setTimeout(() => {
@@ -6886,10 +6878,7 @@ document.querySelectorAll(".tab").forEach(button => {
       toast("Fase Final bloqueada. O Admin pode ativar no painel Admin.");
       return;
     }
-    document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
-    document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
-    button.classList.add("active");
-    $(button.dataset.tab).classList.add("active");
+    setActiveTabStateV217(button.dataset.tab);
     updateActiveAppSection();
     renderActivePageV187(button.dataset.tab);
   });
@@ -10872,6 +10861,30 @@ const TECHNICAL_BLOCK_IDS_V213 = [
   "notificationsHealthPanelV187",
   "footballDataSettingsBoxV213"
 ];
+
+function setActiveTabStateV217(tabId) {
+  const targetId = tabId && $(tabId) ? tabId : "calendarTab";
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.classList.toggle("active", tab.dataset.tab === targetId);
+  });
+  document.querySelectorAll(".tab-panel").forEach(panel => {
+    panel.classList.toggle("active", panel.id === targetId);
+  });
+  return targetId;
+}
+
+function normalizeActiveTabStateV217() {
+  const activeButton = document.querySelector(".tab.active[data-tab]");
+  const activePanel = document.querySelector(".tab-panel.active");
+  let targetId = activeButton?.dataset.tab || activePanel?.id || "calendarTab";
+
+  if (!$(targetId) || !permissionTabAllowed(targetId)) {
+    const allowed = [...document.querySelectorAll(".tab")].find(button => permissionTabAllowed(button.dataset.tab) && !button.classList.contains("hidden") && !button.classList.contains("user-hidden-v202"));
+    targetId = allowed?.dataset.tab || "calendarTab";
+  }
+
+  return setActiveTabStateV217(targetId);
+}
 
 function forceShowAppAfterLoginV213() {
   const shell = $("appShell");
