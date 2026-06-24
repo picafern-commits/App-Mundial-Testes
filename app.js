@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v213";
+const APP_VERSION_LABEL = "v214";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -10835,11 +10835,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // v213 - limpeza final: login robusto, Configuracoes organizadas e blocos tecnicos no sitio certo.
 const ADMIN_SECTION_CHOICES_V213 = [
-  ["users", "Users"],
-  ["results", "Resultados"],
-  ["points", "Pontos"],
-  ["knockout", "Fase Final"],
-  ["system", "Sistema"]
+  ["users", "Users", "Permissões e participantes"],
+  ["results", "Resultados", "Importação, Excel e resultados dos jogos"],
+  ["points", "Pontos", "Sistema de pontos e resultados especiais"],
+  ["knockout", "Fase Final", "Gestão da fase final"],
+  ["system", "Sistema técnico", "Sempre tratado nas Configurações"]
 ];
 
 const PAGE_LOCATION_CHOICES_V213 = [
@@ -10899,7 +10899,7 @@ function savedAdminLayoutSettingsV213() {
     const raw = JSON.parse(localStorage.getItem(adminLayoutSettingsKeyV213()) || "{}") || {};
     const base = defaultAdminLayoutSettingsV213();
     return {
-      adminSections: { ...base.adminSections, ...(raw.adminSections || {}), system: raw.adminSections?.system || "settings" },
+      adminSections: { ...base.adminSections, ...(raw.adminSections || {}), system: "settings" },
       pages: { ...base.pages, ...(raw.pages || {}) }
     };
   } catch {
@@ -10910,7 +10910,7 @@ function savedAdminLayoutSettingsV213() {
 function saveAdminLayoutSettingsV213(settings) {
   const base = defaultAdminLayoutSettingsV213();
   const clean = {
-    adminSections: { ...base.adminSections, ...(settings?.adminSections || {}) },
+    adminSections: { ...base.adminSections, ...(settings?.adminSections || {}), system: "settings" },
     pages: { ...base.pages, ...(settings?.pages || {}) }
   };
   localStorage.setItem(adminLayoutSettingsKeyV213(), JSON.stringify(clean));
@@ -11003,41 +11003,128 @@ function renderOrganizationPanelV213() {
   }
 
   const settings = savedAdminLayoutSettingsV213();
-  const sectionRows = ADMIN_SECTION_CHOICES_V213.map(([key, label]) => {
+  const adminCount = ADMIN_SECTION_CHOICES_V213.filter(([key]) => key !== "system" && settings.adminSections?.[key] === "admin").length;
+  const settingsCount = ADMIN_SECTION_CHOICES_V213.filter(([key]) => (settings.adminSections?.[key] || (key === "system" ? "settings" : "admin")) === "settings").length;
+  const hiddenCount = ADMIN_SECTION_CHOICES_V213.filter(([key]) => settings.adminSections?.[key] === "hidden").length;
+  const visiblePagesCount = PAGE_LOCATION_CHOICES_V213.filter(([key]) => settings.pages?.[key] !== false).length;
+
+  const sectionRows = ADMIN_SECTION_CHOICES_V213.map(([key, label, desc]) => {
     const value = settings.adminSections?.[key] || (key === "system" ? "settings" : "admin");
+    const locked = key === "system";
     return `
-      <label class="settings-org-row-v213">
-        <span>${escapeHtml(label)}</span>
-        <select data-admin-section-location-v213="${escapeHtml(key)}">
-          <option value="admin" ${value === "admin" ? "selected" : ""}>Admin</option>
-          <option value="settings" ${value === "settings" ? "selected" : ""}>Configurações</option>
-          <option value="hidden" ${value === "hidden" ? "selected" : ""}>Esconder</option>
+      <label class="settings-org-row-v213 settings-org-row-v214">
+        <span><b>${escapeHtml(label)}</b><small>${escapeHtml(desc || "")}</small></span>
+        <select data-admin-section-location-v213="${escapeHtml(key)}" ${locked ? "disabled" : ""}>
+          <option value="admin" ${value === "admin" ? "selected" : ""}>Mostrar no Admin</option>
+          <option value="settings" ${value === "settings" ? "selected" : ""}>Mostrar em Configurações</option>
+          <option value="hidden" ${value === "hidden" ? "selected" : ""}>Não mostrar</option>
         </select>
       </label>`;
   }).join("");
 
   const pageRows = PAGE_LOCATION_CHOICES_V213.map(([key, label]) => `
-    <label class="settings-org-page-v213">
+    <label class="settings-org-page-v213 settings-org-page-v214">
       <input type="checkbox" data-page-visible-v213="${escapeHtml(key)}" ${settings.pages?.[key] !== false ? "checked" : ""} />
-      ${escapeHtml(label)}
+      <span>${escapeHtml(label)}</span>
     </label>`).join("");
 
   box.innerHTML = `
     <div class="settings-org-head-v213">
       <div>
         <strong>Organização da app</strong>
-        <span>Escolhe o que aparece no Admin, nas Configurações e nas abas do topo.</span>
+        <span>Controla exatamente que páginas e secções aparecem na app.</span>
       </div>
       <button type="button" class="secondary small" data-admin-layout-reset-v213>Repor</button>
     </div>
-    <div class="settings-org-grid-v213">
-      <div><h4>Secções do Admin</h4>${sectionRows}</div>
-      <div><h4>Abas visíveis</h4><div class="settings-org-pages-v213">${pageRows}</div></div>
+    <div class="settings-org-summary-v214">
+      <span><b>${adminCount}</b> no Admin</span>
+      <span><b>${settingsCount}</b> em Configurações</span>
+      <span><b>${hiddenCount}</b> escondidas</span>
+      <span><b>${visiblePagesCount}</b> páginas visíveis</span>
+    </div>
+    <div class="settings-org-grid-v213 settings-org-grid-v214">
+      <div>
+        <h4>Destino das secções de gestão</h4>
+        <div class="settings-org-table-v214">${sectionRows}</div>
+      </div>
+      <div>
+        <h4>Páginas no menu principal</h4>
+        <div class="settings-org-pages-v213 settings-org-pages-v214">${pageRows}</div>
+      </div>
     </div>
   `;
 
   if (box.parentElement !== content) content.prepend(box);
   document.querySelectorAll("#settingsOrganizationSingleV208,#settingsOrganizationSingleV210,#adminLayoutManagerSettingsV202,#adminLayoutManagerAdminV202,#settingsMovedAdminSectionsV202").forEach(el => el.remove());
+}
+
+function adminCardsV214() {
+  const cards = Array.from(document.querySelectorAll("#adminUnlocked > .admin-card, #settingsAdminMovedCardsV214 > .admin-card, #adminHiddenCardsV214 > .admin-card"));
+  cards.forEach((card, index) => {
+    if (!card.dataset.adminManagedV214) {
+      card.dataset.adminManagedV214 = "1";
+      card.dataset.adminOrderV214 = String(index);
+    }
+  });
+  return cards.sort((a, b) => Number(a.dataset.adminOrderV214 || 0) - Number(b.dataset.adminOrderV214 || 0));
+}
+
+function adminCardHostsV214() {
+  const adminUnlocked = $("adminUnlocked");
+  let settingsHost = $("settingsAdminMovedCardsV214");
+  const settingsContent = document.querySelector("#settingsSectionV213_admin .settings-section-content-v213") || $("settingsTab");
+  if (!settingsHost && settingsContent) {
+    settingsHost = document.createElement("div");
+    settingsHost.id = "settingsAdminMovedCardsV214";
+    settingsHost.className = "settings-admin-moved-cards-v214";
+    settingsContent.appendChild(settingsHost);
+  }
+
+  let hiddenHost = $("adminHiddenCardsV214");
+  if (!hiddenHost) {
+    hiddenHost = document.createElement("div");
+    hiddenHost.id = "adminHiddenCardsV214";
+    hiddenHost.hidden = true;
+    hiddenHost.style.display = "none";
+    (adminUnlocked || document.body).appendChild(hiddenHost);
+  }
+
+  return { adminUnlocked, settingsHost, hiddenHost };
+}
+
+function routeAdminCardsV214(settings = savedAdminLayoutSettingsV213()) {
+  const { adminUnlocked, settingsHost, hiddenHost } = adminCardHostsV214();
+  const availableAdminSections = new Set();
+  const cards = adminCardsV214();
+
+  cards.forEach(card => {
+    const section = adminSectionForCardV187(card);
+    const location = section === "system" ? "settings" : (settings.adminSections?.[section] || "admin");
+    card.dataset.adminSectionV187 = section;
+    card.classList.remove("admin-section-hidden-v187", "admin-section-force-hidden-v202");
+    card.hidden = false;
+    card.style.display = "";
+
+    if (location === "settings" && settingsHost) {
+      settingsHost.appendChild(card);
+      if (card.tagName?.toLowerCase() === "details") card.open = false;
+      return;
+    }
+
+    if (location === "hidden" && hiddenHost) {
+      hiddenHost.appendChild(card);
+      card.hidden = true;
+      card.style.display = "none";
+      return;
+    }
+
+    if (adminUnlocked) {
+      adminUnlocked.appendChild(card);
+      availableAdminSections.add(section);
+    }
+  });
+
+  return availableAdminSections;
 }
 
 function ensureFootballDataSettingsBoxV213() {
@@ -11104,20 +11191,40 @@ function applyAdminLayoutSettingsV213() {
     if (tab) tab.classList.toggle("user-hidden-v202", settings.pages?.[key] === false);
   });
 
-  const active = localStorage.getItem(`${STORAGE_KEY}_admin_section_v187`) || "all";
-  document.querySelectorAll("#adminUnlocked > .admin-card").forEach(card => {
-    const section = adminSectionForCardV187(card);
-    const location = section === "system" ? (settings.adminSections?.system || "settings") : (settings.adminSections?.[section] || "admin");
-    card.dataset.adminSectionV187 = section;
-    const hide = location !== "admin" || (active !== "all" && section !== active);
-    card.classList.toggle("admin-section-hidden-v187", hide);
-  });
+  const availableAdminSections = routeAdminCardsV214(settings);
+  const available = [...availableAdminSections];
+  let active = localStorage.getItem(`${STORAGE_KEY}_admin_section_v187`) || available[0] || "";
+  if (!availableAdminSections.has(active)) {
+    active = available[0] || "";
+    if (active) localStorage.setItem(`${STORAGE_KEY}_admin_section_v187`, active);
+  }
 
   document.querySelectorAll("#adminSectionTabsV187 [data-admin-section-v187]").forEach(button => {
     const section = button.dataset.adminSectionV187;
-    const location = section === "all" ? "admin" : (settings.adminSections?.[section] || (section === "system" ? "settings" : "admin"));
-    button.classList.toggle("hidden", section !== "all" && location !== "admin");
+    const visible = availableAdminSections.has(section);
+    button.classList.toggle("hidden", !visible);
+    button.hidden = !visible;
+    button.classList.toggle("active", section === active);
   });
+
+  document.querySelectorAll("#adminUnlocked > .admin-card").forEach(card => {
+    const section = card.dataset.adminSectionV187 || adminSectionForCardV187(card);
+    const hide = !active || section !== active;
+    card.classList.toggle("admin-section-hidden-v187", hide);
+    card.hidden = hide;
+    if (!hide && card.tagName?.toLowerCase() === "details") card.open = true;
+  });
+
+  const hasAdminContent = availableAdminSections.size > 0;
+  ["firebaseStatusBox", "adminOverviewV162", "adminSectionTabsV187"].forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    el.hidden = !hasAdminContent;
+    el.style.display = hasAdminContent ? "" : "none";
+  });
+
+  const activeTab = document.querySelector(".tab.active");
+  if (activeTab?.classList.contains("user-hidden-v202")) switchToFirstAllowedTab();
 
   cleanupAdminTechnicalBlocksV213();
 }
@@ -11126,6 +11233,7 @@ function applySettingsLayoutV213() {
   try {
     ensureSettingsSectionsV213();
     renderOrganizationPanelV213();
+    routeAdminCardsV214();
     ensureFootballDataSettingsBoxV213();
     moveTechnicalBlocksToSettingsV213();
     updateSettingsSectionCountsV213();
@@ -11220,6 +11328,7 @@ document.addEventListener("change", event => {
   if (pageCheckbox) settings.pages[pageCheckbox.dataset.pageVisibleV213] = pageCheckbox.checked;
   saveAdminLayoutSettingsV213(settings);
   renderOrganizationPanelV213();
+  applySettingsLayoutV213();
   applyAdminLayoutSettingsV213();
   toast("Organização guardada neste dispositivo.");
 }, true);
