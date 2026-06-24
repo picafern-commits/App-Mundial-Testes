@@ -23,7 +23,7 @@
     .hidden,#appShell.auth-hidden,.tab-panel:not(.active){display:none!important}
     body{margin:0;background:#070b13}
   </style>
-  <link rel="stylesheet" href="style.css?v=229" />
+  <link rel="stylesheet" href="style.css?v=230" />
 </head>
 <body class="desktop-fullscreen-instant-v148 pc-fullscreen-instant-v168">
 
@@ -270,11 +270,15 @@
               <span class="collapse-icon">+</span>
             </summary>
             <div class="knockout-admin-tools">
-              <label class="check-row">
+              <label class="check-row knockout-unlock-toggle-v230">
                 <input id="adminKnockoutUnlockedInput" type="checkbox" />
-                Ativar Fase Final no Calendário antes de todos os jogos terem resultado
+                <span class="knockout-unlock-switch-v230" aria-hidden="true"></span>
+                <span class="knockout-unlock-text-v230">
+                  <strong>Fase Final no Calendário</strong>
+                  <small id="adminKnockoutUnlockedStateV230">Bloqueada até acabarem os grupos</small>
+                </span>
               </label>
-              <button id="saveKnockoutUnlockBtn" class="primary" type="button">Guardar bloqueio</button>
+              <button id="saveKnockoutUnlockBtn" class="primary" type="button">Guardar estado</button>
             </div>
             <div id="knockoutAdminPanel" class="knockout-admin-panel"></div>
           </details>
@@ -449,7 +453,7 @@
         <div class="settings-grid-v162">
           <article class="settings-card-v162">
             <span>Versão</span>
-            <strong id="appVersionLabelV162">v229</strong>
+            <strong id="appVersionLabelV162">v230</strong>
             <p id="pwaUpdateStateV162">A verificar atualizações...</p>
             <div class="settings-actions-v162">
               <button id="forceUpdateAppBtnV162" class="primary" type="button">Atualizar app</button>
@@ -587,9 +591,9 @@
   </div>
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-  <script src="config.js?v=229"></script>
+  <script src="config.js?v=230"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="app.js?v=229"></script>
+  <script type="module" src="app.js?v=230"></script>
 
       <div id="chatPanel" class="chat-panel hidden">
         <div class="chat-header">

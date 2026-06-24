@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v229";
+const APP_VERSION_LABEL = "v230";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -4547,7 +4547,10 @@ function renderKnockoutAdmin() {
   ensureKnockoutSettings();
 
   const toggle = $("adminKnockoutUnlockedInput");
-  if (toggle) toggle.checked = Boolean(appSettings.knockout?.adminUnlocked);
+  if (toggle) {
+    toggle.checked = Boolean(appSettings.knockout?.adminUnlocked);
+    updateKnockoutUnlockControlV230(toggle.checked);
+  }
 
   const panel = $("knockoutAdminPanel");
   if (!panel) return;
@@ -4598,6 +4601,20 @@ function renderKnockoutAdmin() {
         `;
       }).join("")}
     </div>`;
+}
+
+function updateKnockoutUnlockControlV230(unlocked = Boolean($("adminKnockoutUnlockedInput")?.checked)) {
+  const label = $("adminKnockoutUnlockedStateV230");
+  const button = $("saveKnockoutUnlockBtn");
+  const card = $("adminKnockoutUnlockedInput")?.closest(".knockout-unlock-toggle-v230");
+
+  card?.classList.toggle("is-unlocked-v230", Boolean(unlocked));
+  if (label) {
+    label.textContent = unlocked
+      ? "Ativa no Calendario antes do fim dos grupos"
+      : "Bloqueada ate acabarem os grupos";
+  }
+  if (button) button.textContent = unlocked ? "Guardar ativada" : "Guardar bloqueada";
 }
 
 async function saveKnockoutUnlock() {
@@ -6925,6 +6942,7 @@ $("clearLogsBtn")?.addEventListener("click", clearSystemLogs);
 $("unlockLogsBtn")?.addEventListener("click", unlockLogsTab);
 $("lockLogsBtn")?.addEventListener("click", lockLogsTab);
 $("logsPinInput")?.addEventListener("keydown", event => { if (event.key === "Enter") unlockLogsTab(); });
+$("adminKnockoutUnlockedInput")?.addEventListener("change", event => updateKnockoutUnlockControlV230(event.target.checked));
 $("saveKnockoutUnlockBtn")?.addEventListener("click", saveKnockoutUnlock);
 
 

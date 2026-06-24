@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v229-subabas-admin-config";
+const CACHE_NAME = "mundial-pontos-2026-v230-fase-final-visual-toggle";
 const APP_SHELL = [
   "./",
   "./index.html",
