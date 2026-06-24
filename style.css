@@ -11167,3 +11167,48 @@ button.primary:hover{
     border-radius:14px;
   }
 }
+
+/* v232 - cards da Fase Final clicaveis, sem botao repetido */
+#knockoutTab .ko-match-clickable,
+#knockoutMobileV121 .ko-match-clickable{
+  cursor:pointer!important;
+  transition:transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease!important;
+}
+
+#knockoutTab .ko-match-clickable:hover,
+#knockoutTab .ko-match-clickable:focus-visible,
+#knockoutMobileV121 .ko-match-clickable:hover,
+#knockoutMobileV121 .ko-match-clickable:focus-visible{
+  border-color:rgba(255,212,90,.55)!important;
+  box-shadow:0 0 0 2px rgba(255,212,90,.12),0 14px 30px rgba(0,0,0,.32)!important;
+  outline:none!important;
+}
+
+#knockoutTab .ko-match-clickable:hover{
+  transform:translateY(-1px);
+}
+
+#knockoutBracket .ko-card-click-hint.desktop{
+  display:none!important;
+}
+
+#knockoutMobileV121 .ko-card-click-hint.mobile{
+  display:block!important;
+  margin-top:10px!important;
+  padding:8px 10px!important;
+  border:1px solid rgba(255,212,90,.28)!important;
+  border-radius:12px!important;
+  color:#ffe58a!important;
+  background:rgba(255,212,90,.08)!important;
+  font-size:12px!important;
+  font-weight:950!important;
+  text-align:center!important;
+}
+
+.ko-card-record-btn{
+  display:none!important;
+}
+
+.knockout-record-card .modal-head strong{
+  color:#ffd45a!important;
+}

@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v231";
+const APP_VERSION_LABEL = "v232";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -4162,13 +4162,7 @@ function canEditKnockoutInline() {
 
 function renderKnockoutInlineEditor(match, mode = "desktop") {
   if (!canEditKnockoutInline()) return "";
-
-  const compactClass = mode === "mobile" ? "mobile" : "desktop";
-  return `
-    <button class="secondary small ko-card-record-btn ${compactClass}" type="button" data-ko-record="${escapeHtml(match.id)}">
-      Adicionar registo
-    </button>
-  `;
+  return `<span class="ko-card-click-hint ${mode === "mobile" ? "mobile" : "desktop"}">Tocar para editar</span>`;
 }
 
 function renderKnockoutRecordForm(match) {
@@ -4240,12 +4234,12 @@ function openKnockoutRecordModal(matchId) {
   modal.className = "modal knockout-record-modal";
   modal.setAttribute("role", "dialog");
   modal.setAttribute("aria-modal", "true");
-  modal.setAttribute("aria-label", "Adicionar registo da Fase Final");
+  modal.setAttribute("aria-label", "Editar jogo da Fase Final");
   modal.innerHTML = `
     <div class="modal-card knockout-record-card">
       <div class="modal-head">
         <div>
-          <strong>Adicionar registo</strong>
+          <strong>Editar jogo</strong>
           <span>${escapeHtml(knockoutRoundLabel(match.round))} · Jogo ${escapeHtml(match.index)}</span>
         </div>
         <button class="secondary small" type="button" data-ko-record-close>Fechar</button>
@@ -4311,7 +4305,7 @@ function renderKnockoutMobileV121() {
         const matchId = knockoutMatchIdV121(match);
 
         return `
-          <article class="ko-mobile-card ko-mobile-card-premium-v130 ${winner ? "is-done-v130" : "is-waiting-v130"}" data-ko-mobile-match="${escapeHtml(String(matchId))}" data-ko-admin="${escapeHtml(String(matchId))}">
+          <article class="ko-mobile-card ko-mobile-card-premium-v130 ${winner ? "is-done-v130" : "is-waiting-v130"} ${canEditKnockoutInline() ? "ko-match-clickable" : ""}" data-ko-mobile-match="${escapeHtml(String(matchId))}" data-ko-admin="${escapeHtml(String(matchId))}" ${canEditKnockoutInline() ? `role="button" tabindex="0" aria-label="Editar ${escapeHtml(selected.name)} jogo ${index + 1}"` : ""}>
             <div class="ko-mobile-card-head">
               <span>${escapeHtml(selected.name)}</span>
               <strong>Jogo ${index + 1}</strong>
@@ -4487,8 +4481,10 @@ function renderKnockoutMatch(match, layoutKey = "") {
   const hasPens = match.homePenalties !== null && match.homePenalties !== undefined && match.homePenalties !== "" && match.awayPenalties !== null && match.awayPenalties !== undefined && match.awayPenalties !== "";
   const lockedText = waiting ? "" : winner ? "Vencedor" : isDraw ? "Faltam penáltis" : "Por decidir";
 
+  const editableAttrs = editable ? ` role="button" tabindex="0" aria-label="Editar ${escapeHtml(match.roundLabel)} ${escapeHtml(match.index)}"` : "";
+
   return `
-    <article class="knockout-match ${winner ? "has-winner" : ""} ${waiting ? "waiting" : ""}" data-ko-admin="${escapeHtml(match.id)}" ${layoutKey ? `data-ko-layout="${escapeHtml(layoutKey)}" style="--ko-match-offset:${knockoutLayoutValue(layoutKey)}px"` : ""}>
+    <article class="knockout-match ${winner ? "has-winner" : ""} ${waiting ? "waiting" : ""} ${editable ? "ko-match-clickable" : ""}" data-ko-admin="${escapeHtml(match.id)}"${editableAttrs} ${layoutKey ? `data-ko-layout="${escapeHtml(layoutKey)}" style="--ko-match-offset:${knockoutLayoutValue(layoutKey)}px"` : ""}>
       <div class="knockout-match-title">${escapeHtml(match.roundLabel)} ${match.index}</div>
 
       <div class="ko-team ${winner === match.homeTeam ? "winner" : ""}">
@@ -6865,6 +6861,12 @@ document.addEventListener("click", event => {
     return;
   }
 
+  const koClickableCard = event.target.closest("#knockoutTab .ko-match-clickable[data-ko-admin], #knockoutMobileV121 .ko-match-clickable[data-ko-admin]");
+  if (koClickableCard && !event.target.closest("button, a, input, select, textarea, label, summary")) {
+    openKnockoutRecordModal(koClickableCard.dataset.koAdmin);
+    return;
+  }
+
   if (event.target.closest("[data-ko-record-close]") || event.target.id === "knockoutRecordModal") {
     closeKnockoutRecordModal();
     return;
@@ -6898,6 +6900,16 @@ document.addEventListener("click", event => {
   if (betsButton) {
     showGameBets(betsButton.dataset.betsGame);
   }
+});
+
+document.addEventListener("keydown", event => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+
+  const koClickableCard = event.target.closest?.("#knockoutTab .ko-match-clickable[data-ko-admin], #knockoutMobileV121 .ko-match-clickable[data-ko-admin]");
+  if (!koClickableCard) return;
+
+  event.preventDefault();
+  openKnockoutRecordModal(koClickableCard.dataset.koAdmin);
 });
 
 document.querySelectorAll(".tab").forEach(button => {
