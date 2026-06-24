@@ -4519,8 +4519,10 @@ function renderKnockoutAdmin() {
 
   const saveToggleBtn = $("saveKnockoutUnlockBtn");
   if (saveToggleBtn) {
-    const active = Boolean(appSettings.knockout?.enabled ?? appSettings.knockout?.adminUnlocked);
-    saveToggleBtn.textContent = active ? "Desativar / guardar" : "Ativar / guardar";
+    const active = Boolean(appSettings.knockout?.enabled || appSettings.knockout?.adminUnlocked);
+    saveToggleBtn.textContent = active ? "Desativar Fase Final" : "Ativar Fase Final";
+    saveToggleBtn.classList.toggle("danger-soft", active);
+    saveToggleBtn.setAttribute("aria-pressed", active ? "true" : "false");
   }
 
   const panel = $("knockoutAdminPanel");
@@ -4610,7 +4612,7 @@ async function saveKnockoutSettingsDirectV198(reason = "fase final toggle") {
   return true;
 }
 
-async function saveKnockoutUnlock() {
+async function saveKnockoutUnlock(forceValue = null) {
   if (!canManageKnockoutToggleV198()) {
     toast("Sem permissão Admin para alterar a Fase Final.");
     return;
@@ -4618,8 +4620,11 @@ async function saveKnockoutUnlock() {
 
   ensureKnockoutSettings();
 
+  const current = Boolean(appSettings.knockout?.enabled || appSettings.knockout?.adminUnlocked);
+  const enabled = typeof forceValue === "boolean" ? forceValue : !current;
+
   const toggle = $("adminKnockoutUnlockedInput");
-  const enabled = Boolean(toggle?.checked);
+  if (toggle) toggle.checked = enabled;
 
   appSettings.knockout.enabled = enabled;
   appSettings.knockout.adminUnlocked = enabled;
@@ -4636,7 +4641,7 @@ async function saveKnockoutUnlock() {
   markSettingsPending();
   saveLocalData("fase final toggle imediato");
 
-  updateKnockoutToggleUiV197?.();
+  updateKnockoutToggleUiV199();
   renderKnockoutAdmin();
   renderCalendar();
   renderKnockout();
@@ -10877,6 +10882,34 @@ document.addEventListener("click", event => {
 }, true);
 
 
+
+// v199 — UI clara: botão é um interruptor real, não apenas "guardar checkbox".
+function updateKnockoutToggleUiV199() {
+  try {
+    ensureKnockoutSettings();
+
+    const active = Boolean(appSettings.knockout?.enabled || appSettings.knockout?.adminUnlocked);
+    const toggle = $("adminKnockoutUnlockedInput");
+    const btn = $("saveKnockoutUnlockBtn");
+
+    if (toggle) {
+      toggle.checked = active;
+      toggle.closest("label")?.classList.toggle("ko-toggle-on-v197", active);
+      toggle.closest("label")?.classList.toggle("ko-toggle-on-v199", active);
+    }
+
+    if (btn) {
+      btn.textContent = active ? "Desativar Fase Final" : "Ativar Fase Final";
+      btn.classList.toggle("danger-soft", active);
+      btn.classList.toggle("ko-toggle-button-on-v199", active);
+      btn.classList.toggle("hidden", !canManageKnockoutToggleV198());
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    }
+  } catch (error) {
+    console.warn("Atualizar toggle Fase Final v199 falhou:", error);
+  }
+}
+
 // v197 — bind robusto do botão/checkbox da Fase Final, mesmo se o Admin for renderizado depois.
 function updateKnockoutToggleUiV197() {
   try {
@@ -10889,7 +10922,7 @@ function updateKnockoutToggleUiV197() {
       toggle.closest("label")?.classList.toggle("ko-toggle-on-v197", active);
     }
     if (btn) {
-      btn.textContent = active ? "Desativar / guardar" : "Ativar / guardar";
+      btn.textContent = active ? "Desativar Fase Final" : "Ativar Fase Final";
       btn.classList.toggle("danger-soft", active);
       btn.classList.toggle("hidden", !canManageKnockoutToggleV198());
     }
@@ -10902,8 +10935,13 @@ document.addEventListener("change", event => {
   const toggle = event.target.closest?.("#adminKnockoutUnlockedInput");
   if (!toggle) return;
   toggle.closest("label")?.classList.toggle("ko-toggle-on-v197", toggle.checked);
+  toggle.closest("label")?.classList.toggle("ko-toggle-on-v199", toggle.checked);
   const btn = $("saveKnockoutUnlockBtn");
-  if (btn) btn.textContent = toggle.checked ? "Desativar / guardar" : "Ativar / guardar";
+  if (btn) {
+    btn.textContent = toggle.checked ? "Desativar Fase Final" : "Ativar Fase Final";
+    btn.setAttribute("aria-pressed", toggle.checked ? "true" : "false");
+  }
+  saveKnockoutUnlock(Boolean(toggle.checked));
 }, true);
 
 document.addEventListener("click", event => {
@@ -10911,7 +10949,10 @@ document.addEventListener("click", event => {
   if (!btn) return;
   event.preventDefault();
   event.stopPropagation();
-  saveKnockoutUnlock();
+
+  ensureKnockoutSettings();
+  const current = Boolean(appSettings.knockout?.enabled || appSettings.knockout?.adminUnlocked);
+  saveKnockoutUnlock(!current);
 }, true);
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -10929,3 +10970,5 @@ document.addEventListener("click", event => {
     } catch {}
   }, 250);
 }, true);
+
+try { updateKnockoutToggleUiV197 = updateKnockoutToggleUiV199; } catch {}
