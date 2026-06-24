@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v223";
+const APP_VERSION_LABEL = "v225";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -11977,4 +11977,300 @@ document.addEventListener("click", event => {
 document.addEventListener("DOMContentLoaded", () => {
   setTimeout(prepareSettingsCollapseV223, 900);
   setTimeout(closeAllSettingsCollapseV223, 1600);
+});
+
+
+// v224 — Limpeza do Admin: remover wrappers falsos/duplicados destacados a vermelho.
+function adminSummaryTitleV224(details) {
+  return String(details?.querySelector?.(":scope > summary span")?.textContent || details?.querySelector?.(":scope > summary")?.textContent || "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function unwrapAdminDetailsV224(details) {
+  const parent = details?.parentElement;
+  const content =
+    details?.querySelector?.(":scope > .admin-collapse-content-v222") ||
+    details?.querySelector?.(":scope > .admin-card-collapse-content-v222") ||
+    details?.querySelector?.(":scope > div");
+  if (!parent || !content) {
+    details?.remove?.();
+    return;
+  }
+
+  [...content.children].forEach(child => parent.insertBefore(child, details));
+  details.remove();
+}
+
+function removeFakeAdminCollapseSectionsV224() {
+  const adminTab = $("adminTab");
+  if (!adminTab) return;
+
+  // 1) Remove a caixa falsa "Admin" que embrulhava a página toda.
+  adminTab.querySelectorAll("details.admin-collapse-section-v222").forEach(details => {
+    const title = adminSummaryTitleV224(details).toLowerCase();
+
+    if (title === "admin" || title.startsWith("admin toque") || title.includes("secção 3")) {
+      unwrapAdminDetailsV224(details);
+    }
+  });
+
+  // 2) Remove wrappers vazios ou sem conteúdo útil.
+  adminTab.querySelectorAll("details.admin-collapse-section-v222, details.admin-card-collapse-v222").forEach(details => {
+    const content =
+      details.querySelector(":scope > .admin-collapse-content-v222") ||
+      details.querySelector(":scope > .admin-card-collapse-content-v222");
+    const usefulText = String(content?.textContent || "").replace(/\s+/g, " ").trim();
+
+    if (!usefulText) details.remove();
+  });
+
+  // 3) Deduplica secções colapsáveis com o mesmo título e conteúdo parecido.
+  const seen = new Set();
+  adminTab.querySelectorAll("details.admin-collapse-section-v222, details.admin-card-collapse-v222").forEach(details => {
+    const title = adminSummaryTitleV224(details).toLowerCase();
+    const contentText = String(details.textContent || "").toLowerCase().replace(/\s+/g, " ").trim().slice(0, 260);
+    const key = `${title}::${contentText}`;
+
+    if (seen.has(key)) {
+      details.remove();
+    } else {
+      seen.add(key);
+    }
+  });
+
+  // 4) Limpa especificamente os "Resultados" duplicados sem conteúdo visível.
+  let firstUsefulResultados = null;
+  adminTab.querySelectorAll("details.admin-card-collapse-v222, details.admin-collapse-section-v222").forEach(details => {
+    const title = adminSummaryTitleV224(details).toLowerCase();
+    if (title !== "resultados" && !title.startsWith("resultados ")) return;
+
+    const content =
+      details.querySelector(":scope > .admin-collapse-content-v222") ||
+      details.querySelector(":scope > .admin-card-collapse-content-v222");
+    const usefulText = String(content?.textContent || "").replace(/\s+/g, " ").trim();
+
+    // Se está vazio ou só tem botões/inputs escondidos, remove.
+    const hasVisibleUsefulChild = [...(content?.children || [])].some(child => {
+      const style = window.getComputedStyle(child);
+      return style.display !== "none" && String(child.textContent || "").replace(/\s+/g, " ").trim().length > 20;
+    });
+
+    if (!usefulText || !hasVisibleUsefulChild) {
+      details.remove();
+      return;
+    }
+
+    if (!firstUsefulResultados) {
+      firstUsefulResultados = details;
+      return;
+    }
+
+    // Mantém só uma secção Resultados se forem repetidas no mesmo ecrã.
+    details.remove();
+  });
+
+  // 5) Remove headers "Secção X" sem sentido.
+  adminTab.querySelectorAll("details.admin-card-collapse-v222, details.admin-collapse-section-v222").forEach(details => {
+    const title = adminSummaryTitleV224(details).toLowerCase();
+    if (/^secção\s+\d+/.test(title)) details.remove();
+  });
+}
+
+function applyAdminCleanNoDuplicatesV224() {
+  try {
+    removeFakeAdminCollapseSectionsV224();
+  } catch (error) {
+    console.warn("applyAdminCleanNoDuplicatesV224 falhou:", error);
+  }
+}
+
+const applyAdminCollapseOriginalV224 = typeof applyAdminCollapseV222 === "function" ? applyAdminCollapseV222 : null;
+if (applyAdminCollapseOriginalV224 && !window.__adminCleanV224) {
+  window.__adminCleanV224 = true;
+  applyAdminCollapseV222 = function applyAdminCollapseCleanV224(options = {}) {
+    const result = applyAdminCollapseOriginalV224(options);
+    setTimeout(applyAdminCleanNoDuplicatesV224, 0);
+    setTimeout(applyAdminCleanNoDuplicatesV224, 120);
+    return result;
+  };
+}
+
+const renderAdminOriginalV224 = typeof renderAdmin === "function" ? renderAdmin : null;
+if (renderAdminOriginalV224 && !window.__renderAdminCleanV224) {
+  window.__renderAdminCleanV224 = true;
+  renderAdmin = function renderAdminCleanV224() {
+    const result = renderAdminOriginalV224.apply(this, arguments);
+    setTimeout(applyAdminCleanNoDuplicatesV224, 0);
+    setTimeout(applyAdminCleanNoDuplicatesV224, 250);
+    return result;
+  };
+}
+
+document.addEventListener("click", event => {
+  if (event.target.closest?.("[data-tab='adminTab']") || event.target.closest?.("#adminTab summary")) {
+    setTimeout(applyAdminCleanNoDuplicatesV224, 100);
+    setTimeout(applyAdminCleanNoDuplicatesV224, 400);
+  }
+}, true);
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(applyAdminCleanNoDuplicatesV224, 1000);
+  setTimeout(applyAdminCleanNoDuplicatesV224, 2200);
+});
+
+
+// v225 — Limpeza das Configurações: remove wrapper falso "Configurações" e secções vazias.
+function settingsSummaryTitleV225(details) {
+  return String(details?.querySelector?.(":scope > summary span")?.textContent || details?.querySelector?.(":scope > summary")?.textContent || "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function unwrapSettingsDetailsV225(details) {
+  const parent = details?.parentElement;
+  const content =
+    details?.querySelector?.(":scope > .settings-collapse-content-v223") ||
+    details?.querySelector?.(":scope > .settings-section-content-v205") ||
+    details?.querySelector?.(":scope > div");
+
+  if (!parent || !content) {
+    details?.remove?.();
+    return;
+  }
+
+  [...content.children].forEach(child => parent.insertBefore(child, details));
+  details.remove();
+}
+
+function settingsContentHasUsefulVisibleChildrenV225(details) {
+  const content =
+    details?.querySelector?.(":scope > .settings-collapse-content-v223") ||
+    details?.querySelector?.(":scope > .settings-section-content-v205") ||
+    details?.querySelector?.(":scope > div");
+
+  if (!content) return false;
+
+  const text = String(content.textContent || "").replace(/\s+/g, " ").trim();
+  if (text.length < 8) return false;
+
+  return [...content.children].some(child => {
+    if (!child) return false;
+    const childText = String(child.textContent || "").replace(/\s+/g, " ").trim();
+    if (childText.length < 8) return false;
+    try {
+      const style = window.getComputedStyle(child);
+      return style.display !== "none" && style.visibility !== "hidden";
+    } catch {
+      return true;
+    }
+  });
+}
+
+function removeFakeSettingsCollapseSectionsV225() {
+  const settingsTab = $("settingsTab");
+  if (!settingsTab) return;
+
+  // 1) Remove a caixa falsa "Configurações" que embrulhava a página toda.
+  settingsTab.querySelectorAll("details.settings-collapse-section-v223").forEach(details => {
+    const title = settingsSummaryTitleV225(details).toLowerCase();
+
+    if (title === "configurações" || title === "configuracoes" || title.startsWith("configurações fechado")) {
+      unwrapSettingsDetailsV225(details);
+    }
+  });
+
+  // 2) Remove secções vazias/sem uso destacadas no print.
+  const removeIfEmptyOrKnownUnused = ["preferências", "preferencias", "ferramentas admin", "outros"];
+
+  settingsTab.querySelectorAll("details").forEach(details => {
+    const title = settingsSummaryTitleV225(details).toLowerCase();
+    const knownUnused = removeIfEmptyOrKnownUnused.includes(title);
+
+    if (knownUnused && !settingsContentHasUsefulVisibleChildrenV225(details)) {
+      details.remove();
+      return;
+    }
+
+    // Mesmo com algum texto residual "Fechado", se não há conteúdo real, remove.
+    if (!settingsContentHasUsefulVisibleChildrenV225(details) && knownUnused) {
+      details.remove();
+    }
+  });
+
+  // 3) Remove wrappers vazios sobrantes.
+  settingsTab.querySelectorAll("details").forEach(details => {
+    const title = settingsSummaryTitleV225(details).toLowerCase();
+    const content =
+      details.querySelector(":scope > .settings-collapse-content-v223") ||
+      details.querySelector(":scope > .settings-section-content-v205") ||
+      details.querySelector(":scope > div");
+    const contentText = String(content?.textContent || "").replace(/\s+/g, " ").trim();
+
+    if (!contentText && title) details.remove();
+  });
+
+  // 4) Deduplica títulos repetidos na página Configurações.
+  const seen = new Set();
+  settingsTab.querySelectorAll("details").forEach(details => {
+    const title = settingsSummaryTitleV225(details).toLowerCase();
+    if (!title) return;
+
+    const contentText = String(details.textContent || "").toLowerCase().replace(/\s+/g, " ").trim().slice(0, 240);
+    const key = `${title}::${contentText}`;
+    if (seen.has(key)) {
+      details.remove();
+    } else {
+      seen.add(key);
+    }
+  });
+
+  // 5) Mantém tudo fechado ao entrar, mas sem criar caixa falsa.
+  settingsTab.querySelectorAll("details").forEach(details => {
+    details.open = false;
+    const small = details.querySelector(":scope > summary small");
+    if (small && !small.textContent.includes("bloco")) small.textContent = "Fechado";
+  });
+}
+
+function applySettingsCleanNoEmptyV225() {
+  try {
+    removeFakeSettingsCollapseSectionsV225();
+  } catch (error) {
+    console.warn("applySettingsCleanNoEmptyV225 falhou:", error);
+  }
+}
+
+const prepareSettingsCollapseOriginalV225 = typeof prepareSettingsCollapseV223 === "function" ? prepareSettingsCollapseV223 : null;
+if (prepareSettingsCollapseOriginalV225 && !window.__settingsCleanV225) {
+  window.__settingsCleanV225 = true;
+  prepareSettingsCollapseV223 = function prepareSettingsCollapseCleanV225() {
+    const result = prepareSettingsCollapseOriginalV225.apply(this, arguments);
+    setTimeout(applySettingsCleanNoEmptyV225, 0);
+    setTimeout(applySettingsCleanNoEmptyV225, 160);
+    return result;
+  };
+}
+
+const renderAppSettingsPanelOriginalV225 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
+if (renderAppSettingsPanelOriginalV225 && !window.__renderSettingsCleanV225) {
+  window.__renderSettingsCleanV225 = true;
+  renderAppSettingsPanelV162 = function renderAppSettingsPanelCleanV225() {
+    const result = renderAppSettingsPanelOriginalV225.apply(this, arguments);
+    setTimeout(applySettingsCleanNoEmptyV225, 0);
+    setTimeout(applySettingsCleanNoEmptyV225, 220);
+    return result;
+  };
+}
+
+document.addEventListener("click", event => {
+  if (event.target.closest?.("[data-tab='settingsTab']") || event.target.closest?.("#settingsTab summary")) {
+    setTimeout(applySettingsCleanNoEmptyV225, 100);
+    setTimeout(applySettingsCleanNoEmptyV225, 400);
+  }
+}, true);
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(applySettingsCleanNoEmptyV225, 1000);
+  setTimeout(applySettingsCleanNoEmptyV225, 2200);
 });

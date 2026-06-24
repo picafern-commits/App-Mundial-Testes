@@ -10924,3 +10924,24 @@ body.online-users-open-v220 .tab-panel{
 body.settings-collapsed-v223 #settingsTab details:not([open]) > *:not(summary){
   display:none;
 }
+
+
+/* v224 — esconder restos falsos do Admin colapsável anterior */
+#adminTab details.admin-collapse-section-v222[data-admin-collapse-section-v222="Admin"],
+#adminTab details.admin-collapse-section-v222[data-admin-collapse-section-v222="Secção 3"]{
+  display:none!important;
+}
+#adminTab .admin-collapse-section-v222:empty,
+#adminTab .admin-card-collapse-v222:empty{
+  display:none!important;
+}
+
+
+/* v225 — esconder restos falsos/sem conteúdo das Configurações */
+#settingsTab details.settings-collapse-section-v223[data-settings-collapse-section-v223="Configurações"],
+#settingsTab details.settings-collapse-section-v223:empty{
+  display:none!important;
+}
+#settingsTab details[data-empty-settings-v225="1"]{
+  display:none!important;
+}
