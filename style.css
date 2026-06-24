@@ -10715,3 +10715,212 @@ body.online-users-open-v220 .tab-panel{
     border-radius:14px!important;
   }
 }
+
+
+/* v221 — botões de filtro mudam cor conforme o filtro aberto */
+.copy-actions #calendarMissingResultsBtn,
+.copy-actions #calendarPlayedGamesBtn,
+.copy-actions #calendarAllGamesBtn{
+  transition:background .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease!important;
+}
+
+.copy-actions #calendarMissingResultsBtn.calendar-filter-inactive-v221,
+.copy-actions #calendarPlayedGamesBtn.calendar-filter-inactive-v221,
+.copy-actions #calendarAllGamesBtn.calendar-filter-inactive-v221{
+  background:rgba(15,23,42,.82)!important;
+  color:#dbeafe!important;
+  border-color:rgba(148,163,184,.22)!important;
+  box-shadow:none!important;
+}
+
+.copy-actions #calendarMissingResultsBtn.calendar-filter-active-v221{
+  background:linear-gradient(135deg,#f59e0b,#ef4444)!important;
+  color:#fff!important;
+  border-color:rgba(251,191,36,.65)!important;
+  box-shadow:0 0 0 1px rgba(251,191,36,.20),0 14px 34px rgba(239,68,68,.26)!important;
+}
+
+.copy-actions #calendarPlayedGamesBtn.calendar-filter-active-v221{
+  background:linear-gradient(135deg,#22c55e,#14b8a6)!important;
+  color:#052e1a!important;
+  border-color:rgba(34,197,94,.65)!important;
+  box-shadow:0 0 0 1px rgba(34,197,94,.20),0 14px 34px rgba(20,184,166,.24)!important;
+}
+
+.copy-actions #calendarAllGamesBtn.calendar-filter-active-v221{
+  background:linear-gradient(135deg,#3b82f6,#7c3aed)!important;
+  color:#fff!important;
+  border-color:rgba(96,165,250,.65)!important;
+  box-shadow:0 0 0 1px rgba(96,165,250,.20),0 14px 34px rgba(124,58,237,.25)!important;
+}
+
+.copy-actions #calendarMissingResultsBtn.calendar-filter-active-v221,
+.copy-actions #calendarPlayedGamesBtn.calendar-filter-active-v221,
+.copy-actions #calendarAllGamesBtn.calendar-filter-active-v221{
+  transform:translateY(-1px)!important;
+  font-weight:1000!important;
+}
+
+
+/* v222 — Admin colapsável e fechado ao entrar */
+#adminTab{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.admin-collapse-shell-v222{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.admin-collapse-section-v222,
+.admin-card-collapse-v222{
+  border:1px solid rgba(148,163,184,.16);
+  border-radius:16px;
+  background:linear-gradient(180deg,rgba(15,23,42,.76),rgba(8,13,23,.72));
+  overflow:hidden;
+  box-shadow:0 14px 36px rgba(0,0,0,.18);
+}
+.admin-collapse-section-v222 > summary,
+.admin-card-collapse-v222 > summary{
+  cursor:pointer;
+  list-style:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px 16px;
+  color:var(--gold);
+  font-weight:1000;
+  user-select:none;
+}
+.admin-collapse-section-v222 > summary::-webkit-details-marker,
+.admin-card-collapse-v222 > summary::-webkit-details-marker{
+  display:none;
+}
+.admin-collapse-section-v222 > summary::after,
+.admin-card-collapse-v222 > summary::after{
+  content:"+";
+  width:30px;
+  height:30px;
+  border-radius:10px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(255,255,255,.08);
+  color:var(--gold);
+  font-size:18px;
+  flex:0 0 auto;
+}
+.admin-collapse-section-v222[open] > summary::after,
+.admin-card-collapse-v222[open] > summary::after{
+  content:"−";
+}
+.admin-collapse-section-v222 > summary small,
+.admin-card-collapse-v222 > summary small{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:850;
+}
+.admin-collapse-content-v222,
+.admin-card-collapse-content-v222{
+  padding:0 14px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.admin-collapse-content-v222 > *,
+.admin-card-collapse-content-v222 > *{
+  margin-top:0!important;
+  margin-bottom:0!important;
+  width:100%!important;
+  max-width:none!important;
+}
+.admin-card-collapse-v222{
+  box-shadow:none;
+  background:rgba(255,255,255,.025);
+}
+.admin-card-collapse-v222 > summary{
+  color:#e5eefc;
+  padding:12px 14px;
+}
+@media(max-width:760px){
+  .admin-collapse-section-v222 > summary,
+  .admin-card-collapse-v222 > summary{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+}
+
+
+/* v223 — Configurações inicia toda colapsada */
+#settingsTab{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.settings-collapse-shell-v223{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.settings-collapse-section-v223{
+  border:1px solid rgba(148,163,184,.16);
+  border-radius:16px;
+  background:linear-gradient(180deg,rgba(15,23,42,.76),rgba(8,13,23,.72));
+  overflow:hidden;
+  box-shadow:0 14px 36px rgba(0,0,0,.18);
+}
+.settings-collapse-section-v223 > summary,
+#settingsTab details > summary{
+  cursor:pointer;
+  user-select:none;
+}
+.settings-collapse-section-v223 > summary{
+  list-style:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px 16px;
+  color:var(--gold);
+  font-weight:1000;
+}
+.settings-collapse-section-v223 > summary::-webkit-details-marker{
+  display:none;
+}
+.settings-collapse-section-v223 > summary::after{
+  content:"+";
+  width:30px;
+  height:30px;
+  border-radius:10px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(255,255,255,.08);
+  color:var(--gold);
+  font-size:18px;
+}
+.settings-collapse-section-v223[open] > summary::after{
+  content:"−";
+}
+.settings-collapse-section-v223 > summary small{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:850;
+}
+.settings-collapse-content-v223{
+  padding:0 14px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.settings-collapse-content-v223 > *{
+  margin-top:0!important;
+  margin-bottom:0!important;
+  width:100%!important;
+  max-width:none!important;
+}
+body.settings-collapsed-v223 #settingsTab details:not([open]) > *:not(summary){
+  display:none;
+}

@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v220";
+const APP_VERSION_LABEL = "v223";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -11635,3 +11635,346 @@ if (renderOnlineUsersOriginalV220 && !window.__renderOnlineUsersV220) {
     }
   };
 }
+
+
+// v221 — cor ativa dos botões de filtro do calendário.
+function calendarFilterModeV221() {
+  return String(calendarViewMode || "missing").trim().toLowerCase();
+}
+
+function updateCalendarFilterButtonsV221() {
+  const mode = calendarFilterModeV221();
+
+  const map = [
+    ["calendarMissingResultsBtn", "missing"],
+    ["calendarPlayedGamesBtn", "played"],
+    ["calendarAllGamesBtn", "all"]
+  ];
+
+  map.forEach(([id, value]) => {
+    const btn = $(id);
+    if (!btn) return;
+
+    const active = mode === value;
+    btn.classList.toggle("calendar-filter-active-v221", active);
+    btn.classList.toggle("calendar-filter-inactive-v221", !active);
+    btn.setAttribute("aria-pressed", active ? "true" : "false");
+
+    if (id === "calendarMissingResultsBtn") btn.dataset.filterKindV221 = "missing";
+    if (id === "calendarPlayedGamesBtn") btn.dataset.filterKindV221 = "played";
+    if (id === "calendarAllGamesBtn") btn.dataset.filterKindV221 = "all";
+  });
+}
+
+document.addEventListener("click", event => {
+  if (
+    event.target.closest?.("#calendarMissingResultsBtn") ||
+    event.target.closest?.("#calendarPlayedGamesBtn") ||
+    event.target.closest?.("#calendarAllGamesBtn")
+  ) {
+    setTimeout(updateCalendarFilterButtonsV221, 0);
+    setTimeout(updateCalendarFilterButtonsV221, 120);
+  }
+}, true);
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(updateCalendarFilterButtonsV221, 300);
+  setTimeout(updateCalendarFilterButtonsV221, 1200);
+});
+
+const renderCalendarOriginalV221 = typeof renderCalendar === "function" ? renderCalendar : null;
+if (renderCalendarOriginalV221 && !window.__renderCalendarButtonsV221) {
+  window.__renderCalendarButtonsV221 = true;
+  renderCalendar = function renderCalendarV221() {
+    const result = renderCalendarOriginalV221.apply(this, arguments);
+    setTimeout(updateCalendarFilterButtonsV221, 0);
+    return result;
+  };
+}
+
+const renderAllOriginalV221 = typeof renderAll === "function" ? renderAll : null;
+if (renderAllOriginalV221 && !window.__renderAllButtonsV221) {
+  window.__renderAllButtonsV221 = true;
+  renderAll = function renderAllV221() {
+    const result = renderAllOriginalV221.apply(this, arguments);
+    setTimeout(updateCalendarFilterButtonsV221, 0);
+    return result;
+  };
+}
+
+
+// v222 — Admin colapsável: a página começa fechada e cada secção abre só quando clicada.
+const ADMIN_COLLAPSE_STATE_KEY_V222 = `${STORAGE_KEY}_admin_collapse_open_v222`;
+
+function adminCollapseLabelFromElementV222(el, fallback = "Secção") {
+  const explicit =
+    el?.dataset?.adminSectionLabelV187 ||
+    el?.dataset?.adminSectionV187 ||
+    el?.querySelector?.("h2,h3,strong")?.textContent ||
+    fallback;
+
+  return String(explicit || fallback).trim();
+}
+
+function adminCardKindV222(el, index) {
+  const id = String(el?.id || "").toLowerCase();
+  const text = String(el?.textContent || "").toLowerCase();
+
+  if (id.includes("overview") || text.includes("48/72") || text.includes("faltam")) return "Resumo";
+  if (id.includes("permission") || text.includes("permissões de utilizadores")) return "Users";
+  if (id.includes("result") || text.includes("resultado")) return "Resultados";
+  if (id.includes("point") || text.includes("pont")) return "Pontos";
+  if (id.includes("knockout") || text.includes("fase final")) return "Fase Final";
+  if (id.includes("user") || text.includes("utilizador")) return "Users";
+  return `Secção ${index + 1}`;
+}
+
+function ensureAdminPageShellCollapsedV222() {
+  const adminTab = $("adminTab");
+  if (!adminTab) return;
+
+  let shell = $("adminCollapseShellV222");
+  if (!shell) {
+    shell = document.createElement("div");
+    shell.id = "adminCollapseShellV222";
+    shell.className = "admin-collapse-shell-v222";
+  }
+
+  if (shell.parentElement !== adminTab) {
+    const first = adminTab.firstElementChild;
+    if (first) adminTab.insertBefore(shell, first);
+    else adminTab.appendChild(shell);
+  }
+
+  const titleNodes = [...adminTab.children].filter(el => {
+    if (el === shell) return false;
+    if (el.closest?.("#adminCollapseShellV222")) return false;
+    return true;
+  });
+
+  titleNodes.forEach((el, index) => {
+    if (!el || el.id === "adminCollapseShellV222") return;
+    if (el.tagName === "SCRIPT" || el.tagName === "STYLE") return;
+
+    // Mantém coisas ocultas ou vazias fora, mas não mexe em modais globais.
+    if (el.classList?.contains("modal") || el.classList?.contains("hidden-modal")) return;
+
+    let label = adminCollapseLabelFromElementV222(el, adminCardKindV222(el, index));
+    if (el.id === "adminSectionTabsV187" || el.classList?.contains("admin-section-tabs-v187")) label = "Abas do Admin";
+
+    // Não embrulhar se já estiver dentro de um details v222.
+    if (el.closest?.(".admin-collapse-section-v222")) return;
+
+    const details = document.createElement("details");
+    details.className = "admin-collapse-section-v222";
+    details.dataset.adminCollapseSectionV222 = label;
+    details.open = false;
+
+    const summary = document.createElement("summary");
+    summary.innerHTML = `<span>${escapeHtml(label)}</span><small>Toque para abrir</small>`;
+
+    const content = document.createElement("div");
+    content.className = "admin-collapse-content-v222";
+
+    shell.appendChild(details);
+    details.appendChild(summary);
+    details.appendChild(content);
+    content.appendChild(el);
+
+    details.addEventListener("toggle", () => {
+      const small = details.querySelector("summary small");
+      if (small) small.textContent = details.open ? "Aberto" : "Toque para abrir";
+    });
+  });
+}
+
+function collapseAdminInnerCardsV222() {
+  const adminTab = $("adminTab");
+  if (!adminTab) return;
+
+  const cards = [...adminTab.querySelectorAll("#adminUnlocked > .admin-card, .admin-card")]
+    .filter(card => !card.closest(".admin-card-collapse-v222"))
+    .filter(card => !card.closest("summary"))
+    .filter(card => card.id !== "adminOverviewV162");
+
+  cards.forEach((card, index) => {
+    if (!card.parentElement) return;
+    if (card.dataset.noCollapseV222 === "1") return;
+
+    const label = adminCardKindV222(card, index);
+    const details = document.createElement("details");
+    details.className = "admin-card-collapse-v222";
+    details.open = false;
+
+    const summary = document.createElement("summary");
+    summary.innerHTML = `<span>${escapeHtml(label)}</span><small>Fechado</small>`;
+
+    const content = document.createElement("div");
+    content.className = "admin-card-collapse-content-v222";
+
+    card.parentElement.insertBefore(details, card);
+    details.appendChild(summary);
+    details.appendChild(content);
+    content.appendChild(card);
+
+    details.addEventListener("toggle", () => {
+      const small = details.querySelector("summary small");
+      if (small) small.textContent = details.open ? "Aberto" : "Fechado";
+    });
+  });
+}
+
+function closeAllAdminCollapseV222() {
+  document.querySelectorAll("#adminTab details.admin-collapse-section-v222, #adminTab details.admin-card-collapse-v222").forEach(details => {
+    details.open = false;
+    const small = details.querySelector("summary small");
+    if (small) small.textContent = details.classList.contains("admin-card-collapse-v222") ? "Fechado" : "Toque para abrir";
+  });
+}
+
+function applyAdminCollapseV222({ forceClose = false } = {}) {
+  try {
+    ensureAdminPageShellCollapsedV222();
+    collapseAdminInnerCardsV222();
+
+    if (forceClose || !document.body.dataset.adminCollapseOpenedOnceV222) {
+      closeAllAdminCollapseV222();
+      document.body.dataset.adminCollapseOpenedOnceV222 = "1";
+    }
+  } catch (error) {
+    console.warn("applyAdminCollapseV222 falhou:", error);
+  }
+}
+
+const renderAdminOriginalV222 = typeof renderAdmin === "function" ? renderAdmin : null;
+if (renderAdminOriginalV222 && !window.__renderAdminCollapseV222) {
+  window.__renderAdminCollapseV222 = true;
+  renderAdmin = function renderAdminV222() {
+    const result = renderAdminOriginalV222.apply(this, arguments);
+    setTimeout(() => applyAdminCollapseV222({ forceClose: true }), 0);
+    setTimeout(() => applyAdminCollapseV222({ forceClose: true }), 180);
+    return result;
+  };
+}
+
+const renderAdminSectionsOriginalV222 = typeof renderAdminSectionsV187 === "function" ? renderAdminSectionsV187 : null;
+if (renderAdminSectionsOriginalV222 && !window.__renderAdminSectionsCollapseV222) {
+  window.__renderAdminSectionsCollapseV222 = true;
+  renderAdminSectionsV187 = function renderAdminSectionsCollapseV222() {
+    const result = renderAdminSectionsOriginalV222.apply(this, arguments);
+    setTimeout(() => applyAdminCollapseV222({ forceClose: true }), 0);
+    setTimeout(() => applyAdminCollapseV222({ forceClose: true }), 200);
+    return result;
+  };
+}
+
+document.addEventListener("click", event => {
+  if (event.target.closest?.("[data-tab='adminTab']")) {
+    delete document.body.dataset.adminCollapseOpenedOnceV222;
+    setTimeout(() => applyAdminCollapseV222({ forceClose: true }), 120);
+    setTimeout(() => applyAdminCollapseV222({ forceClose: true }), 450);
+  }
+}, true);
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(() => applyAdminCollapseV222({ forceClose: true }), 800);
+  setTimeout(() => applyAdminCollapseV222({ forceClose: true }), 1800);
+});
+
+
+// v223 — Configurações: página inicia toda colapsada.
+function closeAllSettingsCollapseV223() {
+  const settingsTab = $("settingsTab");
+  if (!settingsTab) return;
+
+  settingsTab.querySelectorAll("details").forEach(details => {
+    details.open = false;
+
+    const small = details.querySelector(":scope > summary small");
+    if (small) {
+      small.textContent = small.textContent?.includes("bloco") ? small.textContent : "Fechado";
+    }
+  });
+
+  document.body.classList.add("settings-collapsed-v223");
+}
+
+function prepareSettingsCollapseV223() {
+  const settingsTab = $("settingsTab");
+  if (!settingsTab) return;
+
+  // Se já existem secções colapsáveis anteriores, aproveita-as.
+  if (typeof ensureSettingsAccordionV205 === "function") {
+    try { ensureSettingsAccordionV205(); } catch (error) { console.warn("ensureSettingsAccordionV205 falhou:", error); }
+  }
+
+  // Se a página tiver blocos soltos, transforma-os em secções colapsáveis simples.
+  let shell = $("settingsCollapseShellV223");
+  if (!shell) {
+    shell = document.createElement("div");
+    shell.id = "settingsCollapseShellV223";
+    shell.className = "settings-collapse-shell-v223";
+  }
+
+  const hasAccordion = settingsTab.querySelector("#settingsAccordionV205, .settings-accordion-v205");
+  if (!hasAccordion && shell.parentElement !== settingsTab) {
+    settingsTab.prepend(shell);
+
+    [...settingsTab.children].forEach((el, index) => {
+      if (!el || el === shell) return;
+      if (el.closest?.("#settingsCollapseShellV223")) return;
+      if (el.tagName === "SCRIPT" || el.tagName === "STYLE") return;
+
+      const title =
+        el.querySelector?.("h2,h3,strong")?.textContent?.trim() ||
+        el.id?.replace(/([A-Z])/g, " $1").trim() ||
+        `Secção ${index + 1}`;
+
+      const details = document.createElement("details");
+      details.className = "settings-collapse-section-v223";
+      details.open = false;
+
+      const summary = document.createElement("summary");
+      summary.innerHTML = `<span>${escapeHtml(title)}</span><small>Fechado</small>`;
+
+      const content = document.createElement("div");
+      content.className = "settings-collapse-content-v223";
+
+      shell.appendChild(details);
+      details.appendChild(summary);
+      details.appendChild(content);
+      content.appendChild(el);
+
+      details.addEventListener("toggle", () => {
+        const small = details.querySelector(":scope > summary small");
+        if (small) small.textContent = details.open ? "Aberto" : "Fechado";
+      });
+    });
+  }
+
+  setTimeout(closeAllSettingsCollapseV223, 0);
+  setTimeout(closeAllSettingsCollapseV223, 180);
+}
+
+const renderAppSettingsPanelOriginalV223 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
+if (renderAppSettingsPanelOriginalV223 && !window.__renderSettingsCollapseV223) {
+  window.__renderSettingsCollapseV223 = true;
+  renderAppSettingsPanelV162 = function renderAppSettingsPanelCollapseV223() {
+    const result = renderAppSettingsPanelOriginalV223.apply(this, arguments);
+    setTimeout(prepareSettingsCollapseV223, 0);
+    setTimeout(closeAllSettingsCollapseV223, 250);
+    return result;
+  };
+}
+
+document.addEventListener("click", event => {
+  if (event.target.closest?.("[data-tab='settingsTab']")) {
+    setTimeout(prepareSettingsCollapseV223, 80);
+    setTimeout(closeAllSettingsCollapseV223, 350);
+  }
+}, true);
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(prepareSettingsCollapseV223, 900);
+  setTimeout(closeAllSettingsCollapseV223, 1600);
+});
