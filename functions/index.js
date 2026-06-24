@@ -177,11 +177,14 @@ async function notifyChatMessage(room, messageId, message, adminOnly = false) {
   if (!message || message.type === "system") return;
   const text = shortText(message.text || (message.imageData ? "Imagem" : message.audioData ? "Audio" : "Nova mensagem"));
   const senderName = cleanString(message.name, "Alguem");
-  const pref = room === "admin" ? "chatAdmin" : "chatGeneral";
-  const tokens = await loadEnabledTokens({ room, pref, adminOnly, excludeUid: message.uid || "" });
+  const roomPref = room === "admin" ? "chatAdmin" : "chatGeneral";
+  const tokens = await loadEnabledTokens({ room, adminOnly, excludeUid: message.uid || "" });
 
   const sent = await sendTokenNotifications(tokens, tokenData => {
     const mentioned = messageMentionsToken(message.text || "", tokenData);
+    if (mentioned && tokenData.preferences?.mentions === false) return null;
+    if (!mentioned && tokenData.preferences?.[roomPref] === false) return null;
+
     const type = mentioned ? "mention" : (room === "admin" ? "chat_admin" : "chat_general");
     const title = mentioned ? `${senderName} mencionou-te` : (room === "admin" ? "Nova mensagem no chat admin" : "Nova mensagem no chat geral");
     const body = `${senderName}: ${text}`;
@@ -1011,12 +1014,20 @@ function safeDocIdPush(...parts) {
 function cleanPushPreferences(input = {}) {
   return {
     gameStart: input.gameStart !== false,
-    gameEnd: input.gameEnd !== false,
     goals: input.goals !== false,
+    gameEnd: input.gameEnd !== false,
     results: input.results !== false,
     knockout: input.knockout !== false,
     chatGeneral: input.chatGeneral === true,
-    chatAdmin: input.chatAdmin !== false
+    chatAdmin: input.chatAdmin !== false,
+    mentions: input.mentions !== false
+  };
+}
+
+function roomsFromPushPreferences(preferences = {}) {
+  return {
+    general: preferences.chatGeneral === true,
+    admin: preferences.chatAdmin !== false
   };
 }
 
@@ -1035,7 +1046,7 @@ function isPushAdmin(identity = {}) {
 
 function cleanPushTestPayload(body = {}) {
   const requestedType = cleanString(body.testType || body.type || "test");
-  const type = ["gameStart", "gameEnd", "goals", "custom"].includes(requestedType) ? requestedType : "test";
+  const type = ["gameStart", "goals", "gameEnd", "results", "knockout", "chatGeneral", "chatAdmin", "mentions", "custom"].includes(requestedType) ? requestedType : "test";
   const team = shortText(body.team || body.goalTeam || "Portugal", 60);
   const game = shortText(body.game || body.match || "Portugal vs Uzbequistao", 90);
   const customTitle = shortText(body.title, 90);
@@ -1043,8 +1054,13 @@ function cleanPushTestPayload(body = {}) {
 
   const defaults = {
     gameStart: { title: "Jogo começou", body: `${game} já começou.`, dataType: "game-start", pref: "gameStart" },
-    gameEnd: { title: "Jogo acabou", body: `${game} terminou.`, dataType: "game-end", pref: "gameEnd" },
     goals: { title: `Golo ${team}`, body: `Golo de ${team} no jogo ${game}.`, dataType: "goal", pref: "goals" },
+    gameEnd: { title: "Jogo acabou", body: `${game} terminou.`, dataType: "game-end", pref: "gameEnd" },
+    results: { title: "Resultado novo guardado", body: `${game}: resultado atualizado.`, dataType: "result", pref: "results" },
+    knockout: { title: "Fase final atualizada", body: "A fase final do Mundial Pontos 2026 foi alterada.", dataType: "knockout", pref: "knockout" },
+    chatGeneral: { title: "Nova mensagem no chat geral", body: "Mensagem de teste no chat geral.", dataType: "chat_general", pref: "chatGeneral" },
+    chatAdmin: { title: "Nova mensagem no chat admin", body: "Mensagem de teste no chat admin.", dataType: "chat_admin", pref: "chatAdmin" },
+    mentions: { title: `${team} mencionou-te`, body: "Teste de menção no chat.", dataType: "mention", pref: "mentions" },
     custom: { title: "Teste push Mundial", body: "As notificações push estão a funcionar.", dataType: "test", pref: "" },
     test: { title: "Teste push Mundial", body: "As notificações push estão a funcionar neste dispositivo.", dataType: "test", pref: "" }
   };
@@ -1087,7 +1103,7 @@ exports.registerPushToken = onRequest({ cors: true, region: "us-central1" }, asy
       userAgent: cleanString(body.userAgent),
       preferences,
       quietHours,
-      rooms: { general: false, admin: true },
+      rooms: roomsFromPushPreferences(preferences),
       appVersion: cleanString(body.appVersion),
       updatedAt: new Date().toISOString(),
       createdAt: FieldValue.serverTimestamp()
@@ -1126,7 +1142,12 @@ exports.savePushPreferences = onRequest({ cors: true, region: "us-central1" }, a
     const tokens = await db.collection("notificationTokens")
       .where(identity.uid ? "uid" : "email", "==", identity.uid || identity.email)
       .get();
-    await Promise.all(tokens.docs.map(doc => doc.ref.set({ preferences, quietHours, updatedAt: new Date().toISOString() }, { merge: true })));
+    await Promise.all(tokens.docs.map(doc => doc.ref.set({
+      preferences,
+      quietHours,
+      rooms: roomsFromPushPreferences(preferences),
+      updatedAt: new Date().toISOString()
+    }, { merge: true })));
 
     return res.json({ ok: true, id: docId, updatedTokens: tokens.size });
   } catch (error) {

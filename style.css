@@ -9678,3 +9678,35 @@ button,
 .ko-toggle-on-v199{
   color:#ffd84d!important;
 }
+
+
+/* v200 — Preferências de notificações individuais */
+.push-options-v200{
+  grid-template-columns:repeat(auto-fit,minmax(230px,1fr))!important;
+  align-items:center!important;
+}
+.push-options-title-v200{
+  grid-column:1/-1;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  padding:8px 10px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;
+  background:rgba(255,255,255,.035);
+}
+.push-options-title-v200 strong{
+  color:var(--gold);
+}
+.push-options-title-v200 span{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:800;
+}
+.push-options-v200 label{
+  min-height:42px;
+}
+#savePushPrefsBtnV181.needs-save-v200{
+  background:linear-gradient(135deg,#ffd84d,#ffb300)!important;
+  color:#101522!important;
+}

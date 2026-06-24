@@ -10234,8 +10234,13 @@ async function callPushFunctionV181(functionName, payload = {}) {
 function defaultPushPreferencesV181() {
   return {
     gameStart: true,
-    gameEnd: true,
     goals: true,
+    gameEnd: true,
+    results: true,
+    knockout: true,
+    chatGeneral: false,
+    chatAdmin: true,
+    mentions: true,
     quietHours: { enabled: true, startHour: 23, endHour: 9, timezone: "Europe/Lisbon" }
   };
 }
@@ -10252,8 +10257,13 @@ function currentPushPreferencesV181() {
   const saved = savedPushPreferencesV181();
   return {
     gameStart: $("pushGameStartInputV181")?.checked ?? saved.gameStart,
-    gameEnd: $("pushGameEndInputV181")?.checked ?? saved.gameEnd,
     goals: $("pushGoalsInputV181")?.checked ?? saved.goals,
+    gameEnd: $("pushGameEndInputV181")?.checked ?? saved.gameEnd,
+    results: $("pushResultsInputV200")?.checked ?? saved.results,
+    knockout: $("pushKnockoutInputV200")?.checked ?? saved.knockout,
+    chatGeneral: $("pushChatGeneralInputV200")?.checked ?? saved.chatGeneral,
+    chatAdmin: $("pushChatAdminInputV200")?.checked ?? saved.chatAdmin,
+    mentions: $("pushMentionsInputV200")?.checked ?? saved.mentions,
     quietHours: {
       enabled: $("pushQuietHoursInputV181")?.checked ?? saved.quietHours?.enabled ?? true,
       startHour: 23,
@@ -10379,8 +10389,13 @@ function currentPushTestPayloadV184() {
   const custom = String($("pushTestMessageInputV184")?.value || "").trim();
   const defaults = {
     gameStart: { title: "Jogo começou", body: `${game} já começou.` },
-    gameEnd: { title: "Jogo acabou", body: `${game} terminou.` },
     goals: { title: `Golo ${team}`, body: `Golo de ${team} no jogo ${game}.` },
+    gameEnd: { title: "Jogo acabou", body: `${game} terminou.` },
+    results: { title: "Resultado novo guardado", body: `${game}: resultado atualizado.` },
+    knockout: { title: "Fase final atualizada", body: "A fase final do Mundial Pontos 2026 foi alterada." },
+    chatGeneral: { title: "Nova mensagem no chat geral", body: "Mensagem de teste no chat geral." },
+    chatAdmin: { title: "Nova mensagem no chat admin", body: "Mensagem de teste no chat admin." },
+    mentions: { title: `${team} mencionou-te`, body: "Teste de menção no chat." },
     custom: { title: "Teste push Mundial", body: custom || "As notificações push estão a funcionar." }
   };
   const selected = defaults[type] || defaults.custom;
@@ -10512,19 +10527,35 @@ function renderPushNotificationsPanelV165() {
       <span>${escapeHtml(vapidText)}</span>
       <span>${hasToken ? "Token guardado" : "Token por ativar"}</span>
     </div>
-    <div class="push-options-v165">
+    <div class="push-options-v165 push-options-v200">
+      <div class="push-options-title-v200">
+        <strong>Ativar/desativar notificações</strong>
+        <span>Escolhe exatamente o que este dispositivo recebe.</span>
+      </div>
+
       <label><input id="pushGameStartInputV181" type="checkbox" ${preferences.gameStart ? "checked" : ""} /> Jogo começou</label>
+      <label><input id="pushGoalsInputV181" type="checkbox" ${preferences.goals ? "checked" : ""} /> Golos / alteração no marcador</label>
       <label><input id="pushGameEndInputV181" type="checkbox" ${preferences.gameEnd ? "checked" : ""} /> Jogo acabou</label>
-      <label><input id="pushGoalsInputV181" type="checkbox" ${preferences.goals ? "checked" : ""} /> Golo da equipa</label>
+      <label><input id="pushResultsInputV200" type="checkbox" ${preferences.results ? "checked" : ""} /> Resultado guardado manualmente</label>
+      <label><input id="pushKnockoutInputV200" type="checkbox" ${preferences.knockout ? "checked" : ""} /> Fase Final atualizada</label>
+      <label><input id="pushChatGeneralInputV200" type="checkbox" ${preferences.chatGeneral ? "checked" : ""} /> Chat geral</label>
+      <label><input id="pushChatAdminInputV200" type="checkbox" ${preferences.chatAdmin ? "checked" : ""} /> Chat admin</label>
+      <label><input id="pushMentionsInputV200" type="checkbox" ${preferences.mentions !== false ? "checked" : ""} /> Menções no chat</label>
       <label><input id="pushQuietHoursInputV181" type="checkbox" ${preferences.quietHours?.enabled !== false ? "checked" : ""} /> Silenciar 23h-09h</label>
+
       <button id="savePushPrefsBtnV181" class="secondary" type="button">Guardar preferências</button>
     </div>
     <div class="push-test-fields-v184">
       <label>Tipo
         <select id="pushTestTypeInputV184">
           <option value="gameStart">Jogo começou</option>
+          <option value="goals">Golo / marcador</option>
           <option value="gameEnd">Jogo acabou</option>
-          <option value="goals">Golo da equipa</option>
+          <option value="results">Resultado manual</option>
+          <option value="knockout">Fase Final</option>
+          <option value="chatGeneral">Chat geral</option>
+          <option value="chatAdmin">Chat admin</option>
+          <option value="mentions">Menção no chat</option>
           <option value="custom">Mensagem livre</option>
         </select>
       </label>
@@ -10972,3 +11003,19 @@ document.addEventListener("click", event => {
 }, true);
 
 try { updateKnockoutToggleUiV197 = updateKnockoutToggleUiV199; } catch {}
+
+
+// v200 — guardar preferências automaticamente quando uma checkbox muda.
+if (!window.__pushPrefsAutoSaveV200) {
+  window.__pushPrefsAutoSaveV200 = true;
+  document.addEventListener("change", event => {
+    const input = event.target.closest?.("#pushNotificationsPanelV165 input[type='checkbox']");
+    if (!input) return;
+    savePushPreferencesLocalV181();
+    const btn = $("savePushPrefsBtnV181");
+    if (btn) {
+      btn.textContent = "Guardar preferências";
+      btn.classList.add("needs-save-v200");
+    }
+  }, true);
+}
