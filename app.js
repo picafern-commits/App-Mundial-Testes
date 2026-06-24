@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v201";
+const APP_VERSION_LABEL = "v202";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -10121,8 +10121,13 @@ async function callPushFunctionV181(functionName, payload = {}) {
 function defaultPushPreferencesV181() {
   return {
     gameStart: true,
-    gameEnd: true,
     goals: true,
+    gameEnd: true,
+    results: true,
+    knockout: true,
+    chatGeneral: false,
+    chatAdmin: true,
+    mentions: true,
     quietHours: { enabled: true, startHour: 23, endHour: 9, timezone: "Europe/Lisbon" }
   };
 }
@@ -10139,8 +10144,13 @@ function currentPushPreferencesV181() {
   const saved = savedPushPreferencesV181();
   return {
     gameStart: $("pushGameStartInputV181")?.checked ?? saved.gameStart,
-    gameEnd: $("pushGameEndInputV181")?.checked ?? saved.gameEnd,
     goals: $("pushGoalsInputV181")?.checked ?? saved.goals,
+    gameEnd: $("pushGameEndInputV181")?.checked ?? saved.gameEnd,
+    results: $("pushResultsInputV200")?.checked ?? saved.results,
+    knockout: $("pushKnockoutInputV200")?.checked ?? saved.knockout,
+    chatGeneral: $("pushChatGeneralInputV200")?.checked ?? saved.chatGeneral,
+    chatAdmin: $("pushChatAdminInputV200")?.checked ?? saved.chatAdmin,
+    mentions: $("pushMentionsInputV200")?.checked ?? saved.mentions,
     quietHours: {
       enabled: $("pushQuietHoursInputV181")?.checked ?? saved.quietHours?.enabled ?? true,
       startHour: 23,
@@ -10266,8 +10276,13 @@ function currentPushTestPayloadV184() {
   const custom = String($("pushTestMessageInputV184")?.value || "").trim();
   const defaults = {
     gameStart: { title: "Jogo começou", body: `${game} já começou.` },
-    gameEnd: { title: "Jogo acabou", body: `${game} terminou.` },
     goals: { title: `Golo ${team}`, body: `Golo de ${team} no jogo ${game}.` },
+    gameEnd: { title: "Jogo acabou", body: `${game} terminou.` },
+    results: { title: "Resultado novo guardado", body: `${game}: resultado atualizado.` },
+    knockout: { title: "Fase final atualizada", body: "A fase final do Mundial Pontos 2026 foi alterada." },
+    chatGeneral: { title: "Nova mensagem no chat geral", body: "Mensagem de teste no chat geral." },
+    chatAdmin: { title: "Nova mensagem no chat admin", body: "Mensagem de teste no chat admin." },
+    mentions: { title: `${team} mencionou-te`, body: "Teste de menção no chat." },
     custom: { title: "Teste push Mundial", body: custom || "As notificações push estão a funcionar." }
   };
   const selected = defaults[type] || defaults.custom;
@@ -10399,10 +10414,19 @@ function renderPushNotificationsPanelV165() {
       <span>${escapeHtml(vapidText)}</span>
       <span>${hasToken ? "Token guardado" : "Token por ativar"}</span>
     </div>
-    <div class="push-options-v165">
+    <div class="push-options-v165 push-options-v200">
+      <div class="push-options-title-v200">
+        <strong>Notificações</strong>
+        <span>Ativa/desativa individualmente cada tipo de alerta neste dispositivo.</span>
+      </div>
       <label><input id="pushGameStartInputV181" type="checkbox" ${preferences.gameStart ? "checked" : ""} /> Jogo começou</label>
+      <label><input id="pushGoalsInputV181" type="checkbox" ${preferences.goals ? "checked" : ""} /> Golos / alteração no marcador</label>
       <label><input id="pushGameEndInputV181" type="checkbox" ${preferences.gameEnd ? "checked" : ""} /> Jogo acabou</label>
-      <label><input id="pushGoalsInputV181" type="checkbox" ${preferences.goals ? "checked" : ""} /> Golo da equipa</label>
+      <label><input id="pushResultsInputV200" type="checkbox" ${preferences.results ? "checked" : ""} /> Resultado guardado manualmente</label>
+      <label><input id="pushKnockoutInputV200" type="checkbox" ${preferences.knockout ? "checked" : ""} /> Fase Final atualizada</label>
+      <label><input id="pushChatGeneralInputV200" type="checkbox" ${preferences.chatGeneral ? "checked" : ""} /> Chat geral</label>
+      <label><input id="pushChatAdminInputV200" type="checkbox" ${preferences.chatAdmin ? "checked" : ""} /> Chat admin</label>
+      <label><input id="pushMentionsInputV200" type="checkbox" ${preferences.mentions !== false ? "checked" : ""} /> Menções no chat</label>
       <label><input id="pushQuietHoursInputV181" type="checkbox" ${preferences.quietHours?.enabled !== false ? "checked" : ""} /> Silenciar 23h-09h</label>
       <button id="savePushPrefsBtnV181" class="secondary" type="button">Guardar preferências</button>
     </div>
@@ -10410,8 +10434,13 @@ function renderPushNotificationsPanelV165() {
       <label>Tipo
         <select id="pushTestTypeInputV184">
           <option value="gameStart">Jogo começou</option>
+          <option value="goals">Golo / marcador</option>
           <option value="gameEnd">Jogo acabou</option>
-          <option value="goals">Golo da equipa</option>
+          <option value="results">Resultado manual</option>
+          <option value="knockout">Fase Final</option>
+          <option value="chatGeneral">Chat geral</option>
+          <option value="chatAdmin">Chat admin</option>
+          <option value="mentions">Menção no chat</option>
           <option value="custom">Mensagem livre</option>
         </select>
       </label>
@@ -10847,3 +10876,296 @@ footballRealtimeSyncRenderV156 = function footballRealtimeSyncRenderV201(data = 
 document.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => footballRealtimeSyncRenderV156(), 900);
 });
+
+
+// v202 — guardar preferências push quando uma checkbox muda.
+if (!window.__pushPrefsAutoSaveV202) {
+  window.__pushPrefsAutoSaveV202 = true;
+  document.addEventListener("change", event => {
+    const input = event.target.closest?.("#pushNotificationsPanelV165 input[type='checkbox']");
+    if (!input) return;
+    savePushPreferencesLocalV181();
+    const btn = $("savePushPrefsBtnV181");
+    if (btn) {
+      btn.textContent = "Guardar preferências";
+      btn.classList.add("needs-save-v200");
+    }
+  }, true);
+}
+
+
+// v202 — Organização do Admin + escolha das abas que aparecem no Admin/Configurações.
+const ADMIN_SECTION_CHOICES_V202 = [
+  ["users", "Users"],
+  ["results", "Resultados"],
+  ["points", "Pontos"],
+  ["knockout", "Fase Final"],
+  ["system", "Sistema"]
+];
+
+const PAGE_LOCATION_CHOICES_V202 = [
+  ["calendar", "Calendário", "calendarTab"],
+  ["score", "Pontuação", "scoreTab"],
+  ["knockout", "Fase Final", "knockoutTab"],
+  ["notifications", "Notificações", "notificationsTab"],
+  ["logs", "Logs", "logsTab"],
+  ["adminTab", "Admin", "adminTab"],
+  ["settings", "Configurações", "settingsTab"]
+];
+
+function adminLayoutSettingsKeyV202() {
+  return `${STORAGE_KEY}_admin_layout_settings_v202`;
+}
+
+function defaultAdminLayoutSettingsV202() {
+  return {
+    adminSections: {
+      users: "admin",
+      results: "admin",
+      points: "admin",
+      knockout: "admin",
+      system: "admin"
+    },
+    pages: {
+      calendar: true,
+      score: true,
+      knockout: true,
+      notifications: true,
+      logs: true,
+      adminTab: true,
+      settings: true
+    }
+  };
+}
+
+function savedAdminLayoutSettingsV202() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(adminLayoutSettingsKeyV202()) || "{}") || {};
+    const base = defaultAdminLayoutSettingsV202();
+    return {
+      adminSections: { ...base.adminSections, ...(raw.adminSections || {}) },
+      pages: { ...base.pages, ...(raw.pages || {}) }
+    };
+  } catch {
+    return defaultAdminLayoutSettingsV202();
+  }
+}
+
+function saveAdminLayoutSettingsV202(settings) {
+  localStorage.setItem(adminLayoutSettingsKeyV202(), JSON.stringify(settings));
+}
+
+function adminSectionLocationV202(section) {
+  return savedAdminLayoutSettingsV202().adminSections?.[section] || "admin";
+}
+
+function pageVisibleByUserSettingV202(key) {
+  return savedAdminLayoutSettingsV202().pages?.[key] !== false;
+}
+
+function renderAdminLayoutManagerV202(targetId = "settings") {
+  const containerId = targetId === "admin" ? "adminLayoutManagerAdminV202" : "adminLayoutManagerSettingsV202";
+  let box = document.getElementById(containerId);
+  const parent =
+    targetId === "admin"
+      ? document.getElementById("adminUnlocked")
+      : document.getElementById("settingsTab");
+
+  if (!parent) return;
+
+  if (!box) {
+    box = document.createElement("section");
+    box.id = containerId;
+    box.className = "admin-card admin-layout-manager-v202";
+    if (targetId === "admin") {
+      const overview = document.getElementById("adminOverviewV162");
+      if (overview?.insertAdjacentElement) overview.insertAdjacentElement("afterend", box);
+      else parent.prepend(box);
+    } else {
+      parent.prepend(box);
+    }
+  }
+
+  const settings = savedAdminLayoutSettingsV202();
+  const sectionRows = ADMIN_SECTION_CHOICES_V202.map(([key, label]) => {
+    const value = settings.adminSections[key] || "admin";
+    return `
+      <label class="admin-layout-row-v202">
+        <span>${escapeHtml(label)}</span>
+        <select data-admin-section-location-v202="${escapeHtml(key)}">
+          <option value="admin" ${value === "admin" ? "selected" : ""}>Admin</option>
+          <option value="settings" ${value === "settings" ? "selected" : ""}>Configurações</option>
+          <option value="hidden" ${value === "hidden" ? "selected" : ""}>Esconder</option>
+        </select>
+      </label>`;
+  }).join("");
+
+  const pageRows = PAGE_LOCATION_CHOICES_V202.map(([key, label]) => `
+    <label class="admin-layout-page-v202">
+      <input type="checkbox" data-page-visible-v202="${escapeHtml(key)}" ${settings.pages[key] !== false ? "checked" : ""} />
+      ${escapeHtml(label)}
+    </label>`).join("");
+
+  box.innerHTML = `
+    <div class="admin-layout-head-v202">
+      <div>
+        <strong>Organização da app</strong>
+        <span>Escolhe o que fica no Admin, o que passa para Configurações e que abas aparecem no topo.</span>
+      </div>
+      <button type="button" class="secondary small" data-admin-layout-reset-v202>Repor</button>
+    </div>
+    <div class="admin-layout-grid-v202">
+      <div>
+        <h4>Secções do Admin</h4>
+        ${sectionRows}
+      </div>
+      <div>
+        <h4>Abas visíveis</h4>
+        <div class="admin-layout-pages-v202">${pageRows}</div>
+      </div>
+    </div>
+  `;
+}
+
+function applyAdminLayoutSettingsV202() {
+  const settings = savedAdminLayoutSettingsV202();
+
+  PAGE_LOCATION_CHOICES_V202.forEach(([key, , tabId]) => {
+    const tab = document.querySelector(`[data-tab="${CSS.escape(tabId)}"]`);
+    if (!tab) return;
+    const hiddenBySetting = settings.pages[key] === false;
+    tab.classList.toggle("user-hidden-v202", hiddenBySetting);
+  });
+
+  document.querySelectorAll("#adminUnlocked > .admin-card").forEach(card => {
+    if (card.classList.contains("admin-layout-manager-v202")) return;
+    const section = adminSectionForCardV187(card);
+    const location = adminSectionLocationV202(section);
+    card.dataset.adminSectionLocationV202 = location;
+    card.classList.toggle("admin-section-force-hidden-v202", location === "hidden");
+    card.classList.toggle("admin-section-moved-settings-v202", location === "settings");
+  });
+
+  renderMovedAdminSectionsInSettingsV202();
+}
+
+function renderMovedAdminSectionsInSettingsV202() {
+  const settingsTab = document.getElementById("settingsTab");
+  if (!settingsTab) return;
+
+  let box = document.getElementById("settingsMovedAdminSectionsV202");
+  if (!box) {
+    box = document.createElement("section");
+    box.id = "settingsMovedAdminSectionsV202";
+    box.className = "settings-moved-admin-v202";
+    settingsTab.appendChild(box);
+  }
+
+  const moved = [...document.querySelectorAll("#adminUnlocked > .admin-card")]
+    .filter(card => !card.classList.contains("admin-layout-manager-v202"))
+    .filter(card => adminSectionLocationV202(adminSectionForCardV187(card)) === "settings");
+
+  if (!moved.length) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+
+  box.classList.remove("hidden");
+  box.innerHTML = `
+    <div class="settings-moved-head-v202">
+      <strong>Secções vindas do Admin</strong>
+      <span>Estas secções continuam controladas por permissões de Admin.</span>
+    </div>
+  `;
+
+  moved.forEach(card => {
+    if (card.dataset.movedCloneSourceV202 === "1") return;
+    const clone = card.cloneNode(true);
+    clone.dataset.movedCloneSourceV202 = "1";
+    clone.classList.remove("admin-section-hidden-v187", "admin-section-moved-settings-v202");
+    clone.classList.add("settings-admin-clone-v202");
+    box.appendChild(clone);
+  });
+}
+
+const ensureAdminSectionTabsOriginalV202 = typeof ensureAdminSectionTabsV187 === "function" ? ensureAdminSectionTabsV187 : null;
+if (ensureAdminSectionTabsOriginalV202) {
+  ensureAdminSectionTabsV187 = function ensureAdminSectionTabsV202() {
+    const tabs = ensureAdminSectionTabsOriginalV202();
+    if (!tabs) return tabs;
+    const settings = savedAdminLayoutSettingsV202();
+    tabs.querySelectorAll("[data-admin-section-v187]").forEach(button => {
+      const section = button.dataset.adminSectionV187;
+      if (section && section !== "all") {
+        button.classList.toggle("hidden", settings.adminSections?.[section] === "hidden" || settings.adminSections?.[section] === "settings");
+      }
+    });
+    return tabs;
+  };
+}
+
+const renderAdminSectionsOriginalV202 = typeof renderAdminSectionsV187 === "function" ? renderAdminSectionsV187 : null;
+if (renderAdminSectionsOriginalV202) {
+  renderAdminSectionsV187 = function renderAdminSectionsV202() {
+    renderAdminSectionsOriginalV202();
+    renderAdminLayoutManagerV202("admin");
+    applyAdminLayoutSettingsV202();
+  };
+}
+
+const renderAppSettingsPanelOriginalV202 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
+if (renderAppSettingsPanelOriginalV202) {
+  renderAppSettingsPanelV162 = function renderAppSettingsPanelV202() {
+    renderAppSettingsPanelOriginalV202();
+    renderAdminLayoutManagerV202("settings");
+    applyAdminLayoutSettingsV202();
+  };
+}
+
+document.addEventListener("change", event => {
+  const sectionSelect = event.target.closest?.("[data-admin-section-location-v202]");
+  const pageCheckbox = event.target.closest?.("[data-page-visible-v202]");
+  if (!sectionSelect && !pageCheckbox) return;
+
+  const settings = savedAdminLayoutSettingsV202();
+  if (sectionSelect) settings.adminSections[sectionSelect.dataset.adminSectionLocationV202] = sectionSelect.value;
+  if (pageCheckbox) settings.pages[pageCheckbox.dataset.pageVisibleV202] = pageCheckbox.checked;
+  saveAdminLayoutSettingsV202(settings);
+  renderAdminLayoutManagerV202("admin");
+  renderAdminLayoutManagerV202("settings");
+  applyPermissionsToUi();
+  applyAdminLayoutSettingsV202();
+  toast("Organização guardada neste dispositivo.");
+}, true);
+
+document.addEventListener("click", event => {
+  const reset = event.target.closest?.("[data-admin-layout-reset-v202]");
+  if (!reset) return;
+  event.preventDefault();
+  localStorage.removeItem(adminLayoutSettingsKeyV202());
+  renderAdminLayoutManagerV202("admin");
+  renderAdminLayoutManagerV202("settings");
+  applyPermissionsToUi();
+  applyAdminLayoutSettingsV202();
+  toast("Organização reposta.");
+}, true);
+
+setTimeout(() => {
+  renderAdminLayoutManagerV202("admin");
+  renderAdminLayoutManagerV202("settings");
+  applyAdminLayoutSettingsV202();
+}, 800);
+
+
+// v202 — aplica visibilidade escolhida pelo utilizador depois das permissões normais.
+const applyPermissionsToUiOriginalV202 = typeof applyPermissionsToUi === "function" ? applyPermissionsToUi : null;
+if (applyPermissionsToUiOriginalV202) {
+  applyPermissionsToUi = function applyPermissionsToUiV202() {
+    applyPermissionsToUiOriginalV202();
+    applyAdminLayoutSettingsV202?.();
+
+    const activeTab = document.querySelector(".tab.active");
+    if (activeTab?.classList.contains("user-hidden-v202")) switchToFirstAllowedTab();
+  };
+}
