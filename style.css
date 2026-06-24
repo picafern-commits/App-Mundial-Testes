@@ -10762,7 +10762,7 @@ body.online-users-open-v220 .tab-panel{
 }
 
 
-/* v228 - Admin e Configuracoes com secoes reais e estaveis */
+/* v229 - Admin e Configuracoes com secoes reais e sub-abas clicaveis */
 #adminTab,
 #settingsTab{
   display:flex;
@@ -10860,6 +10860,17 @@ body.online-users-open-v220 .tab-panel{
 
 .admin-clean-section-v228 .admin-card{
   box-shadow:none;
+}
+
+.admin-clean-section-v228 .admin-card > summary,
+#settingsTab .settings-section-content-v213 details > summary{
+  position:relative;
+  z-index:2;
+  pointer-events:auto!important;
+}
+
+.admin-clean-section-v228 .admin-card[open] > summary{
+  border-bottom:1px solid rgba(148,163,184,.12);
 }
 
 #adminSectionTabsV187{

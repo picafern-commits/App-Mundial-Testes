@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v228";
+const APP_VERSION_LABEL = "v229";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -11964,6 +11964,27 @@ function applySettingsLayoutV228() {
   organizeSettingsPageV228();
 }
 
+function innerCollapseDetailsV229(summary) {
+  const details = summary?.parentElement;
+  if (!(details instanceof HTMLDetailsElement)) return null;
+  if (details.classList.contains("clean-collapse-section-v228")) return null;
+  if (details.classList.contains("settings-section-v213")) return null;
+
+  const insideAdmin = details.matches(".admin-card.admin-collapse") && details.closest(".admin-clean-section-v228");
+  const insideSettings = details.closest("#settingsTab .settings-section-content-v213") && !details.classList.contains("settings-section-v213");
+  return insideAdmin || insideSettings ? details : null;
+}
+
+function toggleInnerCollapseV229(summary, event) {
+  const details = innerCollapseDetailsV229(summary);
+  if (!details) return false;
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  details.open = !details.open;
+  details.dataset.userOpenV229 = details.open ? "1" : "0";
+  return true;
+}
+
 try {
   applyAdminLayoutSettingsV213 = applyAdminLayoutSettingsV228;
   applySettingsLayoutV213 = applySettingsLayoutV228;
@@ -12015,6 +12036,9 @@ if (renderAllOriginalV228 && !window.__renderAllCleanCollapseV228) {
 }
 
 document.addEventListener("click", event => {
+  const innerSummary = event.target.closest?.("#adminTab .admin-card.admin-collapse > summary, #settingsTab .settings-section-content-v213 details > summary");
+  if (innerSummary && toggleInnerCollapseV229(innerSummary, event)) return;
+
   if (event.target.closest?.("[data-tab='adminTab']")) setTimeout(organizeAdminPageV228, 80);
   if (event.target.closest?.("[data-tab='settingsTab']")) setTimeout(organizeSettingsPageV228, 80);
 }, true);
