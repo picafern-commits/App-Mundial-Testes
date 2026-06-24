@@ -10945,3 +10945,14 @@ body.settings-collapsed-v223 #settingsTab details:not([open]) > *:not(summary){
 #settingsTab details[data-empty-settings-v225="1"]{
   display:none!important;
 }
+
+
+/* v226 — primeira secção útil de Admin/Configurações sempre aberta */
+#adminTab.first-section-open-v226 details:first-of-type,
+#settingsTab.first-section-open-v226 details:first-of-type{
+  border-color:rgba(255,216,87,.24)!important;
+}
+#adminTab details[open] > summary,
+#settingsTab details[open] > summary{
+  color:var(--gold)!important;
+}

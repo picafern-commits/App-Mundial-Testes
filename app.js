@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v225";
+const APP_VERSION_LABEL = "v226";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -12274,3 +12274,118 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(applySettingsCleanNoEmptyV225, 1000);
   setTimeout(applySettingsCleanNoEmptyV225, 2200);
 });
+
+
+// v226 — primeira aba útil em Admin e Configurações fica sempre aberta.
+function visibleUsefulDetailsV226(root) {
+  return [...(root?.querySelectorAll?.("details") || [])].filter(details => {
+    if (!details) return false;
+    try {
+      const style = window.getComputedStyle(details);
+      if (style.display === "none" || style.visibility === "hidden") return false;
+    } catch {}
+
+    const title = String(details.querySelector(":scope > summary")?.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+    if (!title) return false;
+    if (title === "admin" || title === "configurações" || title === "configuracoes") return false;
+    if (/^secção\s+\d+/.test(title)) return false;
+
+    const contentText = String(details.textContent || "").replace(/\s+/g, " ").trim();
+    return contentText.length > title.length + 4;
+  });
+}
+
+function setDetailsLabelV226(details, open) {
+  const small = details?.querySelector?.(":scope > summary small");
+  if (!small) return;
+  if (small.textContent && small.textContent.includes("bloco")) return;
+  small.textContent = open ? "Aberto" : "Fechado";
+}
+
+function openFirstDetailsV226(tabId) {
+  const root = $(tabId);
+  if (!root) return;
+
+  const detailsList = visibleUsefulDetailsV226(root);
+  if (!detailsList.length) return;
+
+  detailsList.forEach((details, index) => {
+    const shouldOpen = index === 0;
+    details.open = shouldOpen;
+    setDetailsLabelV226(details, shouldOpen);
+  });
+
+  root.classList.add("first-section-open-v226");
+}
+
+function applyFirstTabsOpenV226() {
+  try {
+    openFirstDetailsV226("adminTab");
+    openFirstDetailsV226("settingsTab");
+  } catch (error) {
+    console.warn("applyFirstTabsOpenV226 falhou:", error);
+  }
+}
+
+// Substitui o "fecha tudo" por "fecha tudo menos a primeira aba útil".
+const closeAllAdminCollapseOriginalV226 = typeof closeAllAdminCollapseV222 === "function" ? closeAllAdminCollapseV222 : null;
+if (closeAllAdminCollapseOriginalV226 && !window.__closeAdminKeepFirstV226) {
+  window.__closeAdminKeepFirstV226 = true;
+  closeAllAdminCollapseV222 = function closeAllAdminCollapseKeepFirstV226() {
+    closeAllAdminCollapseOriginalV226();
+    setTimeout(() => openFirstDetailsV226("adminTab"), 0);
+  };
+}
+
+const closeAllSettingsCollapseOriginalV226 = typeof closeAllSettingsCollapseV223 === "function" ? closeAllSettingsCollapseV223 : null;
+if (closeAllSettingsCollapseOriginalV226 && !window.__closeSettingsKeepFirstV226) {
+  window.__closeSettingsKeepFirstV226 = true;
+  closeAllSettingsCollapseV223 = function closeAllSettingsCollapseKeepFirstV226() {
+    closeAllSettingsCollapseOriginalV226();
+    setTimeout(() => openFirstDetailsV226("settingsTab"), 0);
+  };
+}
+
+document.addEventListener("click", event => {
+  if (
+    event.target.closest?.("[data-tab='adminTab']") ||
+    event.target.closest?.("[data-tab='settingsTab']")
+  ) {
+    setTimeout(applyFirstTabsOpenV226, 140);
+    setTimeout(applyFirstTabsOpenV226, 420);
+  }
+}, true);
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(applyFirstTabsOpenV226, 1000);
+  setTimeout(applyFirstTabsOpenV226, 2200);
+});
+
+// Se tentarem fechar a primeira aba útil, abre novamente.
+document.addEventListener("toggle", event => {
+  const details = event.target;
+  if (!(details instanceof HTMLDetailsElement)) return;
+
+  const adminTab = $("adminTab");
+  const settingsTab = $("settingsTab");
+
+  if (adminTab?.contains(details)) {
+    const first = visibleUsefulDetailsV226(adminTab)[0];
+    if (details === first && !details.open) {
+      setTimeout(() => {
+        details.open = true;
+        setDetailsLabelV226(details, true);
+      }, 0);
+    }
+  }
+
+  if (settingsTab?.contains(details)) {
+    const first = visibleUsefulDetailsV226(settingsTab)[0];
+    if (details === first && !details.open) {
+      setTimeout(() => {
+        details.open = true;
+        setDetailsLabelV226(details, true);
+      }, 0);
+    }
+  }
+}, true);
