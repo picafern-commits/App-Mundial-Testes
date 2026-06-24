@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v230";
+const APP_VERSION_LABEL = "v231";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -4615,6 +4615,21 @@ function updateKnockoutUnlockControlV230(unlocked = Boolean($("adminKnockoutUnlo
       : "Bloqueada ate acabarem os grupos";
   }
   if (button) button.textContent = unlocked ? "Guardar ativada" : "Guardar bloqueada";
+}
+
+function toggleKnockoutUnlockControlV231(event) {
+  const card = event.target.closest?.(".knockout-unlock-toggle-v230");
+  if (!card) return false;
+
+  const input = $("adminKnockoutUnlockedInput");
+  if (!input || input.disabled) return false;
+
+  event.preventDefault();
+  event.stopPropagation();
+  input.checked = !input.checked;
+  updateKnockoutUnlockControlV230(input.checked);
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+  return true;
 }
 
 async function saveKnockoutUnlock() {
@@ -12054,6 +12069,8 @@ if (renderAllOriginalV228 && !window.__renderAllCleanCollapseV228) {
 }
 
 document.addEventListener("click", event => {
+  if (toggleKnockoutUnlockControlV231(event)) return;
+
   const innerSummary = event.target.closest?.("#adminTab .admin-card.admin-collapse > summary, #settingsTab .settings-section-content-v213 details > summary");
   if (innerSummary && toggleInnerCollapseV229(innerSummary, event)) return;
 

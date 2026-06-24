@@ -11081,3 +11081,89 @@ body.online-users-open-v220 .tab-panel{
     padding:10px!important;
   }
 }
+
+/* v231 - icone real no login e regresso a paleta original */
+.login-brand-icon{
+  width:64px;
+  height:64px;
+  flex:0 0 64px;
+  display:block;
+  object-fit:cover;
+  border-radius:16px;
+  border:1px solid rgba(255,212,90,.38);
+  background:#070b13;
+  box-shadow:0 14px 34px rgba(0,0,0,.30),0 0 0 4px rgba(255,212,90,.06);
+}
+
+.login-brand > span{
+  display:none!important;
+}
+
+.primary,
+button.primary,
+.result-inputs .primary,
+#saveKnockoutUnlockBtn,
+#knockoutAdminPanel .ko-admin-row .primary{
+  color:#f7fbff!important;
+  border-color:rgba(31,191,137,.42)!important;
+  background:linear-gradient(135deg,#1fbf89,#139dc2)!important;
+  box-shadow:0 10px 24px rgba(31,191,137,.18)!important;
+}
+
+.primary:hover,
+button.primary:hover{
+  filter:brightness(1.04);
+}
+
+#knockoutTab.active .section-head{
+  border-color:rgba(255,212,90,.24)!important;
+  background:linear-gradient(135deg,rgba(255,212,90,.12),rgba(31,191,137,.08))!important;
+  box-shadow:0 14px 36px rgba(0,0,0,.18)!important;
+}
+
+#knockoutBracket.knockout-bracket{
+  border-color:rgba(255,212,90,.22)!important;
+  background:
+    radial-gradient(circle at 50% 0%,rgba(255,212,90,.12),transparent 34%),
+    linear-gradient(180deg,rgba(15,23,42,.84),rgba(7,11,19,.78))!important;
+}
+
+#knockoutBracket .bracket-title-row{
+  background:rgba(255,212,90,.08)!important;
+  border-color:rgba(255,212,90,.18)!important;
+}
+
+#knockoutBracket .bracket-photo-grid-split .knockout-match,
+#knockoutAdminPanel .ko-admin-row{
+  border-color:rgba(255,212,90,.18)!important;
+  background:linear-gradient(180deg,rgba(18,29,45,.92),rgba(9,14,24,.94))!important;
+}
+
+#knockoutBracket .bracket-photo-grid-split .knockout-match.has-winner{
+  border-color:rgba(31,191,137,.46)!important;
+  box-shadow:0 0 0 1px rgba(31,191,137,.12),0 12px 26px rgba(0,0,0,.26)!important;
+}
+
+#knockoutAdminPanel .ko-admin-list{
+  scrollbar-color:rgba(255,212,90,.56) rgba(15,23,42,.9)!important;
+}
+
+.knockout-unlock-toggle-v230{
+  border-color:rgba(255,212,90,.28)!important;
+  background:linear-gradient(180deg,rgba(255,212,90,.08),rgba(7,11,19,.46))!important;
+}
+
+.knockout-unlock-toggle-v230.is-unlocked-v230 .knockout-unlock-switch-v230{
+  background:linear-gradient(135deg,#1fbf89,#139dc2)!important;
+  border-color:rgba(31,191,137,.68)!important;
+  box-shadow:0 0 0 3px rgba(31,191,137,.12), inset 0 2px 8px rgba(0,0,0,.18)!important;
+}
+
+@media(max-width:560px){
+  .login-brand-icon{
+    width:56px;
+    height:56px;
+    flex-basis:56px;
+    border-radius:14px;
+  }
+}
