@@ -9833,7 +9833,7 @@ button,
 
 
 /* v205 — Página Configurações clean e colapsável */
-#settingsTab{
+#settingsTab.active{
   display:flex;
   flex-direction:column;
   gap:14px;
@@ -10321,4 +10321,18 @@ body.app-authenticated-v213 #appShell{
     width:100%!important;
     max-width:none!important;
   }
+}
+
+/* v216 - uma página ativa de cada vez */
+.tab-panel:not(.active){
+  display:none!important;
+}
+
+.tab-panel.active{
+  display:block!important;
+}
+
+#settingsTab.active{
+  display:flex!important;
+  flex-direction:column!important;
 }
