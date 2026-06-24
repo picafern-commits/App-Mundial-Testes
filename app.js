@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v214";
+const APP_VERSION_LABEL = "v220";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -11480,5 +11480,158 @@ if (renderOnlineUsersOriginalV214 && !window.__renderOnlineUsersV214) {
     bindOnlineUsersPopupV214();
     setTimeout(positionOnlineUsersPopupV214, 0);
     setTimeout(positionOnlineUsersPopupV214, 120);
+  };
+}
+
+
+// v220 — Users popup em portal real no body.
+// Corrige de vez o problema de ficar por baixo de tabs/topbar/sticky bars.
+let onlineUsersOriginalParentV220 = null;
+let onlineUsersOriginalNextSiblingV220 = null;
+
+function onlineUsersPanelV220() {
+  return $("onlineUsersPanel");
+}
+
+function onlineUsersListV220() {
+  return $("onlineUsersList");
+}
+
+function onlineUsersTriggerV220() {
+  return onlineUsersPanelV220()?.querySelector("summary");
+}
+
+function moveOnlineUsersListToBodyV220() {
+  const list = onlineUsersListV220();
+  if (!list) return;
+
+  if (!onlineUsersOriginalParentV220) {
+    onlineUsersOriginalParentV220 = list.parentElement;
+    onlineUsersOriginalNextSiblingV220 = list.nextSibling;
+  }
+
+  if (list.parentElement !== document.body) {
+    document.body.appendChild(list);
+  }
+
+  list.classList.add("online-users-portal-v220");
+  document.body.classList.add("online-users-open-v220");
+}
+
+function restoreOnlineUsersListV220() {
+  const list = onlineUsersListV220();
+  if (!list) return;
+
+  list.classList.remove("online-users-portal-v220");
+  list.style.left = "";
+  list.style.top = "";
+  list.style.width = "";
+  list.style.maxHeight = "";
+  list.style.transform = "";
+
+  if (onlineUsersOriginalParentV220 && list.parentElement !== onlineUsersOriginalParentV220) {
+    if (onlineUsersOriginalNextSiblingV220 && onlineUsersOriginalNextSiblingV220.parentElement === onlineUsersOriginalParentV220) {
+      onlineUsersOriginalParentV220.insertBefore(list, onlineUsersOriginalNextSiblingV220);
+    } else {
+      onlineUsersOriginalParentV220.appendChild(list);
+    }
+  }
+
+  document.body.classList.remove("online-users-open-v220");
+}
+
+function positionOnlineUsersPopupV220() {
+  const panel = onlineUsersPanelV220();
+  const list = onlineUsersListV220();
+  const trigger = onlineUsersTriggerV220();
+  if (!panel || !list || !trigger || !panel.open) return;
+
+  moveOnlineUsersListToBodyV220();
+
+  const rect = trigger.getBoundingClientRect();
+  const margin = 12;
+  const viewportW = window.innerWidth || document.documentElement.clientWidth || 0;
+  const viewportH = window.innerHeight || document.documentElement.clientHeight || 0;
+
+  const width = Math.min(520, Math.max(340, viewportW - margin * 2));
+  const left = Math.max(margin, Math.min(rect.right - width, viewportW - width - margin));
+  const top = Math.max(margin, Math.min(rect.bottom + 10, viewportH - 160));
+  const maxHeight = Math.max(240, viewportH - top - margin);
+
+  list.style.position = "fixed";
+  list.style.left = `${Math.round(left)}px`;
+  list.style.top = `${Math.round(top)}px`;
+  list.style.width = `${Math.round(width)}px`;
+  list.style.maxHeight = `${Math.round(maxHeight)}px`;
+  list.style.transform = "none";
+  list.style.zIndex = "2147483600";
+  list.style.pointerEvents = "auto";
+}
+
+function closeOnlineUsersPanelV220(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  const panel = onlineUsersPanelV220();
+  if (panel) panel.open = false;
+  restoreOnlineUsersListV220();
+  return false;
+}
+
+window.closeOnlineUsersPanelNow = closeOnlineUsersPanelV220;
+
+function bindOnlineUsersPortalV220() {
+  const panel = onlineUsersPanelV220();
+  if (!panel || panel.dataset.usersPortalV220 === "1") return;
+
+  panel.dataset.usersPortalV220 = "1";
+
+  panel.addEventListener("toggle", () => {
+    if (panel.open) {
+      positionOnlineUsersPopupV220();
+      setTimeout(positionOnlineUsersPopupV220, 40);
+      setTimeout(positionOnlineUsersPopupV220, 180);
+    } else {
+      restoreOnlineUsersListV220();
+    }
+  });
+
+  document.addEventListener("click", event => {
+    const p = onlineUsersPanelV220();
+    const list = onlineUsersListV220();
+    if (!p?.open) return;
+
+    if (event.target.closest?.("#onlineUsersPanel")) return;
+    if (event.target.closest?.("#onlineUsersList")) return;
+
+    p.open = false;
+    restoreOnlineUsersListV220();
+  }, true);
+
+  window.addEventListener("resize", positionOnlineUsersPopupV220, { passive: true });
+  window.addEventListener("scroll", positionOnlineUsersPopupV220, { passive: true });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  bindOnlineUsersPortalV220();
+  setTimeout(bindOnlineUsersPortalV220, 700);
+  setTimeout(positionOnlineUsersPopupV220, 900);
+});
+
+const renderOnlineUsersOriginalV220 = typeof renderOnlineUsers === "function" ? renderOnlineUsers : null;
+if (renderOnlineUsersOriginalV220 && !window.__renderOnlineUsersV220) {
+  window.__renderOnlineUsersV220 = true;
+  renderOnlineUsers = function renderOnlineUsersV220() {
+    renderOnlineUsersOriginalV220();
+    bindOnlineUsersPortalV220();
+
+    const panel = onlineUsersPanelV220();
+    if (panel?.open) {
+      moveOnlineUsersListToBodyV220();
+      setTimeout(positionOnlineUsersPopupV220, 0);
+      setTimeout(positionOnlineUsersPopupV220, 120);
+    }
   };
 }

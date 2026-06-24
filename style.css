@@ -10655,3 +10655,63 @@ body.online-users-open-v214 #onlineUsersPanel{
     max-height:calc(100dvh - 84px)!important;
   }
 }
+
+
+/* v220 — Users popup em portal no body, fora da topbar */
+body > #onlineUsersList.online-users-portal-v220{
+  position:fixed!important;
+  right:auto!important;
+  bottom:auto!important;
+  transform:none!important;
+  overflow:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+  box-sizing:border-box!important;
+  padding:10px!important;
+  border:1px solid rgba(148,163,184,.28)!important;
+  border-radius:16px!important;
+  background:rgba(7,11,19,.995)!important;
+  box-shadow:0 34px 100px rgba(0,0,0,.72)!important;
+  backdrop-filter:blur(20px)!important;
+  z-index:2147483600!important;
+  isolation:isolate!important;
+  pointer-events:auto!important;
+}
+body > #onlineUsersList.online-users-portal-v220 .online-users-popup-head{
+  position:sticky!important;
+  top:0!important;
+  z-index:2147483601!important;
+  margin:-10px -10px 10px!important;
+  padding:10px!important;
+  border-bottom:1px solid rgba(255,255,255,.10)!important;
+  background:rgba(7,11,19,.995)!important;
+  backdrop-filter:blur(18px)!important;
+}
+body > #onlineUsersList.online-users-portal-v220 .online-users-close{
+  position:relative!important;
+  z-index:2147483602!important;
+  pointer-events:auto!important;
+}
+#onlineUsersPanel[open] summary{
+  position:relative!important;
+  z-index:2147483603!important;
+}
+body.online-users-open-v220 .tabs,
+body.online-users-open-v220 .topbar,
+body.online-users-open-v220 .copy-actions,
+body.online-users-open-v220 main,
+body.online-users-open-v220 .tab-panel{
+  overflow:visible!important;
+}
+@media(max-width:760px){
+  body > #onlineUsersList.online-users-portal-v220{
+    left:8px!important;
+    right:8px!important;
+    top:max(68px, env(safe-area-inset-top))!important;
+    width:auto!important;
+    max-width:none!important;
+    max-height:calc(100dvh - 84px)!important;
+    border-radius:14px!important;
+  }
+}
