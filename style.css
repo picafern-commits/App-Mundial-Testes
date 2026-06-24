@@ -9635,78 +9635,41 @@ button,
 }
 
 
-/* v197 — Toggle Fase Final */
-.ko-toggle-on-v197{
-  color:#ffd84d!important;
+/* v201 — Estado da sync inteligente football-data.org */
+.football-smart-sync-details-v201{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+  gap:10px;
+  margin-top:12px;
 }
-#saveKnockoutUnlockBtn.danger-soft{
-  border-color:rgba(255,99,99,.45)!important;
-  background:rgba(255,99,99,.12)!important;
-  color:#ffd2d2!important;
-}
-#adminKnockoutUnlockedInput{
-  width:20px!important;
-  height:20px!important;
-  accent-color:#16d1b3!important;
-  cursor:pointer!important;
-}
-
-
-/* v198 — botão Fase Final realmente clicável para Admin */
-#saveKnockoutUnlockBtn:not(.hidden){
-  display:inline-flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  pointer-events:auto!important;
-  cursor:pointer!important;
-}
-#saveKnockoutUnlockBtn.hidden{
-  display:none!important;
-}
-
-
-/* v199 — Botão Fase Final como interruptor real */
-#saveKnockoutUnlockBtn{
-  min-width:170px!important;
-}
-#saveKnockoutUnlockBtn.ko-toggle-button-on-v199,
-#saveKnockoutUnlockBtn[aria-pressed="true"]{
-  background:rgba(255,99,99,.14)!important;
-  border-color:rgba(255,99,99,.48)!important;
-  color:#ffd4d4!important;
-}
-.ko-toggle-on-v199{
-  color:#ffd84d!important;
-}
-
-
-/* v200 — Preferências de notificações individuais */
-.push-options-v200{
-  grid-template-columns:repeat(auto-fit,minmax(230px,1fr))!important;
-  align-items:center!important;
-}
-.push-options-title-v200{
-  grid-column:1/-1;
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-  padding:8px 10px;
+.football-smart-sync-details-v201 > div{
   border:1px solid rgba(255,255,255,.08);
   border-radius:12px;
   background:rgba(255,255,255,.035);
+  padding:10px 12px;
 }
-.push-options-title-v200 strong{
-  color:var(--gold);
-}
-.push-options-title-v200 span{
+.football-smart-sync-details-v201 span{
+  display:block;
   color:var(--muted);
-  font-size:12px;
-  font-weight:800;
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  margin-bottom:4px;
 }
-.push-options-v200 label{
-  min-height:42px;
+.football-smart-sync-details-v201 strong{
+  display:block;
+  color:var(--text);
+  font-size:13px;
+  font-weight:950;
+  line-height:1.25;
 }
-#savePushPrefsBtnV181.needs-save-v200{
-  background:linear-gradient(135deg,#ffd84d,#ffb300)!important;
-  color:#101522!important;
+.football-realtime-sync-box-v156[data-smart-state-v201="waiting"]{
+  border-color:rgba(255,216,87,.24)!important;
+}
+.football-realtime-sync-box-v156[data-smart-state-v201="active"]{
+  border-color:rgba(24,211,180,.34)!important;
+}
+.football-realtime-sync-box-v156[data-smart-state-v201="error"]{
+  border-color:rgba(255,99,99,.42)!important;
 }

@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v189";
+const APP_VERSION_LABEL = "v201";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -241,7 +241,7 @@ function defaultSettings() {
     extraPredictions: {},
     importedPoints: {},
     users: [],
-    knockout: { enabled: false, adminUnlocked: false, matches: [] },
+    knockout: { adminUnlocked: false, matches: [] },
     logs: [],
     lastImport: null
   };
@@ -2017,7 +2017,7 @@ function applyPermissionsToUi() {
   $("addUserBtn")?.classList.toggle("hidden", !hasPermission("editUsers"));
   $("savePointsSettingsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
   $("saveExtraResultsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
-  $("saveKnockoutUnlockBtn")?.classList.toggle("hidden", !canManageKnockoutToggleV198());
+  $("saveKnockoutUnlockBtn")?.classList.toggle("hidden", !hasPermission("editKnockout"));
     $("searchAllResultsBtn")?.classList.toggle("hidden", !hasPermission("editResults"));
     document.querySelectorAll(".search-game-result-btn").forEach(btn => btn.classList.toggle("hidden", !hasPermission("editResults")));
 
@@ -3695,14 +3695,8 @@ function ensureKnockoutSettings() {
   const existingMatches = Array.isArray(current.matches) ? current.matches : [];
   const existing = new Map(existingMatches.map(match => [match.id, match]));
 
-  const enabled =
-    typeof current.enabled === "boolean"
-      ? current.enabled
-      : Boolean(current.adminUnlocked);
-
   appSettings.knockout = {
-    enabled,
-    adminUnlocked: enabled,
+    adminUnlocked: Boolean(current.adminUnlocked),
     layout: { ...defaultKnockoutLayout(), ...(current.layout || {}) },
     matches: defaults.map(match => {
       const saved = existing.get(match.id) || {};
@@ -3738,8 +3732,7 @@ function groupStageFinished() {
 }
 
 function knockoutAvailable() {
-  ensureKnockoutSettings();
-  return Boolean(appSettings.knockout?.enabled || appSettings.knockout?.adminUnlocked);
+  return groupStageFinished() || Boolean(appSettings.knockout?.adminUnlocked);
 }
 
 
@@ -3968,9 +3961,7 @@ function renderKnockout() {
 
   if (!knockoutAvailable()) {
     const missing = games.filter(needsFinalResult).length;
-    if (notice) {
-      notice.innerHTML = `<strong>Fase Final desativada</strong><span>O Admin pode ativar esta página no painel Admin. Faltam ${missing} resultado(s) da fase de grupos.</span>`;
-    }
+    if (notice) notice.innerHTML = `<strong>Fase Final bloqueada</strong><span>Faltam ${missing} resultado(s) da fase de grupos. O Admin pode ativar esta página para trabalhar.</span>`;
     container.innerHTML = "";
     return;
   }
@@ -4512,18 +4503,7 @@ function renderKnockoutAdmin() {
   ensureKnockoutSettings();
 
   const toggle = $("adminKnockoutUnlockedInput");
-  if (toggle) {
-    toggle.checked = Boolean(appSettings.knockout?.enabled ?? appSettings.knockout?.adminUnlocked);
-    toggle.closest("label")?.classList.toggle("ko-toggle-on-v197", toggle.checked);
-  }
-
-  const saveToggleBtn = $("saveKnockoutUnlockBtn");
-  if (saveToggleBtn) {
-    const active = Boolean(appSettings.knockout?.enabled || appSettings.knockout?.adminUnlocked);
-    saveToggleBtn.textContent = active ? "Desativar Fase Final" : "Ativar Fase Final";
-    saveToggleBtn.classList.toggle("danger-soft", active);
-    saveToggleBtn.setAttribute("aria-pressed", active ? "true" : "false");
-  }
+  if (toggle) toggle.checked = Boolean(appSettings.knockout?.adminUnlocked);
 
   const panel = $("knockoutAdminPanel");
   if (!panel) return;
@@ -4576,89 +4556,15 @@ function renderKnockoutAdmin() {
     </div>`;
 }
 
-
-function canManageKnockoutToggleV198() {
-  const email = normalizeEmail(currentUser?.email || currentProfile?.email || "");
-  return Boolean(
-    hasPermission("editKnockout") ||
-    hasPermission("admin") ||
-    hasPermission("adminTab") ||
-    normalizeRole(currentProfile?.role) === "admin" ||
-    normalizeRole(currentProfile?.role) === "owner" ||
-    isConfiguredAdmin(email) ||
-    isAdmin
-  );
-}
-
-async function saveKnockoutSettingsDirectV198(reason = "fase final toggle") {
-  markSettingsPending();
-  saveLocalData(reason);
-
-  if (!db || !firebaseApi || storageMode !== "firebase") {
-    scheduleFullSync(reason, 300);
-    return false;
-  }
-
-  const { doc, setDoc } = firebaseApi;
-  if (typeof setDoc !== "function") {
-    scheduleFullSync(reason, 300);
-    return false;
-  }
-
-  await withTimeout(setDoc(doc(db, "settings", "main"), appSettings, { merge: true }), 12000, "guardar Fase Final");
-  clearSettingsPending();
-  clearFullSyncPending();
-  saveLocalData(`${reason} firebase-ok`);
-  return true;
-}
-
-async function saveKnockoutUnlock(forceValue = null) {
-  if (!canManageKnockoutToggleV198()) {
-    toast("Sem permissão Admin para alterar a Fase Final.");
-    return;
-  }
+async function saveKnockoutUnlock() {
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
 
   ensureKnockoutSettings();
-
-  const current = Boolean(appSettings.knockout?.enabled || appSettings.knockout?.adminUnlocked);
-  const enabled = typeof forceValue === "boolean" ? forceValue : !current;
-
-  const toggle = $("adminKnockoutUnlockedInput");
-  if (toggle) toggle.checked = enabled;
-
-  appSettings.knockout.enabled = enabled;
-  appSettings.knockout.adminUnlocked = enabled;
-  appSettings.knockout.updatedAt = new Date().toISOString();
-  appSettings.knockout.updatedBy = normalizeEmail(currentUser?.email || currentProfile?.email || "");
-
-  addSystemLog(
-    "Estado Fase Final",
-    enabled ? "Fase Final ativada pelo Admin." : "Fase Final desativada pelo Admin.",
-    { enabled },
-    { sync: false }
-  );
-
-  markSettingsPending();
-  saveLocalData("fase final toggle imediato");
-
-  updateKnockoutToggleUiV199();
-  renderKnockoutAdmin();
-  renderCalendar();
-  renderKnockout();
-  renderActivePageV187(activeTabIdV187());
-  toast(enabled ? "Fase Final ativada." : "Fase Final desativada.");
-
-  try {
-    const saved = await saveKnockoutSettingsDirectV198("fase final toggle direto");
-    if (saved) setFirebaseStatus("success", "Firebase: estado da Fase Final guardado");
-    else setFirebaseStatus("error", "Firebase: Fase Final ficou local/pendente");
-  } catch (error) {
-    console.warn("Guardar Fase Final direto falhou:", error);
-    scheduleFullSync("fase final toggle fallback", 300);
-    setFirebaseStatus("error", "Firebase: Fase Final ficou pendente para sincronizar");
-  }
-
+  appSettings.knockout.adminUnlocked = Boolean($("adminKnockoutUnlockedInput")?.checked);
+  addSystemLog("Bloqueio Fase Final", appSettings.knockout.adminUnlocked ? "Fase Final desbloqueada pelo Admin." : "Fase Final voltou a ficar bloqueada até acabarem os grupos.", { unlocked: appSettings.knockout.adminUnlocked });
+  await persistSettings();
   renderAll();
+  toast(appSettings.knockout.adminUnlocked ? "Fase Final desbloqueada para Admin." : "Fase Final volta a bloquear até acabarem os grupos.");
 }
 
 function applyKnockoutLayoutFromSettings() {
@@ -5043,31 +4949,11 @@ function renderCalendar() {
 
   renderCalendarFilterState();
 }
-
-function visibleScoreForCalendarV196(game) {
-  const numberOrNullLocal = value => {
-    if (value === null || value === undefined || value === "") return null;
-    const number = Number(value);
-    return Number.isFinite(number) ? number : null;
-  };
-
-  const liveHome = numberOrNullLocal(game?.liveHomeScore);
-  const liveAway = numberOrNullLocal(game?.liveAwayScore);
-  if (liveHome !== null && liveAway !== null) return { home: liveHome, away: liveAway, live: true };
-
-  const home = numberOrNullLocal(game?.homeScore);
-  const away = numberOrNullLocal(game?.awayScore);
-  if (home !== null && away !== null) return { home, away, live: false };
-
-  return null;
-}
-
 function renderMatchRow(game) {
   const status = statusOf(game);
   const finalResult = hasFinalResult(game);
   const suspended = isSuspendedGame(game);
-  const visibleScore = visibleScoreForCalendarV196(game);
-  const scoreText = visibleScore ? `${visibleScore.home}-${visibleScore.away}` : (suspended ? "Suspenso" : "VS");
+  const scoreText = finalResult ? `${game.homeScore}-${game.awayScore}` : (suspended ? "Suspenso" : "VS");
   const gameBets = betsForGame(game.id);
   const settledText = finalResult ? `${gameBets.length} apostas · pontos atribuídos` : `${gameBets.length} apostas importadas`;
   const resultButtonText = finalResult ? "Editar resultado" : "Adicionar resultado";
@@ -7002,6 +6888,7 @@ $("clearLogsBtn")?.addEventListener("click", clearSystemLogs);
 $("unlockLogsBtn")?.addEventListener("click", unlockLogsTab);
 $("lockLogsBtn")?.addEventListener("click", lockLogsTab);
 $("logsPinInput")?.addEventListener("keydown", event => { if (event.key === "Enter") unlockLogsTab(); });
+$("saveKnockoutUnlockBtn")?.addEventListener("click", saveKnockoutUnlock);
 
 
 
@@ -10234,13 +10121,8 @@ async function callPushFunctionV181(functionName, payload = {}) {
 function defaultPushPreferencesV181() {
   return {
     gameStart: true,
-    goals: true,
     gameEnd: true,
-    results: true,
-    knockout: true,
-    chatGeneral: false,
-    chatAdmin: true,
-    mentions: true,
+    goals: true,
     quietHours: { enabled: true, startHour: 23, endHour: 9, timezone: "Europe/Lisbon" }
   };
 }
@@ -10257,13 +10139,8 @@ function currentPushPreferencesV181() {
   const saved = savedPushPreferencesV181();
   return {
     gameStart: $("pushGameStartInputV181")?.checked ?? saved.gameStart,
-    goals: $("pushGoalsInputV181")?.checked ?? saved.goals,
     gameEnd: $("pushGameEndInputV181")?.checked ?? saved.gameEnd,
-    results: $("pushResultsInputV200")?.checked ?? saved.results,
-    knockout: $("pushKnockoutInputV200")?.checked ?? saved.knockout,
-    chatGeneral: $("pushChatGeneralInputV200")?.checked ?? saved.chatGeneral,
-    chatAdmin: $("pushChatAdminInputV200")?.checked ?? saved.chatAdmin,
-    mentions: $("pushMentionsInputV200")?.checked ?? saved.mentions,
+    goals: $("pushGoalsInputV181")?.checked ?? saved.goals,
     quietHours: {
       enabled: $("pushQuietHoursInputV181")?.checked ?? saved.quietHours?.enabled ?? true,
       startHour: 23,
@@ -10389,13 +10266,8 @@ function currentPushTestPayloadV184() {
   const custom = String($("pushTestMessageInputV184")?.value || "").trim();
   const defaults = {
     gameStart: { title: "Jogo começou", body: `${game} já começou.` },
-    goals: { title: `Golo ${team}`, body: `Golo de ${team} no jogo ${game}.` },
     gameEnd: { title: "Jogo acabou", body: `${game} terminou.` },
-    results: { title: "Resultado novo guardado", body: `${game}: resultado atualizado.` },
-    knockout: { title: "Fase final atualizada", body: "A fase final do Mundial Pontos 2026 foi alterada." },
-    chatGeneral: { title: "Nova mensagem no chat geral", body: "Mensagem de teste no chat geral." },
-    chatAdmin: { title: "Nova mensagem no chat admin", body: "Mensagem de teste no chat admin." },
-    mentions: { title: `${team} mencionou-te`, body: "Teste de menção no chat." },
+    goals: { title: `Golo ${team}`, body: `Golo de ${team} no jogo ${game}.` },
     custom: { title: "Teste push Mundial", body: custom || "As notificações push estão a funcionar." }
   };
   const selected = defaults[type] || defaults.custom;
@@ -10527,35 +10399,19 @@ function renderPushNotificationsPanelV165() {
       <span>${escapeHtml(vapidText)}</span>
       <span>${hasToken ? "Token guardado" : "Token por ativar"}</span>
     </div>
-    <div class="push-options-v165 push-options-v200">
-      <div class="push-options-title-v200">
-        <strong>Ativar/desativar notificações</strong>
-        <span>Escolhe exatamente o que este dispositivo recebe.</span>
-      </div>
-
+    <div class="push-options-v165">
       <label><input id="pushGameStartInputV181" type="checkbox" ${preferences.gameStart ? "checked" : ""} /> Jogo começou</label>
-      <label><input id="pushGoalsInputV181" type="checkbox" ${preferences.goals ? "checked" : ""} /> Golos / alteração no marcador</label>
       <label><input id="pushGameEndInputV181" type="checkbox" ${preferences.gameEnd ? "checked" : ""} /> Jogo acabou</label>
-      <label><input id="pushResultsInputV200" type="checkbox" ${preferences.results ? "checked" : ""} /> Resultado guardado manualmente</label>
-      <label><input id="pushKnockoutInputV200" type="checkbox" ${preferences.knockout ? "checked" : ""} /> Fase Final atualizada</label>
-      <label><input id="pushChatGeneralInputV200" type="checkbox" ${preferences.chatGeneral ? "checked" : ""} /> Chat geral</label>
-      <label><input id="pushChatAdminInputV200" type="checkbox" ${preferences.chatAdmin ? "checked" : ""} /> Chat admin</label>
-      <label><input id="pushMentionsInputV200" type="checkbox" ${preferences.mentions !== false ? "checked" : ""} /> Menções no chat</label>
+      <label><input id="pushGoalsInputV181" type="checkbox" ${preferences.goals ? "checked" : ""} /> Golo da equipa</label>
       <label><input id="pushQuietHoursInputV181" type="checkbox" ${preferences.quietHours?.enabled !== false ? "checked" : ""} /> Silenciar 23h-09h</label>
-
       <button id="savePushPrefsBtnV181" class="secondary" type="button">Guardar preferências</button>
     </div>
     <div class="push-test-fields-v184">
       <label>Tipo
         <select id="pushTestTypeInputV184">
           <option value="gameStart">Jogo começou</option>
-          <option value="goals">Golo / marcador</option>
           <option value="gameEnd">Jogo acabou</option>
-          <option value="results">Resultado manual</option>
-          <option value="knockout">Fase Final</option>
-          <option value="chatGeneral">Chat geral</option>
-          <option value="chatAdmin">Chat admin</option>
-          <option value="mentions">Menção no chat</option>
+          <option value="goals">Golo da equipa</option>
           <option value="custom">Mensagem livre</option>
         </select>
       </label>
@@ -10913,109 +10769,81 @@ document.addEventListener("click", event => {
 }, true);
 
 
-
-// v199 — UI clara: botão é um interruptor real, não apenas "guardar checkbox".
-function updateKnockoutToggleUiV199() {
-  try {
-    ensureKnockoutSettings();
-
-    const active = Boolean(appSettings.knockout?.enabled || appSettings.knockout?.adminUnlocked);
-    const toggle = $("adminKnockoutUnlockedInput");
-    const btn = $("saveKnockoutUnlockBtn");
-
-    if (toggle) {
-      toggle.checked = active;
-      toggle.closest("label")?.classList.toggle("ko-toggle-on-v197", active);
-      toggle.closest("label")?.classList.toggle("ko-toggle-on-v199", active);
-    }
-
-    if (btn) {
-      btn.textContent = active ? "Desativar Fase Final" : "Ativar Fase Final";
-      btn.classList.toggle("danger-soft", active);
-      btn.classList.toggle("ko-toggle-button-on-v199", active);
-      btn.classList.toggle("hidden", !canManageKnockoutToggleV198());
-      btn.setAttribute("aria-pressed", active ? "true" : "false");
-    }
-  } catch (error) {
-    console.warn("Atualizar toggle Fase Final v199 falhou:", error);
-  }
+// v201 — painel Admin: estado claro da sync inteligente football-data.org.
+function footballSmartSyncFormatAgeV201(value) {
+  if (!value) return "nunca";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const diff = Date.now() - date.getTime();
+  if (diff < 60_000) return "há menos de 1 min";
+  if (diff < 3_600_000) return `há ${Math.round(diff / 60_000)} min`;
+  return date.toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" });
 }
 
-// v197 — bind robusto do botão/checkbox da Fase Final, mesmo se o Admin for renderizado depois.
-function updateKnockoutToggleUiV197() {
-  try {
-    ensureKnockoutSettings();
-    const active = Boolean(appSettings.knockout?.enabled ?? appSettings.knockout?.adminUnlocked);
-    const toggle = $("adminKnockoutUnlockedInput");
-    const btn = $("saveKnockoutUnlockBtn");
-    if (toggle) {
-      toggle.checked = active;
-      toggle.closest("label")?.classList.toggle("ko-toggle-on-v197", active);
-    }
-    if (btn) {
-      btn.textContent = active ? "Desativar Fase Final" : "Ativar Fase Final";
-      btn.classList.toggle("danger-soft", active);
-      btn.classList.toggle("hidden", !canManageKnockoutToggleV198());
-    }
-  } catch (error) {
-    console.warn("Atualizar toggle Fase Final falhou:", error);
-  }
+function footballSmartSyncEnsureDetailsV201(box) {
+  let details = document.getElementById("footballSmartSyncDetailsV201");
+  if (details) return details;
+  details = document.createElement("div");
+  details.id = "footballSmartSyncDetailsV201";
+  details.className = "football-smart-sync-details-v201";
+  box.appendChild(details);
+  return details;
 }
 
-document.addEventListener("change", event => {
-  const toggle = event.target.closest?.("#adminKnockoutUnlockedInput");
-  if (!toggle) return;
-  toggle.closest("label")?.classList.toggle("ko-toggle-on-v197", toggle.checked);
-  toggle.closest("label")?.classList.toggle("ko-toggle-on-v199", toggle.checked);
-  const btn = $("saveKnockoutUnlockBtn");
-  if (btn) {
-    btn.textContent = toggle.checked ? "Desativar Fase Final" : "Ativar Fase Final";
-    btn.setAttribute("aria-pressed", toggle.checked ? "true" : "false");
+const footballRealtimeSyncRenderOriginalV201 = typeof footballRealtimeSyncRenderV156 === "function" ? footballRealtimeSyncRenderV156 : null;
+footballRealtimeSyncRenderV156 = function footballRealtimeSyncRenderV201(data = null) {
+  if (footballRealtimeSyncRenderOriginalV201) footballRealtimeSyncRenderOriginalV201(data);
+
+  try {
+    footballRealtimeSyncLastDataV156 = data || footballRealtimeSyncLastDataV156 || {};
+    const current = footballRealtimeSyncLastDataV156 || {};
+    const box = footballRealtimeSyncEnsureBoxV156();
+    const pill = document.getElementById("footballRealtimeSyncPillV156");
+    const sub = document.getElementById("footballRealtimeSyncSubV156");
+    const details = footballSmartSyncEnsureDetailsV201(box);
+
+    const status = String(current.status || current.state || "waiting").toLowerCase();
+    const statusLabel =
+      status === "active" ? "Ativa" :
+      status === "error" ? "Erro" :
+      "Em espera";
+
+    if (pill) {
+      pill.className = `football-realtime-sync-pill-v156 ${status === "active" ? "online" : status === "error" ? "error" : "warning"}`;
+      const span = pill.querySelector("span");
+      if (span) span.textContent = statusLabel;
+    }
+
+    const nextLabel = current.nextSyncGame?.label || current.nextSyncGame || "—";
+    const nextAt = current.nextSyncStartsAt ? new Date(current.nextSyncStartsAt).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" }) : "—";
+    const activeCount = Array.isArray(current.activeSyncGames) ? current.activeSyncGames.length : Number(current.activeSyncGamesCount || 0);
+    const lastCheck = current.lastCheckIso || current.lastCheckAt || current.lastSyncIso || "";
+    const lastReal = current.lastRealSyncIso || current.lastRealSyncAt || "";
+    const reason = current.lastError || current.lastActiveReason || current.lastSkippedReason || "sem dados";
+    const provider = current.provider || "football-data";
+
+    if (sub) {
+      sub.textContent = `Modo API: Inteligente · API: ${provider} · Estado: ${statusLabel}`;
+    }
+
+    details.innerHTML = `
+      <div><span>Próximo jogo com sync</span><strong>${escapeHtml(String(nextLabel))}</strong></div>
+      <div><span>Sync começa</span><strong>${escapeHtml(String(nextAt))}</strong></div>
+      <div><span>Jogos ativos agora</span><strong>${escapeHtml(String(activeCount))}</strong></div>
+      <div><span>Última verificação</span><strong>${escapeHtml(footballSmartSyncFormatAgeV201(lastCheck))}</strong></div>
+      <div><span>Última sync real</span><strong>${escapeHtml(footballSmartSyncFormatAgeV201(lastReal))}</strong></div>
+      <div><span>Motivo</span><strong>${escapeHtml(String(reason))}</strong></div>
+    `;
+
+    const title = box.querySelector(".football-realtime-sync-top-v156 strong");
+    if (title) title.textContent = "API football-data.org · Sync inteligente";
+
+    box.dataset.smartStateV201 = status;
+  } catch (error) {
+    console.warn("footballRealtimeSyncRenderV201 falhou:", error);
   }
-  saveKnockoutUnlock(Boolean(toggle.checked));
-}, true);
-
-document.addEventListener("click", event => {
-  const btn = event.target.closest?.("#saveKnockoutUnlockBtn");
-  if (!btn) return;
-  event.preventDefault();
-  event.stopPropagation();
-
-  ensureKnockoutSettings();
-  const current = Boolean(appSettings.knockout?.enabled || appSettings.knockout?.adminUnlocked);
-  saveKnockoutUnlock(!current);
-}, true);
+};
 
 document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(updateKnockoutToggleUiV197, 500);
+  setTimeout(() => footballRealtimeSyncRenderV156(), 900);
 });
-
-
-document.addEventListener("click", event => {
-  const tab = event.target.closest?.('[data-tab="adminTab"], #unlockAdminBtn');
-  if (!tab) return;
-  setTimeout(() => {
-    try {
-      updateKnockoutToggleUiV197?.();
-      $("saveKnockoutUnlockBtn")?.classList.toggle("hidden", !canManageKnockoutToggleV198());
-    } catch {}
-  }, 250);
-}, true);
-
-try { updateKnockoutToggleUiV197 = updateKnockoutToggleUiV199; } catch {}
-
-
-// v200 — guardar preferências automaticamente quando uma checkbox muda.
-if (!window.__pushPrefsAutoSaveV200) {
-  window.__pushPrefsAutoSaveV200 = true;
-  document.addEventListener("change", event => {
-    const input = event.target.closest?.("#pushNotificationsPanelV165 input[type='checkbox']");
-    if (!input) return;
-    savePushPreferencesLocalV181();
-    const btn = $("savePushPrefsBtnV181");
-    if (btn) {
-      btn.textContent = "Guardar preferências";
-      btn.classList.add("needs-save-v200");
-    }
-  }, true);
-}

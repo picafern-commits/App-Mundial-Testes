@@ -177,14 +177,11 @@ async function notifyChatMessage(room, messageId, message, adminOnly = false) {
   if (!message || message.type === "system") return;
   const text = shortText(message.text || (message.imageData ? "Imagem" : message.audioData ? "Audio" : "Nova mensagem"));
   const senderName = cleanString(message.name, "Alguem");
-  const roomPref = room === "admin" ? "chatAdmin" : "chatGeneral";
-  const tokens = await loadEnabledTokens({ room, adminOnly, excludeUid: message.uid || "" });
+  const pref = room === "admin" ? "chatAdmin" : "chatGeneral";
+  const tokens = await loadEnabledTokens({ room, pref, adminOnly, excludeUid: message.uid || "" });
 
   const sent = await sendTokenNotifications(tokens, tokenData => {
     const mentioned = messageMentionsToken(message.text || "", tokenData);
-    if (mentioned && tokenData.preferences?.mentions === false) return null;
-    if (!mentioned && tokenData.preferences?.[roomPref] === false) return null;
-
     const type = mentioned ? "mention" : (room === "admin" ? "chat_admin" : "chat_general");
     const title = mentioned ? `${senderName} mencionou-te` : (room === "admin" ? "Nova mensagem no chat admin" : "Nova mensagem no chat geral");
     const body = `${senderName}: ${text}`;
@@ -602,6 +599,7 @@ function footballShouldLockMatch(match) {
 }
 
 function footballReadableSyncMode(mode) {
+  if (String(mode || "").includes("smart")) return "Inteligente";
   if (mode === "auto") return "Automático";
   return "Manual";
 }
@@ -695,17 +693,266 @@ function footballMatchPayloadV158(apiMatch, actor, score = null) {
   return payload;
 }
 
+
+const SMART_SYNC_PRE_START_MS_V201 = 5 * 60 * 1000;
+const SMART_SYNC_POST_FINISH_MS_V201 = 5 * 60 * 1000;
+const SMART_SYNC_LATE_CONFIRM_MS_V201 = 6 * 60 * 60 * 1000;
+
+function footballSmartStatusV201(game = {}) {
+  return cleanString(game.footballDataStatus || game.statusApi || game.status).toUpperCase();
+}
+
+function footballSmartDateMillisV201(game = {}) {
+  const value = game.matchDate || game.footballDataUtcDate || game.utcDate || game.date || game.startTime;
+  const millis = new Date(value || "").getTime();
+  return Number.isFinite(millis) ? millis : 0;
+}
+
+function footballSmartHasFinalScoreV201(game = {}) {
+  return game.homeScore !== null && game.homeScore !== undefined && game.homeScore !== "" &&
+    game.awayScore !== null && game.awayScore !== undefined && game.awayScore !== "";
+}
+
+function footballSmartIsLiveStatusV201(status = "") {
+  return ["IN_PLAY", "PAUSED", "LIVE", "1H", "2H", "HT", "ET", "PEN_LIVE"].includes(String(status || "").toUpperCase());
+}
+
+function footballSmartIsFinishedStatusV201(status = "") {
+  return ["FINISHED", "AWARDED"].includes(String(status || "").toUpperCase());
+}
+
+function footballSmartWinnerV201(match = {}) {
+  if (!match.homeTeam || !match.awayTeam) return "";
+  if (!footballSmartHasFinalScoreV201(match)) return "";
+  const home = Number(match.homeScore);
+  const away = Number(match.awayScore);
+  if (!Number.isFinite(home) || !Number.isFinite(away)) return "";
+  if (home > away) return match.homeTeam;
+  if (away > home) return match.awayTeam;
+
+  const hp = match.homePenalties;
+  const ap = match.awayPenalties;
+  if (hp === null || hp === undefined || hp === "" || ap === null || ap === undefined || ap === "") return "";
+  const homePens = Number(hp);
+  const awayPens = Number(ap);
+  if (!Number.isFinite(homePens) || !Number.isFinite(awayPens)) return "";
+  if (homePens > awayPens) return match.homeTeam;
+  if (awayPens > homePens) return match.awayTeam;
+  return "";
+}
+
+function footballSmartPropagateKnockoutV201(matches = []) {
+  const byId = new Map(matches.map(match => [match.id, match]));
+  let changed = false;
+
+  for (const match of matches) {
+    if (!match?.nextMatchId || !match.nextSlot) continue;
+    const winner = footballSmartWinnerV201(match);
+    if (!winner) continue;
+    const next = byId.get(match.nextMatchId);
+    if (!next) continue;
+
+    if (next[match.nextSlot] !== winner) {
+      next[match.nextSlot] = winner;
+      next.updatedAt = new Date().toISOString();
+      changed = true;
+
+      next.homeScore = null;
+      next.awayScore = null;
+      next.homePenalties = null;
+      next.awayPenalties = null;
+      next.liveHomeScore = null;
+      next.liveAwayScore = null;
+    }
+  }
+
+  return changed;
+}
+
+function footballSmartKnockoutPropagationOkV201(match = {}, matches = []) {
+  if (!match.nextMatchId || !match.nextSlot) return true;
+  const winner = footballSmartWinnerV201(match);
+  if (!winner) return false;
+  const next = matches.find(item => item.id === match.nextMatchId);
+  if (!next) return true;
+  return next[match.nextSlot] === winner;
+}
+
+function footballSmartGameReasonV201(game = {}, now = Date.now(), collection = "games", allKnockout = []) {
+  const status = footballSmartStatusV201(game);
+  const start = footballSmartDateMillisV201(game);
+  const minutesToStart = start ? Math.round((start - now) / 60000) : null;
+  const finalScore = footballSmartHasFinalScoreV201(game);
+  const finished = footballSmartIsFinishedStatusV201(status);
+  const live = footballSmartIsLiveStatusV201(status);
+  const lastError = cleanString(game.lastApiError || game.syncError || game.lastSyncError);
+  const finishedAt = new Date(game.finishedAt || game.syncEndedAt || game.updatedAt || game.liveUpdatedAt || game.footballDataUtcDate || "").getTime();
+  const justFinished = finished && Number.isFinite(finishedAt) && now - finishedAt <= SMART_SYNC_POST_FINISH_MS_V201;
+  const nearStart = start && start - now <= SMART_SYNC_PRE_START_MS_V201 && now - start <= SMART_SYNC_LATE_CONFIRM_MS_V201 && !finalScore;
+  const recentlyStartedWithoutFinal = start && now >= start && now - start <= SMART_SYNC_LATE_CONFIRM_MS_V201 && !finalScore;
+  const finishedMissingFinal = finished && !finalScore;
+  const scoreNotConfirmed = finished && finalScore && game.scoreConfirmed !== true;
+  const pointsNotConfirmed = finished && finalScore && game.pointsConfirmed !== true;
+  const knockoutNotPropagated = collection === "knockout" && finished && finalScore && !footballSmartKnockoutPropagationOkV201(game, allKnockout);
+
+  if (lastError) return { active: true, reason: `erro pendente: ${lastError}`, minutesToStart };
+  if (live) return { active: true, reason: "jogo a decorrer", minutesToStart };
+  if (nearStart) return { active: true, reason: "jogo perto de começar", minutesToStart };
+  if (justFinished) return { active: true, reason: "jogo terminou há menos de 5 minutos", minutesToStart };
+  if (finishedMissingFinal) return { active: true, reason: "resultado final por guardar", minutesToStart };
+  if (scoreNotConfirmed) return { active: true, reason: "resultado final por confirmar", minutesToStart };
+  if (pointsNotConfirmed) return { active: true, reason: "pontos por confirmar", minutesToStart };
+  if (knockoutNotPropagated) return { active: true, reason: "vencedor da fase final por propagar", minutesToStart };
+  if (recentlyStartedWithoutFinal) return { active: true, reason: "jogo recente sem resultado final", minutesToStart };
+
+  return { active: false, reason: start ? "fora da janela ativa" : "sem data de jogo", minutesToStart };
+}
+
+function footballSmartGameLabelV201(game = {}) {
+  return `${cleanString(game.homeTeam, "Casa")} vs ${cleanString(game.awayTeam, "Fora")}`;
+}
+
+function footballSmartNextSyncCandidateV201(items = [], now = Date.now()) {
+  return items
+    .filter(item => item.start)
+    .sort((a, b) => {
+      const aStart = a.start - SMART_SYNC_PRE_START_MS_V201;
+      const bStart = b.start - SMART_SYNC_PRE_START_MS_V201;
+      return Math.abs(aStart - now) - Math.abs(bStart - now);
+    })[0] || null;
+}
+
+async function footballSmartPrecheckV201({ actor, mode, competition, season } = {}) {
+  const now = Date.now();
+  const syncMetaRef = db.collection("settings").doc("footballData");
+  const [gamesSnap, settingsSnap] = await Promise.all([
+    db.collection("games").get(),
+    db.collection("settings").doc("main").get()
+  ]);
+
+  const localGames = gamesSnap.docs.map(doc => ({ id: doc.id, collection: "games", ...(doc.data() || {}) }));
+  const settings = settingsSnap.data() || {};
+  const knockoutMatches = Array.isArray(settings.knockout?.matches)
+    ? settings.knockout.matches.map(match => ({ ...match, collection: "knockout" }))
+    : [];
+
+  const groupCandidates = localGames.map(game => {
+    const check = footballSmartGameReasonV201(game, now, "games", knockoutMatches);
+    return {
+      ...check,
+      id: game.id,
+      label: footballSmartGameLabelV201(game),
+      start: footballSmartDateMillisV201(game),
+      collection: "games"
+    };
+  });
+
+  const knockoutCandidates = knockoutMatches.map(game => {
+    const check = footballSmartGameReasonV201(game, now, "knockout", knockoutMatches);
+    return {
+      ...check,
+      id: game.id,
+      label: footballSmartGameLabelV201(game),
+      start: footballSmartDateMillisV201(game),
+      collection: "knockout"
+    };
+  });
+
+  const allCandidates = [...groupCandidates, ...knockoutCandidates];
+  const active = allCandidates.filter(item => item.active);
+  const next = footballSmartNextSyncCandidateV201(allCandidates, now);
+  const activeReason = active[0]?.reason || "";
+  const status = active.length ? "active" : "waiting";
+
+  const meta = {
+    syncMode: "smart",
+    provider: "football-data",
+    mode: "Inteligente",
+    status,
+    state: status,
+    activeSyncGames: active.map(item => ({
+      id: item.id,
+      label: item.label,
+      collection: item.collection,
+      reason: item.reason,
+      minutesToStart: item.minutesToStart
+    })),
+    activeSyncGamesCount: active.length,
+    nextSyncGame: next ? {
+      id: next.id,
+      label: next.label,
+      collection: next.collection
+    } : null,
+    nextSyncStartsAt: next?.start ? new Date(next.start - SMART_SYNC_PRE_START_MS_V201).toISOString() : "",
+    lastCheckAt: FieldValue.serverTimestamp(),
+    lastCheckIso: new Date().toISOString(),
+    lastActiveReason: activeReason,
+    lastSkippedReason: active.length ? "" : "sem jogos dentro da janela ativa",
+    providerCompetition: competition || "WC",
+    providerSeason: season || "2026",
+    schedulerMode: mode || "smart",
+    checkedBy: actor?.email || FOOTBALL_SYSTEM_ACTOR_V151.email
+  };
+
+  await syncMetaRef.set(meta, { merge: true });
+
+  return {
+    ok: true,
+    shouldSync: active.length > 0,
+    meta,
+    active,
+    localGames,
+    settings,
+    knockoutMatches
+  };
+}
+
 async function runFootballDataSyncCoreV151(options = {}) {
   const actor = options.actor || FOOTBALL_SYSTEM_ACTOR_V151;
   const competition = cleanString(options.competition || "WC");
   const season = cleanString(options.season || "2026");
-  const syncMode = cleanString(options.mode || "auto-24-7");
+  const syncMode = cleanString(options.mode || "smart");
   const windowDaysBefore = Number(options.daysBefore ?? 1);
   const windowDaysAfter = Number(options.daysAfter ?? 7);
+  const forceSync = options.force === true || syncMode === "manual";
+
+  const precheck = await footballSmartPrecheckV201({ actor, mode: syncMode, competition, season });
+
+  if (!forceSync && !precheck.shouldSync) {
+    logger.info("Football-data smart sync ignorada", {
+      reason: precheck.meta.lastSkippedReason,
+      nextSyncGame: precheck.meta.nextSyncGame?.label || "",
+      nextSyncStartsAt: precheck.meta.nextSyncStartsAt || ""
+    });
+
+    return {
+      ok: true,
+      skipped: true,
+      competition,
+      season,
+      mode: "smart",
+      status: "waiting",
+      provider: "football-data",
+      reason: precheck.meta.lastSkippedReason,
+      activeSyncGames: [],
+      nextSyncGame: precheck.meta.nextSyncGame,
+      nextSyncStartsAt: precheck.meta.nextSyncStartsAt,
+      lastCheckIso: precheck.meta.lastCheckIso
+    };
+  }
 
   const token = cleanString(process.env.FOOTBALL_DATA_TOKEN || process.env.FOOTBALL_DATA_API_KEY);
   if (!token) {
     const err = new Error("FOOTBALL_DATA_TOKEN não está configurado no GitHub Secret / functions .env.");
+    await db.collection("settings").doc("footballData").set({
+      syncMode: "smart",
+      provider: "football-data",
+      status: "error",
+      state: "error",
+      lastError: err.message,
+      lastErrorAt: FieldValue.serverTimestamp(),
+      lastErrorIso: new Date().toISOString()
+    }, { merge: true });
     err.status = 500;
     throw err;
   }
@@ -716,21 +963,38 @@ async function runFootballDataSyncCoreV151(options = {}) {
   url.searchParams.set("dateFrom", dateWindow.from);
   url.searchParams.set("dateTo", dateWindow.to);
 
-  const apiResponse = await fetch(url, {
-    headers: {
-      "X-Auth-Token": token,
-      "Accept": "application/json"
-    }
-  });
-
-  const apiText = await apiResponse.text();
+  let apiResponse;
+  let apiText = "";
   let apiData = {};
-  try { apiData = JSON.parse(apiText); } catch {}
 
-  if (!apiResponse.ok) {
-    const err = new Error(apiData.message || apiData.error || `football-data HTTP ${apiResponse.status}`);
-    err.status = apiResponse.status;
-    throw err;
+  try {
+    apiResponse = await fetch(url, {
+      headers: {
+        "X-Auth-Token": token,
+        "Accept": "application/json"
+      }
+    });
+
+    apiText = await apiResponse.text();
+    try { apiData = JSON.parse(apiText); } catch {}
+
+    if (!apiResponse.ok) {
+      const err = new Error(apiData.message || apiData.error || `football-data HTTP ${apiResponse.status}`);
+      err.status = apiResponse.status;
+      throw err;
+    }
+  } catch (error) {
+    await db.collection("settings").doc("footballData").set({
+      syncMode: "smart",
+      provider: "football-data",
+      status: "error",
+      state: "error",
+      lastError: error.message || String(error),
+      lastErrorAt: FieldValue.serverTimestamp(),
+      lastErrorIso: new Date().toISOString(),
+      lastActiveReason: precheck.meta.lastActiveReason || "erro API"
+    }, { merge: true });
+    throw error;
   }
 
   const matches = Array.isArray(apiData.matches) ? apiData.matches : [];
@@ -755,17 +1019,42 @@ async function runFootballDataSyncCoreV151(options = {}) {
   const updatedGames = [];
   const updatedKnockoutMatches = [];
   let writes = 0;
+  let finalConfirmed = 0;
+  let liveUpdated = 0;
+  let knockoutPropagationChanged = false;
 
   const matchedGamesStatusV153 = [];
 
   matches.forEach(apiMatch => {
     const score = footballApiAnyScoreV153(apiMatch);
+    const apiStatus = String(apiMatch.status || "").toUpperCase();
+    const isFinished = footballIsFinishedV153(apiMatch);
     const isGroupStage = String(apiMatch.stage || "").toUpperCase() === "GROUP_STAGE";
     const groupTarget = footballFindLocalMatch(apiMatch, localGames);
     const knockoutTarget = !isGroupStage ? footballFindLocalMatch(apiMatch, knockoutMatches) : null;
 
     if (groupTarget) {
       const payload = footballMatchPayloadV158(apiMatch, actor, score);
+      payload.lastApiCheckAt = FieldValue.serverTimestamp();
+      payload.lastApiStatus = cleanString(apiMatch.status);
+      payload.lastSyncReason = precheck.meta.lastActiveReason || "sync inteligente";
+      payload.syncActive = footballSmartIsLiveStatusV201(apiStatus) || isFinished || footballShouldLockMatch(apiMatch);
+      payload.syncStartedAt = payload.syncActive ? (groupTarget.syncStartedAt || new Date().toISOString()) : groupTarget.syncStartedAt || "";
+      payload.lastApiError = FieldValue.delete();
+
+      if (isFinished && score) {
+        payload.scoreConfirmed = true;
+        payload.pointsConfirmed = true;
+        payload.syncEndedAt = groupTarget.syncEndedAt || new Date().toISOString();
+        payload.syncConfirmedAt = new Date().toISOString();
+        payload.syncActive = false;
+        finalConfirmed += 1;
+      } else if (score) {
+        payload.scoreConfirmed = false;
+        payload.pointsConfirmed = false;
+        liveUpdated += 1;
+      }
+
       batch.set(db.collection("games").doc(groupTarget.id), payload, { merge: true });
       writes += 1;
 
@@ -781,9 +1070,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
 
       matchedGamesStatusV153.push(updatePayload);
 
-      if (score && footballIsFinishedV153(apiMatch)) {
-        updatedGames.push(updatePayload);
-      }
+      if (score && isFinished) updatedGames.push(updatePayload);
     }
 
     if (knockoutTarget) {
@@ -796,20 +1083,35 @@ async function runFootballDataSyncCoreV151(options = {}) {
         footballDataUtcDate: payload.footballDataUtcDate,
         footballDataLocked: payload.footballDataLocked,
         source: payload.source,
-        updatedAt: payload.updatedAt
+        updatedAt: payload.updatedAt,
+        lastApiCheckAt: new Date().toISOString(),
+        lastApiStatus: cleanString(apiMatch.status),
+        lastSyncReason: precheck.meta.lastActiveReason || "sync inteligente",
+        syncActive: footballSmartIsLiveStatusV201(apiStatus) || isFinished || footballShouldLockMatch(apiMatch),
+        syncStartedAt: knockoutTarget.syncStartedAt || new Date().toISOString(),
+        lastApiError: ""
       });
 
-      if (score && footballIsFinishedV153(apiMatch)) {
+      if (score && isFinished) {
         knockoutTarget.homeScore = score.homeScore;
         knockoutTarget.awayScore = score.awayScore;
         knockoutTarget.liveHomeScore = null;
         knockoutTarget.liveAwayScore = null;
         knockoutTarget.homePenalties = score.homePenalties;
         knockoutTarget.awayPenalties = score.awayPenalties;
+        knockoutTarget.scoreConfirmed = true;
+        knockoutTarget.pointsConfirmed = true;
+        knockoutTarget.syncEndedAt = knockoutTarget.syncEndedAt || new Date().toISOString();
+        knockoutTarget.syncConfirmedAt = new Date().toISOString();
+        knockoutTarget.syncActive = false;
+        finalConfirmed += 1;
       } else if (score) {
         knockoutTarget.liveHomeScore = score.homeScore;
         knockoutTarget.liveAwayScore = score.awayScore;
         knockoutTarget.liveUpdatedAt = new Date().toISOString();
+        knockoutTarget.scoreConfirmed = false;
+        knockoutTarget.pointsConfirmed = false;
+        liveUpdated += 1;
       }
 
       updatedKnockoutMatches.push({
@@ -829,6 +1131,8 @@ async function runFootballDataSyncCoreV151(options = {}) {
         liveAwayScore: knockoutTarget.liveAwayScore ?? null,
         homePenalties: knockoutTarget.homePenalties ?? null,
         awayPenalties: knockoutTarget.awayPenalties ?? null,
+        scoreConfirmed: knockoutTarget.scoreConfirmed === true,
+        pointsConfirmed: knockoutTarget.pointsConfirmed === true,
         updatedAt: knockoutTarget.updatedAt,
         status: knockoutTarget.footballDataStatus,
         stage: knockoutTarget.footballDataStage
@@ -836,12 +1140,26 @@ async function runFootballDataSyncCoreV151(options = {}) {
     }
   });
 
+  if (updatedKnockoutMatches.length) {
+    knockoutPropagationChanged = footballSmartPropagateKnockoutV201(knockoutMatches);
+  }
+
   const syncMetaRef = db.collection("settings").doc("footballData");
   batch.set(syncMetaRef, {
+    syncMode: "smart",
+    provider: "football-data",
+    mode: "Inteligente",
+    status: "active",
+    state: "active",
+    lastCheckAt: FieldValue.serverTimestamp(),
+    lastCheckIso: new Date().toISOString(),
+    lastRealSyncAt: FieldValue.serverTimestamp(),
+    lastRealSyncIso: new Date().toISOString(),
     lastSyncAt: FieldValue.serverTimestamp(),
     lastSyncIso: new Date().toISOString(),
     lastSyncBy: actor.email,
-    mode: footballReadableSyncMode(syncMode),
+    lastActiveReason: precheck.meta.lastActiveReason || "sync inteligente",
+    lastSkippedReason: "",
     competition,
     season,
     dateFrom: dateWindow.from,
@@ -851,12 +1169,20 @@ async function runFootballDataSyncCoreV151(options = {}) {
     updatedGames: updatedGames.length,
     matchedGamesStatus: matchedGamesStatusV153.length,
     updatedKnockoutMatches: updatedKnockoutMatches.length,
+    finalConfirmed,
+    liveUpdated,
+    knockoutPropagationChanged,
+    activeSyncGames: precheck.meta.activeSyncGames,
+    activeSyncGamesCount: precheck.meta.activeSyncGamesCount,
+    nextSyncGame: precheck.meta.nextSyncGame,
+    nextSyncStartsAt: precheck.meta.nextSyncStartsAt,
     upcoming,
-    liveOrLocked
+    liveOrLocked,
+    lastError: FieldValue.delete()
   }, { merge: true });
   writes += 1;
 
-  if (updatedKnockoutMatches.length) {
+  if (updatedKnockoutMatches.length || knockoutPropagationChanged) {
     const nextSettings = {
       ...settings,
       knockout: {
@@ -873,8 +1199,8 @@ async function runFootballDataSyncCoreV151(options = {}) {
   if (writes > 0) await batch.commit();
 
   await db.collection("systemLogs").add({
-    action: "Football-data sync 24/7",
-    detail: `Atualizados ${updatedGames.length} jogo(s) e ${updatedKnockoutMatches.length} jogo(s) da fase final.`,
+    action: "Football-data smart sync",
+    detail: `Sync inteligente: ${updatedGames.length} grupo(s), ${updatedKnockoutMatches.length} fase final, ${liveUpdated} live, ${finalConfirmed} final confirmado.`,
     createdAt: FieldValue.serverTimestamp(),
     createdBy: actor.email,
     meta: {
@@ -885,7 +1211,11 @@ async function runFootballDataSyncCoreV151(options = {}) {
       finished: finished.length,
       updatedGames: updatedGames.length,
       matchedGamesStatus: matchedGamesStatusV153.length,
-      updatedKnockoutMatches: updatedKnockoutMatches.length
+      updatedKnockoutMatches: updatedKnockoutMatches.length,
+      finalConfirmed,
+      liveUpdated,
+      knockoutPropagationChanged,
+      reason: precheck.meta.lastActiveReason
     }
   });
 
@@ -893,12 +1223,18 @@ async function runFootballDataSyncCoreV151(options = {}) {
     ok: true,
     competition,
     season,
-    mode: syncMode,
+    mode: "smart",
+    provider: "football-data",
+    status: "active",
+    reason: precheck.meta.lastActiveReason,
     apiMatches: matches.length,
     finished: finished.length,
     updatedGames,
     matchedGamesStatus: matchedGamesStatusV153,
     updatedKnockoutMatches,
+    finalConfirmed,
+    liveUpdated,
+    knockoutPropagationChanged,
     upcoming,
     liveOrLocked,
     lastSyncIso: new Date().toISOString()
@@ -957,22 +1293,38 @@ exports.syncFootballDataWorldCupScheduled = onSchedule({
       actor: FOOTBALL_SYSTEM_ACTOR_V151,
       competition: "WC",
       season: "2026",
-      mode: "auto-24-7-1min",
+      mode: "smart-scheduled-1min",
       daysBefore: 1,
       daysAfter: 7
     });
 
-    logger.info("Football-data 24/7 sync concluída", {
-      apiMatches: result.apiMatches,
-      finished: result.finished,
-      updatedGames: result.updatedGames.length,
-      updatedKnockoutMatches: result.updatedKnockoutMatches.length
+    logger.info("Football-data smart sync concluída", {
+      skipped: result.skipped === true,
+      status: result.status,
+      reason: result.reason,
+      apiMatches: result.apiMatches || 0,
+      finished: result.finished || 0,
+      updatedGames: result.updatedGames?.length || 0,
+      updatedKnockoutMatches: result.updatedKnockoutMatches?.length || 0
     });
   } catch (error) {
-    logger.error("Football-data 24/7 sync falhou", error);
-    throw error;
+    logger.error("Football-data smart sync falhou", error);
+    try {
+      await db.collection("settings").doc("footballData").set({
+        syncMode: "smart",
+        provider: "football-data",
+        status: "error",
+        state: "error",
+        lastError: error.message || String(error),
+        lastErrorAt: FieldValue.serverTimestamp(),
+        lastErrorIso: new Date().toISOString()
+      }, { merge: true });
+    } catch (writeError) {
+      logger.error("Falhou guardar erro da smart sync", writeError);
+    }
   }
 });
+
 
 
 
@@ -1014,20 +1366,12 @@ function safeDocIdPush(...parts) {
 function cleanPushPreferences(input = {}) {
   return {
     gameStart: input.gameStart !== false,
-    goals: input.goals !== false,
     gameEnd: input.gameEnd !== false,
+    goals: input.goals !== false,
     results: input.results !== false,
     knockout: input.knockout !== false,
     chatGeneral: input.chatGeneral === true,
-    chatAdmin: input.chatAdmin !== false,
-    mentions: input.mentions !== false
-  };
-}
-
-function roomsFromPushPreferences(preferences = {}) {
-  return {
-    general: preferences.chatGeneral === true,
-    admin: preferences.chatAdmin !== false
+    chatAdmin: input.chatAdmin !== false
   };
 }
 
@@ -1046,7 +1390,7 @@ function isPushAdmin(identity = {}) {
 
 function cleanPushTestPayload(body = {}) {
   const requestedType = cleanString(body.testType || body.type || "test");
-  const type = ["gameStart", "goals", "gameEnd", "results", "knockout", "chatGeneral", "chatAdmin", "mentions", "custom"].includes(requestedType) ? requestedType : "test";
+  const type = ["gameStart", "gameEnd", "goals", "custom"].includes(requestedType) ? requestedType : "test";
   const team = shortText(body.team || body.goalTeam || "Portugal", 60);
   const game = shortText(body.game || body.match || "Portugal vs Uzbequistao", 90);
   const customTitle = shortText(body.title, 90);
@@ -1054,13 +1398,8 @@ function cleanPushTestPayload(body = {}) {
 
   const defaults = {
     gameStart: { title: "Jogo começou", body: `${game} já começou.`, dataType: "game-start", pref: "gameStart" },
-    goals: { title: `Golo ${team}`, body: `Golo de ${team} no jogo ${game}.`, dataType: "goal", pref: "goals" },
     gameEnd: { title: "Jogo acabou", body: `${game} terminou.`, dataType: "game-end", pref: "gameEnd" },
-    results: { title: "Resultado novo guardado", body: `${game}: resultado atualizado.`, dataType: "result", pref: "results" },
-    knockout: { title: "Fase final atualizada", body: "A fase final do Mundial Pontos 2026 foi alterada.", dataType: "knockout", pref: "knockout" },
-    chatGeneral: { title: "Nova mensagem no chat geral", body: "Mensagem de teste no chat geral.", dataType: "chat_general", pref: "chatGeneral" },
-    chatAdmin: { title: "Nova mensagem no chat admin", body: "Mensagem de teste no chat admin.", dataType: "chat_admin", pref: "chatAdmin" },
-    mentions: { title: `${team} mencionou-te`, body: "Teste de menção no chat.", dataType: "mention", pref: "mentions" },
+    goals: { title: `Golo ${team}`, body: `Golo de ${team} no jogo ${game}.`, dataType: "goal", pref: "goals" },
     custom: { title: "Teste push Mundial", body: "As notificações push estão a funcionar.", dataType: "test", pref: "" },
     test: { title: "Teste push Mundial", body: "As notificações push estão a funcionar neste dispositivo.", dataType: "test", pref: "" }
   };
@@ -1103,7 +1442,7 @@ exports.registerPushToken = onRequest({ cors: true, region: "us-central1" }, asy
       userAgent: cleanString(body.userAgent),
       preferences,
       quietHours,
-      rooms: roomsFromPushPreferences(preferences),
+      rooms: { general: false, admin: true },
       appVersion: cleanString(body.appVersion),
       updatedAt: new Date().toISOString(),
       createdAt: FieldValue.serverTimestamp()
@@ -1142,12 +1481,7 @@ exports.savePushPreferences = onRequest({ cors: true, region: "us-central1" }, a
     const tokens = await db.collection("notificationTokens")
       .where(identity.uid ? "uid" : "email", "==", identity.uid || identity.email)
       .get();
-    await Promise.all(tokens.docs.map(doc => doc.ref.set({
-      preferences,
-      quietHours,
-      rooms: roomsFromPushPreferences(preferences),
-      updatedAt: new Date().toISOString()
-    }, { merge: true })));
+    await Promise.all(tokens.docs.map(doc => doc.ref.set({ preferences, quietHours, updatedAt: new Date().toISOString() }, { merge: true })));
 
     return res.json({ ok: true, id: docId, updatedTokens: tokens.size });
   } catch (error) {
