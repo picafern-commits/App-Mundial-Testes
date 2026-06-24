@@ -241,7 +241,7 @@ function defaultSettings() {
     extraPredictions: {},
     importedPoints: {},
     users: [],
-    knockout: { adminUnlocked: false, matches: [] },
+    knockout: { enabled: false, adminUnlocked: false, matches: [] },
     logs: [],
     lastImport: null
   };
@@ -2017,7 +2017,7 @@ function applyPermissionsToUi() {
   $("addUserBtn")?.classList.toggle("hidden", !hasPermission("editUsers"));
   $("savePointsSettingsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
   $("saveExtraResultsBtn")?.classList.toggle("hidden", !hasPermission("editPoints"));
-  $("saveKnockoutUnlockBtn")?.classList.toggle("hidden", !hasPermission("editKnockout"));
+  $("saveKnockoutUnlockBtn")?.classList.toggle("hidden", !canManageKnockoutToggleV198());
     $("searchAllResultsBtn")?.classList.toggle("hidden", !hasPermission("editResults"));
     document.querySelectorAll(".search-game-result-btn").forEach(btn => btn.classList.toggle("hidden", !hasPermission("editResults")));
 
@@ -3739,8 +3739,7 @@ function groupStageFinished() {
 
 function knockoutAvailable() {
   ensureKnockoutSettings();
-  if (typeof appSettings.knockout?.enabled === "boolean") return Boolean(appSettings.knockout.enabled);
-  return groupStageFinished() || Boolean(appSettings.knockout?.adminUnlocked);
+  return Boolean(appSettings.knockout?.enabled || appSettings.knockout?.adminUnlocked);
 }
 
 
@@ -4575,38 +4574,83 @@ function renderKnockoutAdmin() {
     </div>`;
 }
 
+
+function canManageKnockoutToggleV198() {
+  const email = normalizeEmail(currentUser?.email || currentProfile?.email || "");
+  return Boolean(
+    hasPermission("editKnockout") ||
+    hasPermission("admin") ||
+    hasPermission("adminTab") ||
+    normalizeRole(currentProfile?.role) === "admin" ||
+    normalizeRole(currentProfile?.role) === "owner" ||
+    isConfiguredAdmin(email) ||
+    isAdmin
+  );
+}
+
+async function saveKnockoutSettingsDirectV198(reason = "fase final toggle") {
+  markSettingsPending();
+  saveLocalData(reason);
+
+  if (!db || !firebaseApi || storageMode !== "firebase") {
+    scheduleFullSync(reason, 300);
+    return false;
+  }
+
+  const { doc, setDoc } = firebaseApi;
+  if (typeof setDoc !== "function") {
+    scheduleFullSync(reason, 300);
+    return false;
+  }
+
+  await withTimeout(setDoc(doc(db, "settings", "main"), appSettings, { merge: true }), 12000, "guardar Fase Final");
+  clearSettingsPending();
+  clearFullSyncPending();
+  saveLocalData(`${reason} firebase-ok`);
+  return true;
+}
+
 async function saveKnockoutUnlock() {
-  if (!hasPermission("editKnockout")) {
-    toast("Sem permissão.");
+  if (!canManageKnockoutToggleV198()) {
+    toast("Sem permissão Admin para alterar a Fase Final.");
     return;
   }
 
   ensureKnockoutSettings();
 
-  const enabled = Boolean($("adminKnockoutUnlockedInput")?.checked);
+  const toggle = $("adminKnockoutUnlockedInput");
+  const enabled = Boolean(toggle?.checked);
+
   appSettings.knockout.enabled = enabled;
   appSettings.knockout.adminUnlocked = enabled;
+  appSettings.knockout.updatedAt = new Date().toISOString();
+  appSettings.knockout.updatedBy = normalizeEmail(currentUser?.email || currentProfile?.email || "");
 
   addSystemLog(
     "Estado Fase Final",
     enabled ? "Fase Final ativada pelo Admin." : "Fase Final desativada pelo Admin.",
     { enabled },
-    { sync: true }
+    { sync: false }
   );
 
-  saveLocalData("fase final toggle local");
+  markSettingsPending();
+  saveLocalData("fase final toggle imediato");
+
+  updateKnockoutToggleUiV197?.();
   renderKnockoutAdmin();
   renderCalendar();
   renderKnockout();
-  renderActivePageV187();
+  renderActivePageV187(activeTabIdV187());
   toast(enabled ? "Fase Final ativada." : "Fase Final desativada.");
 
   try {
-    await persistSettings();
-    setFirebaseStatus("success", "Firebase: estado da Fase Final guardado");
+    const saved = await saveKnockoutSettingsDirectV198("fase final toggle direto");
+    if (saved) setFirebaseStatus("success", "Firebase: estado da Fase Final guardado");
+    else setFirebaseStatus("error", "Firebase: Fase Final ficou local/pendente");
   } catch (error) {
-    console.warn("Guardar estado da Fase Final falhou:", error);
-    setFirebaseStatus("error", "Firebase: estado da Fase Final ficou local/pendente");
+    console.warn("Guardar Fase Final direto falhou:", error);
+    scheduleFullSync("fase final toggle fallback", 300);
+    setFirebaseStatus("error", "Firebase: Fase Final ficou pendente para sincronizar");
   }
 
   renderAll();
@@ -6953,7 +6997,6 @@ $("clearLogsBtn")?.addEventListener("click", clearSystemLogs);
 $("unlockLogsBtn")?.addEventListener("click", unlockLogsTab);
 $("lockLogsBtn")?.addEventListener("click", lockLogsTab);
 $("logsPinInput")?.addEventListener("keydown", event => { if (event.key === "Enter") unlockLogsTab(); });
-$("saveKnockoutUnlockBtn")?.addEventListener("click", saveKnockoutUnlock);
 
 
 
@@ -10848,6 +10891,7 @@ function updateKnockoutToggleUiV197() {
     if (btn) {
       btn.textContent = active ? "Desativar / guardar" : "Ativar / guardar";
       btn.classList.toggle("danger-soft", active);
+      btn.classList.toggle("hidden", !canManageKnockoutToggleV198());
     }
   } catch (error) {
     console.warn("Atualizar toggle Fase Final falhou:", error);
@@ -10873,3 +10917,15 @@ document.addEventListener("click", event => {
 document.addEventListener("DOMContentLoaded", () => {
   setTimeout(updateKnockoutToggleUiV197, 500);
 });
+
+
+document.addEventListener("click", event => {
+  const tab = event.target.closest?.('[data-tab="adminTab"], #unlockAdminBtn');
+  if (!tab) return;
+  setTimeout(() => {
+    try {
+      updateKnockoutToggleUiV197?.();
+      $("saveKnockoutUnlockBtn")?.classList.toggle("hidden", !canManageKnockoutToggleV198());
+    } catch {}
+  }, 250);
+}, true);

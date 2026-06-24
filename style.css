@@ -9650,3 +9650,16 @@ button,
   accent-color:#16d1b3!important;
   cursor:pointer!important;
 }
+
+
+/* v198 — botão Fase Final realmente clicável para Admin */
+#saveKnockoutUnlockBtn:not(.hidden){
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  pointer-events:auto!important;
+  cursor:pointer!important;
+}
+#saveKnockoutUnlockBtn.hidden{
+  display:none!important;
+}
