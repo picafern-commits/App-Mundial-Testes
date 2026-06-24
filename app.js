@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v208";
+const APP_VERSION_LABEL = "v210";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -12289,3 +12289,377 @@ document.addEventListener("DOMContentLoaded", () => {
   const body = document.body;
   if (body) organizationObserverV208.observe(body, { childList: true, subtree: true });
 });
+
+
+// v209 — nada de API/Firebase/Saúde no login. Só em Configurações.
+function isLoginScreenVisibleV209() {
+  const login =
+    document.getElementById("loginView") ||
+    document.getElementById("loginScreen") ||
+    document.getElementById("authView") ||
+    document.querySelector(".login-card, .auth-card, #loginCard");
+
+  const appShell =
+    document.getElementById("appShell") ||
+    document.getElementById("mainApp") ||
+    document.querySelector(".app-shell, .main-shell");
+
+  if (login && !login.classList.contains("hidden") && login.offsetParent !== null) return true;
+  if (document.body?.textContent?.includes("Entrar na app") && (!appShell || appShell.classList.contains("hidden"))) return true;
+  return false;
+}
+
+function ensureTechnicalAreaOnlyInSettingsV209() {
+  const settingsTab = document.getElementById("settingsTab");
+  if (!settingsTab) return null;
+
+  if (typeof ensureSettingsAccordionV205 === "function") {
+    try { ensureSettingsAccordionV205(); } catch {}
+  }
+
+  let content =
+    document.getElementById("configsTechnicalOnlyContentV206") ||
+    document.querySelector("#settingsSectionV205_sistema .settings-section-content-v205");
+
+  if (!content) {
+    let area = document.getElementById("configsTechnicalOnlyRootV209");
+    if (!area) {
+      area = document.createElement("section");
+      area.id = "configsTechnicalOnlyRootV209";
+      area.className = "configs-technical-only-root-v206 configs-technical-only-root-v209";
+      area.innerHTML = `
+        <details>
+          <summary>
+            <span>Sistema, Firebase e API</span>
+            <small>Sync football-data, saúde da app, push e ferramentas técnicas.</small>
+          </summary>
+          <div id="configsTechnicalOnlyContentV206" class="configs-technical-only-content-v206"></div>
+        </details>
+      `;
+      const target = document.querySelector("#settingsSectionV205_sistema .settings-section-content-v205") || settingsTab;
+      target.prepend(area);
+    }
+    content = document.getElementById("configsTechnicalOnlyContentV206");
+  }
+
+  return content;
+}
+
+function moveTechnicalBlocksOutOfLoginV209() {
+  const ids = [
+    "footballRealtimeSyncBoxV156",
+    "footballManualFallbackV157",
+    "footballFreeStatusBoxV149",
+    "footballDataAdminFixedBoxV143",
+    "suspendedGameAdminBoxV159",
+    "firebaseHealthPanelV187",
+    "pushHealthPanelV187",
+    "notificationsHealthPanelV187"
+  ];
+
+  const content = ensureTechnicalAreaOnlyInSettingsV209();
+
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    el.classList.add("technical-only-settings-v209");
+
+    // Se ainda não há área de Configurações disponível, esconde — nunca fica no login.
+    if (!content) {
+      el.classList.add("force-hide-technical-v209");
+      return;
+    }
+
+    el.classList.remove("force-hide-technical-v209");
+    if (el.parentElement !== content) content.appendChild(el);
+  });
+
+  // Apanha blocos técnicos criados sem ID fixo dentro do login/card.
+  document.querySelectorAll(".login-card section, .login-card details, .auth-card section, .auth-card details, #loginView section, #loginView details").forEach(el => {
+    const text = String(el.textContent || "").toLowerCase();
+    if (
+      text.includes("football-data") ||
+      text.includes("sync inteligente") ||
+      text.includes("firebase e push") ||
+      text.includes("saúde da app") ||
+      text.includes("jogo suspenso")
+    ) {
+      if (content) {
+        el.classList.add("technical-only-settings-v209");
+        content.appendChild(el);
+      } else {
+        el.classList.add("force-hide-technical-v209");
+      }
+    }
+  });
+}
+
+const footballRealtimeSyncEnsureBoxOriginalV209 = typeof footballRealtimeSyncEnsureBoxV156 === "function" ? footballRealtimeSyncEnsureBoxV156 : null;
+if (footballRealtimeSyncEnsureBoxOriginalV209) {
+  footballRealtimeSyncEnsureBoxV156 = function footballRealtimeSyncEnsureBoxV209() {
+    const box = footballRealtimeSyncEnsureBoxOriginalV209();
+
+    if (isLoginScreenVisibleV209()) {
+      box.classList.add("force-hide-technical-v209");
+    }
+
+    setTimeout(moveTechnicalBlocksOutOfLoginV209, 0);
+    setTimeout(moveTechnicalBlocksOutOfLoginV209, 120);
+
+    return box;
+  };
+}
+
+const footballRealtimeSyncRenderOriginalV209 = typeof footballRealtimeSyncRenderV156 === "function" ? footballRealtimeSyncRenderV156 : null;
+if (footballRealtimeSyncRenderOriginalV209) {
+  footballRealtimeSyncRenderV156 = function footballRealtimeSyncRenderV209(data = null) {
+    footballRealtimeSyncRenderOriginalV209(data);
+    setTimeout(moveTechnicalBlocksOutOfLoginV209, 0);
+  };
+}
+
+const renderActivePageOriginalV209 = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+if (renderActivePageOriginalV209) {
+  renderActivePageV187 = function renderActivePageV209(tabId = activeTabIdV187()) {
+    renderActivePageOriginalV209(tabId);
+    setTimeout(moveTechnicalBlocksOutOfLoginV209, 50);
+    setTimeout(moveTechnicalBlocksOutOfLoginV209, 300);
+  };
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(moveTechnicalBlocksOutOfLoginV209, 300);
+  setTimeout(moveTechnicalBlocksOutOfLoginV209, 900);
+  setTimeout(moveTechnicalBlocksOutOfLoginV209, 2200);
+});
+
+document.addEventListener("click", event => {
+  if (
+    event.target.closest?.("[data-tab='settingsTab']") ||
+    event.target.closest?.("[data-tab='adminTab']") ||
+    event.target.closest?.("#loginBtn, #logoutBtn, #enterAppBtn")
+  ) {
+    setTimeout(moveTechnicalBlocksOutOfLoginV209, 80);
+    setTimeout(moveTechnicalBlocksOutOfLoginV209, 400);
+  }
+}, true);
+
+const noTechnicalLoginObserverV209 = new MutationObserver(() => {
+  setTimeout(moveTechnicalBlocksOutOfLoginV209, 50);
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  if (document.body) {
+    noTechnicalLoginObserverV209.observe(document.body, { childList: true, subtree: true });
+  }
+});
+
+
+// v210 — Guard final: API/Firebase/Saúde nunca nasce no login.
+function appIsActuallyOpenV210() {
+  const loginVisible =
+    document.body?.textContent?.includes("Entrar na app") &&
+    !document.querySelector(".tab-panel.active");
+
+  const hasAppNav =
+    document.querySelector("[data-tab='calendarTab']") ||
+    document.querySelector("[data-tab='settingsTab']") ||
+    document.querySelector(".tab.active");
+
+  const hasLogout =
+    document.body?.textContent?.includes("Sair") ||
+    document.getElementById("logoutBtn");
+
+  return Boolean(hasAppNav || hasLogout) && !loginVisible;
+}
+
+function hideTechnicalPanelsIfLoginV210() {
+  const ids = [
+    "footballRealtimeSyncBoxV156",
+    "footballManualFallbackV157",
+    "footballFreeStatusBoxV149",
+    "footballDataAdminFixedBoxV143",
+    "suspendedGameAdminBoxV159",
+    "firebaseHealthPanelV187",
+    "pushHealthPanelV187",
+    "notificationsHealthPanelV187",
+    "configsTechnicalOnlyRootV206",
+    "configsTechnicalOnlyRootV209"
+  ];
+
+  const loginVisible = !appIsActuallyOpenV210();
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle("force-hide-technical-v210", loginVisible);
+  });
+}
+
+if (typeof footballRealtimeSyncStartV156 === "function" && !window.__footballStartGuardV210) {
+  window.__footballStartGuardV210 = true;
+  const originalFootballStartV210 = footballRealtimeSyncStartV156;
+  footballRealtimeSyncStartV156 = function footballRealtimeSyncStartGuardedV210() {
+    if (!appIsActuallyOpenV210()) {
+      hideTechnicalPanelsIfLoginV210();
+      return;
+    }
+    originalFootballStartV210();
+    setTimeout(hideTechnicalPanelsIfLoginV210, 0);
+  };
+}
+
+if (typeof footballRealtimeSyncEnsureBoxV156 === "function" && !window.__footballEnsureGuardV210) {
+  window.__footballEnsureGuardV210 = true;
+  const originalFootballEnsureV210 = footballRealtimeSyncEnsureBoxV156;
+  footballRealtimeSyncEnsureBoxV156 = function footballRealtimeSyncEnsureGuardedV210() {
+    const box = originalFootballEnsureV210();
+    hideTechnicalPanelsIfLoginV210();
+    if (!appIsActuallyOpenV210()) box.classList.add("force-hide-technical-v210");
+    return box;
+  };
+}
+
+
+// v210 — Organização da app estável: uma instância, só em Configurações.
+function organizationTextMatchV210(el) {
+  const id = String(el?.id || "").toLowerCase();
+  const text = String(el?.textContent || "").toLowerCase();
+  return id.includes("adminlayoutmanager") ||
+    id.includes("settingsorganizationsingle") ||
+    text.includes("organização da app") ||
+    text.includes("secções do admin") ||
+    text.includes("abas visíveis");
+}
+
+function stableOrganizationSettingsTargetV210() {
+  const settings = document.getElementById("settingsTab");
+  if (!settings) return null;
+
+  try { ensureSettingsAccordionV205?.(); } catch {}
+
+  return document.querySelector("#settingsSectionV205_organizar .settings-section-content-v205") || settings;
+}
+
+function removeOrganizationEverywhereExceptV210(keep) {
+  document.querySelectorAll("#adminTab section, #adminTab div, #adminTab details, #settingsTab section, #settingsTab div, #settingsTab details").forEach(el => {
+    if (!organizationTextMatchV210(el)) return;
+    if (el === keep || keep?.contains(el) || el.closest("#settingsOrganizationSingleV210")) return;
+    if (["settingsTab", "settingsAccordionV205", "settingsSectionV205_organizar"].includes(el.id)) return;
+    el.remove();
+  });
+}
+
+function renderSingleOrganizationV210() {
+  const target = stableOrganizationSettingsTargetV210();
+  if (!target) return;
+
+  let box = document.getElementById("settingsOrganizationSingleV210");
+  if (!box) {
+    box = document.createElement("section");
+    box.id = "settingsOrganizationSingleV210";
+    box.className = "settings-organization-single-v210 admin-card";
+  }
+
+  const settings = typeof savedAdminLayoutSettingsV202 === "function"
+    ? savedAdminLayoutSettingsV202()
+    : { adminSections: {}, pages: {} };
+
+  const sections = typeof ADMIN_SECTION_CHOICES_V202 !== "undefined" ? ADMIN_SECTION_CHOICES_V202 : [
+    ["users", "Users"], ["results", "Resultados"], ["points", "Pontos"], ["knockout", "Fase Final"], ["system", "Sistema"]
+  ];
+  const pages = typeof PAGE_LOCATION_CHOICES_V202 !== "undefined" ? PAGE_LOCATION_CHOICES_V202 : [
+    ["calendar", "Calendário"], ["score", "Pontuação"], ["knockout", "Fase Final"], ["notifications", "Notificações"], ["logs", "Logs"], ["adminTab", "Admin"], ["settings", "Configurações"]
+  ];
+
+  box.innerHTML = `
+    <div class="settings-org-head-v210">
+      <div>
+        <strong>Organização da app</strong>
+        <span>Escolhe o que aparece no Admin, o que passa para Configurações e que abas aparecem no topo.</span>
+      </div>
+      <button type="button" class="secondary small" data-admin-layout-reset-v202>Repor</button>
+    </div>
+    <div class="settings-org-grid-v210">
+      <div>
+        <h4>Secções do Admin</h4>
+        ${sections.map(([key, label]) => {
+          const value = settings.adminSections?.[key] || (key === "system" ? "settings" : "admin");
+          return `
+            <label class="settings-org-row-v210">
+              <span>${escapeHtml(label)}</span>
+              <select data-admin-section-location-v202="${escapeHtml(key)}">
+                <option value="admin" ${value === "admin" ? "selected" : ""}>Admin</option>
+                <option value="settings" ${value === "settings" ? "selected" : ""}>Configurações</option>
+                <option value="hidden" ${value === "hidden" ? "selected" : ""}>Esconder</option>
+              </select>
+            </label>`;
+        }).join("")}
+      </div>
+      <div>
+        <h4>Abas visíveis</h4>
+        <div class="settings-org-pages-v210">
+          ${pages.map(([key, label]) => `
+            <label class="settings-org-page-v210">
+              <input type="checkbox" data-page-visible-v202="${escapeHtml(key)}" ${settings.pages?.[key] !== false ? "checked" : ""} />
+              ${escapeHtml(label)}
+            </label>`).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+
+  if (box.parentElement !== target) target.prepend(box);
+  removeOrganizationEverywhereExceptV210(box);
+}
+
+function stableSettingsCleanupV210() {
+  try {
+    renderSingleOrganizationV210();
+    hideTechnicalPanelsIfLoginV210?.();
+    if (typeof moveForbiddenAdminBlocksToConfigsV206 === "function") moveForbiddenAdminBlocksToConfigsV206();
+    if (typeof updateSettingsSectionCountsV205 === "function") updateSettingsSectionCountsV205();
+  } catch (error) {
+    console.warn("stableSettingsCleanupV210 falhou:", error);
+  }
+}
+
+if (typeof renderAdminLayoutManagerV202 === "function") {
+  renderAdminLayoutManagerV202 = function renderAdminLayoutManagerStableV210() {
+    renderSingleOrganizationV210();
+  };
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(stableSettingsCleanupV210, 500);
+  setTimeout(stableSettingsCleanupV210, 1500);
+  setTimeout(stableSettingsCleanupV210, 3000);
+});
+
+document.addEventListener("click", event => {
+  if (
+    event.target.closest?.("[data-tab='settingsTab']") ||
+    event.target.closest?.("[data-tab='adminTab']") ||
+    event.target.closest?.("[data-settings-jump-v205]")
+  ) {
+    setTimeout(stableSettingsCleanupV210, 80);
+    setTimeout(stableSettingsCleanupV210, 350);
+  }
+}, true);
+
+document.addEventListener("change", event => {
+  if (
+    event.target.closest?.("[data-admin-section-location-v202]") ||
+    event.target.closest?.("[data-page-visible-v202]")
+  ) {
+    setTimeout(stableSettingsCleanupV210, 80);
+    setTimeout(applyAdminLayoutSettingsV202, 120);
+  }
+}, true);
+
+
+// v210 — desativa observers globais antigos que podiam recriar/mover blocos em loop.
+setTimeout(() => {
+  try { organizationObserverV208?.disconnect?.(); } catch {}
+  try { noTechnicalLoginObserverV209?.disconnect?.(); } catch {}
+}, 2500);

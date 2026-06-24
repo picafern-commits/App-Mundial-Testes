@@ -10128,3 +10128,108 @@ button,
 #settingsOrganizationSingleV208 input{
   pointer-events:auto!important;
 }
+
+
+/* v209 — blocos técnicos nunca aparecem no login */
+.login-card #footballRealtimeSyncBoxV156,
+.auth-card #footballRealtimeSyncBoxV156,
+#loginView #footballRealtimeSyncBoxV156,
+#loginScreen #footballRealtimeSyncBoxV156,
+.force-hide-technical-v209{
+  display:none!important;
+}
+.technical-only-settings-v209{
+  width:100%!important;
+  max-width:none!important;
+}
+
+
+/* v210 — proteção final Login/Admin/Configurações */
+.force-hide-technical-v210,
+#loginView #footballRealtimeSyncBoxV156,
+#loginScreen #footballRealtimeSyncBoxV156,
+.login-card #footballRealtimeSyncBoxV156,
+.auth-card #footballRealtimeSyncBoxV156{
+  display:none!important;
+}
+#adminTab #footballRealtimeSyncBoxV156,
+#adminTab #footballManualFallbackV157,
+#adminTab #footballFreeStatusBoxV149,
+#adminTab #footballDataAdminFixedBoxV143,
+#adminTab #suspendedGameAdminBoxV159,
+#adminTab #firebaseHealthPanelV187,
+#adminTab #pushHealthPanelV187,
+#adminTab #notificationsHealthPanelV187,
+#adminTab #settingsOrganizationSingleV210,
+#adminTab #settingsOrganizationSingleV208{
+  display:none!important;
+}
+#settingsOrganizationSingleV210{
+  display:block!important;
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:18px;
+  background:linear-gradient(180deg,rgba(255,255,255,.052),rgba(255,255,255,.025));
+  padding:14px;
+}
+.settings-org-head-v210{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+}
+.settings-org-head-v210 strong{
+  display:block;
+  color:var(--gold);
+  font-size:15px;
+}
+.settings-org-head-v210 span{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:800;
+  margin-top:4px;
+}
+.settings-org-grid-v210{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+.settings-org-grid-v210 h4{
+  margin:0 0 8px;
+  color:var(--text);
+}
+.settings-org-row-v210,
+.settings-org-page-v210{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  min-height:38px;
+  padding:8px 10px;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:12px;
+  background:rgba(255,255,255,.035);
+  color:var(--text);
+  font-weight:850;
+}
+.settings-org-row-v210 select{
+  min-width:150px;
+}
+.settings-org-pages-v210{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:8px;
+}
+#settingsTab #settingsOrganizationSingleV208,
+#settingsTab #adminLayoutManagerSettingsV202,
+#settingsTab #adminLayoutManagerAdminV202{
+  display:none!important;
+}
+@media(max-width:760px){
+  .settings-org-grid-v210{grid-template-columns:1fr;}
+  .settings-org-head-v210{flex-direction:column;}
+}
