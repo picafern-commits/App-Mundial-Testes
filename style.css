@@ -9901,3 +9901,114 @@ button,
 .admin-card-closed-v204{
   padding-bottom:8px!important;
 }
+
+
+/* v205 — Página Configurações clean e colapsável */
+#settingsTab{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.settings-quick-tabs-v205{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  padding:10px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:16px;
+  background:rgba(255,255,255,.035);
+  position:sticky;
+  top:0;
+  z-index:9;
+  backdrop-filter:blur(14px);
+}
+.settings-quick-tabs-v205 button{
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:12px;
+  background:rgba(255,255,255,.055);
+  color:var(--text);
+  font-weight:950;
+  padding:9px 12px;
+  cursor:pointer;
+}
+.settings-quick-tabs-v205 button:hover{
+  border-color:rgba(255,216,87,.4);
+  color:var(--gold);
+}
+.settings-accordion-v205{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.settings-section-v205{
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:18px;
+  background:linear-gradient(180deg,rgba(255,255,255,.052),rgba(255,255,255,.025));
+  overflow:hidden;
+}
+.settings-section-v205 summary{
+  cursor:pointer;
+  list-style:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px 16px;
+  color:var(--gold);
+  font-weight:950;
+}
+.settings-section-v205 summary::-webkit-details-marker{
+  display:none;
+}
+.settings-section-v205 summary::after{
+  content:"+";
+  width:30px;
+  height:30px;
+  border-radius:10px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(255,255,255,.075);
+  color:var(--gold);
+  font-size:18px;
+}
+.settings-section-v205[open] summary::after{
+  content:"−";
+}
+.settings-section-v205 summary span{
+  font-size:15px;
+}
+.settings-section-v205 summary small{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:850;
+}
+.settings-section-content-v205{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  padding:0 14px 14px;
+}
+.settings-clean-block-v205{
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+}
+.settings-section-empty-v205{
+  display:none!important;
+}
+.settings-section-content-v205 > section,
+.settings-section-content-v205 > div,
+.settings-section-content-v205 > details{
+  max-width:none!important;
+}
+@media(max-width:760px){
+  .settings-quick-tabs-v205{
+    position:relative;
+    top:auto;
+  }
+  .settings-section-v205 summary{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+}

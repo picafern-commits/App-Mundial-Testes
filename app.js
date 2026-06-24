@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v204";
+const APP_VERSION_LABEL = "v205";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -11496,3 +11496,214 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(applyAdminVisibilityAndConfigsV204, 2200);
   setTimeout(applyAdminVisibilityAndConfigsV204, 4200);
 });
+
+
+// v205 — Configurações clean com secções colapsáveis.
+const SETTINGS_SECTION_ORDER_V205 = [
+  ["organizar", "Organização"],
+  ["sistema", "Sistema, Firebase e API"],
+  ["instalar", "Instalação / PWA"],
+  ["preferencias", "Preferências"],
+  ["admin", "Ferramentas Admin"],
+  ["outros", "Outros"]
+];
+
+function settingsSectionForElementV205(el) {
+  const id = String(el.id || "").toLowerCase();
+  const text = String(el.textContent || "").toLowerCase();
+
+  if (
+    id.includes("adminlayout") ||
+    text.includes("organização da app") ||
+    text.includes("organização")
+  ) return "organizar";
+
+  if (
+    id.includes("settingssystemonly") ||
+    id.includes("football") ||
+    id.includes("firebase") ||
+    id.includes("health") ||
+    text.includes("sync inteligente") ||
+    text.includes("football-data") ||
+    text.includes("firebase") ||
+    text.includes("saúde da app") ||
+    text.includes("push")
+  ) return "sistema";
+
+  if (
+    id.includes("install") ||
+    text.includes("instalação") ||
+    text.includes("instalar") ||
+    text.includes("pwa") ||
+    text.includes("ecrã principal")
+  ) return "instalar";
+
+  if (
+    text.includes("tema") ||
+    text.includes("prefer") ||
+    text.includes("notifica") ||
+    text.includes("silenciar")
+  ) return "preferencias";
+
+  if (
+    text.includes("admin") ||
+    text.includes("permiss") ||
+    text.includes("users") ||
+    text.includes("resultado") ||
+    text.includes("fase final")
+  ) return "admin";
+
+  return "outros";
+}
+
+function ensureSettingsAccordionV205() {
+  const settingsTab = document.getElementById("settingsTab");
+  if (!settingsTab) return null;
+
+  let wrap = document.getElementById("settingsAccordionV205");
+  if (wrap) return wrap;
+
+  wrap = document.createElement("div");
+  wrap.id = "settingsAccordionV205";
+  wrap.className = "settings-accordion-v205";
+
+  SETTINGS_SECTION_ORDER_V205.forEach(([key, label], index) => {
+    const details = document.createElement("details");
+    details.id = `settingsSectionV205_${key}`;
+    details.className = "settings-section-v205";
+    details.dataset.settingsSectionV205 = key;
+    details.open = localStorage.getItem(`${STORAGE_KEY}_settings_section_closed_v205_${key}`) !== "1" && index < 2;
+
+    const summary = document.createElement("summary");
+    summary.innerHTML = `<span>${escapeHtml(label)}</span><small></small>`;
+
+    const content = document.createElement("div");
+    content.className = "settings-section-content-v205";
+
+    details.appendChild(summary);
+    details.appendChild(content);
+    details.addEventListener("toggle", () => {
+      localStorage.setItem(`${STORAGE_KEY}_settings_section_closed_v205_${key}`, details.open ? "0" : "1");
+    });
+
+    wrap.appendChild(details);
+  });
+
+  const first = settingsTab.firstElementChild;
+  if (first) settingsTab.insertBefore(wrap, first);
+  else settingsTab.appendChild(wrap);
+
+  return wrap;
+}
+
+function updateSettingsSectionCountsV205() {
+  SETTINGS_SECTION_ORDER_V205.forEach(([key]) => {
+    const details = document.getElementById(`settingsSectionV205_${key}`);
+    if (!details) return;
+    const count = details.querySelectorAll(".settings-section-content-v205 > *").length;
+    const small = details.querySelector("summary small");
+    if (small) small.textContent = `${count} bloco${count === 1 ? "" : "s"}`;
+    details.classList.toggle("settings-section-empty-v205", count === 0);
+  });
+}
+
+function moveSettingsBlocksToAccordionV205() {
+  const settingsTab = document.getElementById("settingsTab");
+  const wrap = ensureSettingsAccordionV205();
+  if (!settingsTab || !wrap) return;
+
+  const ignoreIds = new Set(["settingsAccordionV205"]);
+
+  [...settingsTab.children].forEach(el => {
+    if (!el || ignoreIds.has(el.id)) return;
+    if (el.closest?.("#settingsAccordionV205")) return;
+    if (el.tagName === "SCRIPT" || el.tagName === "STYLE") return;
+
+    const section = settingsSectionForElementV205(el);
+    const content = document.querySelector(`#settingsSectionV205_${CSS.escape(section)} .settings-section-content-v205`);
+    if (content && el.parentElement !== content) {
+      el.classList.add("settings-clean-block-v205");
+      content.appendChild(el);
+    }
+  });
+
+  // Garante que a área técnica criada pela v204 fica dentro de Sistema.
+  const systemArea = document.getElementById("settingsSystemOnlyAreaV204");
+  const systemContent = document.querySelector("#settingsSectionV205_sistema .settings-section-content-v205");
+  if (systemArea && systemContent && systemArea.parentElement !== systemContent) {
+    systemArea.classList.add("settings-clean-block-v205");
+    systemContent.appendChild(systemArea);
+  }
+
+  // Organização da app fica dentro de Organização.
+  ["adminLayoutManagerSettingsV202", "adminLayoutManagerAdminV202"].forEach(id => {
+    const el = document.getElementById(id);
+    const content = document.querySelector("#settingsSectionV205_organizar .settings-section-content-v205");
+    if (el && content && el.parentElement !== content) {
+      el.classList.add("settings-clean-block-v205");
+      content.appendChild(el);
+    }
+  });
+
+  updateSettingsSectionCountsV205();
+}
+
+function renderSettingsQuickTabsV205() {
+  const wrap = ensureSettingsAccordionV205();
+  const settingsTab = document.getElementById("settingsTab");
+  if (!wrap || !settingsTab) return;
+
+  let nav = document.getElementById("settingsQuickTabsV205");
+  if (!nav) {
+    nav = document.createElement("div");
+    nav.id = "settingsQuickTabsV205";
+    nav.className = "settings-quick-tabs-v205";
+    settingsTab.insertBefore(nav, wrap);
+  }
+
+  nav.innerHTML = SETTINGS_SECTION_ORDER_V205
+    .map(([key, label]) => `<button type="button" data-settings-jump-v205="${escapeHtml(key)}">${escapeHtml(label)}</button>`)
+    .join("");
+}
+
+function applySettingsCleanV205() {
+  try {
+    renderSettingsQuickTabsV205();
+    moveSettingsBlocksToAccordionV205();
+  } catch (error) {
+    console.warn("applySettingsCleanV205 falhou:", error);
+  }
+}
+
+const renderAppSettingsPanelOriginalV205 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
+if (renderAppSettingsPanelOriginalV205) {
+  renderAppSettingsPanelV162 = function renderAppSettingsPanelV205() {
+    renderAppSettingsPanelOriginalV205();
+    setTimeout(applySettingsCleanV205, 0);
+    setTimeout(applySettingsCleanV205, 250);
+  };
+}
+
+document.addEventListener("click", event => {
+  const btn = event.target.closest?.("[data-settings-jump-v205]");
+  if (!btn) return;
+  event.preventDefault();
+  const key = btn.dataset.settingsJumpV205;
+  const details = document.getElementById(`settingsSectionV205_${key}`);
+  if (!details) return;
+  details.open = true;
+  details.scrollIntoView({ behavior: "smooth", block: "start" });
+}, true);
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(applySettingsCleanV205, 700);
+  setTimeout(applySettingsCleanV205, 1800);
+  setTimeout(applySettingsCleanV205, 3500);
+});
+
+document.addEventListener("click", event => {
+  if (event.target.closest?.("[data-tab='settingsTab']")) {
+    setTimeout(applySettingsCleanV205, 100);
+    setTimeout(applySettingsCleanV205, 500);
+  }
+}, true);
