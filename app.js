@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v210";
+const APP_VERSION_LABEL = "v211";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -1705,7 +1705,7 @@ function setLoginStatus(message, type = "info") {
 }
 
 function showLoginScreen() {
-  cleanupRealtimeSync();
+  try { cleanupRealtimeSync(); } catch (error) { console.warn("cleanupRealtimeSync falhou:", error); }
   $("loginScreen")?.classList.remove("hidden");
   $("appShell")?.classList.add("auth-hidden");
   document.body.classList.remove("knockout-layout-active");
@@ -3590,16 +3590,38 @@ function setupAuthGate() {
 
       showAppScreen();
       updateSessionBox();
+
       loadPermissionsUsers()
         .then(renderPermissionsUsers)
         .catch(error => console.warn("Permissões em segundo plano falharam:", error));
-      await loadData();
-      applyPermissionsToUi();
+
+      try {
+        await loadData();
+      } catch (loadError) {
+        console.warn("Dados Firebase falharam no login; vou abrir com cache local:", loadError);
+        try {
+          applyLocalDataFast("fallback login v211");
+        } catch (localError) {
+          console.warn("Fallback local no login também falhou:", localError);
+        }
+      }
+
+      try {
+        applyPermissionsToUi();
+      } catch (permissionUiError) {
+        console.warn("Aplicar permissões no UI falhou, mas login continua:", permissionUiError);
+      }
+
       setLoginStatus("Login efetuado.", "success");
       startChatSafe();
       startOnlineFeaturesSafe();
       setTimeout(setupPushForCurrentUserV182, 900);
-      addSystemLog("Sessão iniciada", `${currentProfile.name || currentUser.email} entrou na app.`, { email: currentUser.email }, { sync: true });
+
+      try {
+        addSystemLog("Sessão iniciada", `${currentProfile.name || currentUser.email} entrou na app.`, { email: currentUser.email }, { sync: true });
+      } catch (logError) {
+        console.warn("Log de sessão falhou sem bloquear login:", logError);
+      }
     } catch (error) {
       console.error("Erro no arranque com login:", error);
       setLoginStatus("Erro ao carregar permissões.", "error");
@@ -12663,3 +12685,46 @@ setTimeout(() => {
   try { organizationObserverV208?.disconnect?.(); } catch {}
   try { noTechnicalLoginObserverV209?.disconnect?.(); } catch {}
 }, 2500);
+
+
+// v211 — segurança extra: nenhum ajuste visual pode bloquear login/permissões.
+function safeRunV211(label, fn) {
+  try {
+    if (typeof fn === "function") return fn();
+  } catch (error) {
+    console.warn(`${label} falhou sem bloquear a app:`, error);
+  }
+  return null;
+}
+
+if (typeof stableSettingsCleanupV210 === "function" && !window.__stableSettingsCleanupSafeV211) {
+  window.__stableSettingsCleanupSafeV211 = true;
+  const originalStableSettingsCleanupV211 = stableSettingsCleanupV210;
+  stableSettingsCleanupV210 = function stableSettingsCleanupSafeV211() {
+    return safeRunV211("stableSettingsCleanupV210", originalStableSettingsCleanupV211);
+  };
+}
+
+if (typeof hideTechnicalPanelsIfLoginV210 === "function" && !window.__hideTechnicalSafeV211) {
+  window.__hideTechnicalSafeV211 = true;
+  const originalHideTechnicalV211 = hideTechnicalPanelsIfLoginV210;
+  hideTechnicalPanelsIfLoginV210 = function hideTechnicalSafeV211() {
+    return safeRunV211("hideTechnicalPanelsIfLoginV210", originalHideTechnicalV211);
+  };
+}
+
+if (typeof renderSingleOrganizationV210 === "function" && !window.__renderOrgSafeV211) {
+  window.__renderOrgSafeV211 = true;
+  const originalRenderOrgV211 = renderSingleOrganizationV210;
+  renderSingleOrganizationV210 = function renderSingleOrganizationSafeV211() {
+    return safeRunV211("renderSingleOrganizationV210", originalRenderOrgV211);
+  };
+}
+
+if (typeof applyConfigsOnlyV206 === "function" && !window.__applyConfigsOnlySafeV211) {
+  window.__applyConfigsOnlySafeV211 = true;
+  const originalApplyConfigsOnlyV211 = applyConfigsOnlyV206;
+  applyConfigsOnlyV206 = function applyConfigsOnlySafeV211() {
+    return safeRunV211("applyConfigsOnlyV206", originalApplyConfigsOnlyV211);
+  };
+}
