@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v202";
+const APP_VERSION_LABEL = "v204";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -11169,3 +11169,330 @@ if (applyPermissionsToUiOriginalV202) {
     if (activeTab?.classList.contains("user-hidden-v202")) switchToFirstAllowedTab();
   };
 }
+
+
+// v203 — Corrige blocos extras do Admin que não eram .admin-card.
+// Assim, ao clicar em "Fase Final", só aparecem coisas da Fase Final.
+function adminExtraSectionMapV203() {
+  return [
+    ["footballRealtimeSyncBoxV156", "system"],
+    ["footballManualFallbackV157", "system"],
+    ["footballFreeStatusBoxV149", "system"],
+    ["footballDataAdminFixedBoxV143", "system"],
+    ["suspendedGameAdminBoxV159", "system"],
+    ["adminLayoutManagerAdminV202", "system"],
+    ["firebaseHealthPanelV187", "system"],
+    ["adminOverviewV162", "system"],
+    ["pushHealthPanelV187", "system"],
+    ["notificationsHealthPanelV187", "system"]
+  ];
+}
+
+function tagAdminExtraSectionsV203() {
+  for (const [id, section] of adminExtraSectionMapV203()) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.classList.add("admin-extra-section-v203");
+    el.dataset.adminSectionV187 = section;
+  }
+
+  // fallback por conteúdo para blocos criados sem id fixo
+  document.querySelectorAll("#adminTab section, #adminTab .admin-card, #adminTab details").forEach(el => {
+    if (el.dataset.adminSectionV187) return;
+    const text = (el.textContent || "").toLowerCase();
+    if (text.includes("api football") || text.includes("sync inteligente") || text.includes("football-data")) {
+      el.classList.add("admin-extra-section-v203");
+      el.dataset.adminSectionV187 = "system";
+    }
+    if (text.includes("jogo suspenso")) {
+      el.classList.add("admin-extra-section-v203");
+      el.dataset.adminSectionV187 = "system";
+    }
+    if (text.includes("saúde da app") || text.includes("firebase e push")) {
+      el.classList.add("admin-extra-section-v203");
+      el.dataset.adminSectionV187 = "system";
+    }
+    if (text.includes("organização da app")) {
+      el.classList.add("admin-extra-section-v203");
+      el.dataset.adminSectionV187 = "system";
+    }
+  });
+}
+
+function applyAdminSectionVisibilityV203() {
+  tagAdminExtraSectionsV203();
+
+  const active = localStorage.getItem(`${STORAGE_KEY}_admin_section_v187`) || "all";
+  const settings = typeof savedAdminLayoutSettingsV202 === "function" ? savedAdminLayoutSettingsV202() : null;
+
+  document.querySelectorAll("#adminUnlocked > .admin-card, #adminTab .admin-extra-section-v203").forEach(el => {
+    const section = el.dataset.adminSectionV187 || (typeof adminSectionForCardV187 === "function" ? adminSectionForCardV187(el) : "system");
+    const location = settings?.adminSections?.[section] || "admin";
+
+    const hiddenByInternalTab = active !== "all" && section !== active;
+    const hiddenByLocation = location === "hidden" || location === "settings";
+
+    el.classList.toggle("admin-section-hidden-v187", hiddenByInternalTab || hiddenByLocation);
+    el.classList.toggle("admin-section-force-hidden-v202", hiddenByLocation);
+  });
+}
+
+const renderAdminSectionsOriginalV203 = typeof renderAdminSectionsV187 === "function" ? renderAdminSectionsV187 : null;
+if (renderAdminSectionsOriginalV203) {
+  renderAdminSectionsV187 = function renderAdminSectionsV203() {
+    renderAdminSectionsOriginalV203();
+    setTimeout(applyAdminSectionVisibilityV203, 0);
+    setTimeout(applyAdminSectionVisibilityV203, 150);
+  };
+}
+
+document.addEventListener("click", event => {
+  if (event.target.closest?.("[data-admin-section-v187]")) {
+    setTimeout(applyAdminSectionVisibilityV203, 0);
+    setTimeout(applyAdminSectionVisibilityV203, 180);
+  }
+}, true);
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(applyAdminSectionVisibilityV203, 700);
+  setTimeout(applyAdminSectionVisibilityV203, 1800);
+});
+
+
+// v204 — Sistema/Saúde/API apenas em Configurações + Admin colapsável.
+const SYSTEM_ONLY_BLOCK_IDS_V204 = [
+  "footballRealtimeSyncBoxV156",
+  "footballManualFallbackV157",
+  "footballFreeStatusBoxV149",
+  "footballDataAdminFixedBoxV143",
+  "suspendedGameAdminBoxV159",
+  "adminLayoutManagerAdminV202",
+  "firebaseHealthPanelV187",
+  "pushHealthPanelV187",
+  "notificationsHealthPanelV187"
+];
+
+function adminLayoutSettingsV204() {
+  const settings = typeof savedAdminLayoutSettingsV202 === "function"
+    ? savedAdminLayoutSettingsV202()
+    : {
+        adminSections: {},
+        pages: {}
+      };
+
+  if (!settings.adminSections) settings.adminSections = {};
+  if (!settings.pages) settings.pages = {};
+
+  // v204: Sistema deixa de viver no Admin por defeito.
+  const migratedKey = `${STORAGE_KEY}_admin_layout_v204_migrated_system`;
+  if (localStorage.getItem(migratedKey) !== "1") {
+    settings.adminSections.system = "settings";
+    localStorage.setItem(migratedKey, "1");
+    try { saveAdminLayoutSettingsV202?.(settings); } catch {}
+  }
+
+  return settings;
+}
+
+function ensureSettingsSystemAreaV204() {
+  const settingsTab = document.getElementById("settingsTab");
+  if (!settingsTab) return null;
+
+  let area = document.getElementById("settingsSystemOnlyAreaV204");
+  if (area) return area;
+
+  area = document.createElement("section");
+  area.id = "settingsSystemOnlyAreaV204";
+  area.className = "settings-system-only-area-v204";
+  area.innerHTML = `
+    <details open>
+      <summary>
+        <span>Sistema, Firebase e API</span>
+        <small>Saúde da app, sync inteligente, push e ferramentas técnicas.</small>
+      </summary>
+      <div id="settingsSystemOnlyContentV204" class="settings-system-only-content-v204"></div>
+    </details>
+  `;
+
+  const layoutBox = document.getElementById("adminLayoutManagerSettingsV202");
+  if (layoutBox?.insertAdjacentElement) layoutBox.insertAdjacentElement("afterend", area);
+  else settingsTab.prepend(area);
+
+  return area;
+}
+
+function moveSystemBlocksToSettingsV204() {
+  const area = ensureSettingsSystemAreaV204();
+  const content = document.getElementById("settingsSystemOnlyContentV204");
+  if (!area || !content) return;
+
+  SYSTEM_ONLY_BLOCK_IDS_V204.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add("system-only-configs-v204");
+    el.classList.remove("admin-section-hidden-v187", "admin-section-force-hidden-v202", "admin-section-moved-settings-v202");
+
+    if (el.parentElement !== content) {
+      content.appendChild(el);
+    }
+  });
+
+  // Qualquer bloco que tenha sido classificado como system e esteja no Admin vai para Configurações.
+  document.querySelectorAll("#adminTab .admin-extra-section-v203, #adminUnlocked > .admin-card").forEach(el => {
+    const section =
+      el.dataset.adminSectionV187 ||
+      (typeof adminSectionForCardV187 === "function" ? adminSectionForCardV187(el) : "");
+
+    if (section !== "system") return;
+    if (el.id === "adminOverviewV162") return; // resumo pode ficar no topo do Admin
+
+    el.classList.add("system-only-configs-v204");
+    el.classList.remove("admin-section-hidden-v187", "admin-section-force-hidden-v202", "admin-section-moved-settings-v202");
+
+    if (el.parentElement !== content) {
+      content.appendChild(el);
+    }
+  });
+}
+
+function ensureAdminSectionsCollapsibleV204() {
+  const tabs = document.getElementById("adminSectionTabsV187");
+  if (!tabs || document.getElementById("adminSectionsCollapseV204")) return;
+
+  const wrapper = document.createElement("details");
+  wrapper.id = "adminSectionsCollapseV204";
+  wrapper.className = "admin-sections-collapse-v204";
+  wrapper.open = localStorage.getItem(`${STORAGE_KEY}_admin_sections_collapsed_v204`) !== "1";
+
+  const summary = document.createElement("summary");
+  summary.innerHTML = `<span>Secções do Admin</span><small>Escolhe rapidamente a área que queres gerir.</small>`;
+
+  const holder = document.createElement("div");
+  holder.className = "admin-sections-collapse-content-v204";
+
+  tabs.parentNode.insertBefore(wrapper, tabs);
+  wrapper.appendChild(summary);
+  wrapper.appendChild(holder);
+  holder.appendChild(tabs);
+
+  wrapper.addEventListener("toggle", () => {
+    localStorage.setItem(`${STORAGE_KEY}_admin_sections_collapsed_v204`, wrapper.open ? "0" : "1");
+  });
+}
+
+function makeAdminCardsCollapsibleV204() {
+  document.querySelectorAll("#adminUnlocked > .admin-card").forEach((card, index) => {
+    if (card.classList.contains("admin-layout-manager-v202")) return;
+    if (card.dataset.collapsibleReadyV204 === "1") return;
+
+    const title =
+      card.querySelector("h2,h3,strong")?.textContent?.trim() ||
+      card.dataset.adminSectionV187 ||
+      `Secção ${index + 1}`;
+
+    const key = `${STORAGE_KEY}_admin_card_closed_v204_${index}_${title.toLowerCase().replace(/[^a-z0-9]+/gi, "_")}`;
+    const inner = document.createElement("div");
+    inner.className = "admin-card-collapsible-content-v204";
+
+    while (card.firstChild) inner.appendChild(card.firstChild);
+
+    const header = document.createElement("button");
+    header.type = "button";
+    header.className = "admin-card-collapse-head-v204";
+    header.innerHTML = `<span>${escapeHtml(title)}</span><b>${localStorage.getItem(key) === "1" ? "+" : "−"}</b>`;
+
+    const closed = localStorage.getItem(key) === "1";
+    inner.hidden = closed;
+    card.classList.toggle("admin-card-closed-v204", closed);
+
+    header.addEventListener("click", event => {
+      event.preventDefault();
+      const nextClosed = !inner.hidden;
+      inner.hidden = nextClosed;
+      card.classList.toggle("admin-card-closed-v204", nextClosed);
+      header.querySelector("b").textContent = nextClosed ? "+" : "−";
+      localStorage.setItem(key, nextClosed ? "1" : "0");
+    });
+
+    card.appendChild(header);
+    card.appendChild(inner);
+    card.dataset.collapsibleReadyV204 = "1";
+  });
+}
+
+function applyAdminVisibilityAndConfigsV204() {
+  try {
+    const settings = adminLayoutSettingsV204();
+
+    // Sistema fica sempre em Configurações nesta versão.
+    settings.adminSections.system = "settings";
+    try { saveAdminLayoutSettingsV202?.(settings); } catch {}
+
+    moveSystemBlocksToSettingsV204();
+    ensureAdminSectionsCollapsibleV204();
+    makeAdminCardsCollapsibleV204();
+
+    // Reaplica filtros só às secções que continuam no Admin.
+    const active = localStorage.getItem(`${STORAGE_KEY}_admin_section_v187`) || "all";
+    document.querySelectorAll("#adminUnlocked > .admin-card").forEach(card => {
+      if (card.classList.contains("admin-layout-manager-v202")) return;
+      const section = card.dataset.adminSectionV187 || (typeof adminSectionForCardV187 === "function" ? adminSectionForCardV187(card) : "system");
+      const location = settings.adminSections?.[section] || "admin";
+
+      const hide =
+        location === "hidden" ||
+        location === "settings" ||
+        (active !== "all" && section !== active);
+
+      card.classList.toggle("admin-section-hidden-v187", hide);
+    });
+  } catch (error) {
+    console.warn("applyAdminVisibilityAndConfigsV204 falhou:", error);
+  }
+}
+
+const renderAdminSectionsOriginalV204 = typeof renderAdminSectionsV187 === "function" ? renderAdminSectionsV187 : null;
+if (renderAdminSectionsOriginalV204) {
+  renderAdminSectionsV187 = function renderAdminSectionsV204() {
+    renderAdminSectionsOriginalV204();
+    setTimeout(applyAdminVisibilityAndConfigsV204, 0);
+    setTimeout(applyAdminVisibilityAndConfigsV204, 200);
+  };
+}
+
+const renderAppSettingsPanelOriginalV204 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
+if (renderAppSettingsPanelOriginalV204) {
+  renderAppSettingsPanelV162 = function renderAppSettingsPanelV204() {
+    renderAppSettingsPanelOriginalV204();
+    renderAdminLayoutManagerV202?.("settings");
+    setTimeout(applyAdminVisibilityAndConfigsV204, 0);
+    setTimeout(applyAdminVisibilityAndConfigsV204, 250);
+  };
+}
+
+document.addEventListener("click", event => {
+  if (
+    event.target.closest?.("[data-admin-section-v187]") ||
+    event.target.closest?.("[data-tab='adminTab']") ||
+    event.target.closest?.("[data-tab='settingsTab']")
+  ) {
+    setTimeout(applyAdminVisibilityAndConfigsV204, 80);
+    setTimeout(applyAdminVisibilityAndConfigsV204, 300);
+  }
+}, true);
+
+document.addEventListener("change", event => {
+  if (
+    event.target.closest?.("[data-admin-section-location-v202]") ||
+    event.target.closest?.("[data-page-visible-v202]")
+  ) {
+    setTimeout(applyAdminVisibilityAndConfigsV204, 80);
+    setTimeout(applyAdminVisibilityAndConfigsV204, 300);
+  }
+}, true);
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(applyAdminVisibilityAndConfigsV204, 900);
+  setTimeout(applyAdminVisibilityAndConfigsV204, 2200);
+  setTimeout(applyAdminVisibilityAndConfigsV204, 4200);
+});

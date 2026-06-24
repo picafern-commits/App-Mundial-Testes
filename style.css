@@ -9791,3 +9791,113 @@ button,
   .admin-layout-grid-v202{grid-template-columns:1fr;}
   .admin-layout-head-v202{align-items:flex-start;flex-direction:column;}
 }
+
+
+/* v203 — blocos extra do Admin respeitam filtros internos */
+#adminTab .admin-section-hidden-v187,
+#adminTab .admin-section-force-hidden-v202{
+  display:none!important;
+}
+#adminTab .admin-extra-section-v203{
+  transition:opacity .18s ease, transform .18s ease;
+}
+
+
+/* v204 — Sistema só em Configurações */
+.settings-system-only-area-v204{
+  margin:14px 0;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:18px;
+  background:linear-gradient(180deg,rgba(255,255,255,.052),rgba(255,255,255,.025));
+  overflow:hidden;
+}
+.settings-system-only-area-v204 summary{
+  cursor:pointer;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px;
+  color:var(--gold);
+  font-weight:950;
+}
+.settings-system-only-area-v204 summary small{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:800;
+  margin-top:3px;
+}
+.settings-system-only-content-v204{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  padding:0 14px 14px;
+}
+.system-only-configs-v204{
+  max-width:none!important;
+  width:100%!important;
+}
+
+/* v204 — Abas internas do Admin colapsáveis */
+.admin-sections-collapse-v204{
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:16px;
+  background:rgba(255,255,255,.035);
+  margin:12px 0;
+  overflow:hidden;
+}
+.admin-sections-collapse-v204 summary{
+  cursor:pointer;
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 14px;
+  color:var(--gold);
+  font-weight:950;
+}
+.admin-sections-collapse-v204 summary small{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:800;
+}
+.admin-sections-collapse-content-v204{
+  padding:0 10px 10px;
+}
+.admin-sections-collapse-content-v204 .admin-section-tabs-v187{
+  position:relative!important;
+  top:auto!important;
+  margin:0!important;
+}
+
+/* v204 — Cards do Admin colapsáveis */
+.admin-card-collapse-head-v204{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  border:0;
+  background:transparent;
+  color:var(--text);
+  font-size:15px;
+  font-weight:950;
+  padding:2px 0 10px;
+  cursor:pointer;
+}
+.admin-card-collapse-head-v204 b{
+  width:28px;
+  height:28px;
+  border-radius:10px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(255,255,255,.08);
+  color:var(--gold);
+}
+.admin-card-collapsible-content-v204[hidden]{
+  display:none!important;
+}
+.admin-card-closed-v204{
+  padding-bottom:8px!important;
+}
