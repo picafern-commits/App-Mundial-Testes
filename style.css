@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #070b13;
   --panel: #0d1522;
   --panel-soft: #111c2c;
@@ -10235,15 +10235,168 @@ button,
 }
 
 
-/* v212 — impedir loop login/ecrã preto quando já há sessão */
-body.app-authenticated-v212 #loginScreen{
+/* v213 - Configuracoes limpas, sem clones globais */
+body.app-authenticated-v213 #loginScreen{
   display:none!important;
 }
-body.app-authenticated-v212 #appShell{
+
+body.app-authenticated-v213 #appShell{
   display:block!important;
-  opacity:1!important;
-  visibility:visible!important;
 }
-body.app-authenticated-v212 #appShell.auth-hidden{
+
+.settings-accordion-v213{
+  display:grid!important;
+  gap:12px!important;
+  margin-top:14px!important;
+}
+
+.settings-section-v213{
+  border:1px solid rgba(255,255,255,.11)!important;
+  border-radius:10px!important;
+  background:rgba(5,14,28,.82)!important;
+  overflow:hidden!important;
+}
+
+.settings-section-v213 > summary{
+  cursor:pointer!important;
+  list-style:none!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  padding:14px 16px!important;
+  color:#fff!important;
+  font-weight:1000!important;
+}
+
+.settings-section-v213 > summary::-webkit-details-marker{
+  display:none!important;
+}
+
+.settings-section-v213 > summary::after{
+  content:\"+\"!important;
+  width:28px!important;
+  height:28px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:8px!important;
+  background:rgba(255,255,255,.08)!important;
+  color:#fff!important;
+}
+
+.settings-section-v213[open] > summary::after{
+  content:\"-\"!important;
+}
+
+.settings-section-v213 > summary span{
   display:block!important;
+  font-size:16px!important;
+}
+
+.settings-section-v213 > summary small{
+  display:block!important;
+  margin-top:3px!important;
+  color:rgba(255,255,255,.62)!important;
+  font-size:12px!important;
+  font-weight:750!important;
+}
+
+.settings-section-content-v213{
+  display:grid!important;
+  gap:12px!important;
+  padding:0 14px 14px!important;
+}
+
+.settings-organization-single-v213,
+.configs-technical-card-v213{
+  border:1px solid rgba(255,255,255,.10)!important;
+  border-radius:10px!important;
+  background:rgba(255,255,255,.045)!important;
+  padding:14px!important;
+}
+
+.settings-org-head-v213{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  margin-bottom:12px!important;
+}
+
+.settings-org-head-v213 strong,
+.configs-technical-card-v213 strong{
+  display:block!important;
+  color:#fff!important;
+  font-size:16px!important;
+  font-weight:1000!important;
+}
+
+.settings-org-head-v213 span,
+.configs-technical-card-v213 span{
+  display:block!important;
+  margin-top:4px!important;
+  color:rgba(255,255,255,.65)!important;
+  font-size:12px!important;
+  font-weight:750!important;
+}
+
+.settings-org-grid-v213{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:14px!important;
+}
+
+.settings-org-grid-v213 h4{
+  margin:0 0 8px!important;
+  color:rgba(255,255,255,.82)!important;
+  font-size:13px!important;
+}
+
+.settings-org-row-v213,
+.settings-org-page-v213{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  padding:9px 0!important;
+  border-top:1px solid rgba(255,255,255,.08)!important;
+  color:rgba(255,255,255,.82)!important;
+  font-size:13px!important;
+  font-weight:850!important;
+}
+
+.settings-org-row-v213 select{
+  max-width:170px!important;
+}
+
+.settings-org-pages-v213{
+  display:grid!important;
+  gap:2px!important;
+}
+
+#adminTab #settingsOrganizationSingleV213,
+#adminTab #footballDataSettingsBoxV213,
+#adminTab #footballRealtimeSyncBoxV156,
+#adminTab #footballFreeStatusBoxV149,
+#adminTab #footballDataAdminFixedBoxV143,
+#adminTab #suspendedGameAdminBoxV159,
+#adminTab #firebaseHealthPanelV187,
+#loginScreen #settingsOrganizationSingleV213,
+#loginScreen #footballDataSettingsBoxV213,
+#loginScreen #footballRealtimeSyncBoxV156,
+#loginScreen #footballFreeStatusBoxV149,
+#loginScreen #footballDataAdminFixedBoxV143,
+#loginScreen #suspendedGameAdminBoxV159,
+#loginScreen #firebaseHealthPanelV187{
+  display:none!important;
+}
+
+@media(max-width:760px){
+  .settings-org-grid-v213{
+    grid-template-columns:1fr!important;
+  }
+
+  .settings-org-head-v213{
+    flex-direction:column!important;
+  }
 }

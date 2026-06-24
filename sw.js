@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v212-login-loop";
+const CACHE_NAME = "mundial-pontos-2026-v213-login-settings-clean";
 const APP_SHELL = [
   "./",
   "./index.html",

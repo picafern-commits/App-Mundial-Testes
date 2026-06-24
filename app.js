@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v212";
+const APP_VERSION_LABEL = "v213";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -1705,34 +1705,32 @@ function setLoginStatus(message, type = "info") {
 }
 
 function showLoginScreen() {
-  if (currentUser && document.body.classList.contains("app-authenticated-v212")) {
-    console.warn("showLoginScreen bloqueado: sessão Firebase ativa.");
-    forceShowAppAfterLoginV212();
-    return;
-  }
-
   try { cleanupRealtimeSync(); } catch (error) { console.warn("cleanupRealtimeSync falhou:", error); }
 
   const login = $("loginScreen");
   const shell = $("appShell");
 
-  if (login) {
-    login.classList.remove("hidden");
-    login.style.display = "";
-  }
+  login?.classList.remove("hidden");
+  if (login) login.style.display = "";
 
-  if (shell) {
-    shell.classList.add("auth-hidden");
-    shell.style.display = "";
-  }
+  shell?.classList.add("auth-hidden");
+  if (shell) shell.style.display = "";
 
-  document.body.classList.remove("knockout-layout-active", "app-authenticated-v212");
+  document.body.classList.remove("knockout-layout-active", "app-authenticated-v213", "app-authenticated-v212");
   shell?.classList.remove("knockout-screen-active");
 }
 
 function showAppScreen() {
-  $("loginScreen")?.classList.add("hidden");
-  $("appShell")?.classList.remove("auth-hidden");
+  const login = $("loginScreen");
+  const shell = $("appShell");
+
+  login?.classList.add("hidden");
+  if (login) login.style.display = "none";
+
+  shell?.classList.remove("auth-hidden");
+  if (shell) shell.style.display = "";
+
+  document.body.classList.add("app-authenticated-v213");
   updateActiveAppSection();
 }
 
@@ -1816,7 +1814,7 @@ async function loadPermissionsUsers() {
     permissionsCache = snap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
       .sort((a, b) => normalizeEmail(a.email || a.id).localeCompare(normalizeEmail(b.email || b.id)));
   } catch (error) {
-    console.error("Erro ao carregar permissões:", error);
+    console.warn("Permissões em segundo plano falharam:", error);
   }
 }
 
@@ -3584,21 +3582,20 @@ function setupAuthGate() {
   firebaseAuthApi.onAuthStateChanged(firebaseAuth, async user => {
     currentUser = user || null;
 
-    if (user?.email) saveRememberedAccount(user.email);
-
     if (!user) {
       currentProfile = null;
-      stopOnlineFeaturesSafe();
-      stopChatSafe();
+      try { stopOnlineFeaturesSafe(); } catch (error) { console.warn("Online users não parou:", error); }
+      try { stopChatSafe(); } catch (error) { console.warn("Chat não parou:", error); }
       showLoginScreen();
-      updateSessionBox();
-      renderPushOptInPromptV182();
+      try { updateSessionBox(); } catch {}
+      try { renderPushOptInPromptV182(); } catch {}
+      setLoginStatus("Usa o teu email e password para entrar.", "info");
       return;
     }
 
+    if (user.email) saveRememberedAccount(user.email);
     setLoginStatus("A carregar perfil...", "loading");
 
-    // A partir daqui existe sessão Firebase. Erros visuais/dados NÃO podem mandar a app para o login.
     try {
       currentProfile = await readUserProfile(user);
     } catch (profileError) {
@@ -3608,47 +3605,40 @@ function setupAuthGate() {
 
     if (!currentProfile) currentProfile = defaultProfileForUser(user);
 
-    if (!currentProfile.active) {
-      try {
-        await firebaseAuthApi.signOut(firebaseAuth);
-      } catch (signOutError) {
-        console.warn("Sign out após conta bloqueada falhou:", signOutError);
-      }
+    if (isConfiguredAdmin(user.email) && normalizeRole(currentProfile.role) !== "owner") {
+      currentProfile = {
+        ...currentProfile,
+        role: "admin",
+        active: currentProfile.active !== false,
+        permissions: { ...ADMIN_PERMISSIONS, ...(currentProfile.permissions || {}) }
+      };
+    }
+
+    if (currentProfile.active === false) {
+      try { await firebaseAuthApi.signOut(firebaseAuth); } catch (signOutError) { console.warn("Sign out após conta bloqueada falhou:", signOutError); }
       setLoginStatus("Conta bloqueada pelo Admin.", "error");
       showLoginScreen();
       return;
     }
 
-    try {
-      showAppScreen();
-    } catch (screenError) {
-      console.warn("showAppScreen falhou; forçar ecrã app:", screenError);
-      forceShowAppAfterLoginV212();
-    }
-
-    try { forceShowAppAfterLoginV212(); } catch {}
-
+    try { showAppScreen(); } catch (screenError) { console.warn("showAppScreen falhou; a forçar ecrã da app:", screenError); }
+    try { forceShowAppAfterLoginV213(); } catch (forceError) { console.warn("Forçar ecrã da app falhou:", forceError); }
     try { updateSessionBox(); } catch (error) { console.warn("updateSessionBox falhou:", error); }
 
     loadPermissionsUsers()
-      .then(renderPermissionsUsers)
+      .then(() => { try { renderPermissionsUsers(); } catch (error) { console.warn("renderPermissionsUsers falhou:", error); } })
       .catch(error => console.warn("Permissões em segundo plano falharam:", error));
 
     try {
       await loadData();
     } catch (loadError) {
-      console.warn("Dados Firebase falharam no login; vou abrir com cache local:", loadError);
-      try {
-        applyLocalDataFast("fallback login v212");
-      } catch (localError) {
-        console.warn("Fallback local no login também falhou:", localError);
-      }
+      console.warn("Dados Firebase falharam no login; a abrir com cache local:", loadError);
+      try { applyLocalDataFast("fallback login v213"); } catch (localError) { console.warn("Fallback local no login falhou:", localError); }
     }
 
-    try { applyPermissionsToUi(); } catch (error) { console.warn("applyPermissionsToUi falhou:", error); }
-    try { renderAll(); } catch (error) { console.warn("renderAll pós-login falhou:", error); }
-
-    try { forceShowAppAfterLoginV212(); } catch {}
+    try { applyPermissionsToUi(); } catch (error) { console.warn("applyPermissionsToUi falhou sem derrubar login:", error); }
+    try { renderAll(); } catch (error) { console.warn("renderAll pós-login falhou sem derrubar login:", error); }
+    try { forceShowAppAfterLoginV213(); } catch {}
 
     setLoginStatus("Login efetuado.", "success");
 
@@ -4914,7 +4904,6 @@ function renderActivePageV187(tabId = activeTabIdV187()) {
     return;
   }
   if (tabId === "notificationsTab") {
-    loadPushStatsV187().then(renderFirebaseHealthPanelV187);
     renderPushNotificationsPanelV165();
     renderPushHistoryPanelV187();
     renderNotificationsCenterV164();
@@ -4931,7 +4920,6 @@ function renderActivePageV187(tabId = activeTabIdV187()) {
     renderUserBetsEditor();
     renderKnockoutAdmin();
     renderAdminOverviewV162();
-    renderFirebaseHealthPanelV187();
     renderAdminSectionsV187();
     return;
   }
@@ -5758,12 +5746,13 @@ function pendingFirebaseTotalV187() {
 
 function ensureFirebaseHealthPanelV187() {
   let panel = $("firebaseHealthPanelV187");
-  if (panel) return panel;
-  panel = document.createElement("div");
-  panel.id = "firebaseHealthPanelV187";
-  panel.className = "firebase-health-v187";
-  const overview = $("adminOverviewV162");
-  if (overview?.parentNode) overview.parentNode.insertBefore(panel, overview.nextSibling);
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "firebaseHealthPanelV187";
+    panel.className = "firebase-health-v187";
+  }
+  const target = typeof settingsSectionContentV213 === "function" ? settingsSectionContentV213("system") : $("settingsTab");
+  if (target && panel.parentElement !== target) target.appendChild(panel);
   return panel;
 }
 
@@ -8778,51 +8767,10 @@ function findAdminContainerV142() {
 
 function ensureFootballDataButtonV142() {
   try {
-    const activePanel = document.querySelector(".tab-panel.active");
-    const activeText = (activePanel?.id || "") + " " + (activePanel?.textContent || "");
-    const adminIsVisible = /admin|config|settings|defini/i.test(activeText) || document.querySelector(".tab.active[data-tab='admin'], .tab.active[data-tab='settings']");
-    if (!adminIsVisible) return;
-
-    let btn = document.getElementById("syncFootballDataBtn");
-    if (!btn) {
-      const container = findAdminContainerV142();
-      const bar = document.createElement("div");
-      bar.className = "football-data-admin-box-v142";
-      bar.innerHTML = `
-        <div>
-          <strong>Resultados automáticos</strong>
-          <span>Atualizar resultados através do football-data.org</span>
-        </div>
-        <button id="syncFootballDataBtn" class="primary" type="button">Atualizar resultados automáticos</button>
-      `;
-
-      const preferred = container.querySelector(".admin-actions, .actions, .toolbar, .button-row, .excel-actions, .card, .panel");
-      if (preferred) preferred.prepend(bar);
-      else container.prepend(bar);
-      btn = document.getElementById("syncFootballDataBtn");
-    }
-
-    btn.classList.remove("hidden");
-    btn.hidden = false;
-    btn.style.display = "";
-    btn.disabled = !canUseFootballDataSyncV142();
-
-    if (!canUseFootballDataSyncV142()) {
-      btn.title = "Sem permissão para editar resultados.";
-    }
-
-    if (btn.dataset.footballDataReady !== "1") {
-      btn.dataset.footballDataReady = "1";
-      btn.addEventListener("click", () => {
-        if (typeof syncFootballDataResultsV139 === "function") {
-          syncFootballDataResultsV139();
-        } else {
-          toast("A função football-data ainda não carregou. Atualiza a página e tenta novamente.");
-        }
-      });
-    }
+    if (document.querySelector(".tab-panel.active")?.id !== "settingsTab") return;
+    if (typeof ensureFootballDataSettingsBoxV213 === "function") ensureFootballDataSettingsBoxV213();
   } catch (error) {
-    console.warn("Botão football-data v142 falhou:", error);
+    console.warn("Botão football-data settings falhou:", error);
   }
 }
 
@@ -8867,60 +8815,10 @@ function findAdminRootV143() {
 
 function ensureFootballDataAdminFixedButtonV143() {
   try {
-    if (!isAdminPageActiveV143()) return;
-
-    let box = document.getElementById("footballDataAdminFixedBoxV143");
-    let btn = document.getElementById("syncFootballDataBtn");
-
-    if (!box) {
-      const root = findAdminRootV143();
-      box = document.createElement("div");
-      box.id = "footballDataAdminFixedBoxV143";
-      box.className = "football-data-admin-fixed-box-v143";
-      box.innerHTML = `
-        <div class="football-data-admin-fixed-info-v143">
-          <strong>Resultados automáticos</strong>
-          <span>Vai buscar resultados ao football-data.org e atualiza a pontuação.</span>
-        </div>
-        <button id="syncFootballDataBtn" class="primary" type="button">Atualizar resultados automáticos</button>
-      `;
-
-      root.prepend(box);
-      btn = document.getElementById("syncFootballDataBtn");
-    }
-
-    if (box) {
-      box.hidden = false;
-      box.style.display = "flex";
-      box.classList.remove("hidden");
-    }
-
-    if (btn) {
-      btn.hidden = false;
-      btn.style.display = "";
-      btn.classList.remove("hidden");
-
-      const allowed =
-        (typeof hasPermission === "function" && hasPermission("editResults")) ||
-        (typeof isAdmin !== "undefined" && isAdmin) ||
-        String(currentUser?.email || "").toLowerCase() === "pica.fern@gmail.com";
-
-      btn.disabled = !allowed;
-      btn.title = allowed ? "" : "Sem permissão para editar resultados.";
-
-      if (btn.dataset.footballDataReady !== "1") {
-        btn.dataset.footballDataReady = "1";
-        btn.addEventListener("click", () => {
-          if (typeof syncFootballDataResultsV139 === "function") {
-            syncFootballDataResultsV139();
-          } else {
-            toast("A ligação football-data não carregou. Atualiza a página e tenta novamente.");
-          }
-        });
-      }
-    }
+    if (document.querySelector(".tab-panel.active")?.id !== "settingsTab") return;
+    if (typeof ensureFootballDataSettingsBoxV213 === "function") ensureFootballDataSettingsBoxV213();
   } catch (error) {
-    console.warn("Botão football-data v143 falhou:", error);
+    console.warn("Botão football-data settings fixo falhou:", error);
   }
 }
 
@@ -9020,14 +8918,18 @@ function footballFreeFormatDateV149(value) {
 function renderFootballFreeStatusV149(data = null) {
   try {
     let box = document.getElementById("footballFreeStatusBoxV149");
-    const adminRoot = document.getElementById("footballDataAdminFixedBoxV143") || document.querySelector(".tab-panel.active") || document.querySelector("main") || document.body;
+    const target =
+      (typeof settingsSectionContentV213 === "function" ? settingsSectionContentV213("system") : null) ||
+      document.getElementById("settingsTab") ||
+      document.querySelector("main") ||
+      document.body;
 
     if (!box) {
       box = document.createElement("div");
       box.id = "footballFreeStatusBoxV149";
       box.className = "football-free-status-box-v149";
-      adminRoot.insertAdjacentElement("afterend", box);
     }
+    if (box.parentElement !== target) target.appendChild(box);
 
     const last = data?.lastSyncIso || localStorage.getItem("mundial_football_free_last_sync_iso_v149") || "";
     const upcoming = Array.isArray(data?.upcoming) ? data.upcoming.slice(0, 4) : [];
@@ -9674,12 +9576,12 @@ function getAllEditableGamesV159() {
 
 function renderSuspendedGameAdminV159() {
   try {
-    const isAdminPanel = document.querySelector(".tab-panel.active")?.id === "adminTab" || document.body.textContent.includes("Permissões de utilizadores");
-    if (!isAdminPanel) return;
+    const isSettingsPanel = document.querySelector(".tab-panel.active")?.id === "settingsTab";
+    if (!isSettingsPanel) return;
 
-    const adminPanel =
-      document.getElementById("adminTab") ||
-      document.querySelector(".tab-panel.active") ||
+    const target =
+      (typeof settingsSectionContentV213 === "function" ? settingsSectionContentV213("system") : null) ||
+      document.getElementById("settingsTab") ||
       document.querySelector("main") ||
       document.body;
 
@@ -9703,17 +9605,11 @@ function renderSuspendedGameAdminV159() {
         <p class="suspended-game-admin-note-v159">O jogo fica em Faltam Resultados, mostra Suspenso e só passa para Jogado quando houver resultado final.</p>
       `;
 
-      const anchor =
-        document.getElementById("footballRealtimeSyncBoxV156") ||
-        document.getElementById("footballManualFallbackV157") ||
-        adminPanel.querySelector(".admin-section, .admin-card, .panel, .card");
-
-      if (anchor?.insertAdjacentElement) anchor.insertAdjacentElement("afterend", box);
-      else adminPanel.prepend(box);
-
       box.querySelector("#markSuspendedBtnV159")?.addEventListener("click", () => setSuspendedGameV159(true));
       box.querySelector("#clearSuspendedBtnV159")?.addEventListener("click", () => setSuspendedGameV159(false));
     }
+
+    if (box.parentElement !== target) target.appendChild(box);
 
     const select = document.getElementById("suspendedGameSelectV159");
     if (!select) return;
@@ -10937,24 +10833,8 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-// v202 — guardar preferências push quando uma checkbox muda.
-if (!window.__pushPrefsAutoSaveV202) {
-  window.__pushPrefsAutoSaveV202 = true;
-  document.addEventListener("change", event => {
-    const input = event.target.closest?.("#pushNotificationsPanelV165 input[type='checkbox']");
-    if (!input) return;
-    savePushPreferencesLocalV181();
-    const btn = $("savePushPrefsBtnV181");
-    if (btn) {
-      btn.textContent = "Guardar preferências";
-      btn.classList.add("needs-save-v200");
-    }
-  }, true);
-}
-
-
-// v202 — Organização do Admin + escolha das abas que aparecem no Admin/Configurações.
-const ADMIN_SECTION_CHOICES_V202 = [
+// v213 - limpeza final: login robusto, Configuracoes organizadas e blocos tecnicos no sitio certo.
+const ADMIN_SECTION_CHOICES_V213 = [
   ["users", "Users"],
   ["results", "Resultados"],
   ["points", "Pontos"],
@@ -10962,7 +10842,7 @@ const ADMIN_SECTION_CHOICES_V202 = [
   ["system", "Sistema"]
 ];
 
-const PAGE_LOCATION_CHOICES_V202 = [
+const PAGE_LOCATION_CHOICES_V213 = [
   ["calendar", "Calendário", "calendarTab"],
   ["score", "Pontuação", "scoreTab"],
   ["knockout", "Fase Final", "knockoutTab"],
@@ -10972,86 +10852,163 @@ const PAGE_LOCATION_CHOICES_V202 = [
   ["settings", "Configurações", "settingsTab"]
 ];
 
-function adminLayoutSettingsKeyV202() {
+const SETTINGS_SECTIONS_V213 = [
+  ["organization", "Organização", "Escolhe o que aparece no Admin, Configurações e abas do topo."],
+  ["system", "Sistema, Firebase e API", "Sync football-data, saúde da app, push e ferramentas técnicas."],
+  ["install", "Instalação / PWA", "Versão, cache e instalação da app."],
+  ["preferences", "Preferências", "Preferências gerais e notificações."],
+  ["admin", "Ferramentas Admin", "Atalhos administrativos."],
+  ["other", "Outros", "Outras opções menos usadas."]
+];
+
+const TECHNICAL_BLOCK_IDS_V213 = [
+  "footballRealtimeSyncBoxV156",
+  "footballManualFallbackV157",
+  "footballFreeStatusBoxV149",
+  "footballDataAdminFixedBoxV143",
+  "suspendedGameAdminBoxV159",
+  "firebaseHealthPanelV187",
+  "pushHealthPanelV187",
+  "notificationsHealthPanelV187",
+  "footballDataSettingsBoxV213"
+];
+
+function forceShowAppAfterLoginV213() {
+  const shell = $("appShell");
+  const login = $("loginScreen");
+  login?.classList.add("hidden");
+  if (login) login.style.display = "none";
+  shell?.classList.remove("auth-hidden");
+  if (shell) shell.style.display = "";
+  document.body.classList.add("app-authenticated-v213");
+}
+
+function adminLayoutSettingsKeyV213() {
   return `${STORAGE_KEY}_admin_layout_settings_v202`;
 }
 
-function defaultAdminLayoutSettingsV202() {
+function defaultAdminLayoutSettingsV213() {
   return {
-    adminSections: {
-      users: "admin",
-      results: "admin",
-      points: "admin",
-      knockout: "admin",
-      system: "admin"
-    },
-    pages: {
-      calendar: true,
-      score: true,
-      knockout: true,
-      notifications: true,
-      logs: true,
-      adminTab: true,
-      settings: true
-    }
+    adminSections: { users: "admin", results: "admin", points: "admin", knockout: "admin", system: "settings" },
+    pages: { calendar: true, score: true, knockout: true, notifications: true, logs: true, adminTab: true, settings: true }
   };
 }
 
-function savedAdminLayoutSettingsV202() {
+function savedAdminLayoutSettingsV213() {
   try {
-    const raw = JSON.parse(localStorage.getItem(adminLayoutSettingsKeyV202()) || "{}") || {};
-    const base = defaultAdminLayoutSettingsV202();
+    const raw = JSON.parse(localStorage.getItem(adminLayoutSettingsKeyV213()) || "{}") || {};
+    const base = defaultAdminLayoutSettingsV213();
     return {
-      adminSections: { ...base.adminSections, ...(raw.adminSections || {}) },
+      adminSections: { ...base.adminSections, ...(raw.adminSections || {}), system: raw.adminSections?.system || "settings" },
       pages: { ...base.pages, ...(raw.pages || {}) }
     };
   } catch {
-    return defaultAdminLayoutSettingsV202();
+    return defaultAdminLayoutSettingsV213();
   }
 }
 
-function saveAdminLayoutSettingsV202(settings) {
-  localStorage.setItem(adminLayoutSettingsKeyV202(), JSON.stringify(settings));
+function saveAdminLayoutSettingsV213(settings) {
+  const base = defaultAdminLayoutSettingsV213();
+  const clean = {
+    adminSections: { ...base.adminSections, ...(settings?.adminSections || {}) },
+    pages: { ...base.pages, ...(settings?.pages || {}) }
+  };
+  localStorage.setItem(adminLayoutSettingsKeyV213(), JSON.stringify(clean));
 }
 
-function adminSectionLocationV202(section) {
-  return savedAdminLayoutSettingsV202().adminSections?.[section] || "admin";
+function settingsSectionContentV213(key) {
+  ensureSettingsSectionsV213();
+  return document.querySelector(`#settingsSectionV213_${CSS.escape(key)} .settings-section-content-v213`);
 }
 
-function pageVisibleByUserSettingV202(key) {
-  return savedAdminLayoutSettingsV202().pages?.[key] !== false;
+function ensureSettingsSectionsV213() {
+  const settingsTab = $("settingsTab");
+  if (!settingsTab) return null;
+
+  let accordion = $("settingsAccordionV213");
+  if (!accordion) {
+    accordion = document.createElement("div");
+    accordion.id = "settingsAccordionV213";
+    accordion.className = "settings-accordion-v213";
+
+    SETTINGS_SECTIONS_V213.forEach(([key, title, desc], index) => {
+      const details = document.createElement("details");
+      details.id = `settingsSectionV213_${key}`;
+      details.className = "settings-section-v213";
+      details.dataset.settingsSectionV213 = key;
+      const touched = localStorage.getItem(`${STORAGE_KEY}_settings_section_touched_v213_${key}`) === "1";
+      const savedOpen = localStorage.getItem(`${STORAGE_KEY}_settings_section_open_v213_${key}`) === "1";
+      details.open = touched ? savedOpen : index === 0;
+      details.innerHTML = `
+        <summary><span>${escapeHtml(title)}</span><small>${escapeHtml(desc)}</small></summary>
+        <div class="settings-section-content-v213"></div>
+      `;
+      details.addEventListener("toggle", () => {
+        localStorage.setItem(`${STORAGE_KEY}_settings_section_touched_v213_${key}`, "1");
+        localStorage.setItem(`${STORAGE_KEY}_settings_section_open_v213_${key}`, details.open ? "1" : "0");
+      });
+      accordion.appendChild(details);
+    });
+  }
+
+  const header = settingsTab.querySelector(":scope > .section-head");
+  if (!accordion.parentElement) {
+    if (header?.nextSibling) settingsTab.insertBefore(accordion, header.nextSibling);
+    else settingsTab.appendChild(accordion);
+  }
+
+  [...settingsTab.children].forEach(child => {
+    if (child === header || child === accordion || child.id === "settingsQuickTabsV213") return;
+    if (child.closest?.("#settingsAccordionV213")) return;
+    const section = settingsSectionForElementV213(child);
+    const content = document.querySelector(`#settingsSectionV213_${CSS.escape(section)} .settings-section-content-v213`);
+    if (content) content.appendChild(child);
+  });
+
+  renderOrganizationPanelV213();
+  ensureFootballDataSettingsBoxV213();
+  moveTechnicalBlocksToSettingsV213();
+  updateSettingsSectionCountsV213();
+  return accordion;
 }
 
-function renderAdminLayoutManagerV202(targetId = "settings") {
-  const containerId = targetId === "admin" ? "adminLayoutManagerAdminV202" : "adminLayoutManagerSettingsV202";
-  let box = document.getElementById(containerId);
-  const parent =
-    targetId === "admin"
-      ? document.getElementById("adminUnlocked")
-      : document.getElementById("settingsTab");
+function settingsSectionForElementV213(el) {
+  const id = String(el?.id || "").toLowerCase();
+  const text = String(el?.textContent || "").toLowerCase();
+  if (id.includes("organization") || id.includes("adminlayout") || text.includes("organização da app")) return "organization";
+  if (id.includes("football") || id.includes("firebase") || id.includes("health") || id.includes("suspended") || text.includes("football-data") || text.includes("sync inteligente") || text.includes("firebase e push") || text.includes("saúde da app") || text.includes("jogo suspenso")) return "system";
+  if (id.includes("install") || id.includes("settings-grid") || text.includes("instalação") || text.includes("pwa") || text.includes("versão") || text.includes("cache")) return "install";
+  if (text.includes("prefer") || text.includes("tema")) return "preferences";
+  if (text.includes("admin") || text.includes("logs")) return "admin";
+  return "other";
+}
 
-  if (!parent) return;
+function updateSettingsSectionCountsV213() {
+  SETTINGS_SECTIONS_V213.forEach(([key]) => {
+    const details = $(`settingsSectionV213_${key}`);
+    if (!details) return;
+    const count = details.querySelectorAll(":scope > .settings-section-content-v213 > *").length;
+    details.dataset.count = String(count);
+  });
+}
 
+function renderOrganizationPanelV213() {
+  const content = document.querySelector("#settingsSectionV213_organization .settings-section-content-v213") || $("settingsTab");
+  if (!content) return;
+  let box = $("settingsOrganizationSingleV213");
   if (!box) {
     box = document.createElement("section");
-    box.id = containerId;
-    box.className = "admin-card admin-layout-manager-v202";
-    if (targetId === "admin") {
-      const overview = document.getElementById("adminOverviewV162");
-      if (overview?.insertAdjacentElement) overview.insertAdjacentElement("afterend", box);
-      else parent.prepend(box);
-    } else {
-      parent.prepend(box);
-    }
+    box.id = "settingsOrganizationSingleV213";
+    box.className = "settings-organization-single-v213 admin-card";
   }
 
-  const settings = savedAdminLayoutSettingsV202();
-  const sectionRows = ADMIN_SECTION_CHOICES_V202.map(([key, label]) => {
-    const value = settings.adminSections[key] || "admin";
+  const settings = savedAdminLayoutSettingsV213();
+  const sectionRows = ADMIN_SECTION_CHOICES_V213.map(([key, label]) => {
+    const value = settings.adminSections?.[key] || (key === "system" ? "settings" : "admin");
     return `
-      <label class="admin-layout-row-v202">
+      <label class="settings-org-row-v213">
         <span>${escapeHtml(label)}</span>
-        <select data-admin-section-location-v202="${escapeHtml(key)}">
+        <select data-admin-section-location-v213="${escapeHtml(key)}">
           <option value="admin" ${value === "admin" ? "selected" : ""}>Admin</option>
           <option value="settings" ${value === "settings" ? "selected" : ""}>Configurações</option>
           <option value="hidden" ${value === "hidden" ? "selected" : ""}>Esconder</option>
@@ -11059,1720 +11016,236 @@ function renderAdminLayoutManagerV202(targetId = "settings") {
       </label>`;
   }).join("");
 
-  const pageRows = PAGE_LOCATION_CHOICES_V202.map(([key, label]) => `
-    <label class="admin-layout-page-v202">
-      <input type="checkbox" data-page-visible-v202="${escapeHtml(key)}" ${settings.pages[key] !== false ? "checked" : ""} />
+  const pageRows = PAGE_LOCATION_CHOICES_V213.map(([key, label]) => `
+    <label class="settings-org-page-v213">
+      <input type="checkbox" data-page-visible-v213="${escapeHtml(key)}" ${settings.pages?.[key] !== false ? "checked" : ""} />
       ${escapeHtml(label)}
     </label>`).join("");
 
   box.innerHTML = `
-    <div class="admin-layout-head-v202">
+    <div class="settings-org-head-v213">
       <div>
         <strong>Organização da app</strong>
-        <span>Escolhe o que fica no Admin, o que passa para Configurações e que abas aparecem no topo.</span>
+        <span>Escolhe o que aparece no Admin, nas Configurações e nas abas do topo.</span>
       </div>
-      <button type="button" class="secondary small" data-admin-layout-reset-v202>Repor</button>
+      <button type="button" class="secondary small" data-admin-layout-reset-v213>Repor</button>
     </div>
-    <div class="admin-layout-grid-v202">
-      <div>
-        <h4>Secções do Admin</h4>
-        ${sectionRows}
-      </div>
-      <div>
-        <h4>Abas visíveis</h4>
-        <div class="admin-layout-pages-v202">${pageRows}</div>
-      </div>
+    <div class="settings-org-grid-v213">
+      <div><h4>Secções do Admin</h4>${sectionRows}</div>
+      <div><h4>Abas visíveis</h4><div class="settings-org-pages-v213">${pageRows}</div></div>
     </div>
   `;
+
+  if (box.parentElement !== content) content.prepend(box);
+  document.querySelectorAll("#settingsOrganizationSingleV208,#settingsOrganizationSingleV210,#adminLayoutManagerSettingsV202,#adminLayoutManagerAdminV202,#settingsMovedAdminSectionsV202").forEach(el => el.remove());
 }
 
-function applyAdminLayoutSettingsV202() {
-  const settings = savedAdminLayoutSettingsV202();
-
-  PAGE_LOCATION_CHOICES_V202.forEach(([key, , tabId]) => {
-    const tab = document.querySelector(`[data-tab="${CSS.escape(tabId)}"]`);
-    if (!tab) return;
-    const hiddenBySetting = settings.pages[key] === false;
-    tab.classList.toggle("user-hidden-v202", hiddenBySetting);
-  });
-
-  document.querySelectorAll("#adminUnlocked > .admin-card").forEach(card => {
-    if (card.classList.contains("admin-layout-manager-v202")) return;
-    const section = adminSectionForCardV187(card);
-    const location = adminSectionLocationV202(section);
-    card.dataset.adminSectionLocationV202 = location;
-    card.classList.toggle("admin-section-force-hidden-v202", location === "hidden");
-    card.classList.toggle("admin-section-moved-settings-v202", location === "settings");
-  });
-
-  renderMovedAdminSectionsInSettingsV202();
-}
-
-function renderMovedAdminSectionsInSettingsV202() {
-  const settingsTab = document.getElementById("settingsTab");
-  if (!settingsTab) return;
-
-  let box = document.getElementById("settingsMovedAdminSectionsV202");
+function ensureFootballDataSettingsBoxV213() {
+  const content = document.querySelector("#settingsSectionV213_system .settings-section-content-v213") || $("settingsTab");
+  if (!content) return null;
+  let box = $("footballDataSettingsBoxV213");
   if (!box) {
     box = document.createElement("section");
-    box.id = "settingsMovedAdminSectionsV202";
-    box.className = "settings-moved-admin-v202";
-    settingsTab.appendChild(box);
+    box.id = "footballDataSettingsBoxV213";
+    box.className = "configs-technical-card-v213";
+    box.innerHTML = `
+      <div>
+        <strong>API football-data.org</strong>
+        <span>Sync inteligente dos resultados e live score.</span>
+      </div>
+      <div class="settings-actions-v162" id="footballDataSettingsActionsV213"></div>
+    `;
   }
+  if (box.parentElement !== content) content.appendChild(box);
 
-  const moved = [...document.querySelectorAll("#adminUnlocked > .admin-card")]
-    .filter(card => !card.classList.contains("admin-layout-manager-v202"))
-    .filter(card => adminSectionLocationV202(adminSectionForCardV187(card)) === "settings");
-
-  if (!moved.length) {
-    box.classList.add("hidden");
-    box.innerHTML = "";
-    return;
+  const actions = $("footballDataSettingsActionsV213");
+  let btn = $("syncFootballDataBtn");
+  if (!btn) {
+    btn = document.createElement("button");
+    btn.id = "syncFootballDataBtn";
+    btn.className = "primary";
+    btn.type = "button";
+    btn.textContent = "Atualizar resultados automáticos";
+    btn.addEventListener("click", () => syncFootballDataResultsV139?.());
   }
+  if (actions && btn.parentElement !== actions) actions.appendChild(btn);
+  btn.classList.remove("hidden");
+  btn.hidden = false;
+  btn.style.display = "";
+  btn.disabled = !hasPermission("editResults");
+  return box;
+}
 
-  box.classList.remove("hidden");
-  box.innerHTML = `
-    <div class="settings-moved-head-v202">
-      <strong>Secções vindas do Admin</strong>
-      <span>Estas secções continuam controladas por permissões de Admin.</span>
-    </div>
-  `;
-
-  moved.forEach(card => {
-    if (card.dataset.movedCloneSourceV202 === "1") return;
-    const clone = card.cloneNode(true);
-    clone.dataset.movedCloneSourceV202 = "1";
-    clone.classList.remove("admin-section-hidden-v187", "admin-section-moved-settings-v202");
-    clone.classList.add("settings-admin-clone-v202");
-    box.appendChild(clone);
+function moveTechnicalBlocksToSettingsV213() {
+  const content = document.querySelector("#settingsSectionV213_system .settings-section-content-v213") || $("settingsTab");
+  if (!content) return;
+  TECHNICAL_BLOCK_IDS_V213.forEach(id => {
+    const el = $(id);
+    if (!el || el.id === "footballDataSettingsBoxV213") return;
+    el.classList.remove("hidden", "admin-section-hidden-v187", "admin-section-force-hidden-v202", "force-hide-technical-v209", "force-hide-technical-v210", "force-not-in-admin-v206");
+    el.style.display = "";
+    if (el.parentElement !== content) content.appendChild(el);
   });
 }
 
-const ensureAdminSectionTabsOriginalV202 = typeof ensureAdminSectionTabsV187 === "function" ? ensureAdminSectionTabsV187 : null;
-if (ensureAdminSectionTabsOriginalV202) {
-  ensureAdminSectionTabsV187 = function ensureAdminSectionTabsV202() {
-    const tabs = ensureAdminSectionTabsOriginalV202();
-    if (!tabs) return tabs;
-    const settings = savedAdminLayoutSettingsV202();
-    tabs.querySelectorAll("[data-admin-section-v187]").forEach(button => {
-      const section = button.dataset.adminSectionV187;
-      if (section && section !== "all") {
-        button.classList.toggle("hidden", settings.adminSections?.[section] === "hidden" || settings.adminSections?.[section] === "settings");
-      }
-    });
-    return tabs;
+function cleanupAdminTechnicalBlocksV213() {
+  ensureFootballDataSettingsBoxV213();
+  document.querySelectorAll("#adminTab #settingsOrganizationSingleV213,#adminTab #settingsOrganizationSingleV208,#adminTab #settingsOrganizationSingleV210,#adminTab #adminLayoutManagerAdminV202,#adminTab #adminLayoutManagerSettingsV202").forEach(el => el.remove());
+  TECHNICAL_BLOCK_IDS_V213.forEach(id => {
+    const el = document.querySelector(`#adminTab #${CSS.escape(id)}, #loginScreen #${CSS.escape(id)}`);
+    if (el) moveTechnicalBlocksToSettingsV213();
+  });
+}
+
+function applyAdminLayoutSettingsV213() {
+  const settings = savedAdminLayoutSettingsV213();
+  PAGE_LOCATION_CHOICES_V213.forEach(([key, , tabId]) => {
+    const tab = document.querySelector(`[data-tab="${CSS.escape(tabId)}"]`);
+    if (tab) tab.classList.toggle("user-hidden-v202", settings.pages?.[key] === false);
+  });
+
+  const active = localStorage.getItem(`${STORAGE_KEY}_admin_section_v187`) || "all";
+  document.querySelectorAll("#adminUnlocked > .admin-card").forEach(card => {
+    const section = adminSectionForCardV187(card);
+    const location = section === "system" ? (settings.adminSections?.system || "settings") : (settings.adminSections?.[section] || "admin");
+    card.dataset.adminSectionV187 = section;
+    const hide = location !== "admin" || (active !== "all" && section !== active);
+    card.classList.toggle("admin-section-hidden-v187", hide);
+  });
+
+  document.querySelectorAll("#adminSectionTabsV187 [data-admin-section-v187]").forEach(button => {
+    const section = button.dataset.adminSectionV187;
+    const location = section === "all" ? "admin" : (settings.adminSections?.[section] || (section === "system" ? "settings" : "admin"));
+    button.classList.toggle("hidden", section !== "all" && location !== "admin");
+  });
+
+  cleanupAdminTechnicalBlocksV213();
+}
+
+function applySettingsLayoutV213() {
+  try {
+    ensureSettingsSectionsV213();
+    renderOrganizationPanelV213();
+    ensureFootballDataSettingsBoxV213();
+    moveTechnicalBlocksToSettingsV213();
+    updateSettingsSectionCountsV213();
+  } catch (error) {
+    console.warn("applySettingsLayoutV213 falhou:", error);
+  }
+}
+
+const originalFootballRealtimeSyncEnsureBoxV213 = typeof footballRealtimeSyncEnsureBoxV156 === "function" ? footballRealtimeSyncEnsureBoxV156 : null;
+if (originalFootballRealtimeSyncEnsureBoxV213) {
+  footballRealtimeSyncEnsureBoxV156 = function footballRealtimeSyncEnsureBoxSettingsV213() {
+    const content = document.querySelector("#settingsSectionV213_system .settings-section-content-v213") || $("settingsTab");
+    let box = $("footballRealtimeSyncBoxV156");
+    if (!box) {
+      box = document.createElement("section");
+      box.id = "footballRealtimeSyncBoxV156";
+      box.className = "football-realtime-sync-box-v156";
+      box.innerHTML = `
+        <div class="football-realtime-sync-top-v156">
+          <div><strong>Sync API em tempo real</strong><span id="footballRealtimeSyncSubV156">A ligar ao Firestore...</span></div>
+          <div class="football-realtime-sync-pill-v156 unknown" id="footballRealtimeSyncPillV156"><i></i><span>A verificar</span></div>
+        </div>
+        <div class="football-realtime-sync-grid-v156">
+          <div><b id="footballRealtimeSyncLastV156"></b><span>Última sync</span></div>
+          <div><b id="footballRealtimeSyncMatchesV156"></b><span>Jogos API</span></div>
+          <div><b id="footballRealtimeSyncFinishedV156"></b><span>Terminados</span></div>
+          <div><b id="footballRealtimeSyncUpdatedV156"></b><span>Atualizados</span></div>
+        </div>`;
+    }
+    if (content && box.parentElement !== content) content.appendChild(box);
+    return box;
   };
 }
 
-const renderAdminSectionsOriginalV202 = typeof renderAdminSectionsV187 === "function" ? renderAdminSectionsV187 : null;
-if (renderAdminSectionsOriginalV202) {
-  renderAdminSectionsV187 = function renderAdminSectionsV202() {
-    renderAdminSectionsOriginalV202();
-    renderAdminLayoutManagerV202("admin");
-    applyAdminLayoutSettingsV202();
+if (typeof ensureFootballDataButtonV142 === "function") {
+  ensureFootballDataButtonV142 = function ensureFootballDataButtonSettingsV213() {
+    if (document.querySelector(".tab-panel.active")?.id === "settingsTab") ensureFootballDataSettingsBoxV213();
   };
 }
 
-const renderAppSettingsPanelOriginalV202 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
-if (renderAppSettingsPanelOriginalV202) {
-  renderAppSettingsPanelV162 = function renderAppSettingsPanelV202() {
-    renderAppSettingsPanelOriginalV202();
-    renderAdminLayoutManagerV202("settings");
-    applyAdminLayoutSettingsV202();
+if (typeof ensureFootballDataAdminFixedButtonV143 === "function") {
+  ensureFootballDataAdminFixedButtonV143 = function ensureFootballDataAdminFixedButtonSettingsV213() {
+    if (document.querySelector(".tab-panel.active")?.id === "settingsTab") ensureFootballDataSettingsBoxV213();
   };
 }
 
-document.addEventListener("change", event => {
-  const sectionSelect = event.target.closest?.("[data-admin-section-location-v202]");
-  const pageCheckbox = event.target.closest?.("[data-page-visible-v202]");
-  if (!sectionSelect && !pageCheckbox) return;
+const renderAppSettingsPanelOriginalV213 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
+if (renderAppSettingsPanelOriginalV213) {
+  renderAppSettingsPanelV162 = function renderAppSettingsPanelV213() {
+    renderAppSettingsPanelOriginalV213();
+    applySettingsLayoutV213();
+    try { renderFirebaseHealthPanelV187(); } catch (error) { console.warn("renderFirebaseHealthPanelV187 falhou:", error); }
+    try { footballRealtimeSyncRenderV156?.(); } catch (error) { console.warn("footballRealtimeSyncRenderV156 falhou:", error); }
+    try { renderFootballFreeStatusV149?.(); } catch (error) { console.warn("renderFootballFreeStatusV149 falhou:", error); }
+    applySettingsLayoutV213();
+  };
+}
 
-  const settings = savedAdminLayoutSettingsV202();
-  if (sectionSelect) settings.adminSections[sectionSelect.dataset.adminSectionLocationV202] = sectionSelect.value;
-  if (pageCheckbox) settings.pages[pageCheckbox.dataset.pageVisibleV202] = pageCheckbox.checked;
-  saveAdminLayoutSettingsV202(settings);
-  renderAdminLayoutManagerV202("admin");
-  renderAdminLayoutManagerV202("settings");
-  applyPermissionsToUi();
-  applyAdminLayoutSettingsV202();
-  toast("Organização guardada neste dispositivo.");
-}, true);
+const renderAdminSectionsOriginalV213 = typeof renderAdminSectionsV187 === "function" ? renderAdminSectionsV187 : null;
+if (renderAdminSectionsOriginalV213) {
+  renderAdminSectionsV187 = function renderAdminSectionsV213() {
+    renderAdminSectionsOriginalV213();
+    applyAdminLayoutSettingsV213();
+  };
+}
 
-document.addEventListener("click", event => {
-  const reset = event.target.closest?.("[data-admin-layout-reset-v202]");
-  if (!reset) return;
-  event.preventDefault();
-  localStorage.removeItem(adminLayoutSettingsKeyV202());
-  renderAdminLayoutManagerV202("admin");
-  renderAdminLayoutManagerV202("settings");
-  applyPermissionsToUi();
-  applyAdminLayoutSettingsV202();
-  toast("Organização reposta.");
-}, true);
+const renderActivePageOriginalV213 = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+if (renderActivePageOriginalV213) {
+  renderActivePageV187 = function renderActivePageCleanV213(tabId = activeTabIdV187()) {
+    renderActivePageOriginalV213(tabId);
+    if (tabId === "settingsTab") applySettingsLayoutV213();
+    if (tabId === "adminTab") applyAdminLayoutSettingsV213();
+  };
+}
 
-setTimeout(() => {
-  renderAdminLayoutManagerV202("admin");
-  renderAdminLayoutManagerV202("settings");
-  applyAdminLayoutSettingsV202();
-}, 800);
-
-
-// v202 — aplica visibilidade escolhida pelo utilizador depois das permissões normais.
-const applyPermissionsToUiOriginalV202 = typeof applyPermissionsToUi === "function" ? applyPermissionsToUi : null;
-if (applyPermissionsToUiOriginalV202) {
-  applyPermissionsToUi = function applyPermissionsToUiV202() {
-    applyPermissionsToUiOriginalV202();
-    applyAdminLayoutSettingsV202?.();
-
+const applyPermissionsToUiOriginalV213 = typeof applyPermissionsToUi === "function" ? applyPermissionsToUi : null;
+if (applyPermissionsToUiOriginalV213) {
+  applyPermissionsToUi = function applyPermissionsToUiCleanV213() {
+    applyPermissionsToUiOriginalV213();
+    applyAdminLayoutSettingsV213();
     const activeTab = document.querySelector(".tab.active");
     if (activeTab?.classList.contains("user-hidden-v202")) switchToFirstAllowedTab();
   };
 }
 
-
-// v203 — Corrige blocos extras do Admin que não eram .admin-card.
-// Assim, ao clicar em "Fase Final", só aparecem coisas da Fase Final.
-function adminExtraSectionMapV203() {
-  return [
-    ["footballRealtimeSyncBoxV156", "system"],
-    ["footballManualFallbackV157", "system"],
-    ["footballFreeStatusBoxV149", "system"],
-    ["footballDataAdminFixedBoxV143", "system"],
-    ["suspendedGameAdminBoxV159", "system"],
-    ["adminLayoutManagerAdminV202", "system"],
-    ["firebaseHealthPanelV187", "system"],
-    ["adminOverviewV162", "system"],
-    ["pushHealthPanelV187", "system"],
-    ["notificationsHealthPanelV187", "system"]
-  ];
-}
-
-function tagAdminExtraSectionsV203() {
-  for (const [id, section] of adminExtraSectionMapV203()) {
-    const el = document.getElementById(id);
-    if (!el) continue;
-    el.classList.add("admin-extra-section-v203");
-    el.dataset.adminSectionV187 = section;
-  }
-
-  // fallback por conteúdo para blocos criados sem id fixo
-  document.querySelectorAll("#adminTab section, #adminTab .admin-card, #adminTab details").forEach(el => {
-    if (el.dataset.adminSectionV187) return;
-    const text = (el.textContent || "").toLowerCase();
-    if (text.includes("api football") || text.includes("sync inteligente") || text.includes("football-data")) {
-      el.classList.add("admin-extra-section-v203");
-      el.dataset.adminSectionV187 = "system";
-    }
-    if (text.includes("jogo suspenso")) {
-      el.classList.add("admin-extra-section-v203");
-      el.dataset.adminSectionV187 = "system";
-    }
-    if (text.includes("saúde da app") || text.includes("firebase e push")) {
-      el.classList.add("admin-extra-section-v203");
-      el.dataset.adminSectionV187 = "system";
-    }
-    if (text.includes("organização da app")) {
-      el.classList.add("admin-extra-section-v203");
-      el.dataset.adminSectionV187 = "system";
-    }
-  });
-}
-
-function applyAdminSectionVisibilityV203() {
-  tagAdminExtraSectionsV203();
-
-  const active = localStorage.getItem(`${STORAGE_KEY}_admin_section_v187`) || "all";
-  const settings = typeof savedAdminLayoutSettingsV202 === "function" ? savedAdminLayoutSettingsV202() : null;
-
-  document.querySelectorAll("#adminUnlocked > .admin-card, #adminTab .admin-extra-section-v203").forEach(el => {
-    const section = el.dataset.adminSectionV187 || (typeof adminSectionForCardV187 === "function" ? adminSectionForCardV187(el) : "system");
-    const location = settings?.adminSections?.[section] || "admin";
-
-    const hiddenByInternalTab = active !== "all" && section !== active;
-    const hiddenByLocation = location === "hidden" || location === "settings";
-
-    el.classList.toggle("admin-section-hidden-v187", hiddenByInternalTab || hiddenByLocation);
-    el.classList.toggle("admin-section-force-hidden-v202", hiddenByLocation);
-  });
-}
-
-const renderAdminSectionsOriginalV203 = typeof renderAdminSectionsV187 === "function" ? renderAdminSectionsV187 : null;
-if (renderAdminSectionsOriginalV203) {
-  renderAdminSectionsV187 = function renderAdminSectionsV203() {
-    renderAdminSectionsOriginalV203();
-    setTimeout(applyAdminSectionVisibilityV203, 0);
-    setTimeout(applyAdminSectionVisibilityV203, 150);
-  };
-}
-
-document.addEventListener("click", event => {
-  if (event.target.closest?.("[data-admin-section-v187]")) {
-    setTimeout(applyAdminSectionVisibilityV203, 0);
-    setTimeout(applyAdminSectionVisibilityV203, 180);
-  }
+document.addEventListener("change", event => {
+  const sectionSelect = event.target.closest?.("[data-admin-section-location-v213]");
+  const pageCheckbox = event.target.closest?.("[data-page-visible-v213]");
+  if (!sectionSelect && !pageCheckbox) return;
+  const settings = savedAdminLayoutSettingsV213();
+  if (sectionSelect) settings.adminSections[sectionSelect.dataset.adminSectionLocationV213] = sectionSelect.value;
+  if (pageCheckbox) settings.pages[pageCheckbox.dataset.pageVisibleV213] = pageCheckbox.checked;
+  saveAdminLayoutSettingsV213(settings);
+  renderOrganizationPanelV213();
+  applyAdminLayoutSettingsV213();
+  toast("Organização guardada neste dispositivo.");
 }, true);
 
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(applyAdminSectionVisibilityV203, 700);
-  setTimeout(applyAdminSectionVisibilityV203, 1800);
-});
-
-
-// v204 — Sistema/Saúde/API apenas em Configurações + Admin colapsável.
-const SYSTEM_ONLY_BLOCK_IDS_V204 = [
-  "footballRealtimeSyncBoxV156",
-  "footballManualFallbackV157",
-  "footballFreeStatusBoxV149",
-  "footballDataAdminFixedBoxV143",
-  "suspendedGameAdminBoxV159",
-  "adminLayoutManagerAdminV202",
-  "firebaseHealthPanelV187",
-  "pushHealthPanelV187",
-  "notificationsHealthPanelV187"
-];
-
-function adminLayoutSettingsV204() {
-  const settings = typeof savedAdminLayoutSettingsV202 === "function"
-    ? savedAdminLayoutSettingsV202()
-    : {
-        adminSections: {},
-        pages: {}
-      };
-
-  if (!settings.adminSections) settings.adminSections = {};
-  if (!settings.pages) settings.pages = {};
-
-  // v204: Sistema deixa de viver no Admin por defeito.
-  const migratedKey = `${STORAGE_KEY}_admin_layout_v204_migrated_system`;
-  if (localStorage.getItem(migratedKey) !== "1") {
-    settings.adminSections.system = "settings";
-    localStorage.setItem(migratedKey, "1");
-    try { saveAdminLayoutSettingsV202?.(settings); } catch {}
-  }
-
-  return settings;
-}
-
-function ensureSettingsSystemAreaV204() {
-  const settingsTab = document.getElementById("settingsTab");
-  if (!settingsTab) return null;
-
-  let area = document.getElementById("settingsSystemOnlyAreaV204");
-  if (area) return area;
-
-  area = document.createElement("section");
-  area.id = "settingsSystemOnlyAreaV204";
-  area.className = "settings-system-only-area-v204";
-  area.innerHTML = `
-    <details open>
-      <summary>
-        <span>Sistema, Firebase e API</span>
-        <small>Saúde da app, sync inteligente, push e ferramentas técnicas.</small>
-      </summary>
-      <div id="settingsSystemOnlyContentV204" class="settings-system-only-content-v204"></div>
-    </details>
-  `;
-
-  const layoutBox = document.getElementById("adminLayoutManagerSettingsV202");
-  if (layoutBox?.insertAdjacentElement) layoutBox.insertAdjacentElement("afterend", area);
-  else settingsTab.prepend(area);
-
-  return area;
-}
-
-function moveSystemBlocksToSettingsV204() {
-  const area = ensureSettingsSystemAreaV204();
-  const content = document.getElementById("settingsSystemOnlyContentV204");
-  if (!area || !content) return;
-
-  SYSTEM_ONLY_BLOCK_IDS_V204.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.classList.add("system-only-configs-v204");
-    el.classList.remove("admin-section-hidden-v187", "admin-section-force-hidden-v202", "admin-section-moved-settings-v202");
-
-    if (el.parentElement !== content) {
-      content.appendChild(el);
-    }
-  });
-
-  // Qualquer bloco que tenha sido classificado como system e esteja no Admin vai para Configurações.
-  document.querySelectorAll("#adminTab .admin-extra-section-v203, #adminUnlocked > .admin-card").forEach(el => {
-    const section =
-      el.dataset.adminSectionV187 ||
-      (typeof adminSectionForCardV187 === "function" ? adminSectionForCardV187(el) : "");
-
-    if (section !== "system") return;
-    if (el.id === "adminOverviewV162") return; // resumo pode ficar no topo do Admin
-
-    el.classList.add("system-only-configs-v204");
-    el.classList.remove("admin-section-hidden-v187", "admin-section-force-hidden-v202", "admin-section-moved-settings-v202");
-
-    if (el.parentElement !== content) {
-      content.appendChild(el);
-    }
-  });
-}
-
-function ensureAdminSectionsCollapsibleV204() {
-  const tabs = document.getElementById("adminSectionTabsV187");
-  if (!tabs || document.getElementById("adminSectionsCollapseV204")) return;
-
-  const wrapper = document.createElement("details");
-  wrapper.id = "adminSectionsCollapseV204";
-  wrapper.className = "admin-sections-collapse-v204";
-  wrapper.open = localStorage.getItem(`${STORAGE_KEY}_admin_sections_collapsed_v204`) !== "1";
-
-  const summary = document.createElement("summary");
-  summary.innerHTML = `<span>Secções do Admin</span><small>Escolhe rapidamente a área que queres gerir.</small>`;
-
-  const holder = document.createElement("div");
-  holder.className = "admin-sections-collapse-content-v204";
-
-  tabs.parentNode.insertBefore(wrapper, tabs);
-  wrapper.appendChild(summary);
-  wrapper.appendChild(holder);
-  holder.appendChild(tabs);
-
-  wrapper.addEventListener("toggle", () => {
-    localStorage.setItem(`${STORAGE_KEY}_admin_sections_collapsed_v204`, wrapper.open ? "0" : "1");
-  });
-}
-
-function makeAdminCardsCollapsibleV204() {
-  document.querySelectorAll("#adminUnlocked > .admin-card").forEach((card, index) => {
-    if (card.classList.contains("admin-layout-manager-v202")) return;
-    if (card.dataset.collapsibleReadyV204 === "1") return;
-
-    const title =
-      card.querySelector("h2,h3,strong")?.textContent?.trim() ||
-      card.dataset.adminSectionV187 ||
-      `Secção ${index + 1}`;
-
-    const key = `${STORAGE_KEY}_admin_card_closed_v204_${index}_${title.toLowerCase().replace(/[^a-z0-9]+/gi, "_")}`;
-    const inner = document.createElement("div");
-    inner.className = "admin-card-collapsible-content-v204";
-
-    while (card.firstChild) inner.appendChild(card.firstChild);
-
-    const header = document.createElement("button");
-    header.type = "button";
-    header.className = "admin-card-collapse-head-v204";
-    header.innerHTML = `<span>${escapeHtml(title)}</span><b>${localStorage.getItem(key) === "1" ? "+" : "−"}</b>`;
-
-    const closed = localStorage.getItem(key) === "1";
-    inner.hidden = closed;
-    card.classList.toggle("admin-card-closed-v204", closed);
-
-    header.addEventListener("click", event => {
-      event.preventDefault();
-      const nextClosed = !inner.hidden;
-      inner.hidden = nextClosed;
-      card.classList.toggle("admin-card-closed-v204", nextClosed);
-      header.querySelector("b").textContent = nextClosed ? "+" : "−";
-      localStorage.setItem(key, nextClosed ? "1" : "0");
-    });
-
-    card.appendChild(header);
-    card.appendChild(inner);
-    card.dataset.collapsibleReadyV204 = "1";
-  });
-}
-
-function applyAdminVisibilityAndConfigsV204() {
-  try {
-    const settings = adminLayoutSettingsV204();
-
-    // Sistema fica sempre em Configurações nesta versão.
-    settings.adminSections.system = "settings";
-    try { saveAdminLayoutSettingsV202?.(settings); } catch {}
-
-    moveSystemBlocksToSettingsV204();
-    ensureAdminSectionsCollapsibleV204();
-    makeAdminCardsCollapsibleV204();
-
-    // Reaplica filtros só às secções que continuam no Admin.
-    const active = localStorage.getItem(`${STORAGE_KEY}_admin_section_v187`) || "all";
-    document.querySelectorAll("#adminUnlocked > .admin-card").forEach(card => {
-      if (card.classList.contains("admin-layout-manager-v202")) return;
-      const section = card.dataset.adminSectionV187 || (typeof adminSectionForCardV187 === "function" ? adminSectionForCardV187(card) : "system");
-      const location = settings.adminSections?.[section] || "admin";
-
-      const hide =
-        location === "hidden" ||
-        location === "settings" ||
-        (active !== "all" && section !== active);
-
-      card.classList.toggle("admin-section-hidden-v187", hide);
-    });
-  } catch (error) {
-    console.warn("applyAdminVisibilityAndConfigsV204 falhou:", error);
-  }
-}
-
-const renderAdminSectionsOriginalV204 = typeof renderAdminSectionsV187 === "function" ? renderAdminSectionsV187 : null;
-if (renderAdminSectionsOriginalV204) {
-  renderAdminSectionsV187 = function renderAdminSectionsV204() {
-    renderAdminSectionsOriginalV204();
-    setTimeout(applyAdminVisibilityAndConfigsV204, 0);
-    setTimeout(applyAdminVisibilityAndConfigsV204, 200);
-  };
-}
-
-const renderAppSettingsPanelOriginalV204 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
-if (renderAppSettingsPanelOriginalV204) {
-  renderAppSettingsPanelV162 = function renderAppSettingsPanelV204() {
-    renderAppSettingsPanelOriginalV204();
-    renderAdminLayoutManagerV202?.("settings");
-    setTimeout(applyAdminVisibilityAndConfigsV204, 0);
-    setTimeout(applyAdminVisibilityAndConfigsV204, 250);
-  };
-}
-
 document.addEventListener("click", event => {
-  if (
-    event.target.closest?.("[data-admin-section-v187]") ||
-    event.target.closest?.("[data-tab='adminTab']") ||
-    event.target.closest?.("[data-tab='settingsTab']")
-  ) {
-    setTimeout(applyAdminVisibilityAndConfigsV204, 80);
-    setTimeout(applyAdminVisibilityAndConfigsV204, 300);
+  if (event.target.closest?.("[data-admin-layout-reset-v213]")) {
+    event.preventDefault();
+    localStorage.removeItem(adminLayoutSettingsKeyV213());
+    renderOrganizationPanelV213();
+    applyAdminLayoutSettingsV213();
+    toast("Organização reposta.");
+    return;
   }
+  if (event.target.closest?.("[data-tab='settingsTab']")) setTimeout(applySettingsLayoutV213, 80);
+  if (event.target.closest?.("[data-tab='adminTab'],[data-admin-section-v187]")) setTimeout(applyAdminLayoutSettingsV213, 80);
 }, true);
 
 document.addEventListener("change", event => {
-  if (
-    event.target.closest?.("[data-admin-section-location-v202]") ||
-    event.target.closest?.("[data-page-visible-v202]")
-  ) {
-    setTimeout(applyAdminVisibilityAndConfigsV204, 80);
-    setTimeout(applyAdminVisibilityAndConfigsV204, 300);
-  }
+  const input = event.target.closest?.("#pushNotificationsPanelV165 input[type='checkbox']");
+  if (!input) return;
+  try { savePushPreferencesLocalV181(); } catch (error) { console.warn("Guardar preferências push local falhou:", error); }
+  const btn = $("savePushPrefsBtnV181");
+  if (btn) btn.textContent = "Guardar preferências";
 }, true);
 
 document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(applyAdminVisibilityAndConfigsV204, 900);
-  setTimeout(applyAdminVisibilityAndConfigsV204, 2200);
-  setTimeout(applyAdminVisibilityAndConfigsV204, 4200);
+  setTimeout(() => { if ($("settingsTab")?.classList.contains("active")) applySettingsLayoutV213(); }, 400);
+  setTimeout(() => { if ($("adminTab")?.classList.contains("active")) applyAdminLayoutSettingsV213(); }, 700);
 });
-
-
-// v205 — Configurações clean com secções colapsáveis.
-const SETTINGS_SECTION_ORDER_V205 = [
-  ["organizar", "Organização"],
-  ["sistema", "Sistema, Firebase e API"],
-  ["instalar", "Instalação / PWA"],
-  ["preferencias", "Preferências"],
-  ["admin", "Ferramentas Admin"],
-  ["outros", "Outros"]
-];
-
-function settingsSectionForElementV205(el) {
-  const id = String(el.id || "").toLowerCase();
-  const text = String(el.textContent || "").toLowerCase();
-
-  if (
-    id.includes("adminlayout") ||
-    text.includes("organização da app") ||
-    text.includes("organização")
-  ) return "organizar";
-
-  if (
-    id.includes("settingssystemonly") ||
-    id.includes("football") ||
-    id.includes("firebase") ||
-    id.includes("health") ||
-    text.includes("sync inteligente") ||
-    text.includes("football-data") ||
-    text.includes("firebase") ||
-    text.includes("saúde da app") ||
-    text.includes("push")
-  ) return "sistema";
-
-  if (
-    id.includes("install") ||
-    text.includes("instalação") ||
-    text.includes("instalar") ||
-    text.includes("pwa") ||
-    text.includes("ecrã principal")
-  ) return "instalar";
-
-  if (
-    text.includes("tema") ||
-    text.includes("prefer") ||
-    text.includes("notifica") ||
-    text.includes("silenciar")
-  ) return "preferencias";
-
-  if (
-    text.includes("admin") ||
-    text.includes("permiss") ||
-    text.includes("users") ||
-    text.includes("resultado") ||
-    text.includes("fase final")
-  ) return "admin";
-
-  return "outros";
-}
-
-function ensureSettingsAccordionV205() {
-  const settingsTab = document.getElementById("settingsTab");
-  if (!settingsTab) return null;
-
-  let wrap = document.getElementById("settingsAccordionV205");
-  if (wrap) return wrap;
-
-  wrap = document.createElement("div");
-  wrap.id = "settingsAccordionV205";
-  wrap.className = "settings-accordion-v205";
-
-  SETTINGS_SECTION_ORDER_V205.forEach(([key, label], index) => {
-    const details = document.createElement("details");
-    details.id = `settingsSectionV205_${key}`;
-    details.className = "settings-section-v205";
-    details.dataset.settingsSectionV205 = key;
-    details.open = localStorage.getItem(`${STORAGE_KEY}_settings_section_closed_v205_${key}`) !== "1" && index < 2;
-
-    const summary = document.createElement("summary");
-    summary.innerHTML = `<span>${escapeHtml(label)}</span><small></small>`;
-
-    const content = document.createElement("div");
-    content.className = "settings-section-content-v205";
-
-    details.appendChild(summary);
-    details.appendChild(content);
-    details.addEventListener("toggle", () => {
-      localStorage.setItem(`${STORAGE_KEY}_settings_section_closed_v205_${key}`, details.open ? "0" : "1");
-    });
-
-    wrap.appendChild(details);
-  });
-
-  const first = settingsTab.firstElementChild;
-  if (first) settingsTab.insertBefore(wrap, first);
-  else settingsTab.appendChild(wrap);
-
-  return wrap;
-}
-
-function updateSettingsSectionCountsV205() {
-  SETTINGS_SECTION_ORDER_V205.forEach(([key]) => {
-    const details = document.getElementById(`settingsSectionV205_${key}`);
-    if (!details) return;
-    const count = details.querySelectorAll(".settings-section-content-v205 > *").length;
-    const small = details.querySelector("summary small");
-    if (small) small.textContent = `${count} bloco${count === 1 ? "" : "s"}`;
-    details.classList.toggle("settings-section-empty-v205", count === 0);
-  });
-}
-
-function moveSettingsBlocksToAccordionV205() {
-  const settingsTab = document.getElementById("settingsTab");
-  const wrap = ensureSettingsAccordionV205();
-  if (!settingsTab || !wrap) return;
-
-  const ignoreIds = new Set(["settingsAccordionV205"]);
-
-  [...settingsTab.children].forEach(el => {
-    if (!el || ignoreIds.has(el.id)) return;
-    if (el.closest?.("#settingsAccordionV205")) return;
-    if (el.tagName === "SCRIPT" || el.tagName === "STYLE") return;
-
-    const section = settingsSectionForElementV205(el);
-    const content = document.querySelector(`#settingsSectionV205_${CSS.escape(section)} .settings-section-content-v205`);
-    if (content && el.parentElement !== content) {
-      el.classList.add("settings-clean-block-v205");
-      content.appendChild(el);
-    }
-  });
-
-  // Garante que a área técnica criada pela v204 fica dentro de Sistema.
-  const systemArea = document.getElementById("settingsSystemOnlyAreaV204");
-  const systemContent = document.querySelector("#settingsSectionV205_sistema .settings-section-content-v205");
-  if (systemArea && systemContent && systemArea.parentElement !== systemContent) {
-    systemArea.classList.add("settings-clean-block-v205");
-    systemContent.appendChild(systemArea);
-  }
-
-  // Organização da app fica dentro de Organização.
-  ["adminLayoutManagerSettingsV202", "adminLayoutManagerAdminV202"].forEach(id => {
-    const el = document.getElementById(id);
-    const content = document.querySelector("#settingsSectionV205_organizar .settings-section-content-v205");
-    if (el && content && el.parentElement !== content) {
-      el.classList.add("settings-clean-block-v205");
-      content.appendChild(el);
-    }
-  });
-
-  updateSettingsSectionCountsV205();
-}
-
-function renderSettingsQuickTabsV205() {
-  const wrap = ensureSettingsAccordionV205();
-  const settingsTab = document.getElementById("settingsTab");
-  if (!wrap || !settingsTab) return;
-
-  let nav = document.getElementById("settingsQuickTabsV205");
-  if (!nav) {
-    nav = document.createElement("div");
-    nav.id = "settingsQuickTabsV205";
-    nav.className = "settings-quick-tabs-v205";
-    settingsTab.insertBefore(nav, wrap);
-  }
-
-  nav.innerHTML = SETTINGS_SECTION_ORDER_V205
-    .map(([key, label]) => `<button type="button" data-settings-jump-v205="${escapeHtml(key)}">${escapeHtml(label)}</button>`)
-    .join("");
-}
-
-function applySettingsCleanV205() {
-  try {
-    renderSettingsQuickTabsV205();
-    moveSettingsBlocksToAccordionV205();
-  } catch (error) {
-    console.warn("applySettingsCleanV205 falhou:", error);
-  }
-}
-
-const renderAppSettingsPanelOriginalV205 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
-if (renderAppSettingsPanelOriginalV205) {
-  renderAppSettingsPanelV162 = function renderAppSettingsPanelV205() {
-    renderAppSettingsPanelOriginalV205();
-    setTimeout(applySettingsCleanV205, 0);
-    setTimeout(applySettingsCleanV205, 250);
-  };
-}
-
-document.addEventListener("click", event => {
-  const btn = event.target.closest?.("[data-settings-jump-v205]");
-  if (!btn) return;
-  event.preventDefault();
-  const key = btn.dataset.settingsJumpV205;
-  const details = document.getElementById(`settingsSectionV205_${key}`);
-  if (!details) return;
-  details.open = true;
-  details.scrollIntoView({ behavior: "smooth", block: "start" });
-}, true);
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(applySettingsCleanV205, 700);
-  setTimeout(applySettingsCleanV205, 1800);
-  setTimeout(applySettingsCleanV205, 3500);
-});
-
-document.addEventListener("click", event => {
-  if (event.target.closest?.("[data-tab='settingsTab']")) {
-    setTimeout(applySettingsCleanV205, 100);
-    setTimeout(applySettingsCleanV205, 500);
-  }
-}, true);
-
-
-// v206 — correção forte: blocos técnicos nunca ficam no Admin.
-const ADMIN_FORBIDDEN_BLOCK_IDS_V206 = [
-  "footballRealtimeSyncBoxV156",
-  "footballManualFallbackV157",
-  "footballFreeStatusBoxV149",
-  "footballDataAdminFixedBoxV143",
-  "suspendedGameAdminBoxV159",
-  "adminLayoutManagerAdminV202",
-  "firebaseHealthPanelV187",
-  "pushHealthPanelV187",
-  "notificationsHealthPanelV187",
-  "settingsSystemOnlyAreaV204"
-];
-
-function ensureConfigsCleanRootV206() {
-  const settingsTab = document.getElementById("settingsTab");
-  if (!settingsTab) return null;
-
-  if (typeof ensureSettingsAccordionV205 === "function") {
-    ensureSettingsAccordionV205();
-  }
-
-  let root = document.getElementById("configsTechnicalOnlyRootV206");
-  if (root) return root;
-
-  root = document.createElement("section");
-  root.id = "configsTechnicalOnlyRootV206";
-  root.className = "configs-technical-only-root-v206";
-  root.innerHTML = `
-    <details open>
-      <summary>
-        <span>Sistema, Firebase e API</span>
-        <small>Sync football-data, saúde da app, push, suspensão e opções técnicas.</small>
-      </summary>
-      <div id="configsTechnicalOnlyContentV206" class="configs-technical-only-content-v206"></div>
-    </details>
-  `;
-
-  const target =
-    document.querySelector("#settingsSectionV205_sistema .settings-section-content-v205") ||
-    document.getElementById("settingsTab");
-
-  target.prepend(root);
-  return root;
-}
-
-function blockLooksTechnicalV206(el) {
-  if (!el) return false;
-  const id = String(el.id || "");
-  const text = String(el.textContent || "").toLowerCase();
-
-  return ADMIN_FORBIDDEN_BLOCK_IDS_V206.includes(id) ||
-    id.toLowerCase().includes("football") ||
-    id.toLowerCase().includes("firebase") ||
-    id.toLowerCase().includes("health") ||
-    text.includes("api football") ||
-    text.includes("football-data") ||
-    text.includes("sync inteligente") ||
-    text.includes("saúde da app") ||
-    text.includes("firebase e push") ||
-    text.includes("jogo suspenso") ||
-    text.includes("organização da app") ||
-    text.includes("opções avançadas");
-}
-
-function moveForbiddenAdminBlocksToConfigsV206() {
-  const root = ensureConfigsCleanRootV206();
-  const content = document.getElementById("configsTechnicalOnlyContentV206");
-  if (!root || !content) return;
-
-  ADMIN_FORBIDDEN_BLOCK_IDS_V206.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-
-    el.classList.add("configs-only-v206");
-    el.classList.remove(
-      "admin-section-hidden-v187",
-      "admin-section-force-hidden-v202",
-      "admin-section-moved-settings-v202"
-    );
-
-    if (el.id === "settingsSystemOnlyAreaV204") {
-      // Não queremos uma caixa dentro de outra caixa se a v204 já criou wrapper antigo.
-      const oldContent = el.querySelector("#settingsSystemOnlyContentV204");
-      if (oldContent) {
-        [...oldContent.children].forEach(child => content.appendChild(child));
-        el.remove();
-        return;
-      }
-    }
-
-    if (el.parentElement !== content) content.appendChild(el);
-  });
-
-  // Se algum script voltar a criar blocos técnicos no Admin com outros IDs, apanha por texto.
-  document.querySelectorAll("#adminTab section, #adminTab details, #adminTab .admin-card, #adminUnlocked > *").forEach(el => {
-    if (!blockLooksTechnicalV206(el)) return;
-    if (el.id === "adminOverviewV162") return;
-
-    el.classList.add("configs-only-v206");
-    el.classList.remove(
-      "admin-section-hidden-v187",
-      "admin-section-force-hidden-v202",
-      "admin-section-moved-settings-v202"
-    );
-
-    if (el.parentElement !== content) content.appendChild(el);
-  });
-
-  if (typeof applySettingsCleanV205 === "function") {
-    setTimeout(applySettingsCleanV205, 0);
-  }
-}
-
-function hardHideForbiddenBlocksInsideAdminV206() {
-  const adminTab = document.getElementById("adminTab");
-  if (!adminTab) return;
-
-  ADMIN_FORBIDDEN_BLOCK_IDS_V206.forEach(id => {
-    const el = adminTab.querySelector(`#${CSS.escape(id)}`);
-    if (el) {
-      el.classList.add("force-not-in-admin-v206");
-      el.style.display = "none";
-    }
-  });
-
-  adminTab.querySelectorAll("section, details, .admin-card, #adminUnlocked > *").forEach(el => {
-    if (!blockLooksTechnicalV206(el)) return;
-    if (el.id === "adminOverviewV162") return;
-    el.classList.add("force-not-in-admin-v206");
-    el.style.display = "none";
-  });
-}
-
-function applyConfigsOnlyV206() {
-  try {
-    moveForbiddenAdminBlocksToConfigsV206();
-    hardHideForbiddenBlocksInsideAdminV206();
-  } catch (error) {
-    console.warn("applyConfigsOnlyV206 falhou:", error);
-  }
-}
-
-// Depois de qualquer render antigo, volta a tirar os blocos do Admin.
-const renderAdminSectionsOriginalV206 = typeof renderAdminSectionsV187 === "function" ? renderAdminSectionsV187 : null;
-if (renderAdminSectionsOriginalV206) {
-  renderAdminSectionsV187 = function renderAdminSectionsV206() {
-    renderAdminSectionsOriginalV206();
-    setTimeout(applyConfigsOnlyV206, 0);
-    setTimeout(applyConfigsOnlyV206, 150);
-    setTimeout(applyConfigsOnlyV206, 600);
-  };
-}
-
-const renderAppSettingsPanelOriginalV206 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
-if (renderAppSettingsPanelOriginalV206) {
-  renderAppSettingsPanelV162 = function renderAppSettingsPanelV206() {
-    renderAppSettingsPanelOriginalV206();
-    setTimeout(applyConfigsOnlyV206, 0);
-    setTimeout(applyConfigsOnlyV206, 250);
-    setTimeout(applyConfigsOnlyV206, 700);
-  };
-}
-
-const renderActivePageOriginalV206 = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
-if (renderActivePageOriginalV206) {
-  renderActivePageV187 = function renderActivePageV206(tabId = activeTabIdV187()) {
-    renderActivePageOriginalV206(tabId);
-    setTimeout(applyConfigsOnlyV206, 80);
-    setTimeout(applyConfigsOnlyV206, 450);
-  };
-}
-
-document.addEventListener("click", event => {
-  if (
-    event.target.closest?.("[data-tab='adminTab']") ||
-    event.target.closest?.("[data-tab='settingsTab']") ||
-    event.target.closest?.("[data-admin-section-v187]")
-  ) {
-    setTimeout(applyConfigsOnlyV206, 50);
-    setTimeout(applyConfigsOnlyV206, 250);
-    setTimeout(applyConfigsOnlyV206, 700);
-  }
-}, true);
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(applyConfigsOnlyV206, 500);
-  setTimeout(applyConfigsOnlyV206, 1500);
-  setTimeout(applyConfigsOnlyV206, 3500);
-});
-
-// Observador para impedir regressão: se algum script meter de novo no Admin, sai logo.
-const adminMutationObserverV206 = new MutationObserver(() => {
-  setTimeout(applyConfigsOnlyV206, 50);
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  const adminTab = document.getElementById("adminTab");
-  if (adminTab) {
-    adminMutationObserverV206.observe(adminTab, { childList: true, subtree: true });
-  }
-});
-
-
-// v207 — Configurações sem duplicados, com blocos únicos e fechados por defeito.
-function textKeyForDedupV207(el) {
-  return String(el?.textContent || "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 160);
-}
-
-function isOrganizationBlockV207(el) {
-  const id = String(el?.id || "").toLowerCase();
-  const text = String(el?.textContent || "").toLowerCase();
-  return id.includes("adminlayoutmanager") || text.includes("organização da app");
-}
-
-function removeDuplicateSettingsBlocksV207() {
-  const settingsTab = document.getElementById("settingsTab");
-  if (!settingsTab) return;
-
-  // 1) remover wrappers antigos vazios/duplicados
-  document.querySelectorAll("#adminLayoutManagerAdminV202").forEach(el => {
-    // A versão de Admin não deve existir como bloco separado nas Configurações.
-    el.remove();
-  });
-
-  // 2) garantir apenas um bloco Organização da app
-  const orgBlocks = [...settingsTab.querySelectorAll("section, div, details")]
-    .filter(el => isOrganizationBlockV207(el))
-    .filter(el => !el.closest("#adminLayoutManagerSettingsV202") || el.id === "adminLayoutManagerSettingsV202");
-
-  const canonical =
-    document.getElementById("adminLayoutManagerSettingsV202") ||
-    orgBlocks.find(el => el.id && el.id.includes("adminLayoutManager")) ||
-    orgBlocks[0];
-
-  orgBlocks.forEach(el => {
-    if (el === canonical) return;
-    if (canonical && canonical.contains(el)) return;
-    el.remove();
-  });
-
-  if (canonical) {
-    canonical.id = "adminLayoutManagerSettingsV202";
-    canonical.classList.add("settings-single-organization-v207");
-  }
-
-  // 3) dedup genérico dentro das secções das Configurações por texto/id
-  document.querySelectorAll(".settings-section-content-v205").forEach(content => {
-    const seen = new Set();
-    [...content.children].forEach(el => {
-      if (el.id === "adminLayoutManagerSettingsV202") {
-        const key = "id:adminLayoutManagerSettingsV202";
-        if (seen.has(key)) el.remove();
-        else seen.add(key);
-        return;
-      }
-
-      const idKey = el.id ? `id:${el.id}` : "";
-      const textKey = textKeyForDedupV207(el);
-      const key = idKey || textKey;
-      if (!key) return;
-
-      if (seen.has(key)) {
-        el.remove();
-      } else {
-        seen.add(key);
-      }
-    });
-  });
-}
-
-function normalizeSettingsAccordionV207() {
-  // Fechar por defeito as secções pesadas; Organização fica aberta.
-  const defaults = {
-    organizar: true,
-    sistema: false,
-    instalar: false,
-    preferencias: false,
-    admin: false,
-    outros: false
-  };
-
-  Object.entries(defaults).forEach(([key, open]) => {
-    const details = document.getElementById(`settingsSectionV205_${key}`);
-    if (!details) return;
-    const userTouched = localStorage.getItem(`${STORAGE_KEY}_settings_section_touched_v207_${key}`) === "1";
-    if (!userTouched) details.open = open;
-
-    if (!details.dataset.touchHandlerV207) {
-      details.addEventListener("toggle", () => {
-        localStorage.setItem(`${STORAGE_KEY}_settings_section_touched_v207_${key}`, "1");
-      });
-      details.dataset.touchHandlerV207 = "1";
-    }
-  });
-}
-
-function fixSettingsSectionTitlesV207() {
-  const labels = {
-    organizar: ["Organização", "Escolhe o que aparece no Admin, Configurações e nas abas do topo."],
-    sistema: ["Sistema, Firebase e API", "Sync football-data, saúde da app, push e ferramentas técnicas."],
-    instalar: ["Instalação / PWA", "Opções para instalar/usar como app."],
-    preferencias: ["Preferências", "Preferências gerais e notificações."],
-    admin: ["Ferramentas Admin", "Ferramentas avançadas de administração."],
-    outros: ["Outros", "Outras opções menos usadas."]
-  };
-
-  Object.entries(labels).forEach(([key, [title, subtitle]]) => {
-    const summary = document.querySelector(`#settingsSectionV205_${CSS.escape(key)} > summary`);
-    if (!summary) return;
-    summary.innerHTML = `<span>${escapeHtml(title)}</span><small>${escapeHtml(subtitle)}</small>`;
-  });
-}
-
-function forceOrganizationIntoOrganizationSectionV207() {
-  const org = document.getElementById("adminLayoutManagerSettingsV202");
-  const target = document.querySelector("#settingsSectionV205_organizar .settings-section-content-v205");
-  if (org && target && org.parentElement !== target) {
-    target.prepend(org);
-  }
-}
-
-function cleanupSettingsVisualV207() {
-  try {
-    if (typeof applySettingsCleanV205 === "function") applySettingsCleanV205();
-    if (typeof applyConfigsOnlyV206 === "function") applyConfigsOnlyV206();
-
-    forceOrganizationIntoOrganizationSectionV207();
-    removeDuplicateSettingsBlocksV207();
-    fixSettingsSectionTitlesV207();
-    normalizeSettingsAccordionV207();
-
-    if (typeof updateSettingsSectionCountsV205 === "function") {
-      updateSettingsSectionCountsV205();
-    }
-  } catch (error) {
-    console.warn("cleanupSettingsVisualV207 falhou:", error);
-  }
-}
-
-const renderAppSettingsPanelOriginalV207 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
-if (renderAppSettingsPanelOriginalV207) {
-  renderAppSettingsPanelV162 = function renderAppSettingsPanelV207() {
-    renderAppSettingsPanelOriginalV207();
-    setTimeout(cleanupSettingsVisualV207, 0);
-    setTimeout(cleanupSettingsVisualV207, 250);
-    setTimeout(cleanupSettingsVisualV207, 800);
-  };
-}
-
-const renderActivePageOriginalV207 = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
-if (renderActivePageOriginalV207) {
-  renderActivePageV187 = function renderActivePageV207(tabId = activeTabIdV187()) {
-    renderActivePageOriginalV207(tabId);
-    if (tabId === "settingsTab") {
-      setTimeout(cleanupSettingsVisualV207, 0);
-      setTimeout(cleanupSettingsVisualV207, 300);
-    }
-  };
-}
-
-document.addEventListener("click", event => {
-  if (
-    event.target.closest?.("[data-tab='settingsTab']") ||
-    event.target.closest?.("[data-settings-jump-v205]") ||
-    event.target.closest?.("[data-admin-layout-reset-v202]")
-  ) {
-    setTimeout(cleanupSettingsVisualV207, 100);
-    setTimeout(cleanupSettingsVisualV207, 450);
-  }
-}, true);
-
-document.addEventListener("change", event => {
-  if (
-    event.target.closest?.("[data-admin-section-location-v202]") ||
-    event.target.closest?.("[data-page-visible-v202]")
-  ) {
-    setTimeout(cleanupSettingsVisualV207, 100);
-    setTimeout(cleanupSettingsVisualV207, 450);
-  }
-}, true);
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(cleanupSettingsVisualV207, 700);
-  setTimeout(cleanupSettingsVisualV207, 1800);
-  setTimeout(cleanupSettingsVisualV207, 3600);
-});
-
-
-// v208 — Organização da app: instância única, só em Configurações.
-function organizationBlockLooksLikeV208(el) {
-  if (!el) return false;
-  const id = String(el.id || "").toLowerCase();
-  const text = String(el.textContent || "").toLowerCase();
-  return id.includes("adminlayoutmanager") ||
-    id.includes("settingsmovedadminsections") ||
-    text.includes("organização da app") ||
-    text.includes("escolhe o que fica no admin") ||
-    text.includes("abas visíveis") ||
-    text.includes("secções do admin");
-}
-
-function canonicalOrganizationBoxV208() {
-  let box = document.getElementById("settingsOrganizationSingleV208");
-  if (box) return box;
-
-  box = document.createElement("section");
-  box.id = "settingsOrganizationSingleV208";
-  box.className = "settings-organization-single-v208 admin-card admin-layout-manager-v202";
-  box.innerHTML = `
-    <div class="admin-layout-head-v202">
-      <div>
-        <strong>Organização da app</strong>
-        <span>Escolhe o que aparece no Admin, o que passa para Configurações e que abas aparecem no topo.</span>
-      </div>
-      <button type="button" class="secondary small" data-admin-layout-reset-v202>Repor</button>
-    </div>
-    <div class="admin-layout-grid-v202">
-      <div>
-        <h4>Secções do Admin</h4>
-        ${ADMIN_SECTION_CHOICES_V202.map(([key, label]) => {
-          const settings = savedAdminLayoutSettingsV202();
-          const value = settings.adminSections?.[key] || "admin";
-          return `
-            <label class="admin-layout-row-v202">
-              <span>${escapeHtml(label)}</span>
-              <select data-admin-section-location-v202="${escapeHtml(key)}">
-                <option value="admin" ${value === "admin" ? "selected" : ""}>Admin</option>
-                <option value="settings" ${value === "settings" ? "selected" : ""}>Configurações</option>
-                <option value="hidden" ${value === "hidden" ? "selected" : ""}>Esconder</option>
-              </select>
-            </label>`;
-        }).join("")}
-      </div>
-      <div>
-        <h4>Abas visíveis</h4>
-        <div class="admin-layout-pages-v202">
-          ${PAGE_LOCATION_CHOICES_V202.map(([key, label]) => {
-            const settings = savedAdminLayoutSettingsV202();
-            return `
-              <label class="admin-layout-page-v202">
-                <input type="checkbox" data-page-visible-v202="${escapeHtml(key)}" ${settings.pages?.[key] !== false ? "checked" : ""} />
-                ${escapeHtml(label)}
-              </label>`;
-          }).join("")}
-        </div>
-      </div>
-    </div>
-  `;
-
-  return box;
-}
-
-function ensureOrganizationOnlyInSettingsV208() {
-  try {
-    const settingsTab = document.getElementById("settingsTab");
-    if (!settingsTab) return;
-
-    if (typeof ensureSettingsAccordionV205 === "function") ensureSettingsAccordionV205();
-
-    const target =
-      document.querySelector("#settingsSectionV205_organizar .settings-section-content-v205") ||
-      settingsTab;
-
-    // Remove TUDO o que pareça organização, excepto a caixa única v208.
-    [...document.querySelectorAll("section, div, details")].forEach(el => {
-      if (!organizationBlockLooksLikeV208(el)) return;
-      if (el.id === "settingsOrganizationSingleV208") return;
-      if (el.closest("#settingsOrganizationSingleV208")) return;
-      // Não remover wrappers principais de página/secção.
-      if (["settingsTab", "settingsAccordionV205", "settingsSectionV205_organizar"].includes(el.id)) return;
-      el.remove();
-    });
-
-    const single = canonicalOrganizationBoxV208();
-    if (single.parentElement !== target) target.prepend(single);
-
-    // Re-render leve do conteúdo interno para refletir valores atuais sem criar novo bloco.
-    const settings = savedAdminLayoutSettingsV202();
-    single.querySelectorAll("[data-admin-section-location-v202]").forEach(select => {
-      const key = select.dataset.adminSectionLocationV202;
-      select.value = settings.adminSections?.[key] || "admin";
-    });
-    single.querySelectorAll("[data-page-visible-v202]").forEach(input => {
-      const key = input.dataset.pageVisibleV202;
-      input.checked = settings.pages?.[key] !== false;
-    });
-
-    // Garantia absoluta: nada de organização no Admin.
-    document.querySelectorAll("#adminTab section, #adminTab div, #adminTab details, #adminUnlocked > *").forEach(el => {
-      if (!organizationBlockLooksLikeV208(el)) return;
-      if (el.id === "adminOverviewV162") return;
-      el.remove();
-    });
-
-    if (typeof updateSettingsSectionCountsV205 === "function") updateSettingsSectionCountsV205();
-  } catch (error) {
-    console.warn("ensureOrganizationOnlyInSettingsV208 falhou:", error);
-  }
-}
-
-// Impedir que renderAdminLayoutManagerV202 volte a criar duplicados.
-if (typeof renderAdminLayoutManagerV202 === "function") {
-  renderAdminLayoutManagerV202 = function renderAdminLayoutManagerV208(targetId = "settings") {
-    if (targetId !== "settings") {
-      ensureOrganizationOnlyInSettingsV208();
-      return;
-    }
-    ensureOrganizationOnlyInSettingsV208();
-  };
-}
-
-const applySettingsCleanOriginalV208 = typeof applySettingsCleanV205 === "function" ? applySettingsCleanV205 : null;
-if (applySettingsCleanOriginalV208) {
-  applySettingsCleanV205 = function applySettingsCleanV208() {
-    applySettingsCleanOriginalV208();
-    setTimeout(ensureOrganizationOnlyInSettingsV208, 0);
-    setTimeout(ensureOrganizationOnlyInSettingsV208, 200);
-  };
-}
-
-const cleanupSettingsVisualOriginalV208 = typeof cleanupSettingsVisualV207 === "function" ? cleanupSettingsVisualV207 : null;
-if (cleanupSettingsVisualOriginalV208) {
-  cleanupSettingsVisualV207 = function cleanupSettingsVisualV208() {
-    cleanupSettingsVisualOriginalV208();
-    setTimeout(ensureOrganizationOnlyInSettingsV208, 0);
-    setTimeout(ensureOrganizationOnlyInSettingsV208, 200);
-  };
-}
-
-const renderActivePageOriginalV208 = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
-if (renderActivePageOriginalV208) {
-  renderActivePageV187 = function renderActivePageV208(tabId = activeTabIdV187()) {
-    renderActivePageOriginalV208(tabId);
-    setTimeout(ensureOrganizationOnlyInSettingsV208, 50);
-    setTimeout(ensureOrganizationOnlyInSettingsV208, 300);
-  };
-}
-
-document.addEventListener("change", event => {
-  if (
-    event.target.closest?.("[data-admin-section-location-v202]") ||
-    event.target.closest?.("[data-page-visible-v202]")
-  ) {
-    setTimeout(ensureOrganizationOnlyInSettingsV208, 80);
-    setTimeout(applyAdminLayoutSettingsV202, 100);
-    setTimeout(applyConfigsOnlyV206, 150);
-  }
-}, true);
-
-document.addEventListener("click", event => {
-  if (
-    event.target.closest?.("[data-tab='settingsTab']") ||
-    event.target.closest?.("[data-tab='adminTab']") ||
-    event.target.closest?.("[data-admin-layout-reset-v202]") ||
-    event.target.closest?.("[data-settings-jump-v205]")
-  ) {
-    setTimeout(ensureOrganizationOnlyInSettingsV208, 80);
-    setTimeout(ensureOrganizationOnlyInSettingsV208, 350);
-  }
-}, true);
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(ensureOrganizationOnlyInSettingsV208, 500);
-  setTimeout(ensureOrganizationOnlyInSettingsV208, 1500);
-  setTimeout(ensureOrganizationOnlyInSettingsV208, 3500);
-});
-
-const organizationObserverV208 = new MutationObserver(() => {
-  setTimeout(ensureOrganizationOnlyInSettingsV208, 80);
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  const body = document.body;
-  if (body) organizationObserverV208.observe(body, { childList: true, subtree: true });
-});
-
-
-// v209 — nada de API/Firebase/Saúde no login. Só em Configurações.
-function isLoginScreenVisibleV209() {
-  const login =
-    document.getElementById("loginView") ||
-    document.getElementById("loginScreen") ||
-    document.getElementById("authView") ||
-    document.querySelector(".login-card, .auth-card, #loginCard");
-
-  const appShell =
-    document.getElementById("appShell") ||
-    document.getElementById("mainApp") ||
-    document.querySelector(".app-shell, .main-shell");
-
-  if (login && !login.classList.contains("hidden") && login.offsetParent !== null) return true;
-  if (document.body?.textContent?.includes("Entrar na app") && (!appShell || appShell.classList.contains("hidden"))) return true;
-  return false;
-}
-
-function ensureTechnicalAreaOnlyInSettingsV209() {
-  const settingsTab = document.getElementById("settingsTab");
-  if (!settingsTab) return null;
-
-  if (typeof ensureSettingsAccordionV205 === "function") {
-    try { ensureSettingsAccordionV205(); } catch {}
-  }
-
-  let content =
-    document.getElementById("configsTechnicalOnlyContentV206") ||
-    document.querySelector("#settingsSectionV205_sistema .settings-section-content-v205");
-
-  if (!content) {
-    let area = document.getElementById("configsTechnicalOnlyRootV209");
-    if (!area) {
-      area = document.createElement("section");
-      area.id = "configsTechnicalOnlyRootV209";
-      area.className = "configs-technical-only-root-v206 configs-technical-only-root-v209";
-      area.innerHTML = `
-        <details>
-          <summary>
-            <span>Sistema, Firebase e API</span>
-            <small>Sync football-data, saúde da app, push e ferramentas técnicas.</small>
-          </summary>
-          <div id="configsTechnicalOnlyContentV206" class="configs-technical-only-content-v206"></div>
-        </details>
-      `;
-      const target = document.querySelector("#settingsSectionV205_sistema .settings-section-content-v205") || settingsTab;
-      target.prepend(area);
-    }
-    content = document.getElementById("configsTechnicalOnlyContentV206");
-  }
-
-  return content;
-}
-
-function moveTechnicalBlocksOutOfLoginV209() {
-  const ids = [
-    "footballRealtimeSyncBoxV156",
-    "footballManualFallbackV157",
-    "footballFreeStatusBoxV149",
-    "footballDataAdminFixedBoxV143",
-    "suspendedGameAdminBoxV159",
-    "firebaseHealthPanelV187",
-    "pushHealthPanelV187",
-    "notificationsHealthPanelV187"
-  ];
-
-  const content = ensureTechnicalAreaOnlyInSettingsV209();
-
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-
-    el.classList.add("technical-only-settings-v209");
-
-    // Se ainda não há área de Configurações disponível, esconde — nunca fica no login.
-    if (!content) {
-      el.classList.add("force-hide-technical-v209");
-      return;
-    }
-
-    el.classList.remove("force-hide-technical-v209");
-    if (el.parentElement !== content) content.appendChild(el);
-  });
-
-  // Apanha blocos técnicos criados sem ID fixo dentro do login/card.
-  document.querySelectorAll(".login-card section, .login-card details, .auth-card section, .auth-card details, #loginView section, #loginView details").forEach(el => {
-    const text = String(el.textContent || "").toLowerCase();
-    if (
-      text.includes("football-data") ||
-      text.includes("sync inteligente") ||
-      text.includes("firebase e push") ||
-      text.includes("saúde da app") ||
-      text.includes("jogo suspenso")
-    ) {
-      if (content) {
-        el.classList.add("technical-only-settings-v209");
-        content.appendChild(el);
-      } else {
-        el.classList.add("force-hide-technical-v209");
-      }
-    }
-  });
-}
-
-const footballRealtimeSyncEnsureBoxOriginalV209 = typeof footballRealtimeSyncEnsureBoxV156 === "function" ? footballRealtimeSyncEnsureBoxV156 : null;
-if (footballRealtimeSyncEnsureBoxOriginalV209) {
-  footballRealtimeSyncEnsureBoxV156 = function footballRealtimeSyncEnsureBoxV209() {
-    const box = footballRealtimeSyncEnsureBoxOriginalV209();
-
-    if (isLoginScreenVisibleV209()) {
-      box.classList.add("force-hide-technical-v209");
-    }
-
-    setTimeout(moveTechnicalBlocksOutOfLoginV209, 0);
-    setTimeout(moveTechnicalBlocksOutOfLoginV209, 120);
-
-    return box;
-  };
-}
-
-const footballRealtimeSyncRenderOriginalV209 = typeof footballRealtimeSyncRenderV156 === "function" ? footballRealtimeSyncRenderV156 : null;
-if (footballRealtimeSyncRenderOriginalV209) {
-  footballRealtimeSyncRenderV156 = function footballRealtimeSyncRenderV209(data = null) {
-    footballRealtimeSyncRenderOriginalV209(data);
-    setTimeout(moveTechnicalBlocksOutOfLoginV209, 0);
-  };
-}
-
-const renderActivePageOriginalV209 = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
-if (renderActivePageOriginalV209) {
-  renderActivePageV187 = function renderActivePageV209(tabId = activeTabIdV187()) {
-    renderActivePageOriginalV209(tabId);
-    setTimeout(moveTechnicalBlocksOutOfLoginV209, 50);
-    setTimeout(moveTechnicalBlocksOutOfLoginV209, 300);
-  };
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(moveTechnicalBlocksOutOfLoginV209, 300);
-  setTimeout(moveTechnicalBlocksOutOfLoginV209, 900);
-  setTimeout(moveTechnicalBlocksOutOfLoginV209, 2200);
-});
-
-document.addEventListener("click", event => {
-  if (
-    event.target.closest?.("[data-tab='settingsTab']") ||
-    event.target.closest?.("[data-tab='adminTab']") ||
-    event.target.closest?.("#loginBtn, #logoutBtn, #enterAppBtn")
-  ) {
-    setTimeout(moveTechnicalBlocksOutOfLoginV209, 80);
-    setTimeout(moveTechnicalBlocksOutOfLoginV209, 400);
-  }
-}, true);
-
-const noTechnicalLoginObserverV209 = new MutationObserver(() => {
-  setTimeout(moveTechnicalBlocksOutOfLoginV209, 50);
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  if (document.body) {
-    noTechnicalLoginObserverV209.observe(document.body, { childList: true, subtree: true });
-  }
-});
-
-
-// v210 — Guard final: API/Firebase/Saúde nunca nasce no login.
-function appIsActuallyOpenV210() {
-  const loginVisible =
-    document.body?.textContent?.includes("Entrar na app") &&
-    !document.querySelector(".tab-panel.active");
-
-  const hasAppNav =
-    document.querySelector("[data-tab='calendarTab']") ||
-    document.querySelector("[data-tab='settingsTab']") ||
-    document.querySelector(".tab.active");
-
-  const hasLogout =
-    document.body?.textContent?.includes("Sair") ||
-    document.getElementById("logoutBtn");
-
-  return Boolean(hasAppNav || hasLogout) && !loginVisible;
-}
-
-function hideTechnicalPanelsIfLoginV210() {
-  const ids = [
-    "footballRealtimeSyncBoxV156",
-    "footballManualFallbackV157",
-    "footballFreeStatusBoxV149",
-    "footballDataAdminFixedBoxV143",
-    "suspendedGameAdminBoxV159",
-    "firebaseHealthPanelV187",
-    "pushHealthPanelV187",
-    "notificationsHealthPanelV187",
-    "configsTechnicalOnlyRootV206",
-    "configsTechnicalOnlyRootV209"
-  ];
-
-  const loginVisible = !appIsActuallyOpenV210();
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.classList.toggle("force-hide-technical-v210", loginVisible);
-  });
-}
-
-if (typeof footballRealtimeSyncStartV156 === "function" && !window.__footballStartGuardV210) {
-  window.__footballStartGuardV210 = true;
-  const originalFootballStartV210 = footballRealtimeSyncStartV156;
-  footballRealtimeSyncStartV156 = function footballRealtimeSyncStartGuardedV210() {
-    if (!appIsActuallyOpenV210()) {
-      hideTechnicalPanelsIfLoginV210();
-      return;
-    }
-    originalFootballStartV210();
-    setTimeout(hideTechnicalPanelsIfLoginV210, 0);
-  };
-}
-
-if (typeof footballRealtimeSyncEnsureBoxV156 === "function" && !window.__footballEnsureGuardV210) {
-  window.__footballEnsureGuardV210 = true;
-  const originalFootballEnsureV210 = footballRealtimeSyncEnsureBoxV156;
-  footballRealtimeSyncEnsureBoxV156 = function footballRealtimeSyncEnsureGuardedV210() {
-    const box = originalFootballEnsureV210();
-    hideTechnicalPanelsIfLoginV210();
-    if (!appIsActuallyOpenV210()) box.classList.add("force-hide-technical-v210");
-    return box;
-  };
-}
-
-
-// v210 — Organização da app estável: uma instância, só em Configurações.
-function organizationTextMatchV210(el) {
-  const id = String(el?.id || "").toLowerCase();
-  const text = String(el?.textContent || "").toLowerCase();
-  return id.includes("adminlayoutmanager") ||
-    id.includes("settingsorganizationsingle") ||
-    text.includes("organização da app") ||
-    text.includes("secções do admin") ||
-    text.includes("abas visíveis");
-}
-
-function stableOrganizationSettingsTargetV210() {
-  const settings = document.getElementById("settingsTab");
-  if (!settings) return null;
-
-  try { ensureSettingsAccordionV205?.(); } catch {}
-
-  return document.querySelector("#settingsSectionV205_organizar .settings-section-content-v205") || settings;
-}
-
-function removeOrganizationEverywhereExceptV210(keep) {
-  document.querySelectorAll("#adminTab section, #adminTab div, #adminTab details, #settingsTab section, #settingsTab div, #settingsTab details").forEach(el => {
-    if (!organizationTextMatchV210(el)) return;
-    if (el === keep || keep?.contains(el) || el.closest("#settingsOrganizationSingleV210")) return;
-    if (["settingsTab", "settingsAccordionV205", "settingsSectionV205_organizar"].includes(el.id)) return;
-    el.remove();
-  });
-}
-
-function renderSingleOrganizationV210() {
-  const target = stableOrganizationSettingsTargetV210();
-  if (!target) return;
-
-  let box = document.getElementById("settingsOrganizationSingleV210");
-  if (!box) {
-    box = document.createElement("section");
-    box.id = "settingsOrganizationSingleV210";
-    box.className = "settings-organization-single-v210 admin-card";
-  }
-
-  const settings = typeof savedAdminLayoutSettingsV202 === "function"
-    ? savedAdminLayoutSettingsV202()
-    : { adminSections: {}, pages: {} };
-
-  const sections = typeof ADMIN_SECTION_CHOICES_V202 !== "undefined" ? ADMIN_SECTION_CHOICES_V202 : [
-    ["users", "Users"], ["results", "Resultados"], ["points", "Pontos"], ["knockout", "Fase Final"], ["system", "Sistema"]
-  ];
-  const pages = typeof PAGE_LOCATION_CHOICES_V202 !== "undefined" ? PAGE_LOCATION_CHOICES_V202 : [
-    ["calendar", "Calendário"], ["score", "Pontuação"], ["knockout", "Fase Final"], ["notifications", "Notificações"], ["logs", "Logs"], ["adminTab", "Admin"], ["settings", "Configurações"]
-  ];
-
-  box.innerHTML = `
-    <div class="settings-org-head-v210">
-      <div>
-        <strong>Organização da app</strong>
-        <span>Escolhe o que aparece no Admin, o que passa para Configurações e que abas aparecem no topo.</span>
-      </div>
-      <button type="button" class="secondary small" data-admin-layout-reset-v202>Repor</button>
-    </div>
-    <div class="settings-org-grid-v210">
-      <div>
-        <h4>Secções do Admin</h4>
-        ${sections.map(([key, label]) => {
-          const value = settings.adminSections?.[key] || (key === "system" ? "settings" : "admin");
-          return `
-            <label class="settings-org-row-v210">
-              <span>${escapeHtml(label)}</span>
-              <select data-admin-section-location-v202="${escapeHtml(key)}">
-                <option value="admin" ${value === "admin" ? "selected" : ""}>Admin</option>
-                <option value="settings" ${value === "settings" ? "selected" : ""}>Configurações</option>
-                <option value="hidden" ${value === "hidden" ? "selected" : ""}>Esconder</option>
-              </select>
-            </label>`;
-        }).join("")}
-      </div>
-      <div>
-        <h4>Abas visíveis</h4>
-        <div class="settings-org-pages-v210">
-          ${pages.map(([key, label]) => `
-            <label class="settings-org-page-v210">
-              <input type="checkbox" data-page-visible-v202="${escapeHtml(key)}" ${settings.pages?.[key] !== false ? "checked" : ""} />
-              ${escapeHtml(label)}
-            </label>`).join("")}
-        </div>
-      </div>
-    </div>
-  `;
-
-  if (box.parentElement !== target) target.prepend(box);
-  removeOrganizationEverywhereExceptV210(box);
-}
-
-function stableSettingsCleanupV210() {
-  try {
-    renderSingleOrganizationV210();
-    hideTechnicalPanelsIfLoginV210?.();
-    if (typeof moveForbiddenAdminBlocksToConfigsV206 === "function") moveForbiddenAdminBlocksToConfigsV206();
-    if (typeof updateSettingsSectionCountsV205 === "function") updateSettingsSectionCountsV205();
-  } catch (error) {
-    console.warn("stableSettingsCleanupV210 falhou:", error);
-  }
-}
-
-if (typeof renderAdminLayoutManagerV202 === "function") {
-  renderAdminLayoutManagerV202 = function renderAdminLayoutManagerStableV210() {
-    renderSingleOrganizationV210();
-  };
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(stableSettingsCleanupV210, 500);
-  setTimeout(stableSettingsCleanupV210, 1500);
-  setTimeout(stableSettingsCleanupV210, 3000);
-});
-
-document.addEventListener("click", event => {
-  if (
-    event.target.closest?.("[data-tab='settingsTab']") ||
-    event.target.closest?.("[data-tab='adminTab']") ||
-    event.target.closest?.("[data-settings-jump-v205]")
-  ) {
-    setTimeout(stableSettingsCleanupV210, 80);
-    setTimeout(stableSettingsCleanupV210, 350);
-  }
-}, true);
-
-document.addEventListener("change", event => {
-  if (
-    event.target.closest?.("[data-admin-section-location-v202]") ||
-    event.target.closest?.("[data-page-visible-v202]")
-  ) {
-    setTimeout(stableSettingsCleanupV210, 80);
-    setTimeout(applyAdminLayoutSettingsV202, 120);
-  }
-}, true);
-
-
-// v210 — desativa observers globais antigos que podiam recriar/mover blocos em loop.
-setTimeout(() => {
-  try { organizationObserverV208?.disconnect?.(); } catch {}
-  try { noTechnicalLoginObserverV209?.disconnect?.(); } catch {}
-}, 2500);
-
-
-// v211 — segurança extra: nenhum ajuste visual pode bloquear login/permissões.
-function safeRunV211(label, fn) {
-  try {
-    if (typeof fn === "function") return fn();
-  } catch (error) {
-    console.warn(`${label} falhou sem bloquear a app:`, error);
-  }
-  return null;
-}
-
-if (typeof stableSettingsCleanupV210 === "function" && !window.__stableSettingsCleanupSafeV211) {
-  window.__stableSettingsCleanupSafeV211 = true;
-  const originalStableSettingsCleanupV211 = stableSettingsCleanupV210;
-  stableSettingsCleanupV210 = function stableSettingsCleanupSafeV211() {
-    return safeRunV211("stableSettingsCleanupV210", originalStableSettingsCleanupV211);
-  };
-}
-
-if (typeof hideTechnicalPanelsIfLoginV210 === "function" && !window.__hideTechnicalSafeV211) {
-  window.__hideTechnicalSafeV211 = true;
-  const originalHideTechnicalV211 = hideTechnicalPanelsIfLoginV210;
-  hideTechnicalPanelsIfLoginV210 = function hideTechnicalSafeV211() {
-    return safeRunV211("hideTechnicalPanelsIfLoginV210", originalHideTechnicalV211);
-  };
-}
-
-if (typeof renderSingleOrganizationV210 === "function" && !window.__renderOrgSafeV211) {
-  window.__renderOrgSafeV211 = true;
-  const originalRenderOrgV211 = renderSingleOrganizationV210;
-  renderSingleOrganizationV210 = function renderSingleOrganizationSafeV211() {
-    return safeRunV211("renderSingleOrganizationV210", originalRenderOrgV211);
-  };
-}
-
-if (typeof applyConfigsOnlyV206 === "function" && !window.__applyConfigsOnlySafeV211) {
-  window.__applyConfigsOnlySafeV211 = true;
-  const originalApplyConfigsOnlyV211 = applyConfigsOnlyV206;
-  applyConfigsOnlyV206 = function applyConfigsOnlySafeV211() {
-    return safeRunV211("applyConfigsOnlyV206", originalApplyConfigsOnlyV211);
-  };
-}
-
-
-// v212 — app aberta se há currentUser/sessão ativa, mesmo que texto do login exista escondido no DOM.
-if (typeof appIsActuallyOpenV210 === "function" && !window.__appOpenV212) {
-  window.__appOpenV212 = true;
-  const originalAppIsOpenV210 = appIsActuallyOpenV210;
-  appIsActuallyOpenV210 = function appIsActuallyOpenV212() {
-    if (currentUser || document.body.classList.contains("app-authenticated-v212")) return true;
-    return originalAppIsOpenV210();
-  };
-}
