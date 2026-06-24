@@ -10012,3 +10012,56 @@ button,
     flex-direction:column;
   }
 }
+
+
+/* v206 — proibido mostrar blocos técnicos no Admin */
+#adminTab #footballRealtimeSyncBoxV156,
+#adminTab #footballManualFallbackV157,
+#adminTab #footballFreeStatusBoxV149,
+#adminTab #footballDataAdminFixedBoxV143,
+#adminTab #suspendedGameAdminBoxV159,
+#adminTab #adminLayoutManagerAdminV202,
+#adminTab #firebaseHealthPanelV187,
+#adminTab #pushHealthPanelV187,
+#adminTab #notificationsHealthPanelV187,
+#adminTab #settingsSystemOnlyAreaV204,
+#adminTab .force-not-in-admin-v206{
+  display:none!important;
+}
+
+/* v206 — área técnica correta dentro de Configurações */
+.configs-technical-only-root-v206{
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:18px;
+  background:linear-gradient(180deg,rgba(255,255,255,.052),rgba(255,255,255,.025));
+  overflow:hidden;
+  margin:0!important;
+}
+.configs-technical-only-root-v206 summary{
+  cursor:pointer;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px 16px;
+  color:var(--gold);
+  font-weight:950;
+}
+.configs-technical-only-root-v206 summary small{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:800;
+  margin-top:3px;
+}
+.configs-technical-only-content-v206{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  padding:0 14px 14px;
+}
+.configs-only-v206{
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+}

@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v205";
+const APP_VERSION_LABEL = "v206";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -11707,3 +11707,207 @@ document.addEventListener("click", event => {
     setTimeout(applySettingsCleanV205, 500);
   }
 }, true);
+
+
+// v206 — correção forte: blocos técnicos nunca ficam no Admin.
+const ADMIN_FORBIDDEN_BLOCK_IDS_V206 = [
+  "footballRealtimeSyncBoxV156",
+  "footballManualFallbackV157",
+  "footballFreeStatusBoxV149",
+  "footballDataAdminFixedBoxV143",
+  "suspendedGameAdminBoxV159",
+  "adminLayoutManagerAdminV202",
+  "firebaseHealthPanelV187",
+  "pushHealthPanelV187",
+  "notificationsHealthPanelV187",
+  "settingsSystemOnlyAreaV204"
+];
+
+function ensureConfigsCleanRootV206() {
+  const settingsTab = document.getElementById("settingsTab");
+  if (!settingsTab) return null;
+
+  if (typeof ensureSettingsAccordionV205 === "function") {
+    ensureSettingsAccordionV205();
+  }
+
+  let root = document.getElementById("configsTechnicalOnlyRootV206");
+  if (root) return root;
+
+  root = document.createElement("section");
+  root.id = "configsTechnicalOnlyRootV206";
+  root.className = "configs-technical-only-root-v206";
+  root.innerHTML = `
+    <details open>
+      <summary>
+        <span>Sistema, Firebase e API</span>
+        <small>Sync football-data, saúde da app, push, suspensão e opções técnicas.</small>
+      </summary>
+      <div id="configsTechnicalOnlyContentV206" class="configs-technical-only-content-v206"></div>
+    </details>
+  `;
+
+  const target =
+    document.querySelector("#settingsSectionV205_sistema .settings-section-content-v205") ||
+    document.getElementById("settingsTab");
+
+  target.prepend(root);
+  return root;
+}
+
+function blockLooksTechnicalV206(el) {
+  if (!el) return false;
+  const id = String(el.id || "");
+  const text = String(el.textContent || "").toLowerCase();
+
+  return ADMIN_FORBIDDEN_BLOCK_IDS_V206.includes(id) ||
+    id.toLowerCase().includes("football") ||
+    id.toLowerCase().includes("firebase") ||
+    id.toLowerCase().includes("health") ||
+    text.includes("api football") ||
+    text.includes("football-data") ||
+    text.includes("sync inteligente") ||
+    text.includes("saúde da app") ||
+    text.includes("firebase e push") ||
+    text.includes("jogo suspenso") ||
+    text.includes("organização da app") ||
+    text.includes("opções avançadas");
+}
+
+function moveForbiddenAdminBlocksToConfigsV206() {
+  const root = ensureConfigsCleanRootV206();
+  const content = document.getElementById("configsTechnicalOnlyContentV206");
+  if (!root || !content) return;
+
+  ADMIN_FORBIDDEN_BLOCK_IDS_V206.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    el.classList.add("configs-only-v206");
+    el.classList.remove(
+      "admin-section-hidden-v187",
+      "admin-section-force-hidden-v202",
+      "admin-section-moved-settings-v202"
+    );
+
+    if (el.id === "settingsSystemOnlyAreaV204") {
+      // Não queremos uma caixa dentro de outra caixa se a v204 já criou wrapper antigo.
+      const oldContent = el.querySelector("#settingsSystemOnlyContentV204");
+      if (oldContent) {
+        [...oldContent.children].forEach(child => content.appendChild(child));
+        el.remove();
+        return;
+      }
+    }
+
+    if (el.parentElement !== content) content.appendChild(el);
+  });
+
+  // Se algum script voltar a criar blocos técnicos no Admin com outros IDs, apanha por texto.
+  document.querySelectorAll("#adminTab section, #adminTab details, #adminTab .admin-card, #adminUnlocked > *").forEach(el => {
+    if (!blockLooksTechnicalV206(el)) return;
+    if (el.id === "adminOverviewV162") return;
+
+    el.classList.add("configs-only-v206");
+    el.classList.remove(
+      "admin-section-hidden-v187",
+      "admin-section-force-hidden-v202",
+      "admin-section-moved-settings-v202"
+    );
+
+    if (el.parentElement !== content) content.appendChild(el);
+  });
+
+  if (typeof applySettingsCleanV205 === "function") {
+    setTimeout(applySettingsCleanV205, 0);
+  }
+}
+
+function hardHideForbiddenBlocksInsideAdminV206() {
+  const adminTab = document.getElementById("adminTab");
+  if (!adminTab) return;
+
+  ADMIN_FORBIDDEN_BLOCK_IDS_V206.forEach(id => {
+    const el = adminTab.querySelector(`#${CSS.escape(id)}`);
+    if (el) {
+      el.classList.add("force-not-in-admin-v206");
+      el.style.display = "none";
+    }
+  });
+
+  adminTab.querySelectorAll("section, details, .admin-card, #adminUnlocked > *").forEach(el => {
+    if (!blockLooksTechnicalV206(el)) return;
+    if (el.id === "adminOverviewV162") return;
+    el.classList.add("force-not-in-admin-v206");
+    el.style.display = "none";
+  });
+}
+
+function applyConfigsOnlyV206() {
+  try {
+    moveForbiddenAdminBlocksToConfigsV206();
+    hardHideForbiddenBlocksInsideAdminV206();
+  } catch (error) {
+    console.warn("applyConfigsOnlyV206 falhou:", error);
+  }
+}
+
+// Depois de qualquer render antigo, volta a tirar os blocos do Admin.
+const renderAdminSectionsOriginalV206 = typeof renderAdminSectionsV187 === "function" ? renderAdminSectionsV187 : null;
+if (renderAdminSectionsOriginalV206) {
+  renderAdminSectionsV187 = function renderAdminSectionsV206() {
+    renderAdminSectionsOriginalV206();
+    setTimeout(applyConfigsOnlyV206, 0);
+    setTimeout(applyConfigsOnlyV206, 150);
+    setTimeout(applyConfigsOnlyV206, 600);
+  };
+}
+
+const renderAppSettingsPanelOriginalV206 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
+if (renderAppSettingsPanelOriginalV206) {
+  renderAppSettingsPanelV162 = function renderAppSettingsPanelV206() {
+    renderAppSettingsPanelOriginalV206();
+    setTimeout(applyConfigsOnlyV206, 0);
+    setTimeout(applyConfigsOnlyV206, 250);
+    setTimeout(applyConfigsOnlyV206, 700);
+  };
+}
+
+const renderActivePageOriginalV206 = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+if (renderActivePageOriginalV206) {
+  renderActivePageV187 = function renderActivePageV206(tabId = activeTabIdV187()) {
+    renderActivePageOriginalV206(tabId);
+    setTimeout(applyConfigsOnlyV206, 80);
+    setTimeout(applyConfigsOnlyV206, 450);
+  };
+}
+
+document.addEventListener("click", event => {
+  if (
+    event.target.closest?.("[data-tab='adminTab']") ||
+    event.target.closest?.("[data-tab='settingsTab']") ||
+    event.target.closest?.("[data-admin-section-v187]")
+  ) {
+    setTimeout(applyConfigsOnlyV206, 50);
+    setTimeout(applyConfigsOnlyV206, 250);
+    setTimeout(applyConfigsOnlyV206, 700);
+  }
+}, true);
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(applyConfigsOnlyV206, 500);
+  setTimeout(applyConfigsOnlyV206, 1500);
+  setTimeout(applyConfigsOnlyV206, 3500);
+});
+
+// Observador para impedir regressão: se algum script meter de novo no Admin, sai logo.
+const adminMutationObserverV206 = new MutationObserver(() => {
+  setTimeout(applyConfigsOnlyV206, 50);
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const adminTab = document.getElementById("adminTab");
+  if (adminTab) {
+    adminMutationObserverV206.observe(adminTab, { childList: true, subtree: true });
+  }
+});
