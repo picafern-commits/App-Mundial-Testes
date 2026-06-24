@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v227";
+const APP_VERSION_LABEL = "v228";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -11703,832 +11703,323 @@ if (renderAllOriginalV221 && !window.__renderAllButtonsV221) {
 }
 
 
-// v222 — Admin colapsável: a página começa fechada e cada secção abre só quando clicada.
-const ADMIN_COLLAPSE_STATE_KEY_V222 = `${STORAGE_KEY}_admin_collapse_open_v222`;
+// v228 - Admin e Configuracoes com colapsaveis unicos e estaveis.
+const COLLAPSE_STATE_KEY_V228 = `${STORAGE_KEY}_collapse_state_v228`;
+const COLLAPSE_TOUCHED_KEY_V228 = `${STORAGE_KEY}_collapse_touched_v228`;
 
-function adminCollapseLabelFromElementV222(el, fallback = "Secção") {
-  const explicit =
-    el?.dataset?.adminSectionLabelV187 ||
-    el?.dataset?.adminSectionV187 ||
-    el?.querySelector?.("h2,h3,strong")?.textContent ||
-    fallback;
+function noopCollapseLegacyV228() {}
 
-  return String(explicit || fallback).trim();
+try {
+  if (typeof applyAdminCollapseV222 === "function") applyAdminCollapseV222 = noopCollapseLegacyV228;
+  if (typeof closeAllAdminCollapseV222 === "function") closeAllAdminCollapseV222 = noopCollapseLegacyV228;
+  if (typeof prepareSettingsCollapseV223 === "function") prepareSettingsCollapseV223 = noopCollapseLegacyV228;
+  if (typeof closeAllSettingsCollapseV223 === "function") closeAllSettingsCollapseV223 = noopCollapseLegacyV228;
+  if (typeof removeFakeAdminCollapseSectionsV224 === "function") removeFakeAdminCollapseSectionsV224 = noopCollapseLegacyV228;
+  if (typeof removeFakeSettingsCollapseSectionsV225 === "function") removeFakeSettingsCollapseSectionsV225 = noopCollapseLegacyV228;
+  if (typeof applyFirstTabsOpenV226 === "function") applyFirstTabsOpenV226 = noopCollapseLegacyV228;
+  if (typeof openFirstDetailsV226 === "function") openFirstDetailsV226 = noopCollapseLegacyV228;
+  if (typeof visibleUsefulDetailsV226 === "function") visibleUsefulDetailsV226 = () => [];
+  if (typeof settingsUserToggleV227 !== "undefined") settingsUserToggleV227 = null;
+} catch (error) {
+  console.warn("Neutralizar colapsaveis antigos falhou:", error);
 }
 
-function adminCardKindV222(el, index) {
-  const id = String(el?.id || "").toLowerCase();
-  const text = String(el?.textContent || "").toLowerCase();
-
-  if (id.includes("overview") || text.includes("48/72") || text.includes("faltam")) return "Resumo";
-  if (id.includes("permission") || text.includes("permissões de utilizadores")) return "Users";
-  if (id.includes("result") || text.includes("resultado")) return "Resultados";
-  if (id.includes("point") || text.includes("pont")) return "Pontos";
-  if (id.includes("knockout") || text.includes("fase final")) return "Fase Final";
-  if (id.includes("user") || text.includes("utilizador")) return "Users";
-  return `Secção ${index + 1}`;
-}
-
-function ensureAdminPageShellCollapsedV222() {
-  const adminTab = $("adminTab");
-  if (!adminTab) return;
-
-  let shell = $("adminCollapseShellV222");
-  if (!shell) {
-    shell = document.createElement("div");
-    shell.id = "adminCollapseShellV222";
-    shell.className = "admin-collapse-shell-v222";
-  }
-
-  if (shell.parentElement !== adminTab) {
-    const first = adminTab.firstElementChild;
-    if (first) adminTab.insertBefore(shell, first);
-    else adminTab.appendChild(shell);
-  }
-
-  const titleNodes = [...adminTab.children].filter(el => {
-    if (el === shell) return false;
-    if (el.closest?.("#adminCollapseShellV222")) return false;
-    return true;
-  });
-
-  titleNodes.forEach((el, index) => {
-    if (!el || el.id === "adminCollapseShellV222") return;
-    if (el.tagName === "SCRIPT" || el.tagName === "STYLE") return;
-
-    // Mantém coisas ocultas ou vazias fora, mas não mexe em modais globais.
-    if (el.classList?.contains("modal") || el.classList?.contains("hidden-modal")) return;
-
-    let label = adminCollapseLabelFromElementV222(el, adminCardKindV222(el, index));
-    if (el.id === "adminSectionTabsV187" || el.classList?.contains("admin-section-tabs-v187")) label = "Abas do Admin";
-
-    // Não embrulhar se já estiver dentro de um details v222.
-    if (el.closest?.(".admin-collapse-section-v222")) return;
-
-    const details = document.createElement("details");
-    details.className = "admin-collapse-section-v222";
-    details.dataset.adminCollapseSectionV222 = label;
-    details.open = false;
-
-    const summary = document.createElement("summary");
-    summary.innerHTML = `<span>${escapeHtml(label)}</span><small>Toque para abrir</small>`;
-
-    const content = document.createElement("div");
-    content.className = "admin-collapse-content-v222";
-
-    shell.appendChild(details);
-    details.appendChild(summary);
-    details.appendChild(content);
-    content.appendChild(el);
-
-    details.addEventListener("toggle", () => {
-      const small = details.querySelector("summary small");
-      if (small) small.textContent = details.open ? "Aberto" : "Toque para abrir";
-    });
-  });
-}
-
-function collapseAdminInnerCardsV222() {
-  const adminTab = $("adminTab");
-  if (!adminTab) return;
-
-  const cards = [...adminTab.querySelectorAll("#adminUnlocked > .admin-card, .admin-card")]
-    .filter(card => !card.closest(".admin-card-collapse-v222"))
-    .filter(card => !card.closest("summary"))
-    .filter(card => card.id !== "adminOverviewV162");
-
-  cards.forEach((card, index) => {
-    if (!card.parentElement) return;
-    if (card.dataset.noCollapseV222 === "1") return;
-
-    const label = adminCardKindV222(card, index);
-    const details = document.createElement("details");
-    details.className = "admin-card-collapse-v222";
-    details.open = false;
-
-    const summary = document.createElement("summary");
-    summary.innerHTML = `<span>${escapeHtml(label)}</span><small>Fechado</small>`;
-
-    const content = document.createElement("div");
-    content.className = "admin-card-collapse-content-v222";
-
-    card.parentElement.insertBefore(details, card);
-    details.appendChild(summary);
-    details.appendChild(content);
-    content.appendChild(card);
-
-    details.addEventListener("toggle", () => {
-      const small = details.querySelector("summary small");
-      if (small) small.textContent = details.open ? "Aberto" : "Fechado";
-    });
-  });
-}
-
-function closeAllAdminCollapseV222() {
-  document.querySelectorAll("#adminTab details.admin-collapse-section-v222, #adminTab details.admin-card-collapse-v222").forEach(details => {
-    details.open = false;
-    const small = details.querySelector("summary small");
-    if (small) small.textContent = details.classList.contains("admin-card-collapse-v222") ? "Fechado" : "Toque para abrir";
-  });
-}
-
-function applyAdminCollapseV222({ forceClose = false } = {}) {
+function collapseStateV228(scope) {
   try {
-    ensureAdminPageShellCollapsedV222();
-    collapseAdminInnerCardsV222();
+    const all = JSON.parse(localStorage.getItem(COLLAPSE_STATE_KEY_V228) || "{}") || {};
+    return all[scope] && typeof all[scope] === "object" ? all[scope] : {};
+  } catch {
+    return {};
+  }
+}
 
-    if (forceClose || !document.body.dataset.adminCollapseOpenedOnceV222) {
-      closeAllAdminCollapseV222();
-      document.body.dataset.adminCollapseOpenedOnceV222 = "1";
-    }
+function collapseTouchedV228(scope) {
+  try {
+    const all = JSON.parse(localStorage.getItem(COLLAPSE_TOUCHED_KEY_V228) || "{}") || {};
+    return all[scope] === true;
+  } catch {
+    return false;
+  }
+}
+
+function saveCollapseStateV228(scope, key, open) {
+  try {
+    const all = JSON.parse(localStorage.getItem(COLLAPSE_STATE_KEY_V228) || "{}") || {};
+    all[scope] = { ...(all[scope] || {}), [key]: Boolean(open) };
+    localStorage.setItem(COLLAPSE_STATE_KEY_V228, JSON.stringify(all));
+
+    const touched = JSON.parse(localStorage.getItem(COLLAPSE_TOUCHED_KEY_V228) || "{}") || {};
+    touched[scope] = true;
+    localStorage.setItem(COLLAPSE_TOUCHED_KEY_V228, JSON.stringify(touched));
   } catch (error) {
-    console.warn("applyAdminCollapseV222 falhou:", error);
+    console.warn("Guardar estado dos colapsaveis falhou:", error);
   }
 }
 
-const renderAdminOriginalV222 = typeof renderAdmin === "function" ? renderAdmin : null;
-if (renderAdminOriginalV222 && !window.__renderAdminCollapseV222) {
-  window.__renderAdminCollapseV222 = true;
-  renderAdmin = function renderAdminV222() {
-    const result = renderAdminOriginalV222.apply(this, arguments);
-    setTimeout(() => applyAdminCollapseV222({ forceClose: true }), 0);
-    setTimeout(() => applyAdminCollapseV222({ forceClose: true }), 180);
-    return result;
-  };
+function usefulElementV228(el) {
+  if (!el || el.hidden) return false;
+  if (el.id === "adminHiddenCardsV214" || el.id === "settingsAdminMovedCardsV214") return false;
+  if (el.classList?.contains("hidden") || el.classList?.contains("user-hidden-v202")) return false;
+  if (el.classList?.contains("admin-section-tabs-v187")) return false;
+  const text = String(el.textContent || "").replace(/\s+/g, " ").trim();
+  if (text.length > 6) return true;
+  return Boolean(el.querySelector?.("button,input,select,textarea,table,img,canvas,svg,[id]"));
 }
 
-const renderAdminSectionsOriginalV222 = typeof renderAdminSectionsV187 === "function" ? renderAdminSectionsV187 : null;
-if (renderAdminSectionsOriginalV222 && !window.__renderAdminSectionsCollapseV222) {
-  window.__renderAdminSectionsCollapseV222 = true;
-  renderAdminSectionsV187 = function renderAdminSectionsCollapseV222() {
-    const result = renderAdminSectionsOriginalV222.apply(this, arguments);
-    setTimeout(() => applyAdminCollapseV222({ forceClose: true }), 0);
-    setTimeout(() => applyAdminCollapseV222({ forceClose: true }), 200);
-    return result;
-  };
+function usefulChildrenV228(container) {
+  return [...(container?.children || [])].filter(usefulElementV228);
 }
 
-document.addEventListener("click", event => {
-  if (event.target.closest?.("[data-tab='adminTab']")) {
-    delete document.body.dataset.adminCollapseOpenedOnceV222;
-    setTimeout(() => applyAdminCollapseV222({ forceClose: true }), 120);
-    setTimeout(() => applyAdminCollapseV222({ forceClose: true }), 450);
-  }
-}, true);
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(() => applyAdminCollapseV222({ forceClose: true }), 800);
-  setTimeout(() => applyAdminCollapseV222({ forceClose: true }), 1800);
-});
-
-
-// v223 — Configurações: página inicia toda colapsada.
-function closeAllSettingsCollapseV223() {
-  const settingsTab = $("settingsTab");
-  if (!settingsTab) return;
-
-  settingsTab.querySelectorAll("details").forEach(details => {
-    details.open = false;
-
-    const small = details.querySelector(":scope > summary small");
-    if (small) {
-      small.textContent = small.textContent?.includes("bloco") ? small.textContent : "Fechado";
-    }
-  });
-
-  document.body.classList.add("settings-collapsed-v223");
-}
-
-function prepareSettingsCollapseV223() {
-  const settingsTab = $("settingsTab");
-  if (!settingsTab) return;
-
-  // Se já existem secções colapsáveis anteriores, aproveita-as.
-  if (typeof ensureSettingsAccordionV205 === "function") {
-    try { ensureSettingsAccordionV205(); } catch (error) { console.warn("ensureSettingsAccordionV205 falhou:", error); }
-  }
-
-  // Se a página tiver blocos soltos, transforma-os em secções colapsáveis simples.
-  let shell = $("settingsCollapseShellV223");
-  if (!shell) {
-    shell = document.createElement("div");
-    shell.id = "settingsCollapseShellV223";
-    shell.className = "settings-collapse-shell-v223";
-  }
-
-  const hasAccordion = settingsTab.querySelector("#settingsAccordionV205, .settings-accordion-v205");
-  if (!hasAccordion && shell.parentElement !== settingsTab) {
-    settingsTab.prepend(shell);
-
-    [...settingsTab.children].forEach((el, index) => {
-      if (!el || el === shell) return;
-      if (el.closest?.("#settingsCollapseShellV223")) return;
-      if (el.tagName === "SCRIPT" || el.tagName === "STYLE") return;
-
-      const title =
-        el.querySelector?.("h2,h3,strong")?.textContent?.trim() ||
-        el.id?.replace(/([A-Z])/g, " $1").trim() ||
-        `Secção ${index + 1}`;
-
-      const details = document.createElement("details");
-      details.className = "settings-collapse-section-v223";
-      details.open = false;
-
-      const summary = document.createElement("summary");
-      summary.innerHTML = `<span>${escapeHtml(title)}</span><small>Fechado</small>`;
-
-      const content = document.createElement("div");
-      content.className = "settings-collapse-content-v223";
-
-      shell.appendChild(details);
-      details.appendChild(summary);
-      details.appendChild(content);
-      content.appendChild(el);
-
-      details.addEventListener("toggle", () => {
-        const small = details.querySelector(":scope > summary small");
-        if (small) small.textContent = details.open ? "Aberto" : "Fechado";
-      });
-    });
-  }
-
-  setTimeout(closeAllSettingsCollapseV223, 0);
-  setTimeout(closeAllSettingsCollapseV223, 180);
-}
-
-const renderAppSettingsPanelOriginalV223 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
-if (renderAppSettingsPanelOriginalV223 && !window.__renderSettingsCollapseV223) {
-  window.__renderSettingsCollapseV223 = true;
-  renderAppSettingsPanelV162 = function renderAppSettingsPanelCollapseV223() {
-    const result = renderAppSettingsPanelOriginalV223.apply(this, arguments);
-    setTimeout(prepareSettingsCollapseV223, 0);
-    setTimeout(closeAllSettingsCollapseV223, 250);
-    return result;
-  };
-}
-
-document.addEventListener("click", event => {
-  if (event.target.closest?.("[data-tab='settingsTab']")) {
-    setTimeout(prepareSettingsCollapseV223, 80);
-    setTimeout(closeAllSettingsCollapseV223, 350);
-  }
-}, true);
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(prepareSettingsCollapseV223, 900);
-  setTimeout(closeAllSettingsCollapseV223, 1600);
-});
-
-
-// v224 — Limpeza do Admin: remover wrappers falsos/duplicados destacados a vermelho.
-function adminSummaryTitleV224(details) {
-  return String(details?.querySelector?.(":scope > summary span")?.textContent || details?.querySelector?.(":scope > summary")?.textContent || "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function unwrapAdminDetailsV224(details) {
+function unwrapDetailsV228(details, contentSelector) {
   const parent = details?.parentElement;
-  const content =
-    details?.querySelector?.(":scope > .admin-collapse-content-v222") ||
-    details?.querySelector?.(":scope > .admin-card-collapse-content-v222") ||
-    details?.querySelector?.(":scope > div");
+  const content = details?.querySelector?.(contentSelector);
   if (!parent || !content) {
     details?.remove?.();
     return;
   }
-
   [...content.children].forEach(child => parent.insertBefore(child, details));
   details.remove();
 }
 
-function removeFakeAdminCollapseSectionsV224() {
-  const adminTab = $("adminTab");
-  if (!adminTab) return;
-
-  // 1) Remove a caixa falsa "Admin" que embrulhava a página toda.
-  adminTab.querySelectorAll("details.admin-collapse-section-v222").forEach(details => {
-    const title = adminSummaryTitleV224(details).toLowerCase();
-
-    if (title === "admin" || title.startsWith("admin toque") || title.includes("secção 3")) {
-      unwrapAdminDetailsV224(details);
-    }
-  });
-
-  // 2) Remove wrappers vazios ou sem conteúdo útil.
-  adminTab.querySelectorAll("details.admin-collapse-section-v222, details.admin-card-collapse-v222").forEach(details => {
-    const content =
-      details.querySelector(":scope > .admin-collapse-content-v222") ||
-      details.querySelector(":scope > .admin-card-collapse-content-v222");
-    const usefulText = String(content?.textContent || "").replace(/\s+/g, " ").trim();
-
-    if (!usefulText) details.remove();
-  });
-
-  // 3) Deduplica secções colapsáveis com o mesmo título e conteúdo parecido.
-  const seen = new Set();
-  adminTab.querySelectorAll("details.admin-collapse-section-v222, details.admin-card-collapse-v222").forEach(details => {
-    const title = adminSummaryTitleV224(details).toLowerCase();
-    const contentText = String(details.textContent || "").toLowerCase().replace(/\s+/g, " ").trim().slice(0, 260);
-    const key = `${title}::${contentText}`;
-
-    if (seen.has(key)) {
-      details.remove();
-    } else {
-      seen.add(key);
-    }
-  });
-
-  // 4) Limpa especificamente os "Resultados" duplicados sem conteúdo visível.
-  let firstUsefulResultados = null;
-  adminTab.querySelectorAll("details.admin-card-collapse-v222, details.admin-collapse-section-v222").forEach(details => {
-    const title = adminSummaryTitleV224(details).toLowerCase();
-    if (title !== "resultados" && !title.startsWith("resultados ")) return;
-
-    const content =
-      details.querySelector(":scope > .admin-collapse-content-v222") ||
-      details.querySelector(":scope > .admin-card-collapse-content-v222");
-    const usefulText = String(content?.textContent || "").replace(/\s+/g, " ").trim();
-
-    // Se está vazio ou só tem botões/inputs escondidos, remove.
-    const hasVisibleUsefulChild = [...(content?.children || [])].some(child => {
-      const style = window.getComputedStyle(child);
-      return style.display !== "none" && String(child.textContent || "").replace(/\s+/g, " ").trim().length > 20;
-    });
-
-    if (!usefulText || !hasVisibleUsefulChild) {
-      details.remove();
-      return;
-    }
-
-    if (!firstUsefulResultados) {
-      firstUsefulResultados = details;
-      return;
-    }
-
-    // Mantém só uma secção Resultados se forem repetidas no mesmo ecrã.
-    details.remove();
-  });
-
-  // 5) Remove headers "Secção X" sem sentido.
-  adminTab.querySelectorAll("details.admin-card-collapse-v222, details.admin-collapse-section-v222").forEach(details => {
-    const title = adminSummaryTitleV224(details).toLowerCase();
-    if (/^secção\s+\d+/.test(title)) details.remove();
-  });
-}
-
-function applyAdminCleanNoDuplicatesV224() {
-  try {
-    removeFakeAdminCollapseSectionsV224();
-  } catch (error) {
-    console.warn("applyAdminCleanNoDuplicatesV224 falhou:", error);
-  }
-}
-
-const applyAdminCollapseOriginalV224 = typeof applyAdminCollapseV222 === "function" ? applyAdminCollapseV222 : null;
-if (applyAdminCollapseOriginalV224 && !window.__adminCleanV224) {
-  window.__adminCleanV224 = true;
-  applyAdminCollapseV222 = function applyAdminCollapseCleanV224(options = {}) {
-    const result = applyAdminCollapseOriginalV224(options);
-    setTimeout(applyAdminCleanNoDuplicatesV224, 0);
-    setTimeout(applyAdminCleanNoDuplicatesV224, 120);
-    return result;
-  };
-}
-
-const renderAdminOriginalV224 = typeof renderAdmin === "function" ? renderAdmin : null;
-if (renderAdminOriginalV224 && !window.__renderAdminCleanV224) {
-  window.__renderAdminCleanV224 = true;
-  renderAdmin = function renderAdminCleanV224() {
-    const result = renderAdminOriginalV224.apply(this, arguments);
-    setTimeout(applyAdminCleanNoDuplicatesV224, 0);
-    setTimeout(applyAdminCleanNoDuplicatesV224, 250);
-    return result;
-  };
-}
-
-document.addEventListener("click", event => {
-  if (event.target.closest?.("[data-tab='adminTab']") || event.target.closest?.("#adminTab summary")) {
-    setTimeout(applyAdminCleanNoDuplicatesV224, 100);
-    setTimeout(applyAdminCleanNoDuplicatesV224, 400);
-  }
-}, true);
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(applyAdminCleanNoDuplicatesV224, 1000);
-  setTimeout(applyAdminCleanNoDuplicatesV224, 2200);
-});
-
-
-// v225 — Limpeza das Configurações: remove wrapper falso "Configurações" e secções vazias.
-function settingsSummaryTitleV225(details) {
-  return String(details?.querySelector?.(":scope > summary span")?.textContent || details?.querySelector?.(":scope > summary")?.textContent || "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function unwrapSettingsDetailsV225(details) {
-  const parent = details?.parentElement;
-  const content =
-    details?.querySelector?.(":scope > .settings-collapse-content-v223") ||
-    details?.querySelector?.(":scope > .settings-section-content-v205") ||
-    details?.querySelector?.(":scope > div");
-
-  if (!parent || !content) {
-    details?.remove?.();
-    return;
-  }
-
-  [...content.children].forEach(child => parent.insertBefore(child, details));
-  details.remove();
-}
-
-function settingsContentHasUsefulVisibleChildrenV225(details) {
-  const content =
-    details?.querySelector?.(":scope > .settings-collapse-content-v223") ||
-    details?.querySelector?.(":scope > .settings-section-content-v205") ||
-    details?.querySelector?.(":scope > div");
-
-  if (!content) return false;
-
-  const text = String(content.textContent || "").replace(/\s+/g, " ").trim();
-  if (text.length < 8) return false;
-
-  return [...content.children].some(child => {
-    if (!child) return false;
-    const childText = String(child.textContent || "").replace(/\s+/g, " ").trim();
-    if (childText.length < 8) return false;
-    try {
-      const style = window.getComputedStyle(child);
-      return style.display !== "none" && style.visibility !== "hidden";
-    } catch {
-      return true;
-    }
-  });
-}
-
-function removeFakeSettingsCollapseSectionsV225() {
-  const settingsTab = $("settingsTab");
-  if (!settingsTab) return;
-
-  // 1) Remove a caixa falsa "Configurações" que embrulhava a página toda.
-  settingsTab.querySelectorAll("details.settings-collapse-section-v223").forEach(details => {
-    const title = settingsSummaryTitleV225(details).toLowerCase();
-
-    if (title === "configurações" || title === "configuracoes" || title.startsWith("configurações fechado")) {
-      unwrapSettingsDetailsV225(details);
-    }
-  });
-
-  // 2) Remove secções vazias/sem uso destacadas no print.
-  const removeIfEmptyOrKnownUnused = ["preferências", "preferencias", "ferramentas admin", "outros"];
-
-  settingsTab.querySelectorAll("details").forEach(details => {
-    const title = settingsSummaryTitleV225(details).toLowerCase();
-    const knownUnused = removeIfEmptyOrKnownUnused.includes(title);
-
-    if (knownUnused && !settingsContentHasUsefulVisibleChildrenV225(details)) {
-      details.remove();
-      return;
-    }
-
-    // Mesmo com algum texto residual "Fechado", se não há conteúdo real, remove.
-    if (!settingsContentHasUsefulVisibleChildrenV225(details) && knownUnused) {
-      details.remove();
-    }
-  });
-
-  // 3) Remove wrappers vazios sobrantes.
-  settingsTab.querySelectorAll("details").forEach(details => {
-    const title = settingsSummaryTitleV225(details).toLowerCase();
-    const content =
-      details.querySelector(":scope > .settings-collapse-content-v223") ||
-      details.querySelector(":scope > .settings-section-content-v205") ||
-      details.querySelector(":scope > div");
-    const contentText = String(content?.textContent || "").replace(/\s+/g, " ").trim();
-
-    if (!contentText && title) details.remove();
-  });
-
-  // 4) Deduplica títulos repetidos na página Configurações.
-  const seen = new Set();
-  settingsTab.querySelectorAll("details").forEach(details => {
-    const title = settingsSummaryTitleV225(details).toLowerCase();
-    if (!title) return;
-
-    const contentText = String(details.textContent || "").toLowerCase().replace(/\s+/g, " ").trim().slice(0, 240);
-    const key = `${title}::${contentText}`;
-    if (seen.has(key)) {
-      details.remove();
-    } else {
-      seen.add(key);
-    }
-  });
-
-  // 5) Mantém tudo fechado ao entrar, mas sem criar caixa falsa.
-  settingsTab.querySelectorAll("details").forEach(details => {
-    details.open = false;
-    const small = details.querySelector(":scope > summary small");
-    if (small && !small.textContent.includes("bloco")) small.textContent = "Fechado";
-  });
-}
-
-function applySettingsCleanNoEmptyV225() {
-  try {
-    removeFakeSettingsCollapseSectionsV225();
-  } catch (error) {
-    console.warn("applySettingsCleanNoEmptyV225 falhou:", error);
-  }
-}
-
-const prepareSettingsCollapseOriginalV225 = typeof prepareSettingsCollapseV223 === "function" ? prepareSettingsCollapseV223 : null;
-if (prepareSettingsCollapseOriginalV225 && !window.__settingsCleanV225) {
-  window.__settingsCleanV225 = true;
-  prepareSettingsCollapseV223 = function prepareSettingsCollapseCleanV225() {
-    const result = prepareSettingsCollapseOriginalV225.apply(this, arguments);
-    setTimeout(applySettingsCleanNoEmptyV225, 0);
-    setTimeout(applySettingsCleanNoEmptyV225, 160);
-    return result;
-  };
-}
-
-const renderAppSettingsPanelOriginalV225 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
-if (renderAppSettingsPanelOriginalV225 && !window.__renderSettingsCleanV225) {
-  window.__renderSettingsCleanV225 = true;
-  renderAppSettingsPanelV162 = function renderAppSettingsPanelCleanV225() {
-    const result = renderAppSettingsPanelOriginalV225.apply(this, arguments);
-    setTimeout(applySettingsCleanNoEmptyV225, 0);
-    setTimeout(applySettingsCleanNoEmptyV225, 220);
-    return result;
-  };
-}
-
-document.addEventListener("click", event => {
-  if (event.target.closest?.("[data-tab='settingsTab']") || event.target.closest?.("#settingsTab summary")) {
-    setTimeout(applySettingsCleanNoEmptyV225, 100);
-    setTimeout(applySettingsCleanNoEmptyV225, 400);
-  }
-}, true);
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(applySettingsCleanNoEmptyV225, 1000);
-  setTimeout(applySettingsCleanNoEmptyV225, 2200);
-});
-
-
-// v226 — primeira aba útil em Admin e Configurações fica sempre aberta.
-function visibleUsefulDetailsV226(root) {
-  return [...(root?.querySelectorAll?.("details") || [])].filter(details => {
-    if (!details) return false;
-    try {
-      const style = window.getComputedStyle(details);
-      if (style.display === "none" || style.visibility === "hidden") return false;
-    } catch {}
-
-    const title = String(details.querySelector(":scope > summary")?.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
-    if (!title) return false;
-    if (title === "admin" || title === "configurações" || title === "configuracoes") return false;
-    if (/^secção\s+\d+/.test(title)) return false;
-
-    const contentText = String(details.textContent || "").replace(/\s+/g, " ").trim();
-    return contentText.length > title.length + 4;
-  });
-}
-
-function setDetailsLabelV226(details, open) {
-  const small = details?.querySelector?.(":scope > summary small");
-  if (!small) return;
-  if (small.textContent && small.textContent.includes("bloco")) return;
-  small.textContent = open ? "Aberto" : "Fechado";
-}
-
-function openFirstDetailsV226(tabId) {
-  const root = $(tabId);
+function unwrapLegacyCollapseV228(root) {
   if (!root) return;
-
-  const detailsList = visibleUsefulDetailsV226(root);
-  if (!detailsList.length) return;
-
-  detailsList.forEach((details, index) => {
-    const shouldOpen = index === 0;
-    details.open = shouldOpen;
-    setDetailsLabelV226(details, shouldOpen);
+  root.querySelectorAll("details.admin-collapse-section-v222").forEach(details => unwrapDetailsV228(details, ":scope > .admin-collapse-content-v222"));
+  root.querySelectorAll("details.admin-card-collapse-v222").forEach(details => unwrapDetailsV228(details, ":scope > .admin-card-collapse-content-v222"));
+  root.querySelectorAll("details.settings-collapse-section-v223").forEach(details => unwrapDetailsV228(details, ":scope > .settings-collapse-content-v223"));
+  root.querySelectorAll("#adminCollapseShellV222,#settingsCollapseShellV223").forEach(shell => {
+    [...shell.children].forEach(child => shell.parentElement?.insertBefore(child, shell));
+    shell.remove();
   });
-
-  root.classList.add("first-section-open-v226");
+  document.body.classList.remove("settings-collapsed-v223");
 }
 
-function applyFirstTabsOpenV226() {
-  try {
-    openFirstDetailsV226("adminTab");
-    openFirstDetailsV226("settingsTab");
-  } catch (error) {
-    console.warn("applyFirstTabsOpenV226 falhou:", error);
-  }
+function unwrapCleanSectionsV228(root, selector) {
+  if (!root) return;
+  root.querySelectorAll(selector).forEach(section => {
+    const content = section.querySelector(":scope > .clean-collapse-content-v228");
+    if (content) [...content.children].forEach(child => section.parentElement?.insertBefore(child, section));
+    section.remove();
+  });
 }
 
-// Substitui o "fecha tudo" por "fecha tudo menos a primeira aba útil".
-const closeAllAdminCollapseOriginalV226 = typeof closeAllAdminCollapseV222 === "function" ? closeAllAdminCollapseV222 : null;
-if (closeAllAdminCollapseOriginalV226 && !window.__closeAdminKeepFirstV226) {
-  window.__closeAdminKeepFirstV226 = true;
-  closeAllAdminCollapseV222 = function closeAllAdminCollapseKeepFirstV226() {
-    closeAllAdminCollapseOriginalV226();
-    setTimeout(() => openFirstDetailsV226("adminTab"), 0);
-  };
+function makeCleanSectionV228({ scope, key, title, description = "", items = [], index = 0 }) {
+  const details = document.createElement("details");
+  details.className = `${scope}-clean-section-v228 clean-collapse-section-v228`;
+  details.dataset.cleanCollapseScopeV228 = scope;
+  details.dataset.cleanCollapseKeyV228 = key;
+
+  const state = collapseStateV228(scope);
+  const touched = collapseTouchedV228(scope);
+  details.open = touched ? state[key] === true : index === 0;
+
+  const summary = document.createElement("summary");
+  summary.innerHTML = `<span>${escapeHtml(title)}</span>${description ? `<small>${escapeHtml(description)}</small>` : ""}`;
+
+  const content = document.createElement("div");
+  content.className = "clean-collapse-content-v228";
+  items.forEach(item => content.appendChild(item));
+
+  details.appendChild(summary);
+  details.appendChild(content);
+  details.addEventListener("toggle", () => saveCollapseStateV228(scope, key, details.open));
+  return details;
 }
 
-const closeAllSettingsCollapseOriginalV226 = typeof closeAllSettingsCollapseV223 === "function" ? closeAllSettingsCollapseV223 : null;
-if (closeAllSettingsCollapseOriginalV226 && !window.__closeSettingsKeepFirstV226) {
-  window.__closeSettingsKeepFirstV226 = true;
-  closeAllSettingsCollapseV223 = function closeAllSettingsCollapseKeepFirstV226() {
-    closeAllSettingsCollapseOriginalV226();
-    setTimeout(() => openFirstDetailsV226("settingsTab"), 0);
-  };
+function adminSectionForCardV228(card) {
+  const title = String(card?.querySelector?.(":scope > summary h2, h2, h3, strong")?.textContent || "").toLowerCase();
+  const text = String(card?.textContent || "").toLowerCase();
+  if (title.includes("permiss") || title.includes("users do jogo") || text.includes("guardar utilizador") || text.includes("adicionar user")) return "users";
+  if (title.includes("fase final") || text.includes("knockout")) return "knockout";
+  if (title.includes("pontos") || title.includes("exportar pontos") || title.includes("resultados especiais") || text.includes("guardar pontos")) return "points";
+  if (title.includes("resultado") || title.includes("excel") || text.includes("importar excel") || text.includes("adminGamesList")) return "results";
+  return "system";
 }
 
-document.addEventListener("click", event => {
-  if (
-    event.target.closest?.("[data-tab='adminTab']") ||
-    event.target.closest?.("[data-tab='settingsTab']")
-  ) {
-    setTimeout(applyFirstTabsOpenV226, 140);
-    setTimeout(applyFirstTabsOpenV226, 420);
-  }
-}, true);
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(applyFirstTabsOpenV226, 1000);
-  setTimeout(applyFirstTabsOpenV226, 2200);
-});
-
-// Se tentarem fechar a primeira aba útil, abre novamente.
-document.addEventListener("toggle", event => {
-  const details = event.target;
-  if (!(details instanceof HTMLDetailsElement)) return;
-
+function organizeAdminPageV228() {
   const adminTab = $("adminTab");
-  const settingsTab = $("settingsTab");
+  const adminUnlocked = $("adminUnlocked");
+  if (!adminTab || !adminUnlocked) return;
 
-  if (adminTab?.contains(details)) {
-    const first = visibleUsefulDetailsV226(adminTab)[0];
-    if (details === first && !details.open) {
-      setTimeout(() => {
-        details.open = true;
-        setDetailsLabelV226(details, true);
-      }, 0);
-    }
+  unwrapLegacyCollapseV228(adminTab);
+  unwrapCleanSectionsV228(adminUnlocked, ":scope > .admin-clean-section-v228");
+
+  const settings = savedAdminLayoutSettingsV213();
+  const availableSections = typeof routeAdminCardsV214 === "function" ? routeAdminCardsV214(settings) : new Set();
+  cleanupAdminTechnicalBlocksV213?.();
+
+  const tabs = $("adminSectionTabsV187");
+  if (tabs) {
+    tabs.hidden = true;
+    tabs.style.display = "none";
   }
 
-  if (settingsTab?.contains(details)) {
-    const first = visibleUsefulDetailsV226(settingsTab)[0];
-    if (details === first && !details.open) {
-      setTimeout(() => {
-        details.open = true;
-        setDetailsLabelV226(details, true);
-      }, 0);
-    }
-  }
-}, true);
-
-
-// v227 — Corrige Configurações: ao abrir uma aba, ela não fecha logo sozinha.
-let settingsUserToggleV227 = null;
-
-function settingsDetailsTitleV227(details) {
-  return String(details?.querySelector?.(":scope > summary span")?.textContent || details?.querySelector?.(":scope > summary")?.textContent || "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function setSettingsDetailsLabelV227(details, open) {
-  const small = details?.querySelector?.(":scope > summary small");
-  if (!small) return;
-  if (small.textContent && small.textContent.includes("bloco")) return;
-  small.textContent = open ? "Aberto" : "Fechado";
-}
-
-function snapshotSettingsOpenStateV227() {
-  const settingsTab = $("settingsTab");
-  const state = new Map();
-  if (!settingsTab) return state;
-
-  [...settingsTab.querySelectorAll("details")].forEach((details, index) => {
-    const key = details.id || `${settingsDetailsTitleV227(details)}_${index}`;
-    state.set(key, details.open);
+  const summaryItems = [$("firebaseStatusBox"), $("adminOverviewV162")].filter(el => el && adminUnlocked.contains(el));
+  summaryItems.forEach(el => {
+    el.hidden = false;
+    el.style.display = "";
   });
 
-  return state;
-}
+  const buckets = {
+    summary: summaryItems,
+    users: [],
+    results: [],
+    points: [],
+    knockout: [],
+    system: []
+  };
 
-function restoreSettingsOpenStateV227(state) {
-  const settingsTab = $("settingsTab");
-  if (!settingsTab || !state) return;
-
-  [...settingsTab.querySelectorAll("details")].forEach((details, index) => {
-    const key = details.id || `${settingsDetailsTitleV227(details)}_${index}`;
-    if (!state.has(key)) return;
-    const open = state.get(key);
-    details.open = open;
-    setSettingsDetailsLabelV227(details, open);
+  [...adminUnlocked.children].forEach(child => {
+    if (!child.classList?.contains("admin-card")) return;
+    if (child.hidden || child.style.display === "none") return;
+    const key = adminSectionForCardV228(child);
+    if (!buckets[key]) buckets.system.push(child);
+    else buckets[key].push(child);
   });
+
+  const sectionDefs = [
+    ["summary", "Resumo", "Estado geral da app"],
+    ["users", "Users", "Contas, cargos e participantes"],
+    ["results", "Resultados", "Jogos, Excel e resultados"],
+    ["points", "Pontos", "Regras e extras"],
+    ["knockout", "Fase Final", "Jogos a eliminar"],
+    ["system", "Sistema", "Apenas se houver conteudo"],
+  ];
+
+  const sections = sectionDefs
+    .map(([key, title, description]) => ({ key, title, description, items: buckets[key].filter(usefulElementV228) }))
+    .filter(section => section.items.length > 0);
+
+  sections.forEach((section, index) => {
+    const details = makeCleanSectionV228({ scope: "admin", key: section.key, title: section.title, description: section.description, items: section.items, index });
+    adminUnlocked.appendChild(details);
+  });
+
+  adminUnlocked.querySelectorAll(".admin-collapse-section-v222,.admin-card-collapse-v222").forEach(el => el.remove());
 }
 
-function keepFirstSettingsOpenOnlyOnEnterV227() {
+function organizeSettingsPageV228() {
   const settingsTab = $("settingsTab");
   if (!settingsTab) return;
 
-  const details = [...settingsTab.querySelectorAll("details")].filter(item => {
-    try {
-      const style = window.getComputedStyle(item);
-      return style.display !== "none" && style.visibility !== "hidden";
-    } catch {
-      return true;
+  unwrapLegacyCollapseV228(settingsTab);
+  if (typeof ensureSettingsSectionsV213 === "function") ensureSettingsSectionsV213();
+  if (typeof renderOrganizationPanelV213 === "function") renderOrganizationPanelV213();
+  if (typeof ensureFootballDataSettingsBoxV213 === "function") ensureFootballDataSettingsBoxV213();
+  if (typeof moveTechnicalBlocksToSettingsV213 === "function") moveTechnicalBlocksToSettingsV213();
+
+  const accordion = $("settingsAccordionV213");
+  if (!accordion) return;
+
+  const wantedOrder = ["organization", "system", "install", "preferences", "admin", "other"];
+  wantedOrder.forEach(key => {
+    const section = $(`settingsSectionV213_${key}`);
+    if (section && section.parentElement === accordion) accordion.appendChild(section);
+  });
+
+  const usefulSections = [];
+  accordion.querySelectorAll(":scope > details.settings-section-v213").forEach(details => {
+    const key = details.dataset.settingsSectionV213 || details.id.replace("settingsSectionV213_", "");
+    const content = details.querySelector(":scope > .settings-section-content-v213");
+    const useful = usefulChildrenV228(content).length > 0;
+    const knownOptional = ["preferences", "admin", "other"].includes(key);
+
+    if (!useful || (knownOptional && !useful)) {
+      details.hidden = true;
+      details.style.display = "none";
+      return;
+    }
+
+    details.hidden = false;
+    details.style.display = "";
+    usefulSections.push(details);
+  });
+
+  const state = collapseStateV228("settings");
+  const touched = collapseTouchedV228("settings");
+  usefulSections.forEach((details, index) => {
+    const key = details.dataset.settingsSectionV213 || details.id || `settings_${index}`;
+    details.open = touched ? state[key] === true : index === 0;
+    if (!details.dataset.cleanToggleV228) {
+      details.dataset.cleanToggleV228 = "1";
+      details.addEventListener("toggle", () => saveCollapseStateV228("settings", key, details.open));
     }
   });
 
-  // Só garante a primeira principal aberta. Não fecha as outras que o user abriu.
-  const first = details.find(item => {
-    const title = settingsDetailsTitleV227(item).toLowerCase();
-    return title && title !== "configurações" && title !== "configuracoes";
+  settingsTab.querySelectorAll("details.settings-collapse-section-v223,#settingsCollapseShellV223").forEach(el => el.remove());
+}
+
+function applyAdminLayoutSettingsV228() {
+  const settings = savedAdminLayoutSettingsV213();
+  PAGE_LOCATION_CHOICES_V213.forEach(([key, , tabId]) => {
+    const tab = document.querySelector(`[data-tab="${CSS.escape(tabId)}"]`);
+    if (tab) tab.classList.toggle("user-hidden-v202", settings.pages?.[key] === false);
   });
 
-  if (first) {
-    first.open = true;
-    setSettingsDetailsLabelV227(first, true);
-  }
+  organizeAdminPageV228();
+  const activeTab = document.querySelector(".tab.active");
+  if (activeTab?.classList.contains("user-hidden-v202")) switchToFirstAllowedTab();
 }
 
-// Override da limpeza antiga: limpa duplicados/vazios, mas NÃO fecha todas as abas.
-const removeFakeSettingsOriginalV227 = typeof removeFakeSettingsCollapseSectionsV225 === "function" ? removeFakeSettingsCollapseSectionsV225 : null;
-if (removeFakeSettingsOriginalV227 && !window.__settingsCleanKeepStateV227) {
-  window.__settingsCleanKeepStateV227 = true;
-  removeFakeSettingsCollapseSectionsV225 = function removeFakeSettingsKeepStateV227() {
-    const before = snapshotSettingsOpenStateV227();
-    const result = removeFakeSettingsOriginalV227.apply(this, arguments);
+function applySettingsLayoutV228() {
+  organizeSettingsPageV228();
+}
+
+try {
+  applyAdminLayoutSettingsV213 = applyAdminLayoutSettingsV228;
+  applySettingsLayoutV213 = applySettingsLayoutV228;
+} catch (error) {
+  console.warn("Substituir layouts antigos falhou:", error);
+}
+
+const renderAdminOriginalV228 = typeof renderAdmin === "function" ? renderAdmin : null;
+if (renderAdminOriginalV228 && !window.__renderAdminCleanV228) {
+  window.__renderAdminCleanV228 = true;
+  renderAdmin = function renderAdminCleanV228() {
+    const result = renderAdminOriginalV228.apply(this, arguments);
+    setTimeout(organizeAdminPageV228, 0);
+    return result;
+  };
+}
+
+const renderAdminSectionsOriginalV228 = typeof renderAdminSectionsV187 === "function" ? renderAdminSectionsV187 : null;
+if (renderAdminSectionsOriginalV228 && !window.__renderAdminSectionsCleanV228) {
+  window.__renderAdminSectionsCleanV228 = true;
+  renderAdminSectionsV187 = function renderAdminSectionsCleanV228() {
+    const result = renderAdminSectionsOriginalV228.apply(this, arguments);
+    setTimeout(organizeAdminPageV228, 0);
+    return result;
+  };
+}
+
+const renderSettingsOriginalV228 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
+if (renderSettingsOriginalV228 && !window.__renderSettingsCleanV228) {
+  window.__renderSettingsCleanV228 = true;
+  renderAppSettingsPanelV162 = function renderSettingsCleanV228() {
+    const result = renderSettingsOriginalV228.apply(this, arguments);
+    setTimeout(organizeSettingsPageV228, 0);
+    return result;
+  };
+}
+
+const renderAllOriginalV228 = typeof renderAll === "function" ? renderAll : null;
+if (renderAllOriginalV228 && !window.__renderAllCleanCollapseV228) {
+  window.__renderAllCleanCollapseV228 = true;
+  renderAll = function renderAllCleanCollapseV228() {
+    const result = renderAllOriginalV228.apply(this, arguments);
     setTimeout(() => {
-      restoreSettingsOpenStateV227(before);
-      keepFirstSettingsOpenOnlyOnEnterV227();
+      if ($("adminTab")?.classList.contains("active")) organizeAdminPageV228();
+      if ($("settingsTab")?.classList.contains("active")) organizeSettingsPageV228();
     }, 0);
     return result;
   };
 }
 
-const applySettingsCleanOriginalV227 = typeof applySettingsCleanNoEmptyV225 === "function" ? applySettingsCleanNoEmptyV225 : null;
-if (applySettingsCleanOriginalV227 && !window.__applySettingsCleanKeepStateV227) {
-  window.__applySettingsCleanKeepStateV227 = true;
-  applySettingsCleanNoEmptyV225 = function applySettingsCleanKeepStateV227() {
-    const before = snapshotSettingsOpenStateV227();
-    const result = applySettingsCleanOriginalV227.apply(this, arguments);
-    setTimeout(() => {
-      restoreSettingsOpenStateV227(before);
-      keepFirstSettingsOpenOnlyOnEnterV227();
-    }, 0);
-    return result;
-  };
-}
-
-// Quando o user clica num summary em Configurações, esse clique manda.
 document.addEventListener("click", event => {
-  const summary = event.target.closest?.("#settingsTab details > summary");
-  if (!summary) return;
-
-  const details = summary.parentElement;
-  if (!(details instanceof HTMLDetailsElement)) return;
-
-  settingsUserToggleV227 = {
-    details,
-    shouldOpen: !details.open,
-    at: Date.now()
-  };
-
-  setTimeout(() => {
-    if (!settingsUserToggleV227 || settingsUserToggleV227.details !== details) return;
-    details.open = settingsUserToggleV227.shouldOpen;
-    setSettingsDetailsLabelV227(details, details.open);
-  }, 80);
-
-  setTimeout(() => {
-    if (!settingsUserToggleV227 || settingsUserToggleV227.details !== details) return;
-    details.open = settingsUserToggleV227.shouldOpen;
-    setSettingsDetailsLabelV227(details, details.open);
-  }, 260);
-
-  setTimeout(() => {
-    if (!settingsUserToggleV227 || settingsUserToggleV227.details !== details) return;
-    details.open = settingsUserToggleV227.shouldOpen;
-    setSettingsDetailsLabelV227(details, details.open);
-    settingsUserToggleV227 = null;
-  }, 650);
-}, true);
-
-// Ao entrar na página, abre a primeira. Depois disso, deixa o user controlar.
-document.addEventListener("click", event => {
-  if (event.target.closest?.("[data-tab='settingsTab']")) {
-    setTimeout(keepFirstSettingsOpenOnlyOnEnterV227, 250);
-    setTimeout(keepFirstSettingsOpenOnlyOnEnterV227, 600);
-  }
+  if (event.target.closest?.("[data-tab='adminTab']")) setTimeout(organizeAdminPageV228, 80);
+  if (event.target.closest?.("[data-tab='settingsTab']")) setTimeout(organizeSettingsPageV228, 80);
 }, true);
 
 document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(keepFirstSettingsOpenOnlyOnEnterV227, 1200);
+  setTimeout(() => { if ($("adminTab")?.classList.contains("active")) organizeAdminPageV228(); }, 500);
+  setTimeout(() => { if ($("settingsTab")?.classList.contains("active")) organizeSettingsPageV228(); }, 500);
 });

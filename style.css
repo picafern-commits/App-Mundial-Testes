@@ -10762,206 +10762,138 @@ body.online-users-open-v220 .tab-panel{
 }
 
 
-/* v222 — Admin colapsável e fechado ao entrar */
-#adminTab{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.admin-collapse-shell-v222{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.admin-collapse-section-v222,
-.admin-card-collapse-v222{
-  border:1px solid rgba(148,163,184,.16);
-  border-radius:16px;
-  background:linear-gradient(180deg,rgba(15,23,42,.76),rgba(8,13,23,.72));
-  overflow:hidden;
-  box-shadow:0 14px 36px rgba(0,0,0,.18);
-}
-.admin-collapse-section-v222 > summary,
-.admin-card-collapse-v222 > summary{
-  cursor:pointer;
-  list-style:none;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  padding:14px 16px;
-  color:var(--gold);
-  font-weight:1000;
-  user-select:none;
-}
-.admin-collapse-section-v222 > summary::-webkit-details-marker,
-.admin-card-collapse-v222 > summary::-webkit-details-marker{
-  display:none;
-}
-.admin-collapse-section-v222 > summary::after,
-.admin-card-collapse-v222 > summary::after{
-  content:"+";
-  width:30px;
-  height:30px;
-  border-radius:10px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  background:rgba(255,255,255,.08);
-  color:var(--gold);
-  font-size:18px;
-  flex:0 0 auto;
-}
-.admin-collapse-section-v222[open] > summary::after,
-.admin-card-collapse-v222[open] > summary::after{
-  content:"−";
-}
-.admin-collapse-section-v222 > summary small,
-.admin-card-collapse-v222 > summary small{
-  color:var(--muted);
-  font-size:12px;
-  font-weight:850;
-}
-.admin-collapse-content-v222,
-.admin-card-collapse-content-v222{
-  padding:0 14px 14px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.admin-collapse-content-v222 > *,
-.admin-card-collapse-content-v222 > *{
-  margin-top:0!important;
-  margin-bottom:0!important;
-  width:100%!important;
-  max-width:none!important;
-}
-.admin-card-collapse-v222{
-  box-shadow:none;
-  background:rgba(255,255,255,.025);
-}
-.admin-card-collapse-v222 > summary{
-  color:#e5eefc;
-  padding:12px 14px;
-}
-@media(max-width:760px){
-  .admin-collapse-section-v222 > summary,
-  .admin-card-collapse-v222 > summary{
-    align-items:flex-start;
-    flex-direction:column;
-  }
-}
-
-
-/* v223 — Configurações inicia toda colapsada */
+/* v228 - Admin e Configuracoes com secoes reais e estaveis */
+#adminTab,
 #settingsTab{
   display:flex;
   flex-direction:column;
   gap:12px;
 }
-.settings-collapse-shell-v223{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.settings-collapse-section-v223{
-  border:1px solid rgba(148,163,184,.16);
-  border-radius:16px;
-  background:linear-gradient(180deg,rgba(15,23,42,.76),rgba(8,13,23,.72));
+
+.clean-collapse-section-v228{
+  border:1px solid rgba(96,165,250,.22);
+  border-radius:12px;
+  background:linear-gradient(180deg,rgba(15,23,42,.82),rgba(8,13,23,.78));
   overflow:hidden;
   box-shadow:0 14px 36px rgba(0,0,0,.18);
 }
-.settings-collapse-section-v223 > summary,
-#settingsTab details > summary{
+
+.clean-collapse-section-v228 > summary,
+.settings-section-v213 > summary{
   cursor:pointer;
+  list-style:none;
   user-select:none;
 }
-.settings-collapse-section-v223 > summary{
-  list-style:none;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  padding:14px 16px;
-  color:var(--gold);
-  font-weight:1000;
-}
-.settings-collapse-section-v223 > summary::-webkit-details-marker{
+
+.clean-collapse-section-v228 > summary::-webkit-details-marker,
+.settings-section-v213 > summary::-webkit-details-marker{
   display:none;
 }
-.settings-collapse-section-v223 > summary::after{
+
+.clean-collapse-section-v228 > summary{
+  min-height:58px;
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  gap:12px;
+  padding:14px 16px;
+  color:#f8fafc;
+  font-weight:1000;
+}
+
+.clean-collapse-section-v228 > summary::after,
+.settings-section-v213 > summary::after{
   content:"+";
   width:30px;
   height:30px;
-  border-radius:10px;
+  border-radius:9px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
   background:rgba(255,255,255,.08);
   color:var(--gold);
+  border:1px solid rgba(255,216,87,.18);
   font-size:18px;
+  line-height:1;
 }
-.settings-collapse-section-v223[open] > summary::after{
-  content:"−";
+
+.clean-collapse-section-v228[open] > summary::after,
+.settings-section-v213[open] > summary::after{
+  content:"-";
 }
-.settings-collapse-section-v223 > summary small{
+
+.clean-collapse-section-v228 > summary span,
+.settings-section-v213 > summary span{
+  font-size:17px;
+  letter-spacing:0;
+}
+
+.clean-collapse-section-v228 > summary small,
+.settings-section-v213 > summary small{
   color:var(--muted);
   font-size:12px;
   font-weight:850;
+  text-align:right;
 }
-.settings-collapse-content-v223{
-  padding:0 14px 14px;
+
+.clean-collapse-section-v228[open] > summary,
+.settings-section-v213[open] > summary{
+  color:var(--gold)!important;
+  border-bottom:1px solid rgba(148,163,184,.12);
+}
+
+.clean-collapse-content-v228,
+.settings-section-content-v213{
+  padding:14px;
   display:flex;
   flex-direction:column;
   gap:12px;
 }
-.settings-collapse-content-v223 > *{
+
+.clean-collapse-content-v228 > *,
+.settings-section-content-v213 > *{
+  width:100%;
+  max-width:none;
   margin-top:0!important;
   margin-bottom:0!important;
-  width:100%!important;
-  max-width:none!important;
-}
-body.settings-collapsed-v223 #settingsTab details:not([open]) > *:not(summary){
-  display:none;
 }
 
-
-/* v224 — esconder restos falsos do Admin colapsável anterior */
-#adminTab details.admin-collapse-section-v222[data-admin-collapse-section-v222="Admin"],
-#adminTab details.admin-collapse-section-v222[data-admin-collapse-section-v222="Secção 3"]{
-  display:none!important;
+.admin-clean-section-v228 .admin-card{
+  box-shadow:none;
 }
-#adminTab .admin-collapse-section-v222:empty,
-#adminTab .admin-card-collapse-v222:empty{
+
+#adminSectionTabsV187{
   display:none!important;
 }
 
-
-/* v225 — esconder restos falsos/sem conteúdo das Configurações */
-#settingsTab details.settings-collapse-section-v223[data-settings-collapse-section-v223="Configurações"],
-#settingsTab details.settings-collapse-section-v223:empty{
+#adminCollapseShellV222,
+#settingsCollapseShellV223,
+.admin-collapse-section-v222,
+.admin-card-collapse-v222,
+.settings-collapse-section-v223{
   display:none!important;
 }
-#settingsTab details[data-empty-settings-v225="1"]{
+
+.settings-section-v213[hidden],
+.admin-clean-section-v228[hidden]{
   display:none!important;
 }
 
+@media(max-width:760px){
+  .clean-collapse-section-v228 > summary,
+  .settings-section-v213 > summary{
+    grid-template-columns:1fr auto;
+    align-items:start;
+    padding:13px 14px;
+  }
 
-/* v226 — primeira secção útil de Admin/Configurações sempre aberta */
-#adminTab.first-section-open-v226 details:first-of-type,
-#settingsTab.first-section-open-v226 details:first-of-type{
-  border-color:rgba(255,216,87,.24)!important;
-}
-#adminTab details[open] > summary,
-#settingsTab details[open] > summary{
-  color:var(--gold)!important;
-}
+  .clean-collapse-section-v228 > summary small,
+  .settings-section-v213 > summary small{
+    text-align:left;
+  }
 
-
-/* v227 — Configurações respeita abertura manual das abas */
-#settingsTab details[open] > summary small{
-  color:rgba(255,216,87,.86)!important;
-}
-#settingsTab details > summary{
-  cursor:pointer!important;
+  .clean-collapse-content-v228,
+  .settings-section-content-v213{
+    padding:12px;
+  }
 }
