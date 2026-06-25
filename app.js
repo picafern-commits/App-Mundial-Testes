@@ -17577,7 +17577,7 @@ setTimeout(() => {
 
 
 // v262 — cores progressivas também nas barras de data do Calendário quando o dia tem jogos da Fase Final.
-const APP_VERSION_V262 = "262.0";
+const APP_VERSION_V262 = "263.0";
 
 function koV262RoundPriority(key) {
   const order = { r32: 1, r16: 2, qf: 3, sf: 4, final: 5, ko: 0 };
