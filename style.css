@@ -11431,3 +11431,38 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
 .knockout-bet-qualified-v243{display:flex;flex-direction:column;gap:7px;padding:12px 14px;border-radius:14px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.72);color:var(--muted,#a8b3c7);font-weight:900}
 .knockout-bet-qualified-v243 select{min-height:42px;border-radius:12px;font-weight:900}
 @media(max-width:760px){.ko-match-date-label-v243{width:100%;min-width:0}.ko-match-date-label-v243 input{width:100%}}
+
+/* v244 — botão visível para abrir modal de resultado na Fase Final */
+.ko-record-open-btn-v244{margin-top:8px;width:100%;justify-content:center;border-radius:12px;font-weight:900}
+.ko-record-open-btn-v244.mobile{margin-top:10px}
+.knockout-match .ko-record-open-btn-v244{position:relative;z-index:4}
+
+
+/* v245 — Botão obrigatório de apostas/resultados da Fase Final na página inicial */
+.ko-required-home-v245{margin:0 0 18px;padding:18px;border-radius:24px;border:1px solid rgba(148,163,184,.22);background:linear-gradient(135deg,rgba(15,23,42,.96),rgba(2,6,23,.92));box-shadow:0 22px 60px rgba(0,0,0,.22)}
+.ko-required-home-v245.urgent{border-color:rgba(248,113,113,.55);background:linear-gradient(135deg,rgba(127,29,29,.58),rgba(15,23,42,.96) 52%,rgba(2,6,23,.94))}
+.ko-required-home-v245.pulse-v245{animation:koRequiredPulseV245 1.25s ease both}
+@keyframes koRequiredPulseV245{0%,100%{transform:translateY(0)}35%{transform:translateY(-3px);box-shadow:0 0 0 5px rgba(248,113,113,.18),0 22px 60px rgba(0,0,0,.24)}}
+.ko-required-head-v245{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.ko-required-title-v245{display:flex;align-items:flex-start;gap:14px;min-width:0}
+.ko-required-title-v245 h3{margin:0;font-size:20px;line-height:1.15;color:#fff}
+.ko-required-title-v245 p{margin:6px 0 0;color:var(--muted,#a8b3c7);font-weight:700;line-height:1.35}
+.ko-required-badge-v245{flex:0 0 auto;padding:7px 10px;border-radius:999px;background:rgba(248,113,113,.18);border:1px solid rgba(248,113,113,.38);color:#fee2e2;font-size:11px;font-weight:1000;text-transform:uppercase;letter-spacing:.06em}
+.ko-required-home-v245.calm .ko-required-badge-v245{background:rgba(34,197,94,.13);border-color:rgba(34,197,94,.34);color:#bbf7d0}
+.ko-required-actions-v245{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.ko-required-main-btn-v245{min-height:44px;border-radius:14px;font-weight:1000}
+.ko-required-list-v245{display:none;margin-top:16px;gap:12px}
+.ko-required-home-v245.expanded .ko-required-list-v245{display:grid}
+.ko-required-block-v245{display:grid;gap:9px;padding-top:12px;border-top:1px solid rgba(148,163,184,.14)}
+.ko-required-block-v245>strong{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#e5edff}
+.ko-required-row-v245{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border-radius:16px;border:1px solid rgba(148,163,184,.18);background:rgba(15,23,42,.72)}
+.ko-required-row-v245.open{border-color:rgba(248,113,113,.36);background:rgba(127,29,29,.20)}
+.ko-required-row-v245.missed{opacity:.78;background:rgba(15,23,42,.58)}
+.ko-required-row-v245.admin{border-color:rgba(56,189,248,.28);background:rgba(8,47,73,.28)}
+.ko-required-row-main-v245{min-width:0;display:grid;gap:3px}
+.ko-required-row-main-v245 span{font-size:11px;font-weight:1000;text-transform:uppercase;letter-spacing:.05em;color:var(--muted,#a8b3c7)}
+.ko-required-row-main-v245 strong{font-size:15px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ko-required-row-main-v245 small{color:var(--muted,#a8b3c7);font-weight:800}
+.ko-required-empty-v245{padding:13px;border-radius:16px;border:1px dashed rgba(148,163,184,.28);color:var(--muted,#a8b3c7);font-weight:800;background:rgba(15,23,42,.50)}
+.ko-required-empty-v245.warning{border-color:rgba(251,191,36,.35);color:#fde68a;background:rgba(120,53,15,.20)}
+@media(max-width:760px){.ko-required-home-v245{margin:0 0 14px;padding:15px;border-radius:20px}.ko-required-head-v245{align-items:stretch;flex-direction:column}.ko-required-title-v245{gap:10px}.ko-required-title-v245 h3{font-size:18px}.ko-required-actions-v245{display:grid;grid-template-columns:1fr;justify-content:stretch}.ko-required-row-v245{grid-template-columns:1fr}.ko-required-row-v245 button{width:100%;min-height:42px}.ko-required-row-main-v245 strong{white-space:normal}}
