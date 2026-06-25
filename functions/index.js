@@ -310,16 +310,30 @@ exports.notifyGameLiveEvents = onDocumentWritten("games/{gameId}", async event =
 
 function knockoutSignal(settings) {
   const knockout = settings?.knockout || {};
+  const required = settings?.knockoutRequired || {};
   return JSON.stringify({
     adminUnlocked: Boolean(knockout.adminUnlocked),
     matches: Array.isArray(knockout.matches) ? knockout.matches.map(match => ({
       id: match.id || "",
+      round: match.round || "",
+      index: match.index || "",
       homeTeam: match.homeTeam || "",
       awayTeam: match.awayTeam || "",
+      matchDate: match.matchDate || match.date || match.kickoff || "",
       homeScore: match.homeScore ?? "",
       awayScore: match.awayScore ?? "",
       homePenalties: match.homePenalties ?? "",
-      awayPenalties: match.awayPenalties ?? ""
+      awayPenalties: match.awayPenalties ?? "",
+      qualified: match.qualified || match.winnerTeam || match.winner || ""
+    })) : [],
+    requiredItems: Array.isArray(required.items) ? required.items.map(item => ({
+      id: item.id || "",
+      matchId: item.matchId || "",
+      playerId: item.playerId || "",
+      homeTeam: item.homeTeam || "",
+      awayTeam: item.awayTeam || "",
+      matchDate: item.matchDate || "",
+      active: item.active !== false
     })) : []
   });
 }
@@ -329,8 +343,12 @@ exports.notifyKnockoutUpdated = onDocumentWritten("settings/main", async event =
   const after = event.data?.after?.data() || {};
   if (!after.knockout || knockoutSignal(before) === knockoutSignal(after)) return;
 
-  const title = "Fase final atualizada";
-  const body = "A fase final do Mundial Pontos 2026 foi alterada.";
+  const beforeRequired = Array.isArray(before?.knockoutRequired?.items) ? before.knockoutRequired.items.length : 0;
+  const afterRequired = Array.isArray(after?.knockoutRequired?.items) ? after.knockoutRequired.items.length : 0;
+  const title = afterRequired > beforeRequired ? "Aposta obrigatória da Fase Final" : "Fase final atualizada";
+  const body = afterRequired > beforeRequired
+    ? "Abre a app para escolher o resultado e a equipa qualificada."
+    : "A fase final do Mundial Pontos 2026 foi alterada.";
   const tokens = await loadEnabledTokens({ pref: "knockout", excludeUid: after.updatedBy || "" });
 
   const sent = await sendTokenNotifications(tokens, () => ({
@@ -1006,12 +1024,6 @@ async function runFootballDataSyncCoreV151(options = {}) {
     .filter(match => !["FINISHED", "AWARDED"].includes(String(match.status || "").toUpperCase()))
     .slice(0, 12)
     .map(footballMatchSummary);
-  const knockoutFixtures = matches
-    .filter(match => String(match.stage || "").toUpperCase() !== "GROUP_STAGE")
-    .filter(match => footballApiTeamName(match.homeTeam) && footballApiTeamName(match.awayTeam))
-    .sort((a, b) => footballMatchDateMillis(a.utcDate) - footballMatchDateMillis(b.utcDate))
-    .map(footballMatchSummary)
-    .slice(0, 48);
   const liveOrLocked = matches
     .filter(footballShouldLockMatch)
     .map(footballMatchSummary);
@@ -1186,7 +1198,6 @@ async function runFootballDataSyncCoreV151(options = {}) {
     nextSyncGame: precheck.meta.nextSyncGame,
     nextSyncStartsAt: precheck.meta.nextSyncStartsAt,
     upcoming,
-    knockoutFixtures,
     liveOrLocked,
     lastError: FieldValue.delete()
   }, { merge: true });
@@ -1246,7 +1257,6 @@ async function runFootballDataSyncCoreV151(options = {}) {
     liveUpdated,
     knockoutPropagationChanged,
     upcoming,
-    knockoutFixtures,
     liveOrLocked,
     lastSyncIso: new Date().toISOString()
   };
