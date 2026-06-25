@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v251";
+const APP_VERSION_LABEL = "v252";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -14521,3 +14521,178 @@ if (!window.__knockoutRequiredLogicV251) {
   window.getKnockoutRequiredDetectionV251 = knockoutRequiredDetectionV251;
   window.debugKnockoutRequiredV251 = knockoutRequiredDebugReportV251;
 }
+
+// v252 — Modal automático obrigatório ligado à lógica segura v251.
+// Nesta fase o modal não inventa regras: só abre quando o relatório central v251
+// diz que há apostas pendentes reais da Fase Final.
+const KNOCKOUT_MANDATORY_VERSION_V252 = "252.0";
+let knockoutMandatoryTimerV252 = null;
+let knockoutMandatoryOpeningV252 = false;
+
+function knockoutMandatoryReportV252() {
+  try {
+    return knockoutRequiredDetectionV251?.() || null;
+  } catch (error) {
+    console.warn("Relatório obrigatório Fase Final v252 falhou:", error);
+    return null;
+  }
+}
+
+function knockoutMandatoryFormBusyV252() {
+  try {
+    if (typeof window.__isMundialTextFieldActiveV250 === "function" && window.__isMundialTextFieldActiveV250()) return true;
+  } catch {}
+  const active = document.activeElement;
+  if (!active) return false;
+  try {
+    return Boolean(active.closest?.("input, select, textarea, [contenteditable='true'], [contenteditable=''], [contenteditable='plaintext-only']"));
+  } catch {
+    return false;
+  }
+}
+
+function knockoutMandatoryModalVisibleV252() {
+  const modal = document.getElementById("knockoutMandatoryModalV247");
+  return Boolean(modal && !modal.classList.contains("hidden"));
+}
+
+function knockoutMandatoryPendingItemsV252() {
+  const report = knockoutMandatoryReportV252();
+  if (!report?.dataReady) return [];
+  return Array.isArray(report.pending) ? report.pending : [];
+}
+
+function knockoutMandatoryPendingMatchesV252() {
+  return knockoutMandatoryPendingItemsV252().map(item => item.match).filter(Boolean);
+}
+
+function knockoutMandatoryCanAutoOpenV252() {
+  const report = knockoutMandatoryReportV252();
+  if (!report?.dataReady) return { ok: false, reason: "dados-a-carregar", report };
+  if (!report.player) return { ok: false, reason: "sem-jogador", report };
+  if (currentProfile?.active === false) return { ok: false, reason: "user-inativo", report };
+  if (!report.pending?.length) return { ok: false, reason: "sem-pendentes", report };
+  if (document.hidden) return { ok: false, reason: "documento-oculto", report };
+  return { ok: true, reason: "pendentes", report };
+}
+
+function runKnockoutMandatoryCheckV252() {
+  clearTimeout(knockoutMandatoryTimerV252);
+  knockoutMandatoryTimerV252 = null;
+
+  if (knockoutMandatoryOpeningV252) return false;
+
+  const decision = knockoutMandatoryCanAutoOpenV252();
+
+  if (!decision.ok) {
+    if (decision.report?.dataReady && !decision.report?.pending?.length) {
+      try { closeKnockoutMandatoryModalV247?.(true); } catch {}
+    } else if (!decision.report?.dataReady) {
+      scheduleKnockoutMandatoryCheckV252(900);
+    }
+    return false;
+  }
+
+  const visible = knockoutMandatoryModalVisibleV252();
+  if (knockoutMandatoryFormBusyV252() && !visible) {
+    scheduleKnockoutMandatoryCheckV252(1200);
+    return false;
+  }
+
+  knockoutMandatoryOpeningV252 = true;
+  try {
+    if (typeof renderKnockoutMandatoryModalV247 === "function" && visible) {
+      // Se o modal já está aberto, deixa o render protegido da v250 decidir se pode atualizar.
+      renderKnockoutMandatoryModalV247();
+    }
+    if (typeof openKnockoutMandatoryModalV247 === "function") {
+      return openKnockoutMandatoryModalV247();
+    }
+  } catch (error) {
+    console.warn("Abrir modal obrigatório Fase Final v252 falhou:", error);
+  } finally {
+    knockoutMandatoryOpeningV252 = false;
+  }
+  return false;
+}
+
+function scheduleKnockoutMandatoryCheckV252(delay = 700) {
+  clearTimeout(knockoutMandatoryTimerV252);
+  knockoutMandatoryTimerV252 = setTimeout(runKnockoutMandatoryCheckV252, Math.max(80, Number(delay) || 700));
+}
+
+if (!window.__koMandatoryModalV252) {
+  window.__koMandatoryModalV252 = true;
+
+  // A lista do modal passa a vir diretamente do relatório seguro v251.
+  try {
+    knockoutMandatoryPendingMatchesV247 = function knockoutMandatoryPendingMatchesV252Adapter() {
+      return knockoutMandatoryPendingMatchesV252();
+    };
+    knockoutMandatoryMissedMatchesV247 = function knockoutMandatoryMissedMatchesV252Adapter() {
+      const report = knockoutMandatoryReportV252();
+      return report?.dataReady ? (report.missed || []).map(item => item.match).filter(Boolean) : [];
+    };
+    knockoutMandatoryDoneMatchesV247 = function knockoutMandatoryDoneMatchesV252Adapter() {
+      const report = knockoutMandatoryReportV252();
+      return report?.dataReady ? (report.done || []).map(item => item.match).filter(Boolean) : [];
+    };
+    knockoutMandatoryDataReadyV247 = function knockoutMandatoryDataReadyV252Adapter() {
+      return Boolean(knockoutMandatoryReportV252()?.dataReady);
+    };
+  } catch {}
+
+  // Substitui os checks antigos por uma entrada única e previsível.
+  if (typeof runKnockoutMandatoryCheckV247 === "function") {
+    runKnockoutMandatoryCheckV247 = function runKnockoutMandatoryCheckV252Adapter() {
+      return runKnockoutMandatoryCheckV252();
+    };
+  }
+  if (typeof scheduleKnockoutMandatoryCheckV247 === "function") {
+    scheduleKnockoutMandatoryCheckV247 = function scheduleKnockoutMandatoryCheckV252Adapter(delay = 700) {
+      return scheduleKnockoutMandatoryCheckV252(delay);
+    };
+  }
+
+  // Neutraliza o modal antigo de jogo único: o automático passa a ser só o modal obrigatório.
+  try {
+    maybeOpenNextKnockoutBetModalV243 = function maybeOpenNextKnockoutBetModalV252() {
+      return runKnockoutMandatoryCheckV252();
+    };
+    scheduleKnockoutAutoBetCheckV243 = function scheduleKnockoutAutoBetCheckV252(delay = 700) {
+      return scheduleKnockoutMandatoryCheckV252(delay);
+    };
+    forceKnockoutAutoBetCheckV244 = function forceKnockoutAutoBetCheckV252(delay = 500) {
+      return scheduleKnockoutMandatoryCheckV252(delay);
+    };
+  } catch {}
+
+  // Gatilhos leves: auth/Firebase/render/navegação já chamam funções antigas,
+  // mas estes cobrem entrada/reentrada da app sem criar loops pesados.
+  document.addEventListener("DOMContentLoaded", () => scheduleKnockoutMandatoryCheckV252(1800));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) scheduleKnockoutMandatoryCheckV252(350); });
+  window.addEventListener("focus", () => scheduleKnockoutMandatoryCheckV252(450));
+
+  document.addEventListener("click", event => {
+    if (!event.target?.closest?.(".tabs [data-tab], .app-nav, .bottom-nav, [data-route], .sidebar")) return;
+    scheduleKnockoutMandatoryCheckV252(120);
+  }, true);
+
+  window.debugKnockoutMandatoryModalV252 = function debugKnockoutMandatoryModalV252() {
+    const decision = knockoutMandatoryCanAutoOpenV252();
+    return {
+      version: KNOCKOUT_MANDATORY_VERSION_V252,
+      decision: decision.reason,
+      canOpen: decision.ok,
+      formBusy: knockoutMandatoryFormBusyV252(),
+      modalVisible: knockoutMandatoryModalVisibleV252(),
+      report: typeof debugKnockoutRequiredV251 === "function" ? debugKnockoutRequiredV251() : decision.report
+    };
+  };
+  window.forceKnockoutMandatoryModalV252 = function forceKnockoutMandatoryModalV252() {
+    return runKnockoutMandatoryCheckV252();
+  };
+
+  scheduleKnockoutMandatoryCheckV252(2200);
+}
+
