@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v235";
+const APP_VERSION_LABEL = "v237";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -4005,6 +4005,85 @@ function setKnockoutViewModeV235(mode) {
   renderKnockout();
 }
 
+function knockoutRoundIndexV236(roundKey) {
+  return KNOCKOUT_ROUNDS.findIndex(round => round.key === roundKey);
+}
+
+function knockoutPreviousRoundV236(roundKey) {
+  const index = knockoutRoundIndexV236(roundKey);
+  return index > 0 ? KNOCKOUT_ROUNDS[index - 1] : null;
+}
+
+function knockoutPreviousRoundCompleteV236(roundKey) {
+  const previous = knockoutPreviousRoundV236(roundKey);
+  if (!previous) return true;
+  const previousMatches = knockoutMatches().filter(match => match.round === previous.key);
+  return previousMatches.length > 0 && previousMatches.every(match => Boolean(knockoutWinner(match)));
+}
+
+function knockoutRoundEditableV236(match) {
+  if (!match) return false;
+  if (isFirstKnockoutRound(match)) return true;
+  return knockoutPreviousRoundCompleteV236(match.round);
+}
+
+function knockoutRoundLockTextV236(match) {
+  if (knockoutRoundEditableV236(match)) return "";
+  const previous = knockoutPreviousRoundV236(match.round);
+  return previous ? `Bloqueado ate completar ${previous.label}.` : "Bloqueado.";
+}
+
+function knockoutSourceMatchesV236(match) {
+  if (!match || isFirstKnockoutRound(match)) return [];
+  const previous = knockoutPreviousRoundV236(match.round);
+  if (!previous) return [];
+  return knockoutMatches().filter(item => item.round === previous.key && item.nextMatchId === match.id);
+}
+
+function knockoutOriginTextV236(match, slot) {
+  if (!match || isFirstKnockoutRound(match)) return "";
+  const source = knockoutSourceMatchesV236(match).find(item => item.nextSlot === slot);
+  return source ? `Vencedor ${source.roundLabel} ${source.index}` : "";
+}
+
+function knockoutAutoAlignV236() {
+  if (!hasPermission("editKnockout")) { toast("Sem permissao."); return; }
+  ensureKnockoutSettings();
+  appSettings.knockout.layout = defaultKnockoutLayout();
+  addSystemLog("Auto alinhar Fase Final", "A grelha da Fase Final foi alinhada automaticamente.", { layout: appSettings.knockout.layout });
+  markSettingsPending();
+  saveLocalData("auto alinhar fase final");
+  scheduleFullSync("auto alinhar fase final", 300);
+  renderKnockout();
+  renderKnockoutAdmin();
+  toast("Fase Final auto alinhada.");
+}
+
+function knockoutEventForNotificationV236(match, beforeWinner, afterWinner) {
+  if (!match || !afterWinner || beforeWinner === afterWinner) return null;
+  const next = knockoutNextRoundLabelV235(match.round);
+  const isChampion = match.round === "final";
+  return {
+    type: "knockout",
+    title: isChampion ? "Campeao definido" : "Fase Final atualizada",
+    body: isChampion ? `${afterWinner} ficou campeao.` : `${afterWinner} passou para ${next}.`,
+    matchId: match.id,
+    round: match.round,
+    winner: afterWinner,
+    at: new Date().toISOString()
+  };
+}
+
+function toggleKnockoutPresentationV236(force = null) {
+  const active = force === null ? !document.body.classList.contains("ko-presentation-v236") : Boolean(force);
+  document.body.classList.toggle("ko-presentation-v236", active);
+  if (active) {
+    setActiveTabStateV217("knockoutTab");
+    updateActiveAppSection();
+    renderKnockout();
+  }
+}
+
 function knockoutHasScore(match) {
   return match.homeScore !== null && match.homeScore !== undefined && match.homeScore !== "" &&
     match.awayScore !== null && match.awayScore !== undefined && match.awayScore !== "";
@@ -4064,6 +4143,10 @@ function renderKnockoutViewHeaderV235(champion = "") {
         <button class="${active === "bracket" ? "active" : ""}" type="button" data-ko-view-v235="bracket">Quadro</button>
         <button class="${active === "list" ? "active" : ""}" type="button" data-ko-view-v235="list">Lista</button>
       </div>
+      <div class="ko-view-actions-v236">
+        ${canEditKnockoutInline() ? `<button type="button" data-ko-auto-align-v236>Auto alinhar</button>` : ""}
+        <button type="button" data-ko-presentation-v236>Apresentacao</button>
+      </div>
     </div>`;
 }
 
@@ -4092,14 +4175,18 @@ function renderKnockoutListMatchV235(match) {
   const winner = knockoutWinner(match);
   const score = knockoutHasScore(match) ? `${match.homeScore} - ${match.awayScore}` : "VS";
   const pens = knockoutHasPenalties(match) ? `Pen. ${match.homePenalties}-${match.awayPenalties}` : "";
-  const editable = canEditKnockoutInline();
+  const locked = !knockoutRoundEditableV236(match);
+  const editable = canEditKnockoutInline() && !locked;
+  const originHome = knockoutOriginTextV236(match, "homeTeam");
+  const originAway = knockoutOriginTextV236(match, "awayTeam");
 
   return `
-    <article class="ko-list-game-v235 ko-state-${state.key} ${editable ? "ko-match-clickable" : ""}" data-ko-admin="${escapeHtml(match.id)}" ${editable ? `role="button" tabindex="0" aria-label="Editar ${escapeHtml(match.roundLabel)} ${escapeHtml(match.index)}"` : ""}>
+    <article class="ko-list-game-v235 ko-state-${state.key} ${locked ? "ko-round-locked-v236" : ""} ${editable ? "ko-match-clickable" : ""}" data-ko-admin="${escapeHtml(match.id)}" ${editable ? `role="button" tabindex="0" aria-label="Editar ${escapeHtml(match.roundLabel)} ${escapeHtml(match.index)}"` : ""}>
       <div>
         <small>${escapeHtml(match.roundLabel)} ${escapeHtml(match.index)}</small>
         <strong>${escapeHtml(match.homeTeam || "A definir")} <em>${score}</em> ${escapeHtml(match.awayTeam || "A definir")}</strong>
-        ${winner ? `<span>Passa: ${escapeHtml(winner)}${pens ? ` - ${escapeHtml(pens)}` : ""}</span>` : `<span>${escapeHtml(pens || "Resultado por preencher")}</span>`}
+        ${originHome || originAway ? `<span>${escapeHtml([originHome, originAway].filter(Boolean).join(" / "))}</span>` : ""}
+        ${locked ? `<span>${escapeHtml(knockoutRoundLockTextV236(match))}</span>` : winner ? `<span>Passa: ${escapeHtml(winner)}${pens ? ` - ${escapeHtml(pens)}` : ""}</span>` : `<span>${escapeHtml(pens || "Resultado por preencher")}</span>`}
       </div>
       <b>${escapeHtml(state.label)}</b>
     </article>`;
@@ -4353,6 +4440,30 @@ function renderKnockoutRecordPreviewTextV235(match, data = {}) {
   return `<strong>Previsao</strong><span>${escapeHtml(suffix)}</span>`;
 }
 
+function renderKnockoutTimelineV236(match) {
+  const teamsReady = Boolean(match.homeTeam && match.awayTeam);
+  const hasScore = knockoutHasScore(match);
+  const winner = knockoutWinner(match);
+  const next = match.round === "final" ? "Campeao definido" : `Propaga para ${knockoutNextRoundLabelV235(match.round)}`;
+  const steps = [
+    ["Equipas", teamsReady, teamsReady ? `${match.homeTeam} vs ${match.awayTeam}` : (knockoutRoundLockTextV236(match) || "Por definir")],
+    ["Resultado", hasScore, hasScore ? `${match.homeScore}-${match.awayScore}` : "Por preencher"],
+    ["Vencedor", Boolean(winner), winner || "Por decidir"],
+    ["Seguinte", Boolean(winner), winner ? next : "Aguardar vencedor"]
+  ];
+
+  return `
+    <div class="ko-record-timeline-v236">
+      ${steps.map(([label, done, detail]) => `
+        <div class="${done ? "done" : ""}">
+          <i></i>
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(detail)}</strong>
+        </div>
+      `).join("")}
+    </div>`;
+}
+
 function updateKnockoutRecordPreviewV235(modal) {
   const form = modal?.querySelector?.(".ko-card-editor");
   const preview = modal?.querySelector?.("[data-ko-record-preview]");
@@ -4396,6 +4507,11 @@ function openKnockoutRecordModal(matchId) {
     return;
   }
 
+  if (!knockoutRoundEditableV236(match)) {
+    toast(knockoutRoundLockTextV236(match));
+    return;
+  }
+
   closeKnockoutRecordModal();
   const modal = document.createElement("div");
   modal.id = "knockoutRecordModal";
@@ -4412,6 +4528,7 @@ function openKnockoutRecordModal(matchId) {
         </div>
         <button class="secondary small" type="button" data-ko-record-close>Fechar</button>
       </div>
+      ${renderKnockoutTimelineV236(match)}
       ${renderKnockoutRecordForm(match)}
     </div>
   `;
@@ -4645,7 +4762,8 @@ function renderKnockoutCenter(finalMatch, champion, thirdPlaceTeams) {
 
 function renderKnockoutMatch(match, layoutKey = "") {
   const winner = knockoutWinner(match);
-  const editable = canEditKnockoutInline();
+  const locked = !knockoutRoundEditableV236(match);
+  const editable = canEditKnockoutInline() && !locked;
   const waiting = !match.homeTeam || !match.awayTeam;
   const hasScore = match.homeScore !== null && match.homeScore !== undefined && match.homeScore !== "" && match.awayScore !== null && match.awayScore !== undefined && match.awayScore !== "";
   const isDraw = hasScore && Number(match.homeScore) === Number(match.awayScore);
@@ -4654,20 +4772,24 @@ function renderKnockoutMatch(match, layoutKey = "") {
 
   const editableAttrs = editable ? ` role="button" tabindex="0" aria-label="Editar ${escapeHtml(match.roundLabel)} ${escapeHtml(match.index)}"` : "";
   const state = knockoutMatchStateV235(match);
+  const homeOrigin = knockoutOriginTextV236(match, "homeTeam");
+  const awayOrigin = knockoutOriginTextV236(match, "awayTeam");
 
   return `
-    <article class="knockout-match ko-state-${state.key} ${winner ? "has-winner" : ""} ${waiting ? "waiting" : ""} ${editable ? "ko-match-clickable" : ""}" data-ko-admin="${escapeHtml(match.id)}"${editableAttrs} ${layoutKey ? `data-ko-layout="${escapeHtml(layoutKey)}" style="--ko-match-offset:${knockoutLayoutValue(layoutKey)}px"` : ""}>
+    <article class="knockout-match ko-state-${state.key} ${locked ? "ko-round-locked-v236" : ""} ${winner ? "has-winner" : ""} ${waiting ? "waiting" : ""} ${editable ? "ko-match-clickable" : ""}" data-ko-admin="${escapeHtml(match.id)}"${editableAttrs} ${layoutKey ? `data-ko-layout="${escapeHtml(layoutKey)}" style="--ko-match-offset:${knockoutLayoutValue(layoutKey)}px"` : ""}>
       <div class="knockout-match-title">${escapeHtml(match.roundLabel)} ${match.index}<span>${escapeHtml(state.label)}</span></div>
 
       <div class="ko-team ${winner === match.homeTeam ? "winner" : ""}">
         <span>${escapeHtml(match.homeTeam || "A definir")}</span>
         <b>${match.homeScore ?? ""}</b>
       </div>
+      ${homeOrigin && !match.homeTeam ? `<div class="ko-origin-badge-v236">${escapeHtml(homeOrigin)}</div>` : ""}
 
       <div class="ko-team ${winner === match.awayTeam ? "winner" : ""}">
         <span>${escapeHtml(match.awayTeam || "A definir")}</span>
         <b>${match.awayScore ?? ""}</b>
       </div>
+      ${awayOrigin && !match.awayTeam ? `<div class="ko-origin-badge-v236">${escapeHtml(awayOrigin)}</div>` : ""}
 
       ${(isDraw || hasPens) ? `
         <div class="ko-penalties-line">
@@ -4693,6 +4815,7 @@ function renderKnockoutLayoutControls() {
         </div>
         <div class="ko-layout-actions">
           <button class="secondary small" type="button" data-ko-layout-reset>Repor</button>
+          <button class="secondary small" type="button" data-ko-auto-align-v236>Auto alinhar</button>
           <button class="primary small" type="button" data-ko-layout-save>Guardar posições</button>
         </div>
       </div>
@@ -4731,14 +4854,15 @@ function renderKnockoutAdmin() {
     <div class="ko-admin-list">
       ${knockoutMatches().map(match => {
         const firstRound = isFirstKnockoutRound(match);
-        const canScore = Boolean(match.homeTeam && match.awayTeam);
+        const roundLocked = !knockoutRoundEditableV236(match);
+        const canScore = Boolean(match.homeTeam && match.awayTeam) && !roundLocked;
 
         const homeControl = firstRound
-          ? `<select class="ko-home-team">${knockoutTeamOptionsHtml(match.homeTeam)}</select>`
+          ? `<select class="ko-home-team" ${roundLocked ? "disabled" : ""}>${knockoutTeamOptionsHtml(match.homeTeam)}</select>`
           : `<input class="ko-readonly-team" type="text" value="${escapeHtml(match.homeTeam || "A definir automaticamente")}" disabled />`;
 
         const awayControl = firstRound
-          ? `<select class="ko-away-team">${knockoutTeamOptionsHtml(match.awayTeam)}</select>`
+          ? `<select class="ko-away-team" ${roundLocked ? "disabled" : ""}>${knockoutTeamOptionsHtml(match.awayTeam)}</select>`
           : `<input class="ko-readonly-team" type="text" value="${escapeHtml(match.awayTeam || "A definir automaticamente")}" disabled />`;
 
         return `
@@ -4764,7 +4888,7 @@ function renderKnockoutAdmin() {
               </span>
             </label>
 
-            <button class="primary small" type="button" data-ko-save="${escapeHtml(match.id)}">${firstRound ? "Guardar 16 avos" : "Guardar resultado"}</button>
+            <button class="primary small" type="button" data-ko-save="${escapeHtml(match.id)}" ${roundLocked ? "disabled" : ""}>${roundLocked ? "Bloqueado" : firstRound ? "Guardar 16 avos" : "Guardar resultado"}</button>
           </div>
         `;
       }).join("")}
@@ -4901,6 +5025,11 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
   const match = knockoutMatchById(matchId);
   if (!row || !match) return;
 
+  if (!knockoutRoundEditableV236(match)) {
+    toast(knockoutRoundLockTextV236(match));
+    return;
+  }
+
   const firstRound = isFirstKnockoutRound(match);
   const beforeMatch = {
     homeTeam: match.homeTeam || "",
@@ -4910,6 +5039,7 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
     homePenalties: match.homePenalties ?? null,
     awayPenalties: match.awayPenalties ?? null
   };
+  const beforeWinner = knockoutWinner(match);
 
   if (firstRound) {
     match.homeTeam = row.querySelector(".ko-home-team")?.value || "";
@@ -4976,6 +5106,12 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
   match.updatedAt = new Date().toISOString();
 
   propagateKnockoutWinners(false);
+  const afterWinner = knockoutWinner(match);
+  const knockoutEvent = knockoutEventForNotificationV236(match, beforeWinner, afterWinner);
+  if (knockoutEvent) {
+    appSettings.knockout.lastEvent = knockoutEvent;
+    addSystemLog(knockoutEvent.title, knockoutEvent.body, knockoutEvent, { sync: true });
+  }
   addSystemLog("Jogo Fase Final guardado", `${match.roundLabel} ${match.index}: ${match.homeTeam} ${match.homeScore}-${match.awayScore} ${match.awayTeam}${match.homePenalties !== null && match.awayPenalties !== null ? ` · pen. ${match.homePenalties}-${match.awayPenalties}` : ""}`, {
     matchId: match.id,
     round: match.round,
@@ -7039,6 +7175,16 @@ document.addEventListener("click", event => {
     return;
   }
 
+  if (event.target.closest("[data-ko-auto-align-v236]")) {
+    knockoutAutoAlignV236();
+    return;
+  }
+
+  if (event.target.closest("[data-ko-presentation-v236]")) {
+    toggleKnockoutPresentationV236();
+    return;
+  }
+
   const koClickableCard = event.target.closest("#knockoutTab .ko-match-clickable[data-ko-admin], #knockoutMobileV121 .ko-match-clickable[data-ko-admin]");
   if (koClickableCard && !event.target.closest("button, a, input, select, textarea, label, summary")) {
     openKnockoutRecordModal(koClickableCard.dataset.koAdmin);
@@ -7081,6 +7227,11 @@ document.addEventListener("click", event => {
 });
 
 document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && document.body.classList.contains("ko-presentation-v236")) {
+    toggleKnockoutPresentationV236(false);
+    return;
+  }
+
   if (event.key !== "Enter" && event.key !== " ") return;
 
   const koClickableCard = event.target.closest?.("#knockoutTab .ko-match-clickable[data-ko-admin], #knockoutMobileV121 .ko-match-clickable[data-ko-admin]");

@@ -329,8 +329,9 @@ exports.notifyKnockoutUpdated = onDocumentWritten("settings/main", async event =
   const after = event.data?.after?.data() || {};
   if (!after.knockout || knockoutSignal(before) === knockoutSignal(after)) return;
 
-  const title = "Fase final atualizada";
-  const body = "A fase final do Mundial Pontos 2026 foi alterada.";
+  const knockoutEvent = after.knockout?.lastEvent || {};
+  const title = cleanString(knockoutEvent.title) || "Fase final atualizada";
+  const body = cleanString(knockoutEvent.body) || "A fase final do Mundial Pontos 2026 foi alterada.";
   const tokens = await loadEnabledTokens({ pref: "knockout", excludeUid: after.updatedBy || "" });
 
   const sent = await sendTokenNotifications(tokens, () => ({
@@ -341,7 +342,7 @@ exports.notifyKnockoutUpdated = onDocumentWritten("settings/main", async event =
       uid: cleanString(after.updatedBy),
       title,
       body,
-      tag: "mundial-knockout-updated",
+      tag: cleanString(knockoutEvent.matchId) ? `mundial-knockout-${cleanString(knockoutEvent.matchId)}` : "mundial-knockout-updated",
       url: notificationUrl("knockout", "knockout")
     }
   }));
