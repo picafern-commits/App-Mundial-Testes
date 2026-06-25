@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v248";
+const APP_VERSION_LABEL = "v249";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -14187,3 +14187,189 @@ document.addEventListener("input", event => {
   if (!event.target.closest?.("#knockoutMandatoryModalV247")) return;
   window.__koMandatoryLastUserEditV248 = Date.now();
 }, true);
+
+// v249 - Corrige perda global de foco em inputs/selects/textareas.
+// Causa: watchers/renderizações automáticas (Firebase/Fase Final/modal obrigatório) redesenhavam a página
+// enquanto o utilizador tinha um campo aberto. Agora renderizações automáticas esperam o campo ficar idle.
+const FORM_IDLE_DELAY_V249 = 900;
+let formLastEditAtV249 = 0;
+let formLastNonFieldPointerAtV249 = 0;
+const pendingIdleActionsV249 = new Map();
+
+function formFieldFromTargetV249(target) {
+  try {
+    const el = target?.closest?.("input, select, textarea, [contenteditable='true'], [contenteditable=''], [contenteditable='plaintext-only']");
+    if (!el) return null;
+    if (el.matches?.("input[type='button'], input[type='submit'], input[type='reset'], input[type='checkbox'], input[type='radio'], button")) return null;
+    if (el.disabled || el.readOnly) return null;
+    return el;
+  } catch {
+    return null;
+  }
+}
+
+function markFormEditingV249(target) {
+  if (formFieldFromTargetV249(target)) formLastEditAtV249 = Date.now();
+}
+
+function markNonFieldPointerV249(target) {
+  if (!formFieldFromTargetV249(target)) formLastNonFieldPointerAtV249 = Date.now();
+}
+
+function isFormInteractionActiveV249() {
+  const now = Date.now();
+  // Se o último gesto foi num botão/card fora de campos, não bloquear ações desse clique.
+  if (now - formLastNonFieldPointerAtV249 < 220) return false;
+
+  const active = document.activeElement;
+  if (formFieldFromTargetV249(active)) return true;
+  return now - formLastEditAtV249 < FORM_IDLE_DELAY_V249;
+}
+
+function runWhenFormIdleV249(key, fn, delay = FORM_IDLE_DELAY_V249) {
+  const existing = pendingIdleActionsV249.get(key);
+  if (existing) clearTimeout(existing);
+
+  const timer = setTimeout(() => {
+    pendingIdleActionsV249.delete(key);
+    if (isFormInteractionActiveV249()) {
+      runWhenFormIdleV249(key, fn, delay);
+      return;
+    }
+    try { fn(); } catch (error) { console.warn(`Ação idle v249 falhou (${key}):`, error); }
+  }, delay);
+
+  pendingIdleActionsV249.set(key, timer);
+}
+
+["pointerdown", "mousedown", "touchstart"].forEach(type => {
+  document.addEventListener(type, event => {
+    markFormEditingV249(event.target);
+    markNonFieldPointerV249(event.target);
+  }, { capture: true, passive: true });
+});
+
+["focusin", "keydown", "input", "change"].forEach(type => {
+  document.addEventListener(type, event => markFormEditingV249(event.target), true);
+});
+
+document.addEventListener("focusout", event => {
+  if (!formFieldFromTargetV249(event.target)) return;
+  formLastEditAtV249 = Date.now();
+}, true);
+
+function deferRenderWhileFormActiveV249(label, fn, context, args) {
+  if (!isFormInteractionActiveV249()) return fn.apply(context, args);
+  runWhenFormIdleV249(label, () => fn.apply(context, args), FORM_IDLE_DELAY_V249);
+  return undefined;
+}
+
+function patchRenderGuardV249(name, getter, setter) {
+  try {
+    const original = getter();
+    if (typeof original !== "function") return;
+    setter(function guardedRenderV249() {
+      return deferRenderWhileFormActiveV249(name, original, this, arguments);
+    });
+  } catch (error) {
+    console.warn(`Guard render v249 falhou em ${name}:`, error);
+  }
+}
+
+if (!window.__formFocusGlobalGuardV249) {
+  window.__formFocusGlobalGuardV249 = true;
+
+  patchRenderGuardV249("renderAll", () => renderAll, value => { renderAll = value; });
+  patchRenderGuardV249("renderActivePageV187", () => renderActivePageV187, value => { renderActivePageV187 = value; });
+  patchRenderGuardV249("renderCalendar", () => renderCalendar, value => { renderCalendar = value; });
+  patchRenderGuardV249("renderAdmin", () => renderAdmin, value => { renderAdmin = value; });
+  patchRenderGuardV249("renderSettingsForm", () => renderSettingsForm, value => { renderSettingsForm = value; });
+  patchRenderGuardV249("renderAppSettingsPanelV162", () => renderAppSettingsPanelV162, value => { renderAppSettingsPanelV162 = value; });
+  patchRenderGuardV249("renderUserBetsEditor", () => renderUserBetsEditor, value => { renderUserBetsEditor = value; });
+  patchRenderGuardV249("renderPermissionsUsers", () => renderPermissionsUsers, value => { renderPermissionsUsers = value; });
+  patchRenderGuardV249("renderKnockout", () => renderKnockout, value => { renderKnockout = value; });
+  patchRenderGuardV249("renderKnockoutAdmin", () => renderKnockoutAdmin, value => { renderKnockoutAdmin = value; });
+}
+
+const queueRealtimeRenderOriginalV249 = typeof queueRealtimeRender === "function" ? queueRealtimeRender : null;
+if (queueRealtimeRenderOriginalV249 && !window.__queueRealtimeFocusGuardV249) {
+  window.__queueRealtimeFocusGuardV249 = true;
+  queueRealtimeRender = function queueRealtimeRenderFocusGuardV249(reason = "firebase realtime") {
+    if (isFormInteractionActiveV249()) {
+      runWhenFormIdleV249("queueRealtimeRender", () => queueRealtimeRenderOriginalV249.call(this, reason), FORM_IDLE_DELAY_V249);
+      return undefined;
+    }
+    return queueRealtimeRenderOriginalV249.apply(this, arguments);
+  };
+}
+
+const runKnockoutMandatoryCheckOriginalV249 = typeof runKnockoutMandatoryCheckV247 === "function" ? runKnockoutMandatoryCheckV247 : null;
+if (runKnockoutMandatoryCheckOriginalV249 && !window.__koMandatoryRunFocusGuardV249) {
+  window.__koMandatoryRunFocusGuardV249 = true;
+  runKnockoutMandatoryCheckV247 = function runKnockoutMandatoryCheckFocusGuardV249() {
+    if (isFormInteractionActiveV249()) {
+      runWhenFormIdleV249("knockoutMandatoryCheck", () => runKnockoutMandatoryCheckOriginalV249.apply(this, arguments), FORM_IDLE_DELAY_V249);
+      return undefined;
+    }
+    return runKnockoutMandatoryCheckOriginalV249.apply(this, arguments);
+  };
+}
+
+const scheduleKnockoutMandatoryCheckOriginalV249 = typeof scheduleKnockoutMandatoryCheckV247 === "function" ? scheduleKnockoutMandatoryCheckV247 : null;
+if (scheduleKnockoutMandatoryCheckOriginalV249 && !window.__koMandatoryScheduleFocusGuardV249) {
+  window.__koMandatoryScheduleFocusGuardV249 = true;
+  scheduleKnockoutMandatoryCheckV247 = function scheduleKnockoutMandatoryCheckFocusGuardV249(delay = 700) {
+    if (isFormInteractionActiveV249()) {
+      runWhenFormIdleV249("knockoutMandatorySchedule", () => scheduleKnockoutMandatoryCheckOriginalV249.call(this, Math.max(350, delay)), FORM_IDLE_DELAY_V249);
+      return undefined;
+    }
+    return scheduleKnockoutMandatoryCheckOriginalV249.apply(this, arguments);
+  };
+}
+
+const openKnockoutMandatoryModalOriginalV249 = typeof openKnockoutMandatoryModalV247 === "function" ? openKnockoutMandatoryModalV247 : null;
+if (openKnockoutMandatoryModalOriginalV249 && !window.__koMandatoryOpenFocusGuardV249) {
+  window.__koMandatoryOpenFocusGuardV249 = true;
+  openKnockoutMandatoryModalV247 = function openKnockoutMandatoryModalFocusGuardV249() {
+    if (isFormInteractionActiveV249()) {
+      runWhenFormIdleV249("openKnockoutMandatoryModal", () => openKnockoutMandatoryModalOriginalV249.apply(this, arguments), FORM_IDLE_DELAY_V249);
+      return false;
+    }
+    return openKnockoutMandatoryModalOriginalV249.apply(this, arguments);
+  };
+}
+
+if (typeof forceKnockoutAutoBetCheckV244 === "function" && !window.__forceKoAutoFocusGuardV249) {
+  window.__forceKoAutoFocusGuardV249 = true;
+  const forceKoAutoOriginalV249 = forceKnockoutAutoBetCheckV244;
+  forceKnockoutAutoBetCheckV244 = function forceKnockoutAutoBetCheckFocusGuardV249(delay = 500) {
+    if (isFormInteractionActiveV249()) {
+      runWhenFormIdleV249("forceKnockoutAutoBetCheck", () => forceKoAutoOriginalV249.call(this, delay), FORM_IDLE_DELAY_V249);
+      return undefined;
+    }
+    return forceKoAutoOriginalV249.apply(this, arguments);
+  };
+}
+
+if (typeof scheduleKnockoutAutoBetCheckV243 === "function" && !window.__scheduleKoAutoFocusGuardV249) {
+  window.__scheduleKoAutoFocusGuardV249 = true;
+  const scheduleKoAutoOriginalV249 = scheduleKnockoutAutoBetCheckV243;
+  scheduleKnockoutAutoBetCheckV243 = function scheduleKnockoutAutoBetCheckFocusGuardV249(delay = 500) {
+    if (isFormInteractionActiveV249()) {
+      runWhenFormIdleV249("scheduleKnockoutAutoBetCheck", () => scheduleKoAutoOriginalV249.call(this, delay), FORM_IDLE_DELAY_V249);
+      return undefined;
+    }
+    return scheduleKoAutoOriginalV249.apply(this, arguments);
+  };
+}
+
+window.debugFormFocusV249 = function debugFormFocusV249() {
+  return {
+    activeTag: document.activeElement?.tagName || "",
+    activeId: document.activeElement?.id || "",
+    activeClass: document.activeElement?.className || "",
+    formActive: isFormInteractionActiveV249(),
+    lastEditMs: Date.now() - formLastEditAtV249,
+    lastNonFieldPointerMs: Date.now() - formLastNonFieldPointerAtV249
+  };
+};
