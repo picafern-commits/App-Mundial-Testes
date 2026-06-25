@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v258";
+const APP_VERSION_LABEL = "v259";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -16455,3 +16455,655 @@ if (!window.__koExplicitRequiredV258) {
 
   koV258ScheduleMandatoryCheck(2800);
 }
+
+
+// v259 — Sistema simples: Fase Final entra no Calendário normal.
+// A partir daqui deixamos de depender de modal automático/pendências especiais.
+// O Admin guarda o jogo na árvore, a app cria/atualiza um jogo normal no calendário,
+// e o User aposta através do botão do próprio jogo.
+const APP_VERSION_V259 = "259.0";
+
+function disableKnockoutMandatorySystemV259() {
+  try { if (typeof knockoutAutoModalTimerV243 !== "undefined") { clearTimeout(knockoutAutoModalTimerV243); knockoutAutoModalTimerV243 = null; } } catch {}
+  try { if (typeof knockoutAutoIntervalV244 !== "undefined" && knockoutAutoIntervalV244) { clearInterval(knockoutAutoIntervalV244); knockoutAutoIntervalV244 = null; } } catch {}
+  try { if (typeof knockoutMandatoryTimerV247 !== "undefined") { clearTimeout(knockoutMandatoryTimerV247); knockoutMandatoryTimerV247 = null; } } catch {}
+  try { if (typeof knockoutMandatoryIntervalV247 !== "undefined" && knockoutMandatoryIntervalV247) { clearInterval(knockoutMandatoryIntervalV247); knockoutMandatoryIntervalV247 = null; } } catch {}
+  try { if (typeof knockoutMandatoryTimerV252 !== "undefined") { clearTimeout(knockoutMandatoryTimerV252); knockoutMandatoryTimerV252 = null; } } catch {}
+  try { if (typeof knockoutMandatoryTimerV254 !== "undefined") { clearTimeout(knockoutMandatoryTimerV254); knockoutMandatoryTimerV254 = null; } } catch {}
+  try { if (typeof knockoutMandatoryTimerV257 !== "undefined") { clearTimeout(knockoutMandatoryTimerV257); knockoutMandatoryTimerV257 = null; } } catch {}
+  try { if (typeof knockoutMandatoryTimerV258 !== "undefined") { clearTimeout(knockoutMandatoryTimerV258); knockoutMandatoryTimerV258 = null; } } catch {}
+  try { if (typeof knockoutMandatoryIntervalV258 !== "undefined" && knockoutMandatoryIntervalV258) { clearInterval(knockoutMandatoryIntervalV258); knockoutMandatoryIntervalV258 = null; } } catch {}
+  try { document.querySelectorAll("#knockoutMandatoryModalV247, #knockoutRequiredHomeV245").forEach(el => el.remove()); } catch {}
+  try { document.body.classList.remove("ko-mandatory-open-v247", "ko-mandatory-open-v252", "ko-mandatory-open-v257", "ko-mandatory-open-v258"); } catch {}
+}
+
+try { maybeOpenNextKnockoutBetModalV243 = () => false; } catch {}
+try { scheduleKnockoutAutoBetCheckV243 = () => false; } catch {}
+try { forceKnockoutAutoBetCheckV244 = () => false; } catch {}
+try { runKnockoutMandatoryCheckV247 = () => false; } catch {}
+try { scheduleKnockoutMandatoryCheckV247 = () => false; } catch {}
+try { runKnockoutMandatoryCheckV252 = () => false; } catch {}
+try { scheduleKnockoutMandatoryCheckV252 = () => false; } catch {}
+try { runKnockoutMandatoryCheckV254 = () => false; } catch {}
+try { scheduleKnockoutMandatoryCheckV254 = () => false; } catch {}
+try { koV257RunMandatoryCheck = () => false; } catch {}
+try { koV257ScheduleMandatoryCheck = () => false; } catch {}
+try { koV258RunMandatoryCheck = () => false; } catch {}
+try { koV258ScheduleMandatoryCheck = () => false; } catch {}
+try { openKnockoutMandatoryModalV247 = () => false; } catch {}
+try { closeKnockoutMandatoryModalV247 = () => { try { $("knockoutMandatoryModalV247")?.classList.add("hidden"); } catch {} disableKnockoutMandatorySystemV259(); return true; }; } catch {}
+try { injectKnockoutRequiredHomePanelV245 = () => { try { $("knockoutRequiredHomeV245")?.remove(); } catch {} return false; }; } catch {}
+try { focusKnockoutRequiredHomePanelV245 = () => false; } catch {}
+try { shouldForceRequiredKnockoutBetsV245 = () => false; } catch {}
+try { currentUserRequiredKnockoutBetsV245 = () => []; } catch {}
+try { currentUserMissedKnockoutBetsV245 = () => []; } catch {}
+try { currentUserDoneKnockoutBetsV245 = () => []; } catch {}
+try {
+  koV258RebuildRequiredStore = function koV258RebuildRequiredStoreDisabledV259({ persist = false, reason = "fase final sem pendências v259" } = {}) {
+    const store = koV258RequiredStore?.() || (appSettings.knockoutRequired = { version: APP_VERSION_V259, updatedAt: "", items: [] });
+    store.version = APP_VERSION_V259;
+    store.updatedAt = new Date().toISOString();
+    store.items = [];
+    if (persist) {
+      try { markSettingsPending?.(); } catch {}
+      try { saveLocalData?.(reason); } catch {}
+      try { scheduleFullSync?.(reason, 400); } catch {}
+    }
+    return store;
+  };
+} catch {}
+
+disableKnockoutMandatorySystemV259();
+
+function isKnockoutCalendarGameV259(game) {
+  return Boolean(game && (
+    String(game.id || "").startsWith("ko_") ||
+    String(game.knockoutMatchId || "").startsWith("ko_") ||
+    String(game.type || "").toLowerCase() === "knockout" ||
+    normalizeComparable(game.phase || "") === normalizeComparable("Fase Final")
+  ));
+}
+
+function knockoutMatchFromCalendarGameV259(gameOrId) {
+  const id = typeof gameOrId === "string"
+    ? gameOrId
+    : (gameOrId?.knockoutMatchId || gameOrId?.matchId || gameOrId?.id || "");
+  if (!id) return null;
+  try { return knockoutMatchById?.(id) || null; } catch { return null; }
+}
+
+function knockoutCalendarGameDateV259(match) {
+  try { return knockoutMatchDateInputValueV243?.(match) || match?.matchDate || match?.date || match?.kickoff || match?.startAt || match?.time || ""; }
+  catch { return match?.matchDate || match?.date || match?.kickoff || match?.startAt || match?.time || ""; }
+}
+
+function knockoutMatchIsCalendarReadyV259(match) {
+  return Boolean(match && match.id && String(match.homeTeam || "").trim() && String(match.awayTeam || "").trim() && knockoutCalendarGameDateV259(match));
+}
+
+function knockoutCalendarGameFromMatchV259(match, existing = {}) {
+  const matchDate = knockoutCalendarGameDateV259(match);
+  return {
+    ...(existing || {}),
+    id: String(match.id || existing.id || ""),
+    knockoutMatchId: String(match.id || existing.knockoutMatchId || ""),
+    type: "knockout",
+    phase: "Fase Final",
+    group: knockoutRoundLabel?.(match.round) || match.roundLabel || "Fase Final",
+    round: match.round || existing.round || "",
+    roundLabel: knockoutRoundLabel?.(match.round) || match.roundLabel || existing.roundLabel || "Fase Final",
+    index: match.index || existing.index || "",
+    homeTeam: match.homeTeam || existing.homeTeam || "",
+    awayTeam: match.awayTeam || existing.awayTeam || "",
+    matchDate,
+    date: matchDate,
+    kickoff: matchDate,
+    startAt: matchDate,
+    time: matchDate,
+    homeScore: match.homeScore ?? existing.homeScore ?? null,
+    awayScore: match.awayScore ?? existing.awayScore ?? null,
+    homePenalties: match.homePenalties ?? existing.homePenalties ?? null,
+    awayPenalties: match.awayPenalties ?? existing.awayPenalties ?? null,
+    winner: match.winner || match.winnerTeam || match.qualified || existing.winner || existing.winnerTeam || existing.qualified || "",
+    winnerTeam: match.winnerTeam || match.winner || match.qualified || existing.winnerTeam || existing.winner || existing.qualified || "",
+    qualified: match.qualified || match.winnerTeam || match.winner || existing.qualified || existing.winnerTeam || existing.winner || "",
+    qualifiedTeam: match.qualified || match.winnerTeam || match.winner || existing.qualifiedTeam || "",
+    source: "FaseFinal",
+    updatedAt: match.updatedAt || existing.updatedAt || new Date().toISOString()
+  };
+}
+
+function syncKnockoutCalendarGameV259(match, { persist = false, removeIfIncomplete = false, reason = "fase final calendário v259" } = {}) {
+  if (!match?.id) return null;
+  const gameIndex = games.findIndex(game => String(game.id || "") === String(match.id));
+  if (!knockoutMatchIsCalendarReadyV259(match)) {
+    if (removeIfIncomplete && gameIndex >= 0) {
+      games.splice(gameIndex, 1);
+      markGamePending?.(match.id);
+      saveLocalData?.(reason);
+      if (persist) scheduleFullSync?.(reason, 400);
+    }
+    return null;
+  }
+  const existing = gameIndex >= 0 ? games[gameIndex] : {};
+  const next = knockoutCalendarGameFromMatchV259(match, existing);
+  if (gameIndex >= 0) games[gameIndex] = next;
+  else games.push(next);
+  markGamePending?.(next.id);
+  if (persist) {
+    saveLocalData?.(reason);
+    scheduleFullSync?.(reason, 350);
+  }
+  return next;
+}
+
+function ensureKnockoutCalendarGamesV259({ persist = false, reason = "fase final calendário v259" } = {}) {
+  try { ensureKnockoutSettings?.(); } catch {}
+  const matches = typeof knockoutMatches === "function" ? knockoutMatches() : (appSettings?.knockout?.matches || []);
+  let changed = false;
+  (Array.isArray(matches) ? matches : []).forEach(match => {
+    const before = JSON.stringify(games.find(game => String(game.id || "") === String(match.id)) || null);
+    const saved = syncKnockoutCalendarGameV259(match, { persist: false, reason });
+    const after = JSON.stringify(saved || null);
+    if (before !== after) changed = true;
+  });
+  if (changed) {
+    saveLocalData?.(reason);
+    if (persist) scheduleFullSync?.(reason, 350);
+  }
+  return changed;
+}
+
+function currentCalendarBetPlayerV259() {
+  try { return linkedPlayerForCurrentUserV241?.() || null; } catch { return null; }
+}
+
+function betForCurrentPlayerCalendarGameV259(game) {
+  const player = currentCalendarBetPlayerV259();
+  if (!player || !game?.id) return null;
+  try { return knockoutBetForPlayerMatchV241?.(player.id || player.playerId, game.id) || null; } catch {}
+  return (bets || []).find(bet => String(bet.gameId || "") === String(game.id) && String(bet.playerId || "") === String(player.id || player.playerId || "")) || null;
+}
+
+function knockoutCalendarBetStateV259(game) {
+  const match = knockoutMatchFromCalendarGameV259(game);
+  const player = currentCalendarBetPlayerV259();
+  const bet = betForCurrentPlayerCalendarGameV259(game);
+  if (!player) return { key: "no-player", label: "Sem jogador ligado", bet, locked: true };
+  if (!match) return { key: "not-ready", label: "Jogo não encontrado", bet, locked: true };
+  const hasDate = Boolean(knockoutMatchStartMillisV241?.(match));
+  if (!hasDate) return { key: "no-date", label: "Sem data/hora", bet, locked: true };
+  const locked = Boolean(isKnockoutBetLockedV241?.(match));
+  if (bet) return { key: locked ? "view" : "edit", label: locked ? "Ver aposta" : "Editar aposta", bet, locked };
+  if (locked) return { key: "missed", label: "Fora do jogo", bet: null, locked: true };
+  return { key: "pending", label: "Apostar resultado", bet: null, locked: false };
+}
+
+const renderMatchRowOriginalV259 = typeof renderMatchRow === "function" ? renderMatchRow : null;
+if (renderMatchRowOriginalV259 && !renderMatchRowOriginalV259.__koCalendarV259) {
+  renderMatchRow = function renderMatchRowV259(game) {
+    if (!isKnockoutCalendarGameV259(game)) return renderMatchRowOriginalV259.apply(this, arguments);
+
+    const status = statusOf(game);
+    const finalResult = hasFinalResult(game);
+    const scoreText = finalResult ? `${game.homeScore}-${game.awayScore}` : "VS";
+    const gameBets = betsForGame(game.id);
+    const resultButtonText = finalResult ? "Editar resultado" : "Adicionar resultado";
+    const canEditResults = hasPermission?.("editResults");
+    const betState = knockoutCalendarBetStateV259(game);
+    const deadline = (() => {
+      const match = knockoutMatchFromCalendarGameV259(game);
+      try { return match ? knockoutBetDeadlineLabelV243?.(match) || "" : ""; } catch { return ""; }
+    })();
+    const betText = finalResult
+      ? `${gameBets.length} apostas · pontos atribuídos`
+      : betState.bet
+        ? `Aposta guardada${deadline ? ` · prazo ${deadline}` : ""}`
+        : `${gameBets.length} aposta${gameBets.length === 1 ? "" : "s"}${deadline ? ` · prazo ${deadline}` : ""}`;
+    const qualified = game.qualified || game.winnerTeam || game.winner || game.qualifiedTeam || "";
+
+    return `
+      <article class="match-row knockout-calendar-row-v259 ${status.className}" data-ko-calendar-game-v259="${escapeHtml(game.id)}">
+        <div class="group-pill ko-calendar-pill-v259">${escapeHtml(game.group || game.roundLabel || "Fase Final")}</div>
+        <div class="team home"><strong>${escapeHtml(game.homeTeam)}</strong></div>
+        <div class="score-vs">${escapeHtml(scoreText)}</div>
+        <div class="team away"><strong>${escapeHtml(game.awayTeam)}</strong></div>
+        <div class="time">${timePortugal(game.matchDate)}</div>
+        <div class="state ${status.className}">${status.text}</div>
+        <div class="bet-note ko-calendar-note-v259">${escapeHtml(betText)}${qualified ? `<br><span>Qualificada: ${escapeHtml(qualified)}</span>` : ""}</div>
+        <div class="calendar-actions ko-calendar-actions-v259">
+          ${canEditResults ? `<button class="primary small" type="button" data-result-game="${escapeHtml(game.id)}">${resultButtonText}</button>` : ""}
+          ${!canEditResults ? `<button class="primary small" type="button" data-ko-calendar-bet-v259="${escapeHtml(game.id)}" ${betState.key === "missed" || betState.key === "no-player" || betState.key === "no-date" ? "disabled" : ""}>${escapeHtml(betState.label)}</button>` : ""}
+          <button class="secondary small" type="button" data-bets-game="${escapeHtml(game.id)}">Ver apostas</button>
+        </div>
+      </article>`;
+  };
+  renderMatchRow.__koCalendarV259 = true;
+}
+
+const renderCalendarOriginalV259 = typeof renderCalendar === "function" ? renderCalendar : null;
+if (renderCalendarOriginalV259 && !renderCalendarOriginalV259.__koCalendarV259) {
+  renderCalendar = function renderCalendarKoCalendarV259() {
+    ensureKnockoutCalendarGamesV259({ persist: false, reason: "render calendário fase final v259" });
+    disableKnockoutMandatorySystemV259();
+    const result = renderCalendarOriginalV259.apply(this, arguments);
+    disableKnockoutMandatorySystemV259();
+    setTimeout(disableKnockoutMandatorySystemV259, 120);
+    setTimeout(disableKnockoutMandatorySystemV259, 800);
+    return result;
+  };
+  renderCalendar.__koCalendarV259 = true;
+}
+
+const renderAllOriginalV259 = typeof renderAll === "function" ? renderAll : null;
+if (renderAllOriginalV259 && !renderAllOriginalV259.__koCalendarV259) {
+  renderAll = function renderAllKoCalendarV259() {
+    ensureKnockoutCalendarGamesV259({ persist: false, reason: "render geral fase final v259" });
+    disableKnockoutMandatorySystemV259();
+    const result = renderAllOriginalV259.apply(this, arguments);
+    disableKnockoutMandatorySystemV259();
+    setTimeout(disableKnockoutMandatorySystemV259, 150);
+    return result;
+  };
+  renderAll.__koCalendarV259 = true;
+}
+
+const loadDataOriginalV259 = typeof loadData === "function" ? loadData : null;
+if (loadDataOriginalV259 && !loadDataOriginalV259.__koCalendarV259) {
+  loadData = async function loadDataKoCalendarV259() {
+    const result = await loadDataOriginalV259.apply(this, arguments);
+    ensureKnockoutCalendarGamesV259({ persist: false, reason: "load fase final calendário v259" });
+    disableKnockoutMandatorySystemV259();
+    return result;
+  };
+  loadData.__koCalendarV259 = true;
+}
+
+const saveKnockoutMatchFromAdminOriginalV259 = typeof saveKnockoutMatchFromAdmin === "function" ? saveKnockoutMatchFromAdmin : null;
+if (saveKnockoutMatchFromAdminOriginalV259 && !saveKnockoutMatchFromAdminOriginalV259.__koCalendarV259) {
+  saveKnockoutMatchFromAdmin = async function saveKnockoutMatchFromAdminKoCalendarV259(matchId, button) {
+    const result = await saveKnockoutMatchFromAdminOriginalV259.apply(this, arguments);
+    try {
+      const match = knockoutMatchById?.(matchId);
+      if (match) syncKnockoutCalendarGameV259(match, { persist: true, reason: "fase final para calendário v259" });
+      ensureKnockoutCalendarGamesV259({ persist: true, reason: "fase final para calendário v259" });
+      try { appSettings.knockoutRequired = { version: APP_VERSION_V259, updatedAt: new Date().toISOString(), items: [] }; markSettingsPending?.(); } catch {}
+      disableKnockoutMandatorySystemV259();
+      if ($("calendarTab")?.classList.contains("active")) renderCalendar?.();
+      toast?.("Jogo da Fase Final atualizado no Calendário.");
+    } catch (error) {
+      console.warn("v259: falhou sincronizar jogo da Fase Final no calendário", error);
+      scheduleFullSync?.("fase final calendário v259", 800);
+    }
+    return result;
+  };
+  saveKnockoutMatchFromAdmin.__koCalendarV259 = true;
+}
+
+function ensureResultQualifiedFieldV259(game) {
+  const existing = $("resultQualifiedWrapperV259");
+  if (!isKnockoutCalendarGameV259(game)) {
+    existing?.remove();
+    return;
+  }
+  const grid = document.querySelector("#resultModal .result-fields-grid");
+  if (!grid) return;
+  const match = knockoutMatchFromCalendarGameV259(game);
+  const selected = game.qualified || game.winnerTeam || game.winner || game.qualifiedTeam || match?.qualified || match?.winnerTeam || match?.winner || "";
+  const options = [game.homeTeam, game.awayTeam].filter(Boolean).map(team => `<option value="${escapeHtml(team)}" ${normalizeComparable(team) === normalizeComparable(selected) ? "selected" : ""}>${escapeHtml(team)}</option>`).join("");
+  const html = `
+    <label id="resultQualifiedWrapperV259">Equipa qualificada
+      <select id="modalQualifiedTeamInputV259">
+        <option value="">Escolher equipa qualificada</option>
+        ${options}
+      </select>
+    </label>`;
+  if (existing) existing.outerHTML = html;
+  else grid.insertAdjacentHTML("beforeend", html);
+}
+
+const openResultModalOriginalV259 = typeof openResultModal === "function" ? openResultModal : null;
+if (openResultModalOriginalV259 && !openResultModalOriginalV259.__koCalendarV259) {
+  openResultModal = function openResultModalKoCalendarV259(gameId) {
+    const game = games.find(item => String(item.id || "") === String(gameId));
+    const result = openResultModalOriginalV259.apply(this, arguments);
+    ensureResultQualifiedFieldV259(game);
+    if (isKnockoutCalendarGameV259(game)) {
+      try { $("resultModalSubtitle").textContent = "Guarda o resultado real e escolhe a equipa qualificada para avançar na Fase Final."; } catch {}
+    }
+    return result;
+  };
+  openResultModal.__koCalendarV259 = true;
+  window.openResultModal = openResultModal;
+}
+
+function qualifiedFromResultModalV259(game, homeScore, awayScore) {
+  const selected = $("modalQualifiedTeamInputV259")?.value || "";
+  if (selected) return selected;
+  const home = Number(homeScore);
+  const away = Number(awayScore);
+  if (Number.isFinite(home) && Number.isFinite(away)) {
+    if (home > away) return game.homeTeam || "";
+    if (away > home) return game.awayTeam || "";
+  }
+  return "";
+}
+
+const setResultOriginalV259 = typeof setResult === "function" ? setResult : null;
+if (setResultOriginalV259 && !setResultOriginalV259.__koCalendarV259) {
+  setResult = async function setResultKoCalendarV259(gameId, homeScore, awayScore) {
+    const game = games.find(item => String(item.id || "") === String(gameId));
+    if (!isKnockoutCalendarGameV259(game)) return setResultOriginalV259.apply(this, arguments);
+    if (!hasPermission?.("editResults")) { toast("Sem permissão para editar resultados."); return false; }
+    if (homeScore === "" || awayScore === "") { toast("Preenche o resultado completo."); return false; }
+
+    const home = Number(homeScore);
+    const away = Number(awayScore);
+    if (!Number.isFinite(home) || !Number.isFinite(away) || home < 0 || away < 0) { toast("Resultado inválido."); return false; }
+
+    const qualified = qualifiedFromResultModalV259(game, home, away);
+    if (!qualified) { toast("Escolhe a equipa que se qualificou."); return false; }
+    const normalizedQualified = normalizeComparable(qualified);
+    if (![normalizeComparable(game.homeTeam), normalizeComparable(game.awayTeam)].includes(normalizedQualified)) {
+      toast("Escolhe uma das duas equipas como qualificada.");
+      return false;
+    }
+    if (home > away && normalizedQualified !== normalizeComparable(game.homeTeam)) { toast("A equipa qualificada não bate certo com o resultado."); return false; }
+    if (away > home && normalizedQualified !== normalizeComparable(game.awayTeam)) { toast("A equipa qualificada não bate certo com o resultado."); return false; }
+
+    const match = knockoutMatchFromCalendarGameV259(game);
+    const before = { homeScore: game.homeScore ?? null, awayScore: game.awayScore ?? null, qualified: game.qualified || game.qualifiedTeam || "" };
+
+    game.homeScore = home;
+    game.awayScore = away;
+    game.qualified = qualified;
+    game.qualifiedTeam = qualified;
+    game.winner = qualified;
+    game.winnerTeam = qualified;
+    stampGame?.(game, "resultado fase final calendário v259");
+    markGamePending?.(game.id);
+
+    if (match) {
+      match.homeScore = home;
+      match.awayScore = away;
+      match.winner = qualified;
+      match.winnerTeam = qualified;
+      match.qualified = qualified;
+      match.matchDate = game.matchDate || match.matchDate || "";
+      match.date = match.matchDate;
+      match.kickoff = match.matchDate;
+      match.startAt = match.matchDate;
+      match.time = match.matchDate;
+      match.updatedAt = new Date().toISOString();
+      try { propagateKnockoutWinners?.(true); } catch {}
+      syncKnockoutCalendarGameV259(match, { persist: false, reason: "resultado fase final calendário v259" });
+      try { markSettingsPending?.(); } catch {}
+    }
+
+    addSystemLog?.("Resultado Fase Final", `${game.homeTeam} ${home}-${away} ${game.awayTeam} · qualificada: ${qualified}`, { gameId: game.id, before, after: { homeScore: home, awayScore: away, qualified } }, { sync: true });
+    saveLocalData?.("resultado fase final calendário v259");
+    renderAll?.();
+    scheduleFullSync?.("resultado fase final calendário v259", 350);
+    toast("Resultado da Fase Final guardado.");
+    return true;
+  };
+  setResult.__koCalendarV259 = true;
+  window.setResultFromUI = id => setResult(id, $("res_home_" + id)?.value, $("res_away_" + id)?.value);
+}
+
+const clearResultOriginalV259 = typeof clearResult === "function" ? clearResult : null;
+if (clearResultOriginalV259 && !clearResultOriginalV259.__koCalendarV259) {
+  clearResult = async function clearResultKoCalendarV259(gameId) {
+    const game = games.find(item => String(item.id || "") === String(gameId));
+    if (!isKnockoutCalendarGameV259(game)) return clearResultOriginalV259.apply(this, arguments);
+    if (!hasPermission?.("editResults")) { toast("Sem permissão para editar resultados."); return false; }
+    const match = knockoutMatchFromCalendarGameV259(game);
+    game.homeScore = null;
+    game.awayScore = null;
+    game.qualified = "";
+    game.qualifiedTeam = "";
+    game.winner = "";
+    game.winnerTeam = "";
+    stampGame?.(game, "limpar resultado fase final calendário v259");
+    markGamePending?.(game.id);
+    if (match) {
+      match.homeScore = null;
+      match.awayScore = null;
+      match.homePenalties = null;
+      match.awayPenalties = null;
+      match.winner = "";
+      match.winnerTeam = "";
+      match.qualified = "";
+      match.updatedAt = new Date().toISOString();
+      try { clearInvalidDownstreamKnockoutResults?.(match); } catch {}
+      try { propagateKnockoutWinners?.(true); } catch {}
+      try { markSettingsPending?.(); } catch {}
+    }
+    addSystemLog?.("Resultado Fase Final limpo", `${game.homeTeam} vs ${game.awayTeam}`, { gameId: game.id }, { sync: true });
+    saveLocalData?.("limpar resultado fase final calendário v259");
+    renderAll?.();
+    scheduleFullSync?.("limpar resultado fase final calendário v259", 350);
+    toast("Resultado da Fase Final limpo.");
+    return true;
+  };
+  clearResult.__koCalendarV259 = true;
+}
+
+const saveKnockoutBetFromModalOriginalV259 = typeof saveKnockoutBetFromModalV241 === "function" ? saveKnockoutBetFromModalV241 : null;
+if (saveKnockoutBetFromModalOriginalV259 && !saveKnockoutBetFromModalOriginalV259.__koCalendarV259) {
+  saveKnockoutBetFromModalV241 = async function saveKnockoutBetFromModalKoCalendarV259() {
+    const result = await saveKnockoutBetFromModalOriginalV259.apply(this, arguments);
+    try { ensureKnockoutCalendarGamesV259({ persist: false, reason: "aposta fase final calendário v259" }); } catch {}
+    try { if ($("calendarTab")?.classList.contains("active")) renderCalendar?.(); } catch {}
+    return result;
+  };
+  saveKnockoutBetFromModalV241.__koCalendarV259 = true;
+}
+
+const playerStatsOriginalV259 = typeof playerStats === "function" ? playerStats : null;
+if (playerStatsOriginalV259 && !playerStatsOriginalV259.__koCalendarV259) {
+  playerStats = function playerStatsKoCalendarV259(playerName) {
+    const playerBets = bets.filter(bet => bet.playerName === playerName);
+    const stats = {
+      playerName,
+      points: 0,
+      gamePoints: 0,
+      knockoutPoints: 0,
+      extraPoints: 0,
+      importedPoints: appSettings.importedPoints?.[playerName] ?? null,
+      totalBets: playerBets.length,
+      settled: 0,
+      exact: 0,
+      winner: 0,
+      penalties: 0,
+      misses: 0,
+      mvp: 0,
+      topScorer: 0,
+      champion: 0
+    };
+
+    playerBets.forEach(bet => {
+      const knockoutMatch = knockoutMatchById?.(bet.gameId);
+      if (knockoutMatch) {
+        if (!knockoutMatchHasResult(knockoutMatch)) return;
+        const points = pointsForKnockoutBet(bet, knockoutMatch);
+        stats.gamePoints += points;
+        stats.knockoutPoints += points;
+        stats.settled += 1;
+        if (isExactKnockoutBet(bet, knockoutMatch)) stats.exact += 1;
+        else if (isWinnerKnockoutBet(bet, knockoutMatch)) stats.winner += 1;
+        else stats.misses += 1;
+        if (isExactKnockoutPenaltyBet(bet, knockoutMatch)) stats.penalties += 1;
+        return;
+      }
+
+      const game = games.find(item => item.id === bet.gameId);
+      if (!game || !hasFinalResult(game)) return;
+      const points = pointsForBet(bet, game);
+      stats.gamePoints += points;
+      stats.settled += 1;
+      if (isExactBet(bet, game)) stats.exact += 1;
+      else if (isOutcomeBet(bet, game)) stats.winner += 1;
+      else stats.misses += 1;
+    });
+
+    const extras = extraPointsForPlayer(playerName);
+    stats.extraPoints = extras.total;
+    stats.mvp = extras.mvp;
+    stats.topScorer = extras.topScorer;
+    stats.champion = extras.champion;
+    stats.points = stats.gamePoints + stats.extraPoints;
+    stats.calculatedTotal = stats.points;
+    stats.accuracy = stats.settled ? Math.round((stats.exact / stats.settled) * 100) : 0;
+    stats.diffExcel = stats.importedPoints === null ? null : stats.points - Number(stats.importedPoints);
+    return stats;
+  };
+  playerStats.__koCalendarV259 = true;
+}
+
+const playerGameRowsOriginalV259 = typeof playerGameRows === "function" ? playerGameRows : null;
+if (playerGameRowsOriginalV259 && !playerGameRowsOriginalV259.__koCalendarV259) {
+  playerGameRows = function playerGameRowsKoCalendarV259(playerName) {
+    const groupRows = playedGamesNewestFirstV119()
+      .filter(game => !isKnockoutCalendarGameV259(game))
+      .map(game => {
+        const bet = betForPlayerGameV120(playerName, game.id);
+        const points = bet ? pointsForBet(bet, game) : 0;
+        return { game, bet, points, label: bet ? betResultLabel(bet, game) : "Sem aposta", className: bet ? betResultClass(bet, game) : "miss" };
+      });
+
+    const playerId = playerIdFromName(playerName);
+    const knockoutRows = (appSettings.knockout?.matches || [])
+      .filter(knockoutMatchHasResult)
+      .map(match => {
+        const bet = bets.find(item => item.gameId === match.id && (
+          item.playerId === playerId ||
+          playerIdFromName(item.playerName || "") === playerId ||
+          String(item.playerName || "").trim().toLowerCase() === String(playerName || "").trim().toLowerCase()
+        ));
+        const points = bet ? pointsForKnockoutBet(bet, match) : 0;
+        return { game: { ...match, phase: "Fase Final" }, bet, points, label: bet ? knockoutBetResultLabel(bet, match) : "Sem aposta", className: bet ? knockoutBetResultClass(bet, match) : "miss", knockout: true };
+      });
+    return [...groupRows, ...knockoutRows];
+  };
+  playerGameRows.__koCalendarV259 = true;
+}
+
+const showGameBetsOriginalV259 = typeof showGameBets === "function" ? showGameBets : null;
+if (showGameBetsOriginalV259 && !showGameBetsOriginalV259.__koCalendarV259) {
+  showGameBets = function showGameBetsKoCalendarV259(gameId) {
+    const game = games.find(item => String(item.id || "") === String(gameId));
+    const match = isKnockoutCalendarGameV259(game) ? knockoutMatchFromCalendarGameV259(game) : null;
+    if (!match) return showGameBetsOriginalV259.apply(this, arguments);
+
+    const modal = $("betsModal");
+    const title = $("betsModalTitle");
+    const subtitle = $("betsModalSubtitle");
+    const summary = $("betsGameSummary");
+    const body = $("betsModalBody");
+    if (!modal || !title || !subtitle || !summary || !body) return showGameBetsOriginalV259.apply(this, arguments);
+    const rows = betsForGame(game.id).sort((a, b) => String(a.playerName || "").localeCompare(String(b.playerName || ""), "pt"));
+    title.textContent = "Apostas da Fase Final";
+    subtitle.textContent = `${game.homeTeam} vs ${game.awayTeam} · ${game.group || "Fase Final"}`;
+    summary.innerHTML = `<div class="bets-summary-card main"><strong>${escapeHtml(game.homeTeam)} ${hasFinalResult(game) ? `${game.homeScore}-${game.awayScore}` : "vs"} ${escapeHtml(game.awayTeam)}</strong><span>${escapeHtml(dateHeader(game.matchDate))} · ${escapeHtml(timePortugal(game.matchDate))}${game.qualified || game.qualifiedTeam ? ` · Qualificada: ${escapeHtml(game.qualified || game.qualifiedTeam)}` : ""}</span></div>`;
+    if (!rows.length) body.innerHTML = `<div class="empty">Ainda não existem apostas para este jogo.</div>`;
+    else {
+      body.innerHTML = `<div class="bets-list">${rows.map(bet => {
+        const points = knockoutMatchHasResult(match) ? pointsForKnockoutBet(bet, match) : "-";
+        const label = knockoutMatchHasResult(match) ? knockoutBetResultLabel(bet, match) : "Por jogar";
+        return `<article class="bet-row"><strong>${escapeHtml(bet.playerName || bet.playerId || "Jogador")}</strong><div class="bet-score-pill">${escapeHtml(knockoutBetDisplay(bet))}</div><div class="bet-type-pill">${escapeHtml(label)}</div><b>${points}</b></article>`;
+      }).join("")}</div>`;
+    }
+    modal.classList.remove("hidden");
+  };
+  showGameBets.__koCalendarV259 = true;
+  window.showGameBets = showGameBets;
+}
+
+document.addEventListener("click", event => {
+  const betButton = event.target.closest?.("[data-ko-calendar-bet-v259]");
+  if (!betButton) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const game = games.find(item => String(item.id || "") === String(betButton.dataset.koCalendarBetV259 || ""));
+  const match = knockoutMatchFromCalendarGameV259(game);
+  if (!match) return toast("Jogo da Fase Final não encontrado.");
+  const player = currentCalendarBetPlayerV259();
+  if (!player) return toast("Conta sem jogador ligado. O Admin tem de ligar este user ao jogador certo.");
+  openKnockoutBetModalV241?.(match.id, { manual: true });
+}, true);
+
+function debugFaseFinalCalendarioV259() {
+  ensureKnockoutCalendarGamesV259({ persist: false, reason: "debug fase final calendário v259" });
+  return {
+    version: APP_VERSION_V259,
+    calendarKnockoutGames: games.filter(isKnockoutCalendarGameV259).map(game => ({
+      id: game.id,
+      phase: game.phase,
+      group: game.group,
+      homeTeam: game.homeTeam,
+      awayTeam: game.awayTeam,
+      matchDate: game.matchDate,
+      hasResult: hasFinalResult(game),
+      qualified: game.qualified || game.qualifiedTeam || game.winnerTeam || "",
+      bets: betsForGame(game.id).length
+    })),
+    knockoutMatchesReady: (appSettings.knockout?.matches || []).filter(knockoutMatchIsCalendarReadyV259).map(match => ({ id: match.id, round: match.round, homeTeam: match.homeTeam, awayTeam: match.awayTeam, matchDate: knockoutCalendarGameDateV259(match) })),
+    player: (() => { const p = currentCalendarBetPlayerV259(); return p ? { id: p.id || p.playerId, name: p.name || p.playerName } : null; })()
+  };
+}
+
+window.debugFaseFinalCalendarioV259 = debugFaseFinalCalendarioV259;
+window.syncFaseFinalCalendarioV259 = function syncFaseFinalCalendarioV259() {
+  const changed = ensureKnockoutCalendarGamesV259({ persist: true, reason: "sync manual fase final calendário v259" });
+  renderAll?.();
+  return { changed, debug: debugFaseFinalCalendarioV259() };
+};
+
+setTimeout(() => {
+  ensureKnockoutCalendarGamesV259({ persist: false, reason: "arranque fase final calendário v259" });
+  disableKnockoutMandatorySystemV259();
+  try { if ($("calendarTab")?.classList.contains("active")) renderCalendar?.(); } catch {}
+}, 1200);
+setTimeout(disableKnockoutMandatorySystemV259, 2600);
+
+// v259 final: neutraliza relatórios antigos de pendências/modal obrigatório.
+function emptyKnockoutMandatoryReportV259() {
+  return {
+    version: APP_VERSION_V259,
+    dataReady: Boolean(currentUser && currentProfile),
+    missingData: [],
+    hasCurrentUser: Boolean(currentUser),
+    userEmail: currentUser?.email || currentProfile?.email || "",
+    profileRole: currentProfile?.role || "",
+    profileActive: currentProfile?.active !== false,
+    player: (() => { const p = currentCalendarBetPlayerV259?.(); return p ? { id: p.id || p.playerId, name: p.name || p.playerName } : null; })(),
+    explicitItems: 0,
+    mandatory: [], pending: [], missed: [], done: [], notReady: [],
+    counts: { mandatory: 0, pending: 0, missed: 0, done: 0, notReady: 0, explicitItems: 0 }
+  };
+}
+try { koV258Report = emptyKnockoutMandatoryReportV259; } catch {}
+try { koV257Report = emptyKnockoutMandatoryReportV259; } catch {}
+try { knockoutMandatoryReportV252 = emptyKnockoutMandatoryReportV259; } catch {}
+try { knockoutMandatoryReportV254 = emptyKnockoutMandatoryReportV259; } catch {}
+try { knockoutV255Report = emptyKnockoutMandatoryReportV259; } catch {}
+try { koV258PendingMatches = () => []; } catch {}
+try { koV258MissedMatches = () => []; } catch {}
+try { koV258DoneMatches = () => []; } catch {}
+try { koV257PendingMatches = () => []; } catch {}
+try { koV257MissedMatches = () => []; } catch {}
+try { koV257DoneMatches = () => []; } catch {}
+try { knockoutMandatoryPendingMatchesV247 = () => []; } catch {}
+try { knockoutMandatoryMissedMatchesV247 = () => []; } catch {}
+try { knockoutMandatoryDoneMatchesV247 = () => []; } catch {}
+try { knockoutMandatoryPendingMatchesV252 = () => []; } catch {}
+try { knockoutMandatoryPendingMatchesV254 = () => []; } catch {}
+try { knockoutV255PendingMatches = () => []; } catch {}
+try { knockoutV255MissedMatches = () => []; } catch {}
+try { knockoutV255DoneMatches = () => []; } catch {}
+try { currentUserRequiredKnockoutBetsV245 = () => []; } catch {}
+try { currentUserMissedKnockoutBetsV245 = () => []; } catch {}
+try { currentUserDoneKnockoutBetsV245 = () => []; } catch {}
+try { shouldForceRequiredKnockoutBetsV245 = () => false; } catch {}
+disableKnockoutMandatorySystemV259();

@@ -12088,3 +12088,26 @@ body.ko-mandatory-open-v247{
 .ko-user-status-v255.not-ready{border-color:rgba(148,163,184,.20);background:rgba(15,23,42,.64);color:#94a3b8;}
 .ko-user-status-v255.no-player{border-color:rgba(96,165,250,.38);background:rgba(59,130,246,.13);color:#bfdbfe;}
 body.knockout-layout-active #knockoutBracket .ko-user-status-v255{display:block!important;font-size:8px!important;padding:2px 4px!important;margin-top:2px!important;}
+
+/* v259 - Fase Final no Calendário normal */
+.knockout-calendar-row-v259{
+  border-color:rgba(255,216,92,.18);
+  background:linear-gradient(135deg, rgba(255,216,92,.055), rgba(9,16,29,.86));
+}
+.ko-calendar-pill-v259{
+  background:rgba(255,216,92,.12);
+  border-color:rgba(255,216,92,.34);
+  color:#ffe28a;
+}
+.ko-calendar-note-v259 span{
+  color:#ffe28a;
+  font-weight:800;
+}
+.ko-calendar-actions-v259 button:disabled{
+  opacity:.58;
+  cursor:not-allowed;
+  filter:grayscale(.2);
+}
+#resultQualifiedWrapperV259 select{
+  width:100%;
+}
