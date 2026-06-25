@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v240";
+const APP_VERSION_LABEL = "v241";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -233,23 +233,10 @@ function defaultKnockoutPointSettings() {
   return { ...defaultPointSettings(), penalties: 2 };
 }
 
-function defaultVisualTheme() {
-  return {
-    primary: "#6d5cff",
-    secondary: "#38bdf8",
-    accent: "#ffd45a",
-    success: "#26c281",
-    warning: "#f59e0b",
-    danger: "#ef4444",
-    background: "#020816"
-  };
-}
-
 function defaultSettings() {
   return {
     points: defaultPointSettings(),
     knockoutPoints: defaultKnockoutPointSettings(),
-    visualTheme: defaultVisualTheme(),
     extraResults: { mvp: "", topScorer: "", champion: "" },
     extraPredictions: {},
     importedPoints: {},
@@ -342,7 +329,6 @@ function mergeSettings(input = {}) {
     ...base, ...input,
     points: { ...base.points, ...(input.points || {}) },
     knockoutPoints: { ...base.knockoutPoints, ...(input.knockoutPoints || {}) },
-    visualTheme: { ...base.visualTheme, ...(input.visualTheme || {}) },
     extraResults: { ...base.extraResults, ...(input.extraResults || {}) },
     extraPredictions: { ...(input.extraPredictions || {}) },
     importedPoints: { ...(input.importedPoints || {}) },
@@ -4011,201 +3997,6 @@ function setupKnockoutAdjustTopButton() {
   });
 }
 
-let knockoutViewModeV235 = localStorage.getItem("mundial_ko_view_mode_v235") || "bracket";
-
-function setKnockoutViewModeV235(mode) {
-  knockoutViewModeV235 = mode === "list" ? "list" : "bracket";
-  localStorage.setItem("mundial_ko_view_mode_v235", knockoutViewModeV235);
-  renderKnockout();
-}
-
-function knockoutRoundIndexV236(roundKey) {
-  return KNOCKOUT_ROUNDS.findIndex(round => round.key === roundKey);
-}
-
-function knockoutPreviousRoundV236(roundKey) {
-  const index = knockoutRoundIndexV236(roundKey);
-  return index > 0 ? KNOCKOUT_ROUNDS[index - 1] : null;
-}
-
-function knockoutPreviousRoundCompleteV236(roundKey) {
-  const previous = knockoutPreviousRoundV236(roundKey);
-  if (!previous) return true;
-  const previousMatches = knockoutMatches().filter(match => match.round === previous.key);
-  return previousMatches.length > 0 && previousMatches.every(match => Boolean(knockoutWinner(match)));
-}
-
-function knockoutRoundEditableV236(match) {
-  if (!match) return false;
-  if (isFirstKnockoutRound(match)) return true;
-  return knockoutPreviousRoundCompleteV236(match.round);
-}
-
-function knockoutRoundLockTextV236(match) {
-  if (knockoutRoundEditableV236(match)) return "";
-  const previous = knockoutPreviousRoundV236(match.round);
-  return previous ? `Bloqueado ate completar ${previous.label}.` : "Bloqueado.";
-}
-
-function knockoutSourceMatchesV236(match) {
-  if (!match || isFirstKnockoutRound(match)) return [];
-  const previous = knockoutPreviousRoundV236(match.round);
-  if (!previous) return [];
-  return knockoutMatches().filter(item => item.round === previous.key && item.nextMatchId === match.id);
-}
-
-function knockoutOriginTextV236(match, slot) {
-  if (!match || isFirstKnockoutRound(match)) return "";
-  const source = knockoutSourceMatchesV236(match).find(item => item.nextSlot === slot);
-  return source ? `Vencedor ${source.roundLabel} ${source.index}` : "";
-}
-
-function knockoutAutoAlignV236() {
-  if (!hasPermission("editKnockout")) { toast("Sem permissao."); return; }
-  ensureKnockoutSettings();
-  appSettings.knockout.layout = defaultKnockoutLayout();
-  addSystemLog("Auto alinhar Fase Final", "A grelha da Fase Final foi alinhada automaticamente.", { layout: appSettings.knockout.layout });
-  markSettingsPending();
-  saveLocalData("auto alinhar fase final");
-  scheduleFullSync("auto alinhar fase final", 300);
-  renderKnockout();
-  renderKnockoutAdmin();
-  toast("Fase Final auto alinhada.");
-}
-
-function knockoutEventForNotificationV236(match, beforeWinner, afterWinner) {
-  if (!match || !afterWinner || beforeWinner === afterWinner) return null;
-  const next = knockoutNextRoundLabelV235(match.round);
-  const isChampion = match.round === "final";
-  return {
-    type: "knockout",
-    title: isChampion ? "Campeao definido" : "Fase Final atualizada",
-    body: isChampion ? `${afterWinner} ficou campeao.` : `${afterWinner} passou para ${next}.`,
-    matchId: match.id,
-    round: match.round,
-    winner: afterWinner,
-    at: new Date().toISOString()
-  };
-}
-
-function toggleKnockoutPresentationV236(force = null) {
-  const active = force === null ? !document.body.classList.contains("ko-presentation-v236") : Boolean(force);
-  document.body.classList.toggle("ko-presentation-v236", active);
-  if (active) {
-    setActiveTabStateV217("knockoutTab");
-    updateActiveAppSection();
-    renderKnockout();
-  }
-}
-
-function knockoutHasScore(match) {
-  return match.homeScore !== null && match.homeScore !== undefined && match.homeScore !== "" &&
-    match.awayScore !== null && match.awayScore !== undefined && match.awayScore !== "";
-}
-
-function knockoutHasPenalties(match) {
-  return match.homePenalties !== null && match.homePenalties !== undefined && match.homePenalties !== "" &&
-    match.awayPenalties !== null && match.awayPenalties !== undefined && match.awayPenalties !== "";
-}
-
-function knockoutMatchStateV235(match) {
-  const teamsReady = Boolean(match.homeTeam && match.awayTeam);
-  const hasScore = knockoutHasScore(match);
-  const hasPens = knockoutHasPenalties(match);
-  const winner = knockoutWinner(match);
-  const draw = hasScore && Number(match.homeScore) === Number(match.awayScore);
-
-  if (!teamsReady) return { key: "waiting", label: "A definir" };
-  if (winner && draw && hasPens) return { key: "penalties", label: "Penaltis" };
-  if (winner) return { key: "done", label: "Finalizado" };
-  if (draw && !hasPens) return { key: "needs-pens", label: "Faltam penaltis" };
-  if (hasScore) return { key: "pending", label: "Por confirmar" };
-  return { key: "ready", label: "Por jogar" };
-}
-
-function knockoutNextRoundLabelV235(round) {
-  const labels = { r32: "Oitavos", r16: "Quartos", qf: "Meias", sf: "Final", final: "campeao" };
-  return labels[round] || "proxima ronda";
-}
-
-function knockoutStatsV235() {
-  return knockoutMatches().reduce((stats, match) => {
-    const state = knockoutMatchStateV235(match);
-    stats.total += 1;
-    if (match.homeTeam && match.awayTeam) stats.defined += 1;
-    if (state.key === "done" || state.key === "penalties") stats.done += 1;
-    if (state.key === "penalties") stats.penalties += 1;
-    if (state.key === "waiting" || state.key === "ready" || state.key === "needs-pens") stats.pending += 1;
-    return stats;
-  }, { total: 0, defined: 0, done: 0, penalties: 0, pending: 0 });
-}
-
-function renderKnockoutViewHeaderV235(champion = "") {
-  const stats = knockoutStatsV235();
-  const active = knockoutViewModeV235 === "list" ? "list" : "bracket";
-
-  return `
-    <div class="ko-view-header-v235">
-      <div class="ko-view-summary-v235">
-        <span><strong>${stats.defined}</strong> definidos</span>
-        <span><strong>${stats.pending}</strong> pendentes</span>
-        <span><strong>${stats.done}</strong> finalizados</span>
-        <span><strong>${stats.penalties}</strong> penaltis</span>
-        <span><strong>${escapeHtml(champion || "A definir")}</strong> campeao</span>
-      </div>
-      <div class="ko-view-toggle-v235" role="tablist" aria-label="Vista da Fase Final">
-        <button class="${active === "bracket" ? "active" : ""}" type="button" data-ko-view-v235="bracket">Quadro</button>
-        <button class="${active === "list" ? "active" : ""}" type="button" data-ko-view-v235="list">Lista</button>
-      </div>
-      <div class="ko-view-actions-v236">
-        ${canEditKnockoutInline() ? `<button type="button" data-ko-auto-align-v236>Auto alinhar</button>` : ""}
-        <button type="button" data-ko-presentation-v236>Apresentacao</button>
-      </div>
-    </div>`;
-}
-
-function renderKnockoutListViewV235() {
-  return `
-    <div class="ko-list-view-v235">
-      ${KNOCKOUT_ROUNDS.map(round => {
-        const matches = knockoutMatches().filter(match => match.round === round.key);
-        if (!matches.length) return "";
-        return `
-          <section class="ko-list-round-v235">
-            <header>
-              <strong>${escapeHtml(round.label)}</strong>
-              <span>${matches.length} jogo(s)</span>
-            </header>
-            <div class="ko-list-games-v235">
-              ${matches.map(match => renderKnockoutListMatchV235(match)).join("")}
-            </div>
-          </section>`;
-      }).join("")}
-    </div>`;
-}
-
-function renderKnockoutListMatchV235(match) {
-  const state = knockoutMatchStateV235(match);
-  const winner = knockoutWinner(match);
-  const score = knockoutHasScore(match) ? `${match.homeScore} - ${match.awayScore}` : "VS";
-  const pens = knockoutHasPenalties(match) ? `Pen. ${match.homePenalties}-${match.awayPenalties}` : "";
-  const locked = !knockoutRoundEditableV236(match);
-  const editable = canEditKnockoutInline() && !locked;
-  const originHome = knockoutOriginTextV236(match, "homeTeam");
-  const originAway = knockoutOriginTextV236(match, "awayTeam");
-
-  return `
-    <article class="ko-list-game-v235 ko-state-${state.key} ${locked ? "ko-round-locked-v236" : ""} ${editable ? "ko-match-clickable" : ""}" data-ko-admin="${escapeHtml(match.id)}" ${editable ? `role="button" tabindex="0" aria-label="Editar ${escapeHtml(match.roundLabel)} ${escapeHtml(match.index)}"` : ""}>
-      <div>
-        <small>${escapeHtml(match.roundLabel)} ${escapeHtml(match.index)}</small>
-        <strong>${escapeHtml(match.homeTeam || "A definir")} <em>${score}</em> ${escapeHtml(match.awayTeam || "A definir")}</strong>
-        ${originHome || originAway ? `<span>${escapeHtml([originHome, originAway].filter(Boolean).join(" / "))}</span>` : ""}
-        ${locked ? `<span>${escapeHtml(knockoutRoundLockTextV236(match))}</span>` : winner ? `<span>Passa: ${escapeHtml(winner)}${pens ? ` - ${escapeHtml(pens)}` : ""}</span>` : `<span>${escapeHtml(pens || "Resultado por preencher")}</span>`}
-      </div>
-      <b>${escapeHtml(state.label)}</b>
-    </article>`;
-}
-
 function renderKnockout() {
   ensureKnockoutSettings();
   const notice = $("knockoutLockNotice");
@@ -4231,7 +4022,6 @@ function renderKnockout() {
       : `<strong>Fase Final ativa</strong><span>Tu defines a primeira ronda; depois os vencedores passam automaticamente até à final.</span>`;
   }
 
-  container.classList.toggle("ko-list-mode-v235", knockoutViewModeV235 === "list");
   container.innerHTML = `
     <div class="bracket-photo-shell">
       <div class="bracket-title-row">
@@ -4259,10 +4049,7 @@ function renderKnockout() {
       </div>
     </div>`;
 
-  container.innerHTML = `
-    ${renderKnockoutViewHeaderV235(champion)}
-    ${knockoutViewModeV235 === "list" ? renderKnockoutListViewV235() : renderKnockoutPhotoLayout(finalMatch, champion, thirdPlaceTeams)}
-  `;
+  container.innerHTML = renderKnockoutPhotoLayout(finalMatch, champion, thirdPlaceTeams);
   applyKnockoutLayoutFromSettings();
   requestAnimationFrame(applyKnockoutLayoutFromSettings);
 
@@ -4413,89 +4200,9 @@ function renderKnockoutRecordForm(match) {
           </span>
         </label>
       </div>
-      <div class="ko-record-preview-v235" data-ko-record-preview>
-        ${renderKnockoutRecordPreviewTextV235(match)}
-      </div>
       <button class="primary small ko-card-save" type="button" data-ko-save="${escapeHtml(match.id)}">${firstRound ? "Guardar equipas/resultado" : "Guardar resultado"}</button>
     </div>
   `;
-}
-
-function knockoutPreviewWinnerV235(match, data) {
-  const home = String(data.homeTeam || match.homeTeam || "").trim();
-  const away = String(data.awayTeam || match.awayTeam || "").trim();
-  const rawHomeScore = data.homeScore ?? match.homeScore ?? "";
-  const rawAwayScore = data.awayScore ?? match.awayScore ?? "";
-  const rawHomePens = data.homePenalties ?? match.homePenalties ?? "";
-  const rawAwayPens = data.awayPenalties ?? match.awayPenalties ?? "";
-  const homeScore = rawHomeScore === "" ? null : Number(rawHomeScore);
-  const awayScore = rawAwayScore === "" ? null : Number(rawAwayScore);
-  const homePens = rawHomePens === "" ? null : Number(rawHomePens);
-  const awayPens = rawAwayPens === "" ? null : Number(rawAwayPens);
-
-  if (!home || !away) return { type: "waiting", text: "Define as duas equipas para prever a passagem." };
-  if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) return { type: "ready", text: "Preenche o resultado para ver quem passa." };
-  if (homeScore > awayScore) return { type: "winner", winner: home };
-  if (awayScore > homeScore) return { type: "winner", winner: away };
-  if (!Number.isFinite(homePens) || !Number.isFinite(awayPens)) return { type: "pens", text: "Empate: preenche os penaltis para decidir." };
-  if (homePens > awayPens) return { type: "winner-pens", winner: home };
-  if (awayPens > homePens) return { type: "winner-pens", winner: away };
-  return { type: "pens", text: "Penaltis empatados. Ajusta para haver vencedor." };
-}
-
-function renderKnockoutRecordPreviewTextV235(match, data = {}) {
-  const preview = knockoutPreviewWinnerV235(match, data);
-  if (!preview.winner) return `<strong>Previsao</strong><span>${escapeHtml(preview.text)}</span>`;
-
-  const next = knockoutNextRoundLabelV235(match.round);
-  const suffix = match.round === "final"
-    ? `${preview.winner} fica como campeao.`
-    : `${preview.winner} passa para ${next}.`;
-  return `<strong>Previsao</strong><span>${escapeHtml(suffix)}</span>`;
-}
-
-function renderKnockoutTimelineV236(match) {
-  const teamsReady = Boolean(match.homeTeam && match.awayTeam);
-  const hasScore = knockoutHasScore(match);
-  const winner = knockoutWinner(match);
-  const next = match.round === "final" ? "Campeao definido" : `Propaga para ${knockoutNextRoundLabelV235(match.round)}`;
-  const steps = [
-    ["Equipas", teamsReady, teamsReady ? `${match.homeTeam} vs ${match.awayTeam}` : (knockoutRoundLockTextV236(match) || "Por definir")],
-    ["Resultado", hasScore, hasScore ? `${match.homeScore}-${match.awayScore}` : "Por preencher"],
-    ["Vencedor", Boolean(winner), winner || "Por decidir"],
-    ["Seguinte", Boolean(winner), winner ? next : "Aguardar vencedor"]
-  ];
-
-  return `
-    <div class="ko-record-timeline-v236">
-      ${steps.map(([label, done, detail]) => `
-        <div class="${done ? "done" : ""}">
-          <i></i>
-          <span>${escapeHtml(label)}</span>
-          <strong>${escapeHtml(detail)}</strong>
-        </div>
-      `).join("")}
-    </div>`;
-}
-
-function updateKnockoutRecordPreviewV235(modal) {
-  const form = modal?.querySelector?.(".ko-card-editor");
-  const preview = modal?.querySelector?.("[data-ko-record-preview]");
-  if (!form || !preview) return;
-
-  const match = knockoutMatchById(form.dataset.koAdmin);
-  if (!match) return;
-
-  const data = {
-    homeTeam: form.querySelector(".ko-home-team")?.value || match.homeTeam || "",
-    awayTeam: form.querySelector(".ko-away-team")?.value || match.awayTeam || "",
-    homeScore: form.querySelector(".ko-home-score")?.value ?? "",
-    awayScore: form.querySelector(".ko-away-score")?.value ?? "",
-    homePenalties: form.querySelector(".ko-home-penalties")?.value ?? "",
-    awayPenalties: form.querySelector(".ko-away-penalties")?.value ?? ""
-  };
-
-  preview.innerHTML = renderKnockoutRecordPreviewTextV235(match, data);
 }
 
 function closeKnockoutRecordModal() {
@@ -4521,11 +4228,6 @@ function openKnockoutRecordModal(matchId) {
     return;
   }
 
-  if (!knockoutRoundEditableV236(match)) {
-    toast(knockoutRoundLockTextV236(match));
-    return;
-  }
-
   closeKnockoutRecordModal();
   const modal = document.createElement("div");
   modal.id = "knockoutRecordModal";
@@ -4542,7 +4244,6 @@ function openKnockoutRecordModal(matchId) {
         </div>
         <button class="secondary small" type="button" data-ko-record-close>Fechar</button>
       </div>
-      ${renderKnockoutTimelineV236(match)}
       ${renderKnockoutRecordForm(match)}
     </div>
   `;
@@ -4552,11 +4253,8 @@ function openKnockoutRecordModal(matchId) {
       closeKnockoutRecordModal();
     }
   });
-  modal.addEventListener("input", () => updateKnockoutRecordPreviewV235(modal));
-  modal.addEventListener("change", () => updateKnockoutRecordPreviewV235(modal));
   document.body.classList.add("ko-record-modal-open");
   document.body.appendChild(modal);
-  updateKnockoutRecordPreviewV235(modal);
   document.addEventListener("keydown", handleKnockoutRecordModalKeydown);
   modal.querySelector("select, input")?.focus();
 }
@@ -4776,8 +4474,7 @@ function renderKnockoutCenter(finalMatch, champion, thirdPlaceTeams) {
 
 function renderKnockoutMatch(match, layoutKey = "") {
   const winner = knockoutWinner(match);
-  const locked = !knockoutRoundEditableV236(match);
-  const editable = canEditKnockoutInline() && !locked;
+  const editable = canEditKnockoutInline();
   const waiting = !match.homeTeam || !match.awayTeam;
   const hasScore = match.homeScore !== null && match.homeScore !== undefined && match.homeScore !== "" && match.awayScore !== null && match.awayScore !== undefined && match.awayScore !== "";
   const isDraw = hasScore && Number(match.homeScore) === Number(match.awayScore);
@@ -4785,25 +4482,20 @@ function renderKnockoutMatch(match, layoutKey = "") {
   const lockedText = waiting ? "" : winner ? "Vencedor" : isDraw ? "Faltam penáltis" : "Por decidir";
 
   const editableAttrs = editable ? ` role="button" tabindex="0" aria-label="Editar ${escapeHtml(match.roundLabel)} ${escapeHtml(match.index)}"` : "";
-  const state = knockoutMatchStateV235(match);
-  const homeOrigin = knockoutOriginTextV236(match, "homeTeam");
-  const awayOrigin = knockoutOriginTextV236(match, "awayTeam");
 
   return `
-    <article class="knockout-match ko-state-${state.key} ${locked ? "ko-round-locked-v236" : ""} ${winner ? "has-winner" : ""} ${waiting ? "waiting" : ""} ${editable ? "ko-match-clickable" : ""}" data-ko-admin="${escapeHtml(match.id)}"${editableAttrs} ${layoutKey ? `data-ko-layout="${escapeHtml(layoutKey)}" style="--ko-match-offset:${knockoutLayoutValue(layoutKey)}px"` : ""}>
-      <div class="knockout-match-title">${escapeHtml(match.roundLabel)} ${match.index}<span>${escapeHtml(state.label)}</span></div>
+    <article class="knockout-match ${winner ? "has-winner" : ""} ${waiting ? "waiting" : ""} ${editable ? "ko-match-clickable" : ""}" data-ko-admin="${escapeHtml(match.id)}"${editableAttrs} ${layoutKey ? `data-ko-layout="${escapeHtml(layoutKey)}" style="--ko-match-offset:${knockoutLayoutValue(layoutKey)}px"` : ""}>
+      <div class="knockout-match-title">${escapeHtml(match.roundLabel)} ${match.index}</div>
 
       <div class="ko-team ${winner === match.homeTeam ? "winner" : ""}">
         <span>${escapeHtml(match.homeTeam || "A definir")}</span>
         <b>${match.homeScore ?? ""}</b>
       </div>
-      ${homeOrigin && !match.homeTeam ? `<div class="ko-origin-badge-v236">${escapeHtml(homeOrigin)}</div>` : ""}
 
       <div class="ko-team ${winner === match.awayTeam ? "winner" : ""}">
         <span>${escapeHtml(match.awayTeam || "A definir")}</span>
         <b>${match.awayScore ?? ""}</b>
       </div>
-      ${awayOrigin && !match.awayTeam ? `<div class="ko-origin-badge-v236">${escapeHtml(awayOrigin)}</div>` : ""}
 
       ${(isDraw || hasPens) ? `
         <div class="ko-penalties-line">
@@ -4829,7 +4521,6 @@ function renderKnockoutLayoutControls() {
         </div>
         <div class="ko-layout-actions">
           <button class="secondary small" type="button" data-ko-layout-reset>Repor</button>
-          <button class="secondary small" type="button" data-ko-auto-align-v236>Auto alinhar</button>
           <button class="primary small" type="button" data-ko-layout-save>Guardar posições</button>
         </div>
       </div>
@@ -4868,15 +4559,14 @@ function renderKnockoutAdmin() {
     <div class="ko-admin-list">
       ${knockoutMatches().map(match => {
         const firstRound = isFirstKnockoutRound(match);
-        const roundLocked = !knockoutRoundEditableV236(match);
-        const canScore = Boolean(match.homeTeam && match.awayTeam) && !roundLocked;
+        const canScore = Boolean(match.homeTeam && match.awayTeam);
 
         const homeControl = firstRound
-          ? `<select class="ko-home-team" ${roundLocked ? "disabled" : ""}>${knockoutTeamOptionsHtml(match.homeTeam)}</select>`
+          ? `<select class="ko-home-team">${knockoutTeamOptionsHtml(match.homeTeam)}</select>`
           : `<input class="ko-readonly-team" type="text" value="${escapeHtml(match.homeTeam || "A definir automaticamente")}" disabled />`;
 
         const awayControl = firstRound
-          ? `<select class="ko-away-team" ${roundLocked ? "disabled" : ""}>${knockoutTeamOptionsHtml(match.awayTeam)}</select>`
+          ? `<select class="ko-away-team">${knockoutTeamOptionsHtml(match.awayTeam)}</select>`
           : `<input class="ko-readonly-team" type="text" value="${escapeHtml(match.awayTeam || "A definir automaticamente")}" disabled />`;
 
         return `
@@ -4902,7 +4592,7 @@ function renderKnockoutAdmin() {
               </span>
             </label>
 
-            <button class="primary small" type="button" data-ko-save="${escapeHtml(match.id)}" ${roundLocked ? "disabled" : ""}>${roundLocked ? "Bloqueado" : firstRound ? "Guardar 16 avos" : "Guardar resultado"}</button>
+            <button class="primary small" type="button" data-ko-save="${escapeHtml(match.id)}">${firstRound ? "Guardar 16 avos" : "Guardar resultado"}</button>
           </div>
         `;
       }).join("")}
@@ -5039,11 +4729,6 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
   const match = knockoutMatchById(matchId);
   if (!row || !match) return;
 
-  if (!knockoutRoundEditableV236(match)) {
-    toast(knockoutRoundLockTextV236(match));
-    return;
-  }
-
   const firstRound = isFirstKnockoutRound(match);
   const beforeMatch = {
     homeTeam: match.homeTeam || "",
@@ -5053,7 +4738,6 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
     homePenalties: match.homePenalties ?? null,
     awayPenalties: match.awayPenalties ?? null
   };
-  const beforeWinner = knockoutWinner(match);
 
   if (firstRound) {
     match.homeTeam = row.querySelector(".ko-home-team")?.value || "";
@@ -5120,12 +4804,6 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
   match.updatedAt = new Date().toISOString();
 
   propagateKnockoutWinners(false);
-  const afterWinner = knockoutWinner(match);
-  const knockoutEvent = knockoutEventForNotificationV236(match, beforeWinner, afterWinner);
-  if (knockoutEvent) {
-    appSettings.knockout.lastEvent = knockoutEvent;
-    addSystemLog(knockoutEvent.title, knockoutEvent.body, knockoutEvent, { sync: true });
-  }
   addSystemLog("Jogo Fase Final guardado", `${match.roundLabel} ${match.index}: ${match.homeTeam} ${match.homeScore}-${match.awayScore} ${match.awayTeam}${match.homePenalties !== null && match.awayPenalties !== null ? ` · pen. ${match.homePenalties}-${match.awayPenalties}` : ""}`, {
     matchId: match.id,
     round: match.round,
@@ -7183,22 +6861,6 @@ document.addEventListener("click", event => {
     return;
   }
 
-  const koViewButton = event.target.closest("[data-ko-view-v235]");
-  if (koViewButton) {
-    setKnockoutViewModeV235(koViewButton.dataset.koViewV235);
-    return;
-  }
-
-  if (event.target.closest("[data-ko-auto-align-v236]")) {
-    knockoutAutoAlignV236();
-    return;
-  }
-
-  if (event.target.closest("[data-ko-presentation-v236]")) {
-    toggleKnockoutPresentationV236();
-    return;
-  }
-
   const koClickableCard = event.target.closest("#knockoutTab .ko-match-clickable[data-ko-admin], #knockoutMobileV121 .ko-match-clickable[data-ko-admin]");
   if (koClickableCard && !event.target.closest("button, a, input, select, textarea, label, summary")) {
     openKnockoutRecordModal(koClickableCard.dataset.koAdmin);
@@ -7241,11 +6903,6 @@ document.addEventListener("click", event => {
 });
 
 document.addEventListener("keydown", event => {
-  if (event.key === "Escape" && document.body.classList.contains("ko-presentation-v236")) {
-    toggleKnockoutPresentationV236(false);
-    return;
-  }
-
   if (event.key !== "Enter" && event.key !== " ") return;
 
   const koClickableCard = event.target.closest?.("#knockoutTab .ko-match-clickable[data-ko-admin], #knockoutMobileV121 .ko-match-clickable[data-ko-admin]");
@@ -12438,405 +12095,17 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => { if ($("settingsTab")?.classList.contains("active")) organizeSettingsPageV228(); }, 500);
 });
 
-// v238 - camada visual premium. Apenas cria elementos de apresentacao.
-function activePageKeyV238() {
-  const active = document.querySelector(".tab-panel.active")?.id || "calendarTab";
-  return active
-    .replace("Tab", "")
-    .replace("score", "pontuacao")
-    .replace("knockout", "fase-final")
-    .replace("notifications", "notificacoes")
-    .replace("settings", "configuracoes");
-}
 
-function updatePremiumPageClassV238() {
-  document.body.dataset.pageV238 = activePageKeyV238();
-}
+// v241 — Ligação Users ↔ Jogadores + apostas da Fase Final por playerId.
+// Users/Auth = contas/permissões. Players/Jogadores = identidade oficial de apostas/pontuação.
 
-function initialsV238(name = "") {
-  return String(name || "MP")
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map(part => part[0] || "")
-    .join("")
-    .toUpperCase() || "MP";
-}
-
-function renderScorePremiumSummaryV238() {
-  const target = $("scoreSummary");
-  if (!target || target.querySelector("#scorePremiumSummaryV238")) return;
-  const rows = leaderboard();
-  if (!rows.length) return;
-
-  const leader = rows[0];
-  const totalGames = games.length || 0;
-  const played = games.filter(hasFinalResult).length;
-  const average = rows.length ? Math.round(rows.reduce((sum, row) => sum + Number(row.points || 0), 0) / rows.length) : 0;
-  const exact = rows.reduce((sum, row) => sum + Number(row.exact || 0), 0);
-  const currentName = String(currentProfile?.name || currentUser?.email || "").trim().toLowerCase();
-
-  target.querySelectorAll(".player-score-card").forEach(card => {
-    const name = String(card.querySelector(".player-score-main strong")?.textContent || "").trim().toLowerCase();
-    card.classList.toggle("is-current-v238", Boolean(currentName && name && (name === currentName || currentName.includes(name))));
-  });
-
-  const summary = document.createElement("div");
-  summary.id = "scorePremiumSummaryV238";
-  summary.className = "score-premium-summary-v238";
-  summary.innerHTML = `
-    <article class="leader">
-      <span class="score-avatar-v238">${escapeHtml(initialsV238(leader.playerName))}</span>
-      <div><small>Lider</small><strong>${escapeHtml(leader.playerName)}</strong><b>${leader.points} pts</b></div>
-    </article>
-    <article><i></i><div><small>Jogos com resultado</small><strong>${played} / ${totalGames}</strong><p>${totalGames ? Math.round((played / totalGames) * 100) : 0}% concluidos</p></div></article>
-    <article><i></i><div><small>Media de pontos</small><strong>${average} pts</strong><p>Por participante</p></div></article>
-    <article><i></i><div><small>Exatos</small><strong>${exact}</strong><p>Total de resultados exatos</p></div></article>
-  `;
-  target.prepend(summary);
-}
-
-function renderLogsPremiumSummaryV238() {
-  const unlocked = isLogsUnlocked();
-  const panel = $("logsUnlockedPanel");
-  if (!panel || !unlocked) return;
-
-  let summary = $("logsPremiumSummaryV238");
-  if (!summary) {
-    summary = document.createElement("div");
-    summary.id = "logsPremiumSummaryV238";
-    summary.className = "logs-premium-summary-v238";
-    panel.prepend(summary);
-  }
-
-  const all = systemLogs();
-  const today = new Date().toISOString().slice(0, 10);
-  const todayCount = all.filter(log => String(log.at || "").slice(0, 10) === today).length;
-  const errors = all.filter(log => logCategoryV162(log) === "errors").length;
-  const adminCount = all.filter(log => logCategoryV162(log) === "admin").length;
-  const lastSync = all.find(log => logCategoryV162(log) === "sync");
-
-  summary.innerHTML = `
-    <article><span></span><div><small>Ultima sync</small><strong>${lastSync ? escapeHtml(formatLogTime(lastSync.at)) : "-"}</strong><p>${lastSync ? escapeHtml(lastSync.action || "Sync") : "Sem registo"}</p></div></article>
-    <article><span></span><div><small>Erros</small><strong>${errors}</strong><p>Registos acumulados</p></div></article>
-    <article><span></span><div><small>Acoes admin</small><strong>${adminCount}</strong><p>Eventos de gestao</p></div></article>
-    <article><span></span><div><small>Eventos hoje</small><strong>${todayCount}</strong><p>Atividade do dia</p></div></article>
-  `;
-}
-
-function renderAdminApiCardV238() {
-  const unlocked = $("adminUnlocked");
-  if (!unlocked || unlocked.classList.contains("hidden")) return;
-
-  let card = $("adminApiCardV238");
-  if (!card) {
-    card = document.createElement("article");
-    card.id = "adminApiCardV238";
-    card.className = "admin-api-card-v238";
-  }
-
-  const logs = systemLogs();
-  const lastSync = logs.find(log => logCategoryV162(log) === "sync");
-  const error = logs.find(log => logCategoryV162(log) === "errors");
-  const online = storageMode === "firebase";
-  card.innerHTML = `
-    <div class="admin-api-head-v238">
-      <span>API</span>
-      <strong>API - football-data.org</strong>
-      <em class="${error ? "warn" : online ? "ok" : "idle"}">${error ? "Em espera" : online ? "Online" : "A iniciar"}</em>
-    </div>
-    <dl>
-      <div><dt>Modo API</dt><dd>Inteligente</dd></div>
-      <div><dt>Estado</dt><dd>${online ? "Online" : "Em espera"}</dd></div>
-      <div><dt>Proximo jogo com sync</dt><dd>Calculado pela smart sync</dd></div>
-      <div><dt>Ultima verificacao</dt><dd>${lastSync ? escapeHtml(formatLogTime(lastSync.at)) : "-"}</dd></div>
-      <div><dt>Ultima sync real</dt><dd>${lastSync ? escapeHtml(lastSync.action || "Sync API") : "-"}</dd></div>
-    </dl>
-  `;
-
-  const overview = $("adminOverviewV162");
-  if (overview?.parentElement === unlocked) overview.insertAdjacentElement("afterend", card);
-  else unlocked.prepend(card);
-}
-
-function polishPremiumUiV238() {
-  updatePremiumPageClassV238();
-  renderScorePremiumSummaryV238();
-  renderLogsPremiumSummaryV238();
-  renderAdminApiCardV238();
-}
-
-const renderScoreOriginalV238 = typeof renderScore === "function" ? renderScore : null;
-if (renderScoreOriginalV238 && !window.__renderScorePremiumV238) {
-  window.__renderScorePremiumV238 = true;
-  renderScore = function renderScorePremiumV238() {
-    const result = renderScoreOriginalV238.apply(this, arguments);
-    setTimeout(renderScorePremiumSummaryV238, 0);
-    return result;
-  };
-}
-
-const renderSystemLogsOriginalV238 = typeof renderSystemLogs === "function" ? renderSystemLogs : null;
-if (renderSystemLogsOriginalV238 && !window.__renderLogsPremiumV238) {
-  window.__renderLogsPremiumV238 = true;
-  renderSystemLogs = function renderLogsPremiumV238() {
-    const result = renderSystemLogsOriginalV238.apply(this, arguments);
-    setTimeout(renderLogsPremiumSummaryV238, 0);
-    return result;
-  };
-}
-
-const renderAdminOverviewOriginalV238 = typeof renderAdminOverviewV162 === "function" ? renderAdminOverviewV162 : null;
-if (renderAdminOverviewOriginalV238 && !window.__renderAdminOverviewPremiumV238) {
-  window.__renderAdminOverviewPremiumV238 = true;
-  renderAdminOverviewV162 = function renderAdminOverviewPremiumV238() {
-    const result = renderAdminOverviewOriginalV238.apply(this, arguments);
-    setTimeout(renderAdminApiCardV238, 0);
-    return result;
-  };
-}
-
-const renderAllOriginalV238 = typeof renderAll === "function" ? renderAll : null;
-if (renderAllOriginalV238 && !window.__renderAllPremiumV238) {
-  window.__renderAllPremiumV238 = true;
-  renderAll = function renderAllPremiumV238() {
-    const result = renderAllOriginalV238.apply(this, arguments);
-    setTimeout(polishPremiumUiV238, 0);
-    return result;
-  };
-}
-
-document.addEventListener("click", event => {
-  if (event.target.closest?.("[data-tab]")) setTimeout(polishPremiumUiV238, 80);
-}, true);
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(polishPremiumUiV238, 500);
-  setTimeout(polishPremiumUiV238, 1400);
-});
-
-// v239 - arrumacao visual e sistema simples de cores para o Dono.
-const VISUAL_THEME_STORAGE_KEY_V239 = `${STORAGE_KEY}_visual_theme_v239`;
-
-function sanitizeThemeColorV239(value, fallback) {
-  const text = String(value || "").trim();
-  return /^#[0-9a-fA-F]{6}$/.test(text) ? text : fallback;
-}
-
-function visualThemeV239() {
-  const defaults = defaultVisualTheme();
-  let local = {};
-  try {
-    local = JSON.parse(localStorage.getItem(VISUAL_THEME_STORAGE_KEY_V239) || "{}") || {};
-  } catch {
-    local = {};
-  }
-  const saved = appSettings?.visualTheme || {};
-  const merged = { ...defaults, ...local, ...saved };
-  return Object.fromEntries(Object.entries(defaults).map(([key, fallback]) => [
-    key,
-    sanitizeThemeColorV239(merged[key], fallback)
-  ]));
-}
-
-function hexToRgbV239(hex) {
-  const clean = sanitizeThemeColorV239(hex, "#000000").slice(1);
-  return [
-    parseInt(clean.slice(0, 2), 16),
-    parseInt(clean.slice(2, 4), 16),
-    parseInt(clean.slice(4, 6), 16)
-  ];
-}
-
-function rgbaFromHexV239(hex, alpha = 1) {
-  const [r, g, b] = hexToRgbV239(hex);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
-function isOwnerProfileV239() {
-  return normalizeRole(currentProfile?.role) === "owner";
-}
-
-function applyVisualThemeV239(theme = visualThemeV239()) {
-  const root = document.documentElement;
-  root.style.setProperty("--owner-primary", theme.primary);
-  root.style.setProperty("--owner-primary-soft", rgbaFromHexV239(theme.primary, .18));
-  root.style.setProperty("--owner-primary-line", rgbaFromHexV239(theme.primary, .44));
-  root.style.setProperty("--owner-secondary", theme.secondary);
-  root.style.setProperty("--owner-secondary-soft", rgbaFromHexV239(theme.secondary, .14));
-  root.style.setProperty("--owner-accent", theme.accent);
-  root.style.setProperty("--owner-success", theme.success);
-  root.style.setProperty("--owner-warning", theme.warning);
-  root.style.setProperty("--owner-danger", theme.danger);
-  root.style.setProperty("--owner-bg", theme.background);
-  root.style.setProperty("--premium-purple", theme.primary);
-  root.style.setProperty("--premium-purple-2", theme.primary);
-  root.style.setProperty("--premium-blue", theme.secondary);
-  root.style.setProperty("--premium-cyan", theme.secondary);
-  root.style.setProperty("--premium-gold", theme.accent);
-  root.style.setProperty("--premium-green", theme.success);
-  root.style.setProperty("--premium-red", theme.danger);
-  const themeMeta = document.querySelector('meta[name="theme-color"]');
-  if (themeMeta) themeMeta.setAttribute("content", theme.background);
-  document.body?.classList.add("theme-owner-v239");
-}
-
-function renderThemePanelV239() {
-  const content = typeof settingsSectionContentV213 === "function"
-    ? settingsSectionContentV213("preferences")
-    : $("settingsTab");
-  if (!content) return;
-
-  let panel = $("ownerThemePanelV239");
-  if (!isOwnerProfileV239()) {
-    panel?.remove();
-    return;
-  }
-
-  if (!panel) {
-    panel = document.createElement("article");
-    panel.id = "ownerThemePanelV239";
-    content.prepend(panel);
-  }
-
-  panel.className = "owner-theme-panel-v239";
-  const theme = visualThemeV239();
-  const rows = [
-    ["primary", "Cor principal", "Botoes ativos, abas e realces"],
-    ["secondary", "Cor secundaria", "Detalhes azuis e apoio visual"],
-    ["accent", "Dourado / destaque", "Titulos, bracket e avisos leves"],
-    ["success", "Sucesso / online", "Estados OK e vencedores"],
-    ["warning", "Aviso", "Alertas e pendentes"],
-    ["danger", "Erro", "Falhas e acoes perigosas"],
-    ["background", "Fundo", "Base escura da app"]
-  ];
-
-  panel.innerHTML = `
-    <div class="owner-theme-head-v239">
-      <div>
-        <strong>Sistema de cores</strong>
-        <span>So o Dono pode trocar as cores principais da app.</span>
-      </div>
-      <div class="owner-theme-actions-v239">
-        <button type="button" class="secondary small" data-theme-reset-v239>Repor</button>
-        <button type="button" class="primary small" data-theme-save-v239>Guardar cores</button>
-      </div>
-    </div>
-    <div class="owner-theme-preview-v239">
-      <span style="--swatch:${escapeHtml(theme.primary)}"></span>
-      <span style="--swatch:${escapeHtml(theme.secondary)}"></span>
-      <span style="--swatch:${escapeHtml(theme.accent)}"></span>
-      <span style="--swatch:${escapeHtml(theme.success)}"></span>
-      <span style="--swatch:${escapeHtml(theme.warning)}"></span>
-      <span style="--swatch:${escapeHtml(theme.danger)}"></span>
-    </div>
-    <div class="owner-theme-grid-v239">
-      ${rows.map(([key, label, hint]) => `
-        <label>
-          <span>${escapeHtml(label)}</span>
-          <input type="color" value="${escapeHtml(theme[key])}" data-theme-color-v239="${escapeHtml(key)}" />
-          <small>${escapeHtml(hint)}</small>
-        </label>
-      `).join("")}
-    </div>
-  `;
-}
-
-async function saveVisualThemeV239(reset = false) {
-  if (!isOwnerProfileV239()) {
-    toast("So o Dono pode alterar as cores.");
-    return;
-  }
-
-  const next = reset ? defaultVisualTheme() : { ...visualThemeV239() };
-  if (!reset) {
-    document.querySelectorAll("[data-theme-color-v239]").forEach(input => {
-      const key = input.getAttribute("data-theme-color-v239");
-      if (key && Object.prototype.hasOwnProperty.call(next, key)) {
-        next[key] = sanitizeThemeColorV239(input.value, next[key]);
-      }
-    });
-  }
-
-  appSettings.visualTheme = next;
-  localStorage.setItem(VISUAL_THEME_STORAGE_KEY_V239, JSON.stringify(next));
-  applyVisualThemeV239(next);
-  renderThemePanelV239();
-  await persistSettings();
-  toast(reset ? "Cores repostas." : "Cores guardadas.");
-}
-
-function updateThemePreviewV239() {
-  const theme = { ...visualThemeV239() };
-  document.querySelectorAll("[data-theme-color-v239]").forEach(input => {
-    const key = input.getAttribute("data-theme-color-v239");
-    if (key) theme[key] = sanitizeThemeColorV239(input.value, theme[key] || "#000000");
-  });
-  applyVisualThemeV239(theme);
-}
-
-function polishCleanLayoutV239() {
-  applyVisualThemeV239();
-  renderThemePanelV239();
-  document.querySelectorAll(".tab-panel").forEach(panel => {
-    panel.classList.toggle("clean-page-v239", panel.classList.contains("active"));
-  });
-}
-
-const polishPremiumOriginalV239 = typeof polishPremiumUiV238 === "function" ? polishPremiumUiV238 : null;
-if (polishPremiumOriginalV239 && !window.__polishCleanLayoutV239) {
-  window.__polishCleanLayoutV239 = true;
-  polishPremiumUiV238 = function polishPremiumUiCleanV239() {
-    const result = polishPremiumOriginalV239.apply(this, arguments);
-    setTimeout(polishCleanLayoutV239, 0);
-    return result;
-  };
-}
-
-const renderSettingsOriginalV239 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
-if (renderSettingsOriginalV239 && !window.__renderThemeSettingsV239) {
-  window.__renderThemeSettingsV239 = true;
-  renderAppSettingsPanelV162 = function renderThemeSettingsV239() {
-    const result = renderSettingsOriginalV239.apply(this, arguments);
-    setTimeout(polishCleanLayoutV239, 0);
-    return result;
-  };
-}
-
-document.addEventListener("input", event => {
-  if (event.target.closest?.("[data-theme-color-v239]")) updateThemePreviewV239();
-}, true);
-
-document.addEventListener("click", event => {
-  if (event.target.closest?.("[data-theme-save-v239]")) {
-    saveVisualThemeV239(false);
-    return;
-  }
-  if (event.target.closest?.("[data-theme-reset-v239]")) {
-    saveVisualThemeV239(true);
-  }
-}, true);
-
-document.addEventListener("DOMContentLoaded", () => {
-  applyVisualThemeV239();
-  setTimeout(polishCleanLayoutV239, 700);
-  setTimeout(polishCleanLayoutV239, 1600);
-});
-
-
-// v240 — Ligação Users ↔ Jogadores + apostas da Fase Final por playerId.
-// Ideia base:
-// - users/{email}.linkedPlayerId define a conta ligada ao jogador.
-// - appSettings.players guarda o catálogo estável de jogadores.
-// - bets continua a ser a fonte das apostas; apostas da fase final usam gameId = match.id.
-
-function playersCatalogV240() {
+function playersCatalogV241() {
   const byId = new Map();
 
   function addPlayer(player, source = "auto") {
     if (!player) return;
     const name = String(player.name || player.playerName || player.nome || "").trim();
-    const id = String(player.id || player.playerId || playerIdFromName(name)).trim();
+    const id = String(player.id || player.playerId || (name ? playerIdFromName(name) : "")).trim();
     if (!name || !id) return;
 
     const existing = byId.get(id) || {};
@@ -12857,48 +12126,33 @@ function playersCatalogV240() {
   }
 
   (appSettings.players || []).forEach(player => addPlayer(player, "settings"));
-
-  (appSettings.users || []).forEach(name => {
-    addPlayer({ id: playerIdFromName(name), name, source: "manual" }, "manual");
-  });
+  (appSettings.users || []).forEach(name => addPlayer({ id: playerIdFromName(name), name, source: "manual" }, "manual"));
 
   (bets || []).forEach(bet => {
-    const name = String(bet.playerName || bet.name || bet.playerId || "").trim();
+    const name = String(bet.playerName || bet.name || "").trim();
     if (!name) return;
-    addPlayer({
-      id: bet.playerId || playerIdFromName(name),
-      name,
-      source: bet.source || "bets"
-    }, "bets");
+    addPlayer({ id: bet.playerId || playerIdFromName(name), name, source: bet.source || "bets" }, "bets");
   });
 
-  Object.keys(appSettings.extraPredictions || {}).forEach(name => {
-    addPlayer({ id: playerIdFromName(name), name, source: "extras" }, "extras");
-  });
-
-  Object.keys(appSettings.importedPoints || {}).forEach(name => {
-    addPlayer({ id: playerIdFromName(name), name, source: "pontos" }, "pontos");
-  });
+  Object.keys(appSettings.extraPredictions || {}).forEach(name => addPlayer({ id: playerIdFromName(name), name, source: "extras" }, "extras"));
+  Object.keys(appSettings.importedPoints || {}).forEach(name => addPlayer({ id: playerIdFromName(name), name, source: "pontos" }, "pontos"));
 
   (permissionsCache || []).forEach(profile => {
     const linkedPlayerId = profile.linkedPlayerId || "";
     if (!linkedPlayerId) return;
     const email = normalizeEmail(profile.email || profile.id);
-    const name = String(profile.linkedPlayerName || profile.name || "").trim();
+    const name = String(profile.linkedPlayerName || profile.name || displayNameFromEmail(email) || "").trim();
     const existing = byId.get(linkedPlayerId);
     addPlayer({
       id: linkedPlayerId,
-      name: existing?.name || name || displayNameFromEmail(email),
+      name: existing?.name || name,
       linkedEmail: email,
-      email: existing?.email || "",
       linkedUid: profile.uid || existing?.linkedUid || "",
       source: existing?.source || "linked"
     }, "linked");
   });
 
-  const players = [...byId.values()]
-    .filter(player => player.active !== false)
-    .sort((a, b) => a.name.localeCompare(b.name, "pt"));
+  const players = [...byId.values()].filter(player => player.active !== false).sort((a, b) => a.name.localeCompare(b.name, "pt"));
 
   appSettings.players = players.map(player => ({
     id: player.id,
@@ -12915,15 +12169,15 @@ function playersCatalogV240() {
   return players;
 }
 
-function playerByIdV240(playerId) {
-  return playersCatalogV240().find(player => player.id === playerId || player.playerId === playerId) || null;
+function playerByIdV241(playerId) {
+  return playersCatalogV241().find(player => player.id === playerId || player.playerId === playerId) || null;
 }
 
-function findSuggestedPlayerForUserV240(profile) {
+function findSuggestedPlayerForUserV241(profile) {
   const email = normalizeEmail(profile?.email || profile?.id);
   const name = String(profile?.name || displayNameFromEmail(email) || "").trim();
   const normalizedName = normalizeComparable(name);
-  const players = playersCatalogV240();
+  const players = playersCatalogV241();
 
   const byLinkedEmail = players.find(player => normalizeEmail(player.linkedEmail || player.email) === email);
   if (byLinkedEmail) return byLinkedEmail;
@@ -12931,46 +12185,36 @@ function findSuggestedPlayerForUserV240(profile) {
   const byName = players.find(player => normalizeComparable(player.name) === normalizedName);
   if (byName) return byName;
 
-  const byContains = players.find(player => {
+  return players.find(player => {
     const n = normalizeComparable(player.name);
     return n && normalizedName && (n.includes(normalizedName) || normalizedName.includes(n));
-  });
-
-  return byContains || null;
+  }) || null;
 }
 
-function linkedPlayerForProfileV240(profile = currentProfile) {
+function linkedPlayerForProfileV241(profile = currentProfile) {
   if (!profile) return null;
-
-  const direct = profile.linkedPlayerId ? playerByIdV240(profile.linkedPlayerId) : null;
+  const direct = profile.linkedPlayerId ? playerByIdV241(profile.linkedPlayerId) : null;
   if (direct) return direct;
-
   const email = normalizeEmail(profile.email || profile.id);
-  const byEmail = playersCatalogV240().find(player => normalizeEmail(player.linkedEmail || player.email) === email);
-  if (byEmail) return byEmail;
-
-  return null;
+  return playersCatalogV241().find(player => normalizeEmail(player.linkedEmail || player.email) === email) || null;
 }
 
-function linkedPlayerForCurrentUserV240() {
-  return linkedPlayerForProfileV240(currentProfile);
+function linkedPlayerForCurrentUserV241() {
+  return linkedPlayerForProfileV241(currentProfile);
 }
 
-function playerLinkStatusV240(profile) {
-  const linked = linkedPlayerForProfileV240(profile);
+function playerLinkStatusV241(profile) {
+  const linked = linkedPlayerForProfileV241(profile);
   if (linked) return { key: "linked", label: "Ligado", player: linked };
-
-  const suggestion = findSuggestedPlayerForUserV240(profile);
+  const suggestion = findSuggestedPlayerForUserV241(profile);
   if (suggestion) return { key: "suggestion", label: "Sugestão encontrada", player: suggestion };
-
   return { key: "missing", label: "Por ligar", player: null };
 }
 
-function playerOptionsHtmlV240(selectedId = "", includeEmpty = true) {
-  const players = playersCatalogV240();
+function playerOptionsHtmlV241(selectedId = "", includeEmpty = true) {
   return `
     ${includeEmpty ? `<option value="">— Por ligar —</option>` : ""}
-    ${players.map(player => `
+    ${playersCatalogV241().map(player => `
       <option value="${escapeHtml(player.id)}" ${player.id === selectedId ? "selected" : ""}>
         ${escapeHtml(player.name)}
       </option>
@@ -12978,16 +12222,16 @@ function playerOptionsHtmlV240(selectedId = "", includeEmpty = true) {
   `;
 }
 
-function renderPlayerLinkBadgeV240(profile) {
-  const status = playerLinkStatusV240(profile);
-  return `<span class="player-link-badge-v240 player-link-${escapeHtml(status.key)}">${escapeHtml(status.label)}${status.player ? ` · ${escapeHtml(status.player.name)}` : ""}</span>`;
+function renderPlayerLinkBadgeV241(profile) {
+  const status = playerLinkStatusV241(profile);
+  return `<span class="player-link-badge-v241 player-link-${escapeHtml(status.key)}">${escapeHtml(status.label)}${status.player ? ` · ${escapeHtml(status.player.name)}` : ""}</span>`;
 }
 
-function currentUserCanBetKnockoutV240() {
+function currentUserCanBetKnockoutV241() {
   return Boolean(currentUser && currentProfile?.active !== false && hasPermission("knockout"));
 }
 
-function knockoutMatchStartMillisV240(match) {
+function knockoutMatchStartMillisV241(match) {
   const raw = match?.matchDate || match?.date || match?.kickoff || match?.startAt || match?.time || "";
   if (!raw) return 0;
   const date = parsePortugalDate(raw);
@@ -12995,100 +12239,84 @@ function knockoutMatchStartMillisV240(match) {
   return Number.isFinite(time) ? time : 0;
 }
 
-function isKnockoutBetLockedV240(match) {
+function isKnockoutBetLockedV241(match) {
   if (!match) return true;
   if (!match.homeTeam || !match.awayTeam) return true;
   if (knockoutMatchHasResult(match)) return true;
-
-  const start = knockoutMatchStartMillisV240(match);
-  if (start && Date.now() >= start) return true;
-
-  return false;
+  const start = knockoutMatchStartMillisV241(match);
+  return Boolean(start && Date.now() >= start);
 }
 
-function knockoutBetForPlayerMatchV240(playerId, matchId) {
+function knockoutBetForPlayerMatchV241(playerId, matchId) {
   return (bets || []).find(bet => bet.playerId === playerId && bet.gameId === matchId) || null;
 }
 
-function knockoutBetButtonLabelV240(match) {
-  const player = linkedPlayerForCurrentUserV240();
+function knockoutBetButtonLabelV241(match) {
+  const player = linkedPlayerForCurrentUserV241();
   if (!player) return "Ligar jogador";
-  const existing = knockoutBetForPlayerMatchV240(player.id, match.id);
-  if (isKnockoutBetLockedV240(match)) return existing ? "Ver aposta" : "Bloqueado";
+  const existing = knockoutBetForPlayerMatchV241(player.id, match.id);
+  if (isKnockoutBetLockedV241(match)) return existing ? "Ver aposta" : "Bloqueado";
   return existing ? "Editar aposta" : "Apostar";
 }
 
-function ensureKnockoutBetModalV240() {
-  let modal = $("knockoutBetModalV240");
+function ensureKnockoutBetModalV241() {
+  let modal = $("knockoutBetModalV241");
   if (modal) return modal;
 
   modal = document.createElement("div");
-  modal.id = "knockoutBetModalV240";
-  modal.className = "modal hidden knockout-bet-modal-v240";
+  modal.id = "knockoutBetModalV241";
+  modal.className = "modal hidden knockout-bet-modal-v241";
   modal.innerHTML = `
-    <div class="modal-card knockout-bet-card-v240">
+    <div class="modal-card knockout-bet-card-v241">
       <div class="modal-head">
         <div>
-          <h2 id="knockoutBetTitleV240">Aposta da Fase Final</h2>
-          <p id="knockoutBetSubtitleV240">Escolhe o resultado antes do jogo começar.</p>
+          <h2 id="knockoutBetTitleV241">Aposta da Fase Final</h2>
+          <p id="knockoutBetSubtitleV241">Escolhe o resultado antes do jogo começar.</p>
         </div>
-        <button id="closeKnockoutBetModalV240" class="icon-button" type="button" aria-label="Fechar">×</button>
+        <button id="closeKnockoutBetModalV241" class="icon-button" type="button" aria-label="Fechar">×</button>
       </div>
-
-      <div id="knockoutBetBodyV240" class="knockout-bet-body-v240"></div>
-
+      <div id="knockoutBetBodyV241" class="knockout-bet-body-v241"></div>
       <div class="modal-actions">
-        <button id="deleteKnockoutBetV240" class="secondary danger-soft-v240" type="button">Apagar aposta</button>
-        <button id="saveKnockoutBetV240" class="primary" type="button">Guardar aposta</button>
+        <button id="deleteKnockoutBetV241" class="secondary danger-soft-v241" type="button">Apagar aposta</button>
+        <button id="saveKnockoutBetV241" class="primary" type="button">Guardar aposta</button>
       </div>
     </div>
   `;
   document.body.appendChild(modal);
 
-  $("closeKnockoutBetModalV240")?.addEventListener("click", closeKnockoutBetModalV240);
+  $("closeKnockoutBetModalV241")?.addEventListener("click", closeKnockoutBetModalV241);
   modal.addEventListener("click", event => {
-    if (event.target === modal) closeKnockoutBetModalV240();
+    if (event.target === modal) closeKnockoutBetModalV241();
   });
-  $("saveKnockoutBetV240")?.addEventListener("click", saveKnockoutBetFromModalV240);
-  $("deleteKnockoutBetV240")?.addEventListener("click", deleteKnockoutBetFromModalV240);
-
+  $("saveKnockoutBetV241")?.addEventListener("click", saveKnockoutBetFromModalV241);
+  $("deleteKnockoutBetV241")?.addEventListener("click", deleteKnockoutBetFromModalV241);
   return modal;
 }
 
-let activeKnockoutBetMatchIdV240 = "";
+let activeKnockoutBetMatchIdV241 = "";
 
-function openKnockoutBetModalV240(matchId) {
+function openKnockoutBetModalV241(matchId) {
   ensureKnockoutSettings();
   const match = knockoutMatchById(matchId);
-  const modal = ensureKnockoutBetModalV240();
-  const body = $("knockoutBetBodyV240");
-  const title = $("knockoutBetTitleV240");
-  const subtitle = $("knockoutBetSubtitleV240");
-  const saveBtn = $("saveKnockoutBetV240");
-  const deleteBtn = $("deleteKnockoutBetV240");
-
-  activeKnockoutBetMatchIdV240 = matchId;
+  const modal = ensureKnockoutBetModalV241();
+  const body = $("knockoutBetBodyV241");
+  const saveBtn = $("saveKnockoutBetV241");
+  const deleteBtn = $("deleteKnockoutBetV241");
+  activeKnockoutBetMatchIdV241 = matchId;
 
   if (!match || !body) return;
 
-  const player = linkedPlayerForCurrentUserV240();
-  const locked = isKnockoutBetLockedV240(match);
-  const existing = player ? knockoutBetForPlayerMatchV240(player.id, match.id) : null;
+  const player = linkedPlayerForCurrentUserV241();
+  const locked = isKnockoutBetLockedV241(match);
+  const existing = player ? knockoutBetForPlayerMatchV241(player.id, match.id) : null;
   const score = existing ? knockoutBetScorePair(existing) : null;
   const pens = existing ? knockoutBetPenaltyPair(existing) : null;
 
-  if (title) title.textContent = `${match.homeTeam || "Equipa"} vs ${match.awayTeam || "Equipa"}`;
-  if (subtitle) subtitle.textContent = player
-    ? `Aposta ligada ao jogador: ${player.name}`
-    : "A tua conta ainda não está ligada a nenhum jogador.";
+  $("knockoutBetTitleV241").textContent = `${match.homeTeam || "Equipa"} vs ${match.awayTeam || "Equipa"}`;
+  $("knockoutBetSubtitleV241").textContent = player ? `Aposta ligada ao jogador: ${player.name}` : "A tua conta ainda não está ligada a nenhum jogador.";
 
   if (!player) {
-    body.innerHTML = `
-      <div class="knockout-bet-warning-v240">
-        <strong>Conta sem jogador ligado</strong>
-        <span>Para apostar na Fase Final, o Admin tem de ligar o teu user ao jogador correto.</span>
-      </div>
-    `;
+    body.innerHTML = `<div class="knockout-bet-warning-v241"><strong>Conta sem jogador ligado</strong><span>Para apostar na Fase Final, o Admin tem de ligar o teu user ao jogador correto.</span></div>`;
     if (saveBtn) saveBtn.disabled = true;
     if (deleteBtn) deleteBtn.disabled = true;
     modal.classList.remove("hidden");
@@ -13102,41 +12330,21 @@ function openKnockoutBetModalV240(matchId) {
     : "Ainda podes guardar/alterar a aposta.";
 
   body.innerHTML = `
-    <div class="knockout-bet-player-v240">
-      <span>Jogador</span>
-      <strong>${escapeHtml(player.name)}</strong>
-    </div>
-
-    <div class="knockout-bet-match-v240">
-      <div>
-        <span>${escapeHtml(match.homeTeam || "A definir")}</span>
-        <input id="knockoutBetHomeV240" type="number" min="0" inputmode="numeric" value="${score ? score.home : ""}" ${locked ? "disabled" : ""} />
-      </div>
+    <div class="knockout-bet-player-v241"><span>Jogador</span><strong>${escapeHtml(player.name)}</strong></div>
+    <div class="knockout-bet-match-v241">
+      <div><span>${escapeHtml(match.homeTeam || "A definir")}</span><input id="knockoutBetHomeV241" type="number" min="0" inputmode="numeric" value="${score ? score.home : ""}" ${locked ? "disabled" : ""} /></div>
       <b>VS</b>
-      <div>
-        <span>${escapeHtml(match.awayTeam || "A definir")}</span>
-        <input id="knockoutBetAwayV240" type="number" min="0" inputmode="numeric" value="${score ? score.away : ""}" ${locked ? "disabled" : ""} />
-      </div>
+      <div><span>${escapeHtml(match.awayTeam || "A definir")}</span><input id="knockoutBetAwayV241" type="number" min="0" inputmode="numeric" value="${score ? score.away : ""}" ${locked ? "disabled" : ""} /></div>
     </div>
-
-    <details class="knockout-bet-penalties-v240" ${pens ? "open" : ""}>
+    <details class="knockout-bet-penalties-v241" ${pens ? "open" : ""}>
       <summary>Penáltis, se apostares empate</summary>
-      <div class="knockout-bet-match-v240 penalties">
-        <div>
-          <span>${escapeHtml(match.homeTeam || "Casa")}</span>
-          <input id="knockoutBetHomePensV240" type="number" min="0" inputmode="numeric" value="${pens ? pens.home : ""}" ${locked ? "disabled" : ""} />
-        </div>
+      <div class="knockout-bet-match-v241 penalties">
+        <div><span>${escapeHtml(match.homeTeam || "Casa")}</span><input id="knockoutBetHomePensV241" type="number" min="0" inputmode="numeric" value="${pens ? pens.home : ""}" ${locked ? "disabled" : ""} /></div>
         <b>Pen.</b>
-        <div>
-          <span>${escapeHtml(match.awayTeam || "Fora")}</span>
-          <input id="knockoutBetAwayPensV240" type="number" min="0" inputmode="numeric" value="${pens ? pens.away : ""}" ${locked ? "disabled" : ""} />
-        </div>
+        <div><span>${escapeHtml(match.awayTeam || "Fora")}</span><input id="knockoutBetAwayPensV241" type="number" min="0" inputmode="numeric" value="${pens ? pens.away : ""}" ${locked ? "disabled" : ""} /></div>
       </div>
     </details>
-
-    <div class="knockout-bet-status-v240 ${locked ? "locked" : "open"}">
-      ${escapeHtml(lockedText)}
-    </div>
+    <div class="knockout-bet-status-v241 ${locked ? "locked" : "open"}">${escapeHtml(lockedText)}</div>
   `;
 
   if (saveBtn) saveBtn.disabled = locked;
@@ -13144,39 +12352,35 @@ function openKnockoutBetModalV240(matchId) {
   modal.classList.remove("hidden");
 }
 
-function closeKnockoutBetModalV240() {
-  $("knockoutBetModalV240")?.classList.add("hidden");
-  activeKnockoutBetMatchIdV240 = "";
+function closeKnockoutBetModalV241() {
+  $("knockoutBetModalV241")?.classList.add("hidden");
+  activeKnockoutBetMatchIdV241 = "";
 }
 
-async function saveKnockoutBetFromModalV240() {
-  const match = knockoutMatchById(activeKnockoutBetMatchIdV240);
-  const player = linkedPlayerForCurrentUserV240();
+async function saveKnockoutBetFromModalV241() {
+  const match = knockoutMatchById(activeKnockoutBetMatchIdV241);
+  const player = linkedPlayerForCurrentUserV241();
   if (!match || !player) return toast("A tua conta ainda não está ligada a um jogador.");
-  if (isKnockoutBetLockedV240(match)) return toast("Aposta bloqueada para este jogo.");
+  if (isKnockoutBetLockedV241(match)) return toast("Aposta bloqueada para este jogo.");
 
-  const home = Number($("knockoutBetHomeV240")?.value);
-  const away = Number($("knockoutBetAwayV240")?.value);
+  const home = Number($("knockoutBetHomeV241")?.value);
+  const away = Number($("knockoutBetAwayV241")?.value);
+  if (!Number.isFinite(home) || !Number.isFinite(away) || home < 0 || away < 0) return toast("Preenche o resultado da aposta.");
 
-  if (!Number.isFinite(home) || !Number.isFinite(away) || home < 0 || away < 0) {
-    return toast("Preenche o resultado da aposta.");
-  }
-
-  const homePensRaw = $("knockoutBetHomePensV240")?.value;
-  const awayPensRaw = $("knockoutBetAwayPensV240")?.value;
-  const homePens = homePensRaw === "" || homePensRaw === undefined ? null : Number(homePensRaw);
-  const awayPens = awayPensRaw === "" || awayPensRaw === undefined ? null : Number(awayPensRaw);
+  const hpRaw = $("knockoutBetHomePensV241")?.value;
+  const apRaw = $("knockoutBetAwayPensV241")?.value;
+  const homePens = hpRaw === "" || hpRaw === undefined ? null : Number(hpRaw);
+  const awayPens = apRaw === "" || apRaw === undefined ? null : Number(apRaw);
 
   if (home === away && (homePens === null || awayPens === null || !Number.isFinite(homePens) || !Number.isFinite(awayPens) || homePens === awayPens)) {
     return toast("Se apostas empate, indica penáltis e um vencedor.");
   }
 
   const winner = home > away ? match.homeTeam : away > home ? match.awayTeam : homePens > awayPens ? match.homeTeam : match.awayTeam;
-  const id = `${activeKnockoutBetMatchIdV240}_${player.id}`;
 
-  const bet = {
-    id,
-    gameId: activeKnockoutBetMatchIdV240,
+  await persistBet({
+    id: `${activeKnockoutBetMatchIdV241}_${player.id}`,
+    gameId: activeKnockoutBetMatchIdV241,
     playerId: player.id,
     playerName: player.name,
     uid: currentUser?.uid || "",
@@ -13189,36 +12393,34 @@ async function saveKnockoutBetFromModalV240() {
     awayPenalties: awayPens,
     winner,
     updatedAt: new Date().toISOString()
-  };
+  });
 
-  await persistBet(bet);
   addSystemLog("Aposta Fase Final", `${player.name} guardou aposta em ${match.homeTeam} vs ${match.awayTeam}.`, { matchId: match.id, playerId: player.id }, { sync: true });
-  closeKnockoutBetModalV240();
+  closeKnockoutBetModalV241();
   renderKnockout();
   renderScore();
   toast("Aposta guardada.");
 }
 
-async function deleteKnockoutBetFromModalV240() {
-  const match = knockoutMatchById(activeKnockoutBetMatchIdV240);
-  const player = linkedPlayerForCurrentUserV240();
+async function deleteKnockoutBetFromModalV241() {
+  const match = knockoutMatchById(activeKnockoutBetMatchIdV241);
+  const player = linkedPlayerForCurrentUserV241();
   if (!match || !player) return;
-  if (isKnockoutBetLockedV240(match)) return toast("Aposta bloqueada para este jogo.");
-
-  const existing = knockoutBetForPlayerMatchV240(player.id, match.id);
-  if (!existing) return closeKnockoutBetModalV240();
+  if (isKnockoutBetLockedV241(match)) return toast("Aposta bloqueada para este jogo.");
+  const existing = knockoutBetForPlayerMatchV241(player.id, match.id);
+  if (!existing) return closeKnockoutBetModalV241();
 
   bets = bets.filter(bet => !(bet.gameId === match.id && bet.playerId === player.id));
   markBetsForDelete([existing.id]);
   saveLocalData("apagar aposta fase final");
   scheduleFullSync("apagar aposta fase final", 300);
-  closeKnockoutBetModalV240();
+  closeKnockoutBetModalV241();
   renderKnockout();
   renderScore();
   toast("Aposta apagada.");
 }
 
-function addKnockoutBetButtonsV240() {
+function addKnockoutBetButtonsV241() {
   const container = $("knockoutBracket");
   if (!container || !knockoutAvailable()) return;
 
@@ -13226,42 +12428,41 @@ function addKnockoutBetButtonsV240() {
     const matchId = card.dataset.koAdmin;
     const match = knockoutMatchById(matchId);
     if (!match || !match.homeTeam || !match.awayTeam) return;
-    if (card.querySelector("[data-ko-user-bet-v240]")) return;
+    if (card.querySelector("[data-ko-user-bet-v241]")) return;
 
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "ko-user-bet-btn-v240";
-    btn.dataset.koUserBetV240 = matchId;
-    btn.textContent = knockoutBetButtonLabelV240(match);
-    btn.disabled = !currentUserCanBetKnockoutV240() || (!linkedPlayerForCurrentUserV240() && !hasPermission("managePermissions"));
+    btn.className = "ko-user-bet-btn-v241";
+    btn.dataset.koUserBetV241 = matchId;
+    btn.textContent = knockoutBetButtonLabelV241(match);
+    btn.disabled = !currentUserCanBetKnockoutV241() || (!linkedPlayerForCurrentUserV241() && !hasPermission("managePermissions"));
     card.appendChild(btn);
   });
 }
 
-const renderKnockoutOriginalV240 = typeof renderKnockout === "function" ? renderKnockout : null;
-if (renderKnockoutOriginalV240 && !window.__renderKnockoutBetsV240) {
-  window.__renderKnockoutBetsV240 = true;
-  renderKnockout = function renderKnockoutWithBetsV240() {
-    const result = renderKnockoutOriginalV240.apply(this, arguments);
-    setTimeout(addKnockoutBetButtonsV240, 0);
-    setTimeout(addKnockoutBetButtonsV240, 200);
+const renderKnockoutOriginalV241 = typeof renderKnockout === "function" ? renderKnockout : null;
+if (renderKnockoutOriginalV241 && !window.__renderKnockoutBetsV241) {
+  window.__renderKnockoutBetsV241 = true;
+  renderKnockout = function renderKnockoutWithBetsV241() {
+    const result = renderKnockoutOriginalV241.apply(this, arguments);
+    setTimeout(addKnockoutBetButtonsV241, 0);
+    setTimeout(addKnockoutBetButtonsV241, 200);
     return result;
   };
 }
 
 document.addEventListener("click", event => {
-  const betBtn = event.target.closest?.("[data-ko-user-bet-v240]");
+  const betBtn = event.target.closest?.("[data-ko-user-bet-v241]");
   if (!betBtn) return;
   event.preventDefault();
   event.stopPropagation();
-  openKnockoutBetModalV240(betBtn.dataset.koUserBetV240);
+  openKnockoutBetModalV241(betBtn.dataset.koUserBetV241);
 }, true);
 
-// Admin: render de users com ligação jogador.
-const renderPermissionsUsersOriginalV240 = typeof renderPermissionsUsers === "function" ? renderPermissionsUsers : null;
-if (renderPermissionsUsersOriginalV240 && !window.__renderPermissionsPlayerLinkV240) {
-  window.__renderPermissionsPlayerLinkV240 = true;
-  renderPermissionsUsers = function renderPermissionsUsersPlayerLinkV240() {
+const renderPermissionsUsersOriginalV241 = typeof renderPermissionsUsers === "function" ? renderPermissionsUsers : null;
+if (renderPermissionsUsersOriginalV241 && !window.__renderPermissionsPlayerLinkV241) {
+  window.__renderPermissionsPlayerLinkV241 = true;
+  renderPermissionsUsers = function renderPermissionsUsersPlayerLinkV241() {
     const list = $("permissionsUsersList");
     if (!list) return;
 
@@ -13270,14 +12471,14 @@ if (renderPermissionsUsersOriginalV240 && !window.__renderPermissionsPlayerLinkV
       return;
     }
 
-    playersCatalogV240();
+    playersCatalogV241();
 
     if (!permissionsCache.length) {
       list.innerHTML = `<div class="empty small-empty">Ainda não existem utilizadores registados.</div>`;
       return;
     }
 
-    const missing = permissionsCache.filter(user => !linkedPlayerForProfileV240(user)).length;
+    const missing = permissionsCache.filter(user => !linkedPlayerForProfileV241(user)).length;
     const linked = permissionsCache.length - missing;
 
     const labels = {
@@ -13298,14 +12499,13 @@ if (renderPermissionsUsersOriginalV240 && !window.__renderPermissionsPlayerLinkV
     };
 
     list.innerHTML = `
-      <section class="player-link-summary-v240">
+      <section class="player-link-summary-v241">
         <div>
           <strong>Ligação Users ↔ Jogadores</strong>
-          <span>${linked} ligado(s) · ${missing} por ligar · ${playersCatalogV240().length} jogador(es) na liga</span>
+          <span>${linked} ligado(s) · ${missing} por ligar · ${playersCatalogV241().length} jogador(es) na liga</span>
         </div>
-        <button class="secondary small" type="button" data-auto-link-players-v240>Auto ligar sugestões</button>
+        <button class="secondary small" type="button" data-auto-link-players-v241>Auto ligar sugestões</button>
       </section>
-
       ${permissionsCache.map(user => {
         const email = normalizeEmail(user.email || user.id);
         const visibleName = String(user.name || "").trim() || displayNameFromEmail(email);
@@ -13313,26 +12513,25 @@ if (renderPermissionsUsersOriginalV240 && !window.__renderPermissionsPlayerLinkV
         const isOwnerUser = role === "owner";
         const perms = { ...permissionsForRole(role), ...(user.permissions || {}) };
         const active = user.active !== false;
-        const status = playerLinkStatusV240(user);
-        const selectedPlayerId = user.linkedPlayerId || status.player?.id || "";
+        const status = playerLinkStatusV241(user);
 
         return `
-          <article class="permission-user-card player-link-card-v240" data-permission-card="${escapeHtml(email)}">
+          <article class="permission-user-card player-link-card-v241" data-permission-card="${escapeHtml(email)}">
             <div class="permission-user-head">
               <div>
                 <strong>${escapeHtml(visibleName)}</strong>
                 <span>${escapeHtml(email)} · ${roleLabel(role)} · ${active ? "Ativo" : "Bloqueado"}</span>
-                ${renderPlayerLinkBadgeV240(user)}
+                ${renderPlayerLinkBadgeV241(user)}
               </div>
               <div class="permission-user-actions">
                 <label class="permission-name-label">
                   Nome visível
                   <input class="permission-name-input" type="text" data-name-email="${escapeHtml(email)}" value="${escapeHtml(visibleName)}" placeholder="Nome visível" />
                 </label>
-                <label class="permission-player-label-v240">
+                <label class="permission-player-label-v241">
                   Jogador ligado
-                  <select data-linked-player-email-v240="${escapeHtml(email)}">
-                    ${playerOptionsHtmlV240(user.linkedPlayerId || "", true)}
+                  <select data-linked-player-email-v241="${escapeHtml(email)}">
+                    ${playerOptionsHtmlV241(user.linkedPlayerId || "", true)}
                   </select>
                 </label>
                 <select data-role-email="${escapeHtml(email)}">
@@ -13348,9 +12547,9 @@ if (renderPermissionsUsersOriginalV240 && !window.__renderPermissionsPlayerLinkV
               </div>
             </div>
             ${status.key === "suggestion" && !user.linkedPlayerId ? `
-              <div class="player-link-suggestion-v240">
+              <div class="player-link-suggestion-v241">
                 Sugestão: <strong>${escapeHtml(status.player.name)}</strong>
-                <button class="secondary small" type="button" data-confirm-player-link-v240="${escapeHtml(email)}" data-player-id="${escapeHtml(status.player.id)}">Confirmar ligação</button>
+                <button class="secondary small" type="button" data-confirm-player-link-v241="${escapeHtml(email)}" data-player-id="${escapeHtml(status.player.id)}">Confirmar ligação</button>
               </div>
             ` : ""}
             <div class="permission-grid">
@@ -13363,30 +12562,28 @@ if (renderPermissionsUsersOriginalV240 && !window.__renderPermissionsPlayerLinkV
   };
 }
 
-const savePermissionUserOriginalV240 = typeof savePermissionUser === "function" ? savePermissionUser : null;
-if (savePermissionUserOriginalV240 && !window.__savePermissionPlayerLinkV240) {
-  window.__savePermissionPlayerLinkV240 = true;
-  savePermissionUser = async function savePermissionUserPlayerLinkV240(email) {
+const savePermissionUserOriginalV241 = typeof savePermissionUser === "function" ? savePermissionUser : null;
+if (savePermissionUserOriginalV241 && !window.__savePermissionPlayerLinkV241) {
+  window.__savePermissionPlayerLinkV241 = true;
+  savePermissionUser = async function savePermissionUserPlayerLinkV241(email) {
     if (!db || !firebaseApi) return toast("Firebase não está ligado.");
     if (!hasPermission("managePermissions")) return toast("Sem permissão para gerir utilizadores.");
 
     const normalized = normalizeEmail(email);
-    if (!normalized) return toast("Email inválido.");
-
     const card = document.querySelector(`[data-permission-card="${CSS.escape(normalized)}"]`);
     const existingProfile = permissionsCache.find(user => normalizeEmail(user.email || user.id) === normalized) || {};
 
-    const role = normalizeRole(document.querySelector(`[data-role-email="${CSS.escape(normalized)}"]`)?.value || $("permissionRoleInput")?.value || "user");
+    const role = normalizeRole(document.querySelector(`[data-role-email="${CSS.escape(normalized)}"]`)?.value || "user");
     const activeInput = document.querySelector(`[data-active-email="${CSS.escape(normalized)}"]`);
     const active = activeInput ? activeInput.checked : true;
     const isOwnerUser = role === "owner";
 
-    const nameInput = document.querySelector(`[data-name-email="${CSS.escape(normalized)}"]`) || $("permissionNameInput");
+    const nameInput = document.querySelector(`[data-name-email="${CSS.escape(normalized)}"]`);
     const visibleName = String(nameInput?.value || existingProfile.name || displayNameFromEmail(normalized)).trim() || displayNameFromEmail(normalized);
 
-    const linkedSelect = document.querySelector(`[data-linked-player-email-v240="${CSS.escape(normalized)}"]`);
+    const linkedSelect = document.querySelector(`[data-linked-player-email-v241="${CSS.escape(normalized)}"]`);
     const linkedPlayerId = linkedSelect ? linkedSelect.value : existingProfile.linkedPlayerId || "";
-    const linkedPlayer = linkedPlayerId ? playerByIdV240(linkedPlayerId) : null;
+    const linkedPlayer = linkedPlayerId ? playerByIdV241(linkedPlayerId) : null;
 
     const permissions = permissionsForRole(role);
     if (card && !isOwnerUser) {
@@ -13407,19 +12604,12 @@ if (savePermissionUserOriginalV240 && !window.__savePermissionPlayerLinkV240) {
       linkedPlayerName: linkedPlayer?.name || "",
       updatedAt: new Date().toISOString()
     };
-
     if (!profile.createdAt) profile.createdAt = new Date().toISOString();
 
-    // Atualiza catálogo de jogadores localmente também.
-    playersCatalogV240();
+    playersCatalogV241();
     appSettings.players = (appSettings.players || []).map(player => {
       if (linkedPlayerId && player.id === linkedPlayerId) {
-        return {
-          ...player,
-          linkedEmail: normalized,
-          linkedUid: profile.uid || player.linkedUid || "",
-          email: player.email || ""
-        };
+        return { ...player, linkedEmail: normalized, linkedUid: profile.uid || player.linkedUid || "", email: player.email || "" };
       }
       if (player.linkedEmail && normalizeEmail(player.linkedEmail) === normalized && player.id !== linkedPlayerId) {
         return { ...player, linkedEmail: "", linkedUid: "" };
@@ -13433,22 +12623,6 @@ if (savePermissionUserOriginalV240 && !window.__savePermissionPlayerLinkV240) {
     markSettingsPending();
     saveLocalData("guardar ligação user jogador");
     scheduleFullSync("guardar ligação user jogador", 300);
-
-    if (profile.uid) {
-      try {
-        await setDoc(doc(db, PRESENCE_COLLECTION, profile.uid), {
-          uid: profile.uid,
-          email: normalized,
-          name: visibleName,
-          role,
-          linkedPlayerId,
-          linkedPlayerName: linkedPlayer?.name || "",
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
-      } catch (presenceError) {
-        console.warn("Nome guardado no user, mas não atualizado na presença:", presenceError);
-      }
-    }
 
     addSystemLog("Utilizador guardado", `${visibleName} (${normalized}) ficou ligado a ${linkedPlayer?.name || "nenhum jogador"}.`, {
       email: normalized,
@@ -13468,29 +12642,26 @@ if (savePermissionUserOriginalV240 && !window.__savePermissionPlayerLinkV240) {
       currentProfile.linkedPlayerName = linkedPlayer?.name || "";
       updateSessionBox();
       applyPermissionsToUi();
-      updateMyPresence(false).catch(error => console.warn("Atualizar presença após nome falhou:", error));
     }
-
-    loadOnlineUsers().catch(error => console.warn("Atualizar lista online após nome falhou:", error));
   };
 }
 
-async function confirmPlayerLinkV240(email, playerId) {
-  const select = document.querySelector(`[data-linked-player-email-v240="${CSS.escape(normalizeEmail(email))}"]`);
+async function confirmPlayerLinkV241(email, playerId) {
+  const select = document.querySelector(`[data-linked-player-email-v241="${CSS.escape(normalizeEmail(email))}"]`);
   if (select) select.value = playerId;
   await savePermissionUser(email);
 }
 
-async function autoLinkPlayerSuggestionsV240() {
+async function autoLinkPlayerSuggestionsV241() {
   if (!hasPermission("managePermissions")) return toast("Sem permissão.");
-
   let count = 0;
+
   for (const profile of permissionsCache) {
     if (profile.linkedPlayerId) continue;
-    const suggestion = findSuggestedPlayerForUserV240(profile);
+    const suggestion = findSuggestedPlayerForUserV241(profile);
     if (!suggestion) continue;
     const email = normalizeEmail(profile.email || profile.id);
-    const select = document.querySelector(`[data-linked-player-email-v240="${CSS.escape(email)}"]`);
+    const select = document.querySelector(`[data-linked-player-email-v241="${CSS.escape(email)}"]`);
     if (select) {
       select.value = suggestion.id;
       count += 1;
@@ -13501,27 +12672,27 @@ async function autoLinkPlayerSuggestionsV240() {
 }
 
 document.addEventListener("click", event => {
-  const confirmBtn = event.target.closest?.("[data-confirm-player-link-v240]");
+  const confirmBtn = event.target.closest?.("[data-confirm-player-link-v241]");
   if (confirmBtn) {
     event.preventDefault();
-    confirmPlayerLinkV240(confirmBtn.dataset.confirmPlayerLinkV240, confirmBtn.dataset.playerId);
+    confirmPlayerLinkV241(confirmBtn.dataset.confirmPlayerLinkV241, confirmBtn.dataset.playerId);
     return;
   }
 
-  const autoBtn = event.target.closest?.("[data-auto-link-players-v240]");
+  const autoBtn = event.target.closest?.("[data-auto-link-players-v241]");
   if (autoBtn) {
     event.preventDefault();
-    autoLinkPlayerSuggestionsV240();
+    autoLinkPlayerSuggestionsV241();
   }
 }, true);
 
-const readUserProfileOriginalV240 = typeof readUserProfile === "function" ? readUserProfile : null;
-if (readUserProfileOriginalV240 && !window.__readProfilePlayerLinkV240) {
-  window.__readProfilePlayerLinkV240 = true;
-  readUserProfile = async function readUserProfileWithPlayerV240(user) {
-    const profile = await readUserProfileOriginalV240(user);
+const readUserProfileOriginalV241 = typeof readUserProfile === "function" ? readUserProfile : null;
+if (readUserProfileOriginalV241 && !window.__readProfilePlayerLinkV241) {
+  window.__readProfilePlayerLinkV241 = true;
+  readUserProfile = async function readUserProfileWithPlayerV241(user) {
+    const profile = await readUserProfileOriginalV241(user);
     try {
-      const linked = linkedPlayerForProfileV240(profile) || findSuggestedPlayerForUserV240(profile);
+      const linked = linkedPlayerForProfileV241(profile) || findSuggestedPlayerForUserV241(profile);
       if (linked && !profile.linkedPlayerId && normalizeEmail(linked.linkedEmail || linked.email) === normalizeEmail(profile.email)) {
         profile.linkedPlayerId = linked.id;
         profile.linkedPlayerName = linked.name;
@@ -13533,33 +12704,32 @@ if (readUserProfileOriginalV240 && !window.__readProfilePlayerLinkV240) {
   };
 }
 
-const updateSessionBoxOriginalV240 = typeof updateSessionBox === "function" ? updateSessionBox : null;
-if (updateSessionBoxOriginalV240 && !window.__sessionPlayerLinkV240) {
-  window.__sessionPlayerLinkV240 = true;
-  updateSessionBox = function updateSessionBoxPlayerLinkV240() {
-    updateSessionBoxOriginalV240();
+const updateSessionBoxOriginalV241 = typeof updateSessionBox === "function" ? updateSessionBox : null;
+if (updateSessionBoxOriginalV241 && !window.__sessionPlayerLinkV241) {
+  window.__sessionPlayerLinkV241 = true;
+  updateSessionBox = function updateSessionBoxPlayerLinkV241() {
+    updateSessionBoxOriginalV241();
     const label = $("sessionUserLabel");
     if (!label || !currentUser) return;
 
-    const player = linkedPlayerForCurrentUserV240();
-    const existing = $("sessionPlayerLinkV240");
-    if (existing) existing.remove();
+    const player = linkedPlayerForCurrentUserV241();
+    $("sessionPlayerLinkV241")?.remove();
 
     const chip = document.createElement("small");
-    chip.id = "sessionPlayerLinkV240";
-    chip.className = `session-player-link-v240 ${player ? "linked" : "missing"}`;
+    chip.id = "sessionPlayerLinkV241";
+    chip.className = `session-player-link-v241 ${player ? "linked" : "missing"}`;
     chip.textContent = player ? `Jogador: ${player.name}` : "Jogador por ligar";
     label.parentElement?.appendChild(chip);
   };
 }
 
-const renderAllOriginalV240 = typeof renderAll === "function" ? renderAll : null;
-if (renderAllOriginalV240 && !window.__renderAllPlayersV240) {
-  window.__renderAllPlayersV240 = true;
-  renderAll = function renderAllPlayersV240() {
-    try { playersCatalogV240(); } catch (error) { console.warn("Catálogo players falhou:", error); }
-    const result = renderAllOriginalV240.apply(this, arguments);
-    setTimeout(addKnockoutBetButtonsV240, 0);
+const renderAllOriginalV241 = typeof renderAll === "function" ? renderAll : null;
+if (renderAllOriginalV241 && !window.__renderAllPlayersV241) {
+  window.__renderAllPlayersV241 = true;
+  renderAll = function renderAllPlayersV241() {
+    try { playersCatalogV241(); } catch (error) { console.warn("Catálogo players falhou:", error); }
+    const result = renderAllOriginalV241.apply(this, arguments);
+    setTimeout(addKnockoutBetButtonsV241, 0);
     return result;
   };
 }
