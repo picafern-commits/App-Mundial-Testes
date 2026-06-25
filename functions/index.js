@@ -501,31 +501,61 @@ function footballMatchDateMillis(value) {
   return Number.isFinite(millis) ? millis : 0;
 }
 
-function footballSamePair(apiMatch, localMatch) {
+function footballMatchOrientationV263(apiMatch, localMatch) {
   const apiHome = footballTeamKey(footballApiTeamName(apiMatch.homeTeam));
   const apiAway = footballTeamKey(footballApiTeamName(apiMatch.awayTeam));
   const localHome = footballTeamKey(localMatch.homeTeam);
   const localAway = footballTeamKey(localMatch.awayTeam);
-  return apiHome && apiAway && apiHome === localHome && apiAway === localAway;
+
+  if (!apiHome || !apiAway || !localHome || !localAway) return "";
+  if (apiHome === localHome && apiAway === localAway) return "direct";
+  if (apiHome === localAway && apiAway === localHome) return "reversed";
+  return "";
+}
+
+function footballSamePair(apiMatch, localMatch) {
+  return footballMatchOrientationV263(apiMatch, localMatch) === "direct";
+}
+
+function footballApplyMatchOrientationV263(apiMatch, localMatch) {
+  if (!localMatch) return localMatch;
+  const orientation = footballMatchOrientationV263(apiMatch, localMatch) || "direct";
+  localMatch.__footballDataReversed = orientation === "reversed";
+  localMatch.__footballDataOrientation = orientation;
+  return localMatch;
+}
+
+function footballScoreForLocalMatchV263(apiScore, localMatch) {
+  if (!apiScore) return null;
+  if (!localMatch?.__footballDataReversed) return apiScore;
+  return {
+    homeScore: apiScore.awayScore,
+    awayScore: apiScore.homeScore,
+    homePenalties: apiScore.awayPenalties,
+    awayPenalties: apiScore.homePenalties
+  };
 }
 
 function footballFindLocalMatch(apiMatch, localMatches) {
   const apiId = String(apiMatch.id || "");
   if (apiId) {
     const byExternal = localMatches.find(match => String(match.footballDataId || match.externalId || "") === apiId);
-    if (byExternal) return byExternal;
+    if (byExternal) return footballApplyMatchOrientationV263(apiMatch, byExternal);
   }
 
-  const sameTeams = localMatches.filter(match => footballSamePair(apiMatch, match));
+  // v263: a API nem sempre devolve a mesma ordem casa/fora da app.
+  // Antes só aceitava Casa-Fora exatamente igual, por isso vários resultados nunca eram encontrados.
+  const sameTeams = localMatches.filter(match => footballMatchOrientationV263(apiMatch, match));
   if (!sameTeams.length) return null;
-  if (sameTeams.length === 1) return sameTeams[0];
+  if (sameTeams.length === 1) return footballApplyMatchOrientationV263(apiMatch, sameTeams[0]);
 
   const apiDate = footballMatchDateMillis(apiMatch.utcDate);
-  if (!apiDate) return sameTeams[0];
+  if (!apiDate) return footballApplyMatchOrientationV263(apiMatch, sameTeams[0]);
 
-  return sameTeams
+  const selected = sameTeams
     .map(match => ({ match, diff: Math.abs(footballMatchDateMillis(match.matchDate || match.utcDate || match.date) - apiDate) }))
     .sort((a, b) => a.diff - b.diff)[0]?.match || sameTeams[0];
+  return footballApplyMatchOrientationV263(apiMatch, selected);
 }
 
 async function assertFootballDataAdminV147(req) {
@@ -1085,7 +1115,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
   const matchedGamesStatusV153 = [];
 
   matches.forEach(apiMatch => {
-    const score = footballApiAnyScoreV153(apiMatch);
+    const apiScore = footballApiAnyScoreV153(apiMatch);
     const apiStatus = String(apiMatch.status || "").toUpperCase();
     const isFinished = footballIsFinishedV153(apiMatch);
     const isGroupStage = String(apiMatch.stage || "").toUpperCase() === "GROUP_STAGE";
@@ -1093,6 +1123,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
     const knockoutTarget = !isGroupStage ? footballFindLocalMatch(apiMatch, knockoutMatches) : null;
 
     if (groupTarget) {
+      const score = footballScoreForLocalMatchV263(apiScore, groupTarget);
       const payload = footballMatchPayloadV158(apiMatch, actor, score);
       payload.lastApiCheckAt = FieldValue.serverTimestamp();
       payload.lastApiStatus = cleanString(apiMatch.status);
@@ -1134,6 +1165,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
         ...payload,
         status: payload.footballDataStatus,
         stage: payload.footballDataStage,
+        footballDataOrientation: groupTarget.__footballDataOrientation || "direct",
         firebaseUpdatedAt: null
       };
 
@@ -1143,6 +1175,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
     }
 
     if (knockoutTarget) {
+      const score = footballScoreForLocalMatchV263(apiScore, knockoutTarget);
       const payload = footballMatchPayloadV158(apiMatch, actor, score);
       Object.assign(knockoutTarget, {
         footballDataId: payload.footballDataId,
