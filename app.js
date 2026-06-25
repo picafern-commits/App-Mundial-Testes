@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v241";
+const APP_VERSION_LABEL = "v243";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -3727,6 +3727,7 @@ function defaultKnockoutMatches() {
         awayScore: null,
         homePenalties: null,
         awayPenalties: null,
+        matchDate: "",
         nextMatchId: round.next ? `ko_${round.next}_${String(nextIndex).padStart(2, "0")}` : "",
         nextSlot: round.next ? (index % 2 === 1 ? "homeTeam" : "awayTeam") : "",
         updatedAt: ""
@@ -3751,7 +3752,8 @@ function ensureKnockoutSettings() {
         ...match,
         ...saved,
         homePenalties: saved.homePenalties ?? null,
-        awayPenalties: saved.awayPenalties ?? null
+        awayPenalties: saved.awayPenalties ?? null,
+        matchDate: saved.matchDate || saved.date || saved.kickoff || saved.startAt || saved.time || ""
       };
     })
   };
@@ -4184,6 +4186,9 @@ function renderKnockoutRecordForm(match) {
         ${homeControl}
         ${awayControl}
       </div>
+      <label class="ko-match-date-label-v243">Data/hora do jogo
+        <input class="ko-match-date-v243" type="datetime-local" value="${escapeHtml(knockoutMatchDateInputValueV243(match))}" />
+      </label>
       <div class="ko-card-editor-scores">
         <label>Resultado
           <span class="ko-score-pair">
@@ -4504,6 +4509,8 @@ function renderKnockoutMatch(match, layoutKey = "") {
         </div>
       ` : ""}
 
+      ${match.matchDate ? `<div class="ko-match-date-line-v243">${escapeHtml(dateTimePortugal(match.matchDate))}</div>` : ""}
+
       <div class="ko-status-line">
         <small>${escapeHtml(lockedText)}</small>
       </div>
@@ -4575,6 +4582,10 @@ function renderKnockoutAdmin() {
             ${homeControl}
             <span>vs</span>
             ${awayControl}
+
+            <label class="ko-score-label ko-match-date-label-v243">Data/hora
+              <input class="ko-match-date-v243" type="datetime-local" value="${escapeHtml(knockoutMatchDateInputValueV243(match))}" />
+            </label>
 
             <label class="ko-score-label">Resultado
               <span class="ko-score-pair">
@@ -4736,12 +4747,21 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
     homeScore: match.homeScore ?? null,
     awayScore: match.awayScore ?? null,
     homePenalties: match.homePenalties ?? null,
-    awayPenalties: match.awayPenalties ?? null
+    awayPenalties: match.awayPenalties ?? null,
+    matchDate: match.matchDate || ""
   };
 
   if (firstRound) {
     match.homeTeam = row.querySelector(".ko-home-team")?.value || "";
     match.awayTeam = row.querySelector(".ko-away-team")?.value || "";
+  }
+
+  match.matchDate = normalizeKnockoutMatchDateV243(row.querySelector(".ko-match-date-v243")?.value || match.matchDate || "");
+  match.date = match.matchDate;
+
+  if (match.homeTeam && match.awayTeam && !match.matchDate) {
+    toast("Define a data/hora deste jogo para abrir as apostas.");
+    return;
   }
 
   if (!match.homeTeam || !match.awayTeam) {
@@ -4815,7 +4835,8 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
       homeScore: match.homeScore ?? null,
       awayScore: match.awayScore ?? null,
       homePenalties: match.homePenalties ?? null,
-      awayPenalties: match.awayPenalties ?? null
+      awayPenalties: match.awayPenalties ?? null,
+      matchDate: match.matchDate || ""
     }
   }, { sync: true });
   markSettingsPending();
@@ -5201,7 +5222,9 @@ function knockoutBetDisplay(bet) {
   const score = knockoutBetScorePair(bet);
   const pens = knockoutBetPenaltyPair(bet);
   const base = score ? `${score.home}-${score.away}` : "-";
-  return pens ? `${base} pen. ${pens.home}-${pens.away}` : base;
+  const withPens = pens ? `${base} pen. ${pens.home}-${pens.away}` : base;
+  const qualified = bet.qualifiedTeam || bet.winner || "";
+  return qualified ? `${withPens} · qual. ${qualified}` : withPens;
 }
 
 function scoreRowMeta(game, knockout = false) {
@@ -12733,3 +12756,322 @@ if (renderAllOriginalV241 && !window.__renderAllPlayersV241) {
     return result;
   };
 }
+
+// v243 — Modal automático da Fase Final, data/hora do jogo e bloqueio 5 min antes.
+const KNOCKOUT_BET_LOCK_MINUTES_V243 = 5;
+const KNOCKOUT_AUTO_DISMISSED_KEY_V243 = `${STORAGE_KEY}_ko_auto_dismissed_v243`;
+let knockoutAutoModalOpeningV243 = false;
+let knockoutAutoModalMatchIdV243 = "";
+let knockoutAutoModalTimerV243 = null;
+
+function knockoutMatchDateInputValueV243(match) {
+  const raw = String(match?.matchDate || match?.date || match?.kickoff || match?.startAt || match?.time || "").trim();
+  if (!raw) return "";
+  const direct = raw.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
+  if (direct) return direct[1];
+  const date = parsePortugalDate(raw);
+  if (!date || Number.isNaN(date.getTime())) return "";
+  const pad = value => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function normalizeKnockoutMatchDateV243(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const direct = raw.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
+  if (direct) return direct[1];
+  return knockoutMatchDateInputValueV243({ matchDate: raw });
+}
+
+knockoutMatchStartMillisV241 = function knockoutMatchStartMillisV243(match) {
+  const normalized = knockoutMatchDateInputValueV243(match);
+  if (!normalized) return 0;
+  const date = parsePortugalDate(normalized);
+  const time = date?.getTime?.() || 0;
+  return Number.isFinite(time) ? time : 0;
+};
+
+function knockoutBetLockMillisV243(match) {
+  const start = knockoutMatchStartMillisV241(match);
+  return start ? start - (KNOCKOUT_BET_LOCK_MINUTES_V243 * 60 * 1000) : 0;
+}
+
+function knockoutBetDeadlineLabelV243(match) {
+  const deadline = knockoutBetLockMillisV243(match);
+  if (!deadline) return "Data/hora por definir";
+  return dateTimePortugal(new Date(deadline));
+}
+
+isKnockoutBetLockedV241 = function isKnockoutBetLockedV243(match) {
+  if (!match) return true;
+  if (!match.homeTeam || !match.awayTeam) return true;
+  if (knockoutMatchHasResult(match)) return true;
+  const deadline = knockoutBetLockMillisV243(match);
+  if (!deadline) return true;
+  return Date.now() >= deadline;
+};
+
+knockoutBetForPlayerMatchV241 = function knockoutBetForPlayerMatchV243(playerId, matchId) {
+  return (bets || []).find(bet => String(bet.playerId || "") === String(playerId || "") && String(bet.gameId || "") === String(matchId || "")) || null;
+};
+
+knockoutBetButtonLabelV241 = function knockoutBetButtonLabelV243(match) {
+  const player = linkedPlayerForCurrentUserV241();
+  if (!player) return "Ligar jogador";
+  const existing = knockoutBetForPlayerMatchV241(player.id, match.id);
+  if (!knockoutMatchStartMillisV241(match)) return existing ? "Ver aposta" : "Sem data/hora";
+  if (isKnockoutBetLockedV241(match)) return existing ? "Ver aposta" : "Fora do jogo";
+  return existing ? "Editar aposta" : "Apostar";
+};
+
+function knockoutQualifiedTeamFromBetV243(bet, match) {
+  if (!bet || !match) return "";
+  const direct = bet.qualifiedTeam || bet.winner || bet.winnerTeam || bet.predictedWinner || bet.teamWinner || "";
+  if (direct) {
+    const normalized = normalizeComparable(direct);
+    if (normalized === normalizeComparable(match.homeTeam)) return match.homeTeam;
+    if (normalized === normalizeComparable(match.awayTeam)) return match.awayTeam;
+    return direct;
+  }
+  return knockoutBetWinnerName(bet, match);
+}
+
+function winnerOptionsHtmlV243(match, selected = "") {
+  const teams = [match?.homeTeam || "", match?.awayTeam || ""].filter(Boolean);
+  return `<option value="">Escolher equipa qualificada</option>${teams.map(team => `<option value="${escapeHtml(team)}" ${normalizeComparable(team) === normalizeComparable(selected) ? "selected" : ""}>${escapeHtml(team)}</option>`).join("")}`;
+}
+
+closeKnockoutBetModalV241 = function closeKnockoutBetModalV243() {
+  if (knockoutAutoModalMatchIdV243) {
+    try {
+      const dismissed = JSON.parse(sessionStorage.getItem(KNOCKOUT_AUTO_DISMISSED_KEY_V243) || "[]");
+      sessionStorage.setItem(KNOCKOUT_AUTO_DISMISSED_KEY_V243, JSON.stringify([...new Set([...(Array.isArray(dismissed) ? dismissed : []), knockoutAutoModalMatchIdV243])].filter(Boolean)));
+    } catch {
+      sessionStorage.setItem(KNOCKOUT_AUTO_DISMISSED_KEY_V243, JSON.stringify([knockoutAutoModalMatchIdV243]));
+    }
+  }
+  $("knockoutBetModalV241")?.classList.add("hidden");
+  activeKnockoutBetMatchIdV241 = "";
+  knockoutAutoModalMatchIdV243 = "";
+};
+
+openKnockoutBetModalV241 = function openKnockoutBetModalV243(matchId, options = {}) {
+  ensureKnockoutSettings();
+  const match = knockoutMatchById(matchId);
+  const modal = ensureKnockoutBetModalV241();
+  const body = $("knockoutBetBodyV241");
+  const saveBtn = $("saveKnockoutBetV241");
+  const deleteBtn = $("deleteKnockoutBetV241");
+  activeKnockoutBetMatchIdV241 = matchId;
+  knockoutAutoModalMatchIdV243 = options.auto ? matchId : "";
+
+  if (!match || !body) return;
+
+  const player = linkedPlayerForCurrentUserV241();
+  const locked = isKnockoutBetLockedV241(match);
+  const hasDate = Boolean(knockoutMatchStartMillisV241(match));
+  const existing = player ? knockoutBetForPlayerMatchV241(player.id, match.id) : null;
+  const score = existing ? knockoutBetScorePair(existing) : null;
+  const pens = existing ? knockoutBetPenaltyPair(existing) : null;
+  const qualified = existing ? knockoutQualifiedTeamFromBetV243(existing, match) : "";
+
+  $("knockoutBetTitleV241").textContent = `${match.homeTeam || "Equipa"} vs ${match.awayTeam || "Equipa"}`;
+  $("knockoutBetSubtitleV241").textContent = player
+    ? `Aposta ligada ao jogador: ${player.name}`
+    : "A tua conta ainda não está ligada a nenhum jogador.";
+
+  if (!player) {
+    body.innerHTML = `<div class="knockout-bet-warning-v241"><strong>Conta sem jogador ligado</strong><span>Para apostar na Fase Final, o Admin tem de ligar o teu user ao jogador correto.</span></div>`;
+    if (saveBtn) saveBtn.disabled = true;
+    if (deleteBtn) deleteBtn.disabled = true;
+    modal.classList.remove("hidden");
+    return;
+  }
+
+  const deadlineText = knockoutBetDeadlineLabelV243(match);
+  const lockedText = !hasDate
+    ? "O Admin ainda não definiu a data/hora deste jogo. A aposta ainda não está aberta."
+    : locked
+      ? knockoutMatchHasResult(match)
+        ? "Este jogo já tem resultado final. A aposta está bloqueada."
+        : `O prazo terminou. Quem não apostou até ${deadlineText} fica fora deste jogo.`
+      : `Podes apostar até ${deadlineText} (5 minutos antes do início).`;
+
+  body.innerHTML = `
+    ${options.auto ? `<div class="knockout-bet-auto-v243"><strong>Nova aposta da Fase Final</strong><span>Este jogo já tem equipas e data/hora. Faz a tua aposta antes do prazo.</span></div>` : ""}
+    <div class="knockout-bet-player-v241"><span>Jogador</span><strong>${escapeHtml(player.name)}</strong></div>
+    <div class="knockout-bet-deadline-v243"><span>Prazo limite</span><strong>${escapeHtml(deadlineText)}</strong></div>
+    <div class="knockout-bet-match-v241">
+      <div><span>${escapeHtml(match.homeTeam || "A definir")}</span><input id="knockoutBetHomeV241" type="number" min="0" inputmode="numeric" value="${score ? score.home : ""}" ${locked ? "disabled" : ""} /></div>
+      <b>VS</b>
+      <div><span>${escapeHtml(match.awayTeam || "A definir")}</span><input id="knockoutBetAwayV241" type="number" min="0" inputmode="numeric" value="${score ? score.away : ""}" ${locked ? "disabled" : ""} /></div>
+    </div>
+    <label class="knockout-bet-qualified-v243">Equipa que se qualifica
+      <select id="knockoutBetWinnerV243" ${locked ? "disabled" : ""}>
+        ${winnerOptionsHtmlV243(match, qualified)}
+      </select>
+    </label>
+    <details class="knockout-bet-penalties-v241" ${pens ? "open" : ""}>
+      <summary>Penáltis (opcional, se quiseres deixar mais completo)</summary>
+      <div class="knockout-bet-match-v241 penalties">
+        <div><span>${escapeHtml(match.homeTeam || "Casa")}</span><input id="knockoutBetHomePensV241" type="number" min="0" inputmode="numeric" value="${pens ? pens.home : ""}" ${locked ? "disabled" : ""} /></div>
+        <b>Pen.</b>
+        <div><span>${escapeHtml(match.awayTeam || "Fora")}</span><input id="knockoutBetAwayPensV241" type="number" min="0" inputmode="numeric" value="${pens ? pens.away : ""}" ${locked ? "disabled" : ""} /></div>
+      </div>
+    </details>
+    <div class="knockout-bet-status-v241 ${locked ? "locked" : "open"}">${escapeHtml(lockedText)}</div>
+  `;
+
+  const homeInput = $("knockoutBetHomeV241");
+  const awayInput = $("knockoutBetAwayV241");
+  const winnerSelect = $("knockoutBetWinnerV243");
+  const syncWinner = () => {
+    if (!winnerSelect || winnerSelect.value) return;
+    const home = Number(homeInput?.value);
+    const away = Number(awayInput?.value);
+    if (!Number.isFinite(home) || !Number.isFinite(away)) return;
+    if (home > away) winnerSelect.value = match.homeTeam || "";
+    if (away > home) winnerSelect.value = match.awayTeam || "";
+  };
+  homeInput?.addEventListener("input", syncWinner);
+  awayInput?.addEventListener("input", syncWinner);
+
+  if (saveBtn) saveBtn.disabled = locked;
+  if (deleteBtn) deleteBtn.disabled = locked || !existing;
+  modal.classList.remove("hidden");
+  setTimeout(() => body.querySelector("input:not(:disabled), select:not(:disabled)")?.focus?.(), 50);
+};
+
+saveKnockoutBetFromModalV241 = async function saveKnockoutBetFromModalV243() {
+  const match = knockoutMatchById(activeKnockoutBetMatchIdV241);
+  const player = linkedPlayerForCurrentUserV241();
+  if (!match || !player) return toast("A tua conta ainda não está ligada a um jogador.");
+  if (isKnockoutBetLockedV241(match)) return toast("Aposta bloqueada para este jogo.");
+
+  const homeRaw = $("knockoutBetHomeV241")?.value;
+  const awayRaw = $("knockoutBetAwayV241")?.value;
+  const home = Number(homeRaw);
+  const away = Number(awayRaw);
+  if (homeRaw === "" || awayRaw === "" || !Number.isFinite(home) || !Number.isFinite(away) || home < 0 || away < 0) return toast("Preenche o resultado da aposta.");
+
+  const winner = $("knockoutBetWinnerV243")?.value || "";
+  if (!winner) return toast("Escolhe a equipa que se qualifica.");
+
+  if (home > away && normalizeComparable(winner) !== normalizeComparable(match.homeTeam)) return toast("A equipa qualificada não bate certo com o resultado.");
+  if (away > home && normalizeComparable(winner) !== normalizeComparable(match.awayTeam)) return toast("A equipa qualificada não bate certo com o resultado.");
+
+  const hpRaw = $("knockoutBetHomePensV241")?.value;
+  const apRaw = $("knockoutBetAwayPensV241")?.value;
+  const homePens = hpRaw === "" || hpRaw === undefined ? null : Number(hpRaw);
+  const awayPens = apRaw === "" || apRaw === undefined ? null : Number(apRaw);
+
+  if ((hpRaw === "" || hpRaw === undefined) !== (apRaw === "" || apRaw === undefined)) {
+    return toast("Preenche os dois campos dos penáltis ou deixa os dois vazios.");
+  }
+  if (homePens !== null && (!Number.isFinite(homePens) || !Number.isFinite(awayPens) || homePens < 0 || awayPens < 0 || homePens === awayPens)) {
+    return toast("Os penáltis têm de ter valores válidos e uma equipa vencedora.");
+  }
+
+  await persistBet({
+    id: `${activeKnockoutBetMatchIdV241}_${player.id}`,
+    gameId: activeKnockoutBetMatchIdV241,
+    playerId: player.id,
+    playerName: player.name,
+    uid: currentUser?.uid || "",
+    email: normalizeEmail(currentUser?.email || ""),
+    source: "FaseFinalUser",
+    type: "knockout",
+    homeGuess: home,
+    awayGuess: away,
+    homePenalties: homePens,
+    awayPenalties: awayPens,
+    winner,
+    qualifiedTeam: winner,
+    deadlineAt: new Date(knockoutBetLockMillisV243(match)).toISOString(),
+    matchDate: normalizeKnockoutMatchDateV243(match.matchDate),
+    updatedAt: new Date().toISOString()
+  });
+
+  try {
+    const dismissed = JSON.parse(sessionStorage.getItem(KNOCKOUT_AUTO_DISMISSED_KEY_V243) || "[]");
+    sessionStorage.setItem(KNOCKOUT_AUTO_DISMISSED_KEY_V243, JSON.stringify((Array.isArray(dismissed) ? dismissed : []).filter(id => id !== activeKnockoutBetMatchIdV241)));
+  } catch {}
+
+  addSystemLog("Aposta Fase Final", `${player.name} guardou aposta em ${match.homeTeam} vs ${match.awayTeam}. Qualificado: ${winner}.`, { matchId: match.id, playerId: player.id, winner }, { sync: true });
+  closeKnockoutBetModalV241();
+  renderKnockout();
+  renderScore();
+  setTimeout(maybeOpenNextKnockoutBetModalV243, 500);
+  toast("Aposta guardada.");
+};
+
+function dismissedAutoKnockoutMatchesV243() {
+  try {
+    const list = JSON.parse(sessionStorage.getItem(KNOCKOUT_AUTO_DISMISSED_KEY_V243) || "[]");
+    return new Set(Array.isArray(list) ? list : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function eligibleAutoKnockoutBetMatchesV243() {
+  const player = linkedPlayerForCurrentUserV241();
+  if (!currentUserCanBetKnockoutV241() || !player || !knockoutAvailable()) return [];
+  const dismissed = dismissedAutoKnockoutMatchesV243();
+  return knockoutMatches()
+    .filter(match => match?.homeTeam && match?.awayTeam)
+    .filter(match => knockoutMatchStartMillisV241(match) > 0)
+    .filter(match => !knockoutMatchHasResult(match))
+    .filter(match => !isKnockoutBetLockedV241(match))
+    .filter(match => !knockoutBetForPlayerMatchV241(player.id, match.id))
+    .filter(match => !dismissed.has(match.id))
+    .sort((a, b) => knockoutMatchStartMillisV241(a) - knockoutMatchStartMillisV241(b));
+}
+
+function maybeOpenNextKnockoutBetModalV243() {
+  clearTimeout(knockoutAutoModalTimerV243);
+  knockoutAutoModalTimerV243 = null;
+  if (knockoutAutoModalOpeningV243) return;
+  if (document.hidden) return;
+  if ($("knockoutBetModalV241") && !$("knockoutBetModalV241").classList.contains("hidden")) return;
+
+  const next = eligibleAutoKnockoutBetMatchesV243()[0];
+  if (!next) return;
+
+  knockoutAutoModalOpeningV243 = true;
+  try {
+    openKnockoutBetModalV241(next.id, { auto: true });
+  } finally {
+    knockoutAutoModalOpeningV243 = false;
+  }
+}
+
+function scheduleKnockoutAutoBetCheckV243(delay = 700) {
+  clearTimeout(knockoutAutoModalTimerV243);
+  knockoutAutoModalTimerV243 = setTimeout(maybeOpenNextKnockoutBetModalV243, delay);
+}
+
+const renderAllOriginalV243 = typeof renderAll === "function" ? renderAll : null;
+if (renderAllOriginalV243 && !window.__knockoutAutoBetV243) {
+  window.__knockoutAutoBetV243 = true;
+  renderAll = function renderAllWithKnockoutAutoBetV243() {
+    const result = renderAllOriginalV243.apply(this, arguments);
+    scheduleKnockoutAutoBetCheckV243(900);
+    return result;
+  };
+}
+
+const renderKnockoutOriginalV243 = typeof renderKnockout === "function" ? renderKnockout : null;
+if (renderKnockoutOriginalV243 && !window.__renderKnockoutDateV243) {
+  window.__renderKnockoutDateV243 = true;
+  renderKnockout = function renderKnockoutWithAutoBetCheckV243() {
+    const result = renderKnockoutOriginalV243.apply(this, arguments);
+    scheduleKnockoutAutoBetCheckV243(900);
+    return result;
+  };
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) scheduleKnockoutAutoBetCheckV243(600);
+});
+document.addEventListener("DOMContentLoaded", () => scheduleKnockoutAutoBetCheckV243(1500));

@@ -11420,3 +11420,14 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
 .knockout-bet-status-v241.locked{color:#fecaca;border-color:rgba(239,68,68,.28);background:rgba(239,68,68,.08)}
 .danger-soft-v241{border-color:rgba(239,68,68,.35)!important;color:#fecaca!important}
 @media(max-width:760px){.permission-user-actions{width:100%}.permission-player-label-v241{width:100%}.knockout-bet-match-v241{grid-template-columns:1fr}}
+
+/* v243 — Data/hora e modal automático da Fase Final */
+.ko-match-date-label-v243{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted,#a8b3c7);font-weight:900;min-width:165px}
+.ko-match-date-label-v243 input{min-height:34px;border-radius:10px}
+.ko-match-date-line-v243{margin-top:6px;padding:5px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.18);background:rgba(15,23,42,.62);color:var(--muted,#a8b3c7);font-size:11px;font-weight:900;text-align:center}
+.knockout-bet-auto-v243,.knockout-bet-deadline-v243{padding:12px 14px;border-radius:14px;border:1px solid rgba(56,189,248,.28);background:rgba(56,189,248,.09);color:#dff7ff}
+.knockout-bet-auto-v243 strong,.knockout-bet-deadline-v243 strong{display:block;color:#fff}
+.knockout-bet-auto-v243 span,.knockout-bet-deadline-v243 span{display:block;color:var(--muted,#a8b3c7);margin-top:3px}
+.knockout-bet-qualified-v243{display:flex;flex-direction:column;gap:7px;padding:12px 14px;border-radius:14px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.72);color:var(--muted,#a8b3c7);font-weight:900}
+.knockout-bet-qualified-v243 select{min-height:42px;border-radius:12px;font-weight:900}
+@media(max-width:760px){.ko-match-date-label-v243{width:100%;min-width:0}.ko-match-date-label-v243 input{width:100%}}
