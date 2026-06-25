@@ -684,13 +684,20 @@ function footballMatchPayloadV153(apiMatch, actor, score = null) {
 function footballMatchPayloadV158(apiMatch, actor, score = null) {
   const apiStatus = String(apiMatch?.status || "").toUpperCase();
   const isFinished = ["FINISHED", "AWARDED"].includes(apiStatus);
+  const apiUtcDate = cleanString(apiMatch.utcDate);
 
   const payload = {
     footballDataId: String(apiMatch.id || ""),
     footballDataStatus: cleanString(apiMatch.status),
     footballDataStage: cleanString(apiMatch.stage),
     footballDataGroup: cleanString(apiMatch.group),
-    footballDataUtcDate: cleanString(apiMatch.utcDate),
+    footballDataUtcDate: apiUtcDate,
+    // v261: a API passa também a corrigir/preencher a hora usada pela app.
+    matchDate: apiUtcDate,
+    date: apiUtcDate,
+    kickoff: apiUtcDate,
+    startAt: apiUtcDate,
+    time: apiUtcDate,
     footballDataLocked: footballShouldLockMatch(apiMatch),
     footballDataUpdatedBy: actor.email,
     source: "football-data.org",
@@ -717,7 +724,27 @@ function footballMatchPayloadV158(apiMatch, actor, score = null) {
 
 const SMART_SYNC_PRE_START_MS_V201 = 5 * 60 * 1000;
 const SMART_SYNC_POST_FINISH_MS_V201 = 5 * 60 * 1000;
-const SMART_SYNC_LATE_CONFIRM_MS_V201 = 6 * 60 * 60 * 1000;
+const SMART_SYNC_LATE_CONFIRM_MS_V201 = 12 * 60 * 60 * 1000;
+
+
+function footballIsKnockoutCalendarDocV261(game = {}) {
+  const id = cleanString(game.id || game.knockoutMatchId || "").toLowerCase();
+  const type = cleanString(game.type || game.phase || game.group || "").toLowerCase();
+  return id.startsWith("ko_") || type.includes("knockout") || type.includes("fase final");
+}
+
+function footballApplyWinnerFieldsV261(target = {}) {
+  const winner = footballSmartWinnerV201(target);
+  if (!winner) return false;
+  let changed = false;
+  ["winner", "winnerTeam", "qualified", "qualifiedTeam"].forEach(key => {
+    if (target[key] !== winner) {
+      target[key] = winner;
+      changed = true;
+    }
+  });
+  return changed;
+}
 
 function footballSmartStatusV201(game = {}) {
   return cleanString(game.footballDataStatus || game.statusApi || game.status).toUpperCase();
@@ -767,8 +794,17 @@ function footballSmartPropagateKnockoutV201(matches = []) {
   let changed = false;
 
   for (const match of matches) {
-    if (!match?.nextMatchId || !match.nextSlot) continue;
     const winner = footballSmartWinnerV201(match);
+    if (winner) {
+      ["winner", "winnerTeam", "qualified", "qualifiedTeam"].forEach(key => {
+        if (match[key] !== winner) {
+          match[key] = winner;
+          match.updatedAt = new Date().toISOString();
+          changed = true;
+        }
+      });
+    }
+    if (!match?.nextMatchId || !match.nextSlot) continue;
     if (!winner) continue;
     const next = byId.get(match.nextMatchId);
     if (!next) continue;
@@ -811,12 +847,14 @@ function footballSmartGameReasonV201(game = {}, now = Date.now(), collection = "
   const justFinished = finished && Number.isFinite(finishedAt) && now - finishedAt <= SMART_SYNC_POST_FINISH_MS_V201;
   const nearStart = start && start - now <= SMART_SYNC_PRE_START_MS_V201 && now - start <= SMART_SYNC_LATE_CONFIRM_MS_V201 && !finalScore;
   const recentlyStartedWithoutFinal = start && now >= start && now - start <= SMART_SYNC_LATE_CONFIRM_MS_V201 && !finalScore;
+  const knockoutNeedsApiDate = collection === "knockout" && !start && game.homeTeam && game.awayTeam && !game.footballDataId;
   const finishedMissingFinal = finished && !finalScore;
   const scoreNotConfirmed = finished && finalScore && game.scoreConfirmed !== true;
   const pointsNotConfirmed = finished && finalScore && game.pointsConfirmed !== true;
   const knockoutNotPropagated = collection === "knockout" && finished && finalScore && !footballSmartKnockoutPropagationOkV201(game, allKnockout);
 
   if (lastError) return { active: true, reason: `erro pendente: ${lastError}`, minutesToStart };
+  if (knockoutNeedsApiDate) return { active: true, reason: "fase final com equipas sem hora/id API", minutesToStart };
   if (live) return { active: true, reason: "jogo a decorrer", minutesToStart };
   if (nearStart) return { active: true, reason: "jogo perto de começar", minutesToStart };
   if (justFinished) return { active: true, reason: "jogo terminou há menos de 5 minutos", minutesToStart };
@@ -1069,6 +1107,16 @@ async function runFootballDataSyncCoreV151(options = {}) {
         payload.syncEndedAt = groupTarget.syncEndedAt || new Date().toISOString();
         payload.syncConfirmedAt = new Date().toISOString();
         payload.syncActive = false;
+        if (footballIsKnockoutCalendarDocV261(groupTarget)) {
+          const winnerDraft = { ...groupTarget, ...payload };
+          const winner = footballSmartWinnerV201(winnerDraft);
+          if (winner) {
+            payload.winner = winner;
+            payload.winnerTeam = winner;
+            payload.qualified = winner;
+            payload.qualifiedTeam = winner;
+          }
+        }
         finalConfirmed += 1;
       } else if (score) {
         payload.scoreConfirmed = false;
@@ -1125,6 +1173,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
         knockoutTarget.syncEndedAt = knockoutTarget.syncEndedAt || new Date().toISOString();
         knockoutTarget.syncConfirmedAt = new Date().toISOString();
         knockoutTarget.syncActive = false;
+        footballApplyWinnerFieldsV261(knockoutTarget);
         finalConfirmed += 1;
       } else if (score) {
         knockoutTarget.liveHomeScore = score.homeScore;
@@ -1146,6 +1195,8 @@ async function runFootballDataSyncCoreV151(options = {}) {
         footballDataUtcDate: knockoutTarget.footballDataUtcDate,
         footballDataLocked: knockoutTarget.footballDataLocked,
         source: knockoutTarget.source,
+        matchDate: knockoutTarget.matchDate || knockoutTarget.footballDataUtcDate || "",
+        qualified: knockoutTarget.qualified || knockoutTarget.winnerTeam || knockoutTarget.winner || "",
         homeScore: knockoutTarget.homeScore ?? null,
         awayScore: knockoutTarget.awayScore ?? null,
         liveHomeScore: knockoutTarget.liveHomeScore ?? null,

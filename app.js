@@ -9,8 +9,8 @@ const PENDING_BETS_KEY = `${STORAGE_KEY}_pending_bets_v1`;
 const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
-const LOGS_PIN = "26060";
-const APP_VERSION_LABEL = "v260";
+const LOGS_PIN = "26160";
+const APP_VERSION_LABEL = "v261";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -17327,3 +17327,250 @@ setTimeout(() => {
     if (document.querySelector(".tab-panel.active")?.id === "knockoutTab") renderKnockout?.();
   } catch {}
 }, 500);
+
+
+// v261 — Fase Final mais simples: API/hora/resultados + cores por ronda.
+const APP_VERSION_V261 = "261.0";
+
+function koV261RoundKeyFromMatchOrGame(item = {}) {
+  const raw = String(item.round || item.roundKey || "").trim().toLowerCase();
+  if (["r32", "r16", "qf", "sf", "final"].includes(raw)) return raw;
+  const label = normalizeComparable(item.roundLabel || item.group || item.phase || "");
+  if (label.includes("16") || label.includes("trinta") || label.includes("avos")) return "r32";
+  if (label.includes("oitav")) return "r16";
+  if (label.includes("quart")) return "qf";
+  if (label.includes("meia") || label.includes("semi")) return "sf";
+  if (label.includes("final")) return "final";
+  return "ko";
+}
+
+function koV261RoundClass(item = {}) {
+  return `ko-round-${koV261RoundKeyFromMatchOrGame(item)}-v261`;
+}
+
+function koV261SetDateFields(target, value) {
+  const clean = String(value || "").trim();
+  if (!target || !clean) return false;
+  let changed = false;
+  ["matchDate", "date", "kickoff", "startAt", "time"].forEach(key => {
+    if (target[key] !== clean) {
+      target[key] = clean;
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+function koV261MatchHasResultObject(item = {}) {
+  return item.homeScore !== null && item.homeScore !== undefined && item.homeScore !== "" &&
+    item.awayScore !== null && item.awayScore !== undefined && item.awayScore !== "";
+}
+
+function koV261ResultWinner(item = {}) {
+  const explicit = item.qualified || item.winnerTeam || item.winner || item.qualifiedTeam || "";
+  if (explicit) return explicit;
+  if (!koV261MatchHasResultObject(item)) return "";
+  const home = Number(item.homeScore);
+  const away = Number(item.awayScore);
+  if (Number.isFinite(home) && Number.isFinite(away)) {
+    if (home > away) return item.homeTeam || "";
+    if (away > home) return item.awayTeam || "";
+  }
+  const hp = item.homePenalties;
+  const ap = item.awayPenalties;
+  if (hp !== null && hp !== undefined && hp !== "" && ap !== null && ap !== undefined && ap !== "") {
+    const homePens = Number(hp);
+    const awayPens = Number(ap);
+    if (Number.isFinite(homePens) && Number.isFinite(awayPens)) {
+      if (homePens > awayPens) return item.homeTeam || "";
+      if (awayPens > homePens) return item.awayTeam || "";
+    }
+  }
+  return "";
+}
+
+function koV261CopyResultFields(target, source) {
+  if (!target || !source || !koV261MatchHasResultObject(source)) return false;
+  let changed = false;
+  ["homeScore", "awayScore", "homePenalties", "awayPenalties", "liveHomeScore", "liveAwayScore", "footballDataId", "footballDataStatus", "footballDataStage", "footballDataGroup", "footballDataUtcDate", "scoreConfirmed", "pointsConfirmed", "syncConfirmedAt", "syncEndedAt", "source"].forEach(key => {
+    if (source[key] !== undefined && target[key] !== source[key]) {
+      target[key] = source[key];
+      changed = true;
+    }
+  });
+  const apiDate = source.matchDate || source.footballDataUtcDate || source.date || source.kickoff || source.startAt || source.time || "";
+  if (apiDate) changed = koV261SetDateFields(target, apiDate) || changed;
+  const winner = koV261ResultWinner({ ...target, ...source });
+  if (winner) {
+    ["winner", "winnerTeam", "qualified", "qualifiedTeam"].forEach(key => {
+      if (target[key] !== winner) {
+        target[key] = winner;
+        changed = true;
+      }
+    });
+  }
+  if (changed) target.updatedAt = new Date().toISOString();
+  return changed;
+}
+
+function koV261ReconcileKnockoutCalendarResults({ persist = false, reason = "fase final reconciliar resultados v261" } = {}) {
+  try { ensureKnockoutSettings?.(); } catch {}
+  const matches = typeof knockoutMatches === "function" ? knockoutMatches() : (appSettings?.knockout?.matches || []);
+  if (!Array.isArray(matches) || !Array.isArray(games)) return false;
+  let changed = false;
+
+  matches.forEach(match => {
+    if (!match?.id) return;
+    const game = games.find(item => String(item.id || "") === String(match.id));
+    if (!game) return;
+
+    // Se a API atualizou o jogo do Calendário, copia o resultado para a Fase Final.
+    if (koV261MatchHasResultObject(game) && !koV261MatchHasResultObject(match)) {
+      changed = koV261CopyResultFields(match, game) || changed;
+      try { markSettingsPending?.(); } catch {}
+    }
+
+    // Se a API atualizou a Fase Final, copia o resultado para o Calendário.
+    if (koV261MatchHasResultObject(match) && !koV261MatchHasResultObject(game)) {
+      changed = koV261CopyResultFields(game, match) || changed;
+      try { markGamePending?.(game.id); } catch {}
+    }
+
+    const apiDate = match.footballDataUtcDate || game.footballDataUtcDate || match.matchDate || game.matchDate || "";
+    if (apiDate) {
+      changed = koV261SetDateFields(match, apiDate) || changed;
+      changed = koV261SetDateFields(game, apiDate) || changed;
+    }
+
+    const winner = koV261ResultWinner(match) || koV261ResultWinner(game);
+    if (winner) {
+      [match, game].forEach(target => ["winner", "winnerTeam", "qualified", "qualifiedTeam"].forEach(key => {
+        if (target[key] !== winner) {
+          target[key] = winner;
+          changed = true;
+        }
+      }));
+    }
+  });
+
+  if (changed) {
+    try { propagateKnockoutWinners?.(true); } catch {}
+    try { ensureKnockoutCalendarGamesV259?.({ persist: false, reason }); } catch {}
+    try { saveLocalData?.(reason); } catch {}
+    if (persist) {
+      try { markSettingsPending?.(); } catch {}
+      try { scheduleFullSync?.(reason, 400); } catch {}
+    }
+  }
+  return changed;
+}
+
+function koV261ApplyRoundColors() {
+  try {
+    document.querySelectorAll("[data-ko-calendar-game-v259]").forEach(card => {
+      const id = card.getAttribute("data-ko-calendar-game-v259") || "";
+      const game = games.find(item => String(item.id || "") === id) || {};
+      card.classList.remove("ko-round-r32-v261", "ko-round-r16-v261", "ko-round-qf-v261", "ko-round-sf-v261", "ko-round-final-v261", "ko-round-ko-v261");
+      card.classList.add(koV261RoundClass(game));
+    });
+  } catch {}
+}
+
+const renderCalendarOriginalV261 = typeof renderCalendar === "function" ? renderCalendar : null;
+if (renderCalendarOriginalV261 && !renderCalendarOriginalV261.__koV261) {
+  renderCalendar = function renderCalendarV261() {
+    try { koV261ReconcileKnockoutCalendarResults({ persist: false, reason: "render calendário resultados fase final v261" }); } catch {}
+    const result = renderCalendarOriginalV261.apply(this, arguments);
+    try { koV261ApplyRoundColors(); } catch {}
+    setTimeout(() => { try { koV261ApplyRoundColors(); } catch {} }, 60);
+    return result;
+  };
+  renderCalendar.__koV261 = true;
+}
+
+const renderKnockoutOriginalV261 = typeof renderKnockout === "function" ? renderKnockout : null;
+if (renderKnockoutOriginalV261 && !renderKnockoutOriginalV261.__koV261) {
+  renderKnockout = function renderKnockoutV261() {
+    try { koV261ReconcileKnockoutCalendarResults({ persist: false, reason: "render fase final resultados v261" }); } catch {}
+    return renderKnockoutOriginalV261.apply(this, arguments);
+  };
+  renderKnockout.__koV261 = true;
+  window.renderKnockout = renderKnockout;
+}
+
+const renderAllOriginalV261 = typeof renderAll === "function" ? renderAll : null;
+if (renderAllOriginalV261 && !renderAllOriginalV261.__koV261) {
+  renderAll = function renderAllV261() {
+    try { koV261ReconcileKnockoutCalendarResults({ persist: false, reason: "render geral fase final v261" }); } catch {}
+    const result = renderAllOriginalV261.apply(this, arguments);
+    try { koV261ApplyRoundColors(); } catch {}
+    return result;
+  };
+  renderAll.__koV261 = true;
+}
+
+const saveKnockoutMatchFromAdminOriginalV261 = typeof saveKnockoutMatchFromAdmin === "function" ? saveKnockoutMatchFromAdmin : null;
+if (saveKnockoutMatchFromAdminOriginalV261 && !saveKnockoutMatchFromAdminOriginalV261.__koV261) {
+  saveKnockoutMatchFromAdmin = async function saveKnockoutMatchFromAdminV261(matchId, button) {
+    const result = await saveKnockoutMatchFromAdminOriginalV261.apply(this, arguments);
+    try {
+      const match = knockoutMatchById?.(matchId);
+      if (match) {
+        const apiDate = match.footballDataUtcDate || match.matchDate || match.date || "";
+        if (apiDate) koV261SetDateFields(match, apiDate);
+        const winner = koV261ResultWinner(match);
+        if (winner) ["winner", "winnerTeam", "qualified", "qualifiedTeam"].forEach(key => { match[key] = winner; });
+        syncKnockoutCalendarGameV259?.(match, { persist: true, reason: "fase final calendário cores/api v261" });
+      }
+      koV261ReconcileKnockoutCalendarResults({ persist: true, reason: "fase final guardar admin v261" });
+      if ($("calendarTab")?.classList.contains("active")) renderCalendar?.();
+    } catch (error) {
+      console.warn("v261: falhou reconciliar Fase Final depois de guardar admin", error);
+    }
+    return result;
+  };
+  saveKnockoutMatchFromAdmin.__koV261 = true;
+}
+
+function debugFaseFinalApiV261() {
+  try { ensureKnockoutCalendarGamesV259?.({ persist: false, reason: "debug api v261" }); } catch {}
+  try { koV261ReconcileKnockoutCalendarResults({ persist: false, reason: "debug api v261" }); } catch {}
+  const matches = typeof knockoutMatches === "function" ? knockoutMatches() : (appSettings?.knockout?.matches || []);
+  return {
+    version: APP_VERSION_V261,
+    explicacao: "A API procura jogos por footballDataId ou por equipas. Quando encontra, grava hora oficial, estado e resultado final tanto na Fase Final como no Calendário.",
+    knockout: (Array.isArray(matches) ? matches : []).map(match => ({
+      id: match.id,
+      round: match.round,
+      label: knockoutRoundLabel?.(match.round) || match.roundLabel || "Fase Final",
+      homeTeam: match.homeTeam || "",
+      awayTeam: match.awayTeam || "",
+      matchDate: match.matchDate || "",
+      footballDataUtcDate: match.footballDataUtcDate || "",
+      footballDataId: match.footballDataId || "",
+      status: match.footballDataStatus || "",
+      score: koV261MatchHasResultObject(match) ? `${match.homeScore}-${match.awayScore}` : "",
+      qualified: koV261ResultWinner(match),
+      calendarGame: (() => {
+        const game = games.find(item => String(item.id || "") === String(match.id || ""));
+        return game ? {
+          matchDate: game.matchDate || "",
+          footballDataUtcDate: game.footballDataUtcDate || "",
+          score: koV261MatchHasResultObject(game) ? `${game.homeScore}-${game.awayScore}` : "",
+          qualified: koV261ResultWinner(game)
+        } : null;
+      })()
+    }))
+  };
+}
+window.debugFaseFinalApiV261 = debugFaseFinalApiV261;
+window.reconciliarFaseFinalApiV261 = function reconciliarFaseFinalApiV261() {
+  const changed = koV261ReconcileKnockoutCalendarResults({ persist: true, reason: "reconciliar manual fase final api v261" });
+  try { renderAll?.(); } catch {}
+  return { changed, debug: debugFaseFinalApiV261() };
+};
+
+setTimeout(() => {
+  try { koV261ReconcileKnockoutCalendarResults({ persist: false, reason: "arranque fase final api v261" }); } catch {}
+  try { koV261ApplyRoundColors(); } catch {}
+}, 1400);

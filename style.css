@@ -12464,3 +12464,84 @@ body.knockout-layout-active #knockoutBracket.ko-list-root-v260,
     display:none!important;
   }
 }
+
+
+/* v261 — cores progressivas na Fase Final: 16 avos → Final */
+.knockout-calendar-row-v259.ko-round-r32-v261,
+#knockoutBracket [data-ko-round-v260="r32"] .ko-list-card-v260{
+  border-color:rgba(59,130,246,.28)!important;
+  background:linear-gradient(135deg,rgba(59,130,246,.105),rgba(8,15,27,.93))!important;
+}
+.knockout-calendar-row-v259.ko-round-r32-v261 .ko-calendar-pill-v259,
+#knockoutBracket [data-ko-round-v260="r32"] .ko-list-card-top-v260 span{
+  color:#bfdbfe!important;
+}
+.knockout-calendar-row-v259.ko-round-r32-v261 .ko-calendar-pill-v259{
+  background:rgba(59,130,246,.13)!important;
+  border-color:rgba(59,130,246,.36)!important;
+}
+
+.knockout-calendar-row-v259.ko-round-r16-v261,
+#knockoutBracket [data-ko-round-v260="r16"] .ko-list-card-v260{
+  border-color:rgba(20,184,166,.30)!important;
+  background:linear-gradient(135deg,rgba(20,184,166,.11),rgba(8,15,27,.93))!important;
+}
+.knockout-calendar-row-v259.ko-round-r16-v261 .ko-calendar-pill-v259,
+#knockoutBracket [data-ko-round-v260="r16"] .ko-list-card-top-v260 span{
+  color:#99f6e4!important;
+}
+.knockout-calendar-row-v259.ko-round-r16-v261 .ko-calendar-pill-v259{
+  background:rgba(20,184,166,.13)!important;
+  border-color:rgba(20,184,166,.38)!important;
+}
+
+.knockout-calendar-row-v259.ko-round-qf-v261,
+#knockoutBracket [data-ko-round-v260="qf"] .ko-list-card-v260{
+  border-color:rgba(34,197,94,.30)!important;
+  background:linear-gradient(135deg,rgba(34,197,94,.11),rgba(8,15,27,.93))!important;
+}
+.knockout-calendar-row-v259.ko-round-qf-v261 .ko-calendar-pill-v259,
+#knockoutBracket [data-ko-round-v260="qf"] .ko-list-card-top-v260 span{
+  color:#bbf7d0!important;
+}
+.knockout-calendar-row-v259.ko-round-qf-v261 .ko-calendar-pill-v259{
+  background:rgba(34,197,94,.13)!important;
+  border-color:rgba(34,197,94,.38)!important;
+}
+
+.knockout-calendar-row-v259.ko-round-sf-v261,
+#knockoutBracket [data-ko-round-v260="sf"] .ko-list-card-v260{
+  border-color:rgba(168,85,247,.34)!important;
+  background:linear-gradient(135deg,rgba(168,85,247,.13),rgba(8,15,27,.94))!important;
+}
+.knockout-calendar-row-v259.ko-round-sf-v261 .ko-calendar-pill-v259,
+#knockoutBracket [data-ko-round-v260="sf"] .ko-list-card-top-v260 span{
+  color:#e9d5ff!important;
+}
+.knockout-calendar-row-v259.ko-round-sf-v261 .ko-calendar-pill-v259{
+  background:rgba(168,85,247,.14)!important;
+  border-color:rgba(168,85,247,.42)!important;
+}
+
+.knockout-calendar-row-v259.ko-round-final-v261,
+#knockoutBracket [data-ko-round-v260="final"] .ko-list-card-v260{
+  border-color:rgba(251,191,36,.46)!important;
+  background:
+    radial-gradient(circle at 86% -30%,rgba(251,191,36,.18),transparent 42%),
+    linear-gradient(135deg,rgba(251,191,36,.16),rgba(8,15,27,.95))!important;
+  box-shadow:0 16px 38px rgba(0,0,0,.26),0 0 0 1px rgba(251,191,36,.08)!important;
+}
+.knockout-calendar-row-v259.ko-round-final-v261 .ko-calendar-pill-v259,
+#knockoutBracket [data-ko-round-v260="final"] .ko-list-card-top-v260 span{
+  color:#fde68a!important;
+}
+.knockout-calendar-row-v259.ko-round-final-v261 .ko-calendar-pill-v259{
+  background:rgba(251,191,36,.16)!important;
+  border-color:rgba(251,191,36,.48)!important;
+}
+
+#knockoutBracket [data-ko-round-v260="r32"] .ko-list-score-v260{background:linear-gradient(135deg,#93c5fd,#dbeafe)!important;color:#07111f!important;}
+#knockoutBracket [data-ko-round-v260="r16"] .ko-list-score-v260{background:linear-gradient(135deg,#5eead4,#ccfbf1)!important;color:#04201e!important;}
+#knockoutBracket [data-ko-round-v260="qf"] .ko-list-score-v260{background:linear-gradient(135deg,#86efac,#dcfce7)!important;color:#052e16!important;}
+#knockoutBracket [data-ko-round-v260="sf"] .ko-list-score-v260{background:linear-gradient(135deg,#d8b4fe,#f3e8ff)!important;color:#210b34!important;}
+#knockoutBracket [data-ko-round-v260="final"] .ko-list-score-v260{background:linear-gradient(135deg,#facc15,#fef3c7)!important;color:#1d1300!important;}
