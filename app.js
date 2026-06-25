@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v257";
+const APP_VERSION_LABEL = "v248";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -3728,9 +3728,6 @@ function defaultKnockoutMatches() {
         homePenalties: null,
         awayPenalties: null,
         matchDate: "",
-        winner: "",
-        winnerTeam: "",
-        qualified: "",
         nextMatchId: round.next ? `ko_${round.next}_${String(nextIndex).padStart(2, "0")}` : "",
         nextSlot: round.next ? (index % 2 === 1 ? "homeTeam" : "awayTeam") : "",
         updatedAt: ""
@@ -3756,10 +3753,7 @@ function ensureKnockoutSettings() {
         ...saved,
         homePenalties: saved.homePenalties ?? null,
         awayPenalties: saved.awayPenalties ?? null,
-        matchDate: saved.matchDate || saved.date || saved.kickoff || saved.startAt || saved.time || "",
-        winner: saved.winner || saved.winnerTeam || saved.qualified || "",
-        winnerTeam: saved.winnerTeam || saved.winner || saved.qualified || "",
-        qualified: saved.qualified || saved.winnerTeam || saved.winner || ""
+        matchDate: saved.matchDate || saved.date || saved.kickoff || saved.startAt || saved.time || ""
       };
     })
   };
@@ -3820,20 +3814,8 @@ function clearInvalidAutoKnockoutScores(previousTeams) {
       match.awayScore = null;
       match.homePenalties = null;
       match.awayPenalties = null;
-      match.winner = "";
-      match.winnerTeam = "";
-      match.qualified = "";
     }
   });
-}
-
-function knockoutExplicitQualifiedTeam(match) {
-  const direct = match?.qualified || match?.winnerTeam || match?.winner || match?.winnerName || "";
-  if (!direct || !match?.homeTeam || !match?.awayTeam) return "";
-  const normalized = normalizeComparable(direct);
-  if (normalized === normalizeComparable(match.homeTeam)) return match.homeTeam;
-  if (normalized === normalizeComparable(match.awayTeam)) return match.awayTeam;
-  return "";
 }
 
 function knockoutWinner(match) {
@@ -3844,10 +3826,8 @@ function knockoutWinner(match) {
   const away = Number(match.awayScore);
   if (!Number.isFinite(home) || !Number.isFinite(away)) return "";
 
-  const explicit = knockoutExplicitQualifiedTeam(match);
-
-  if (home > away) return explicit && normalizeComparable(explicit) === normalizeComparable(match.homeTeam) ? explicit : match.homeTeam;
-  if (away > home) return explicit && normalizeComparable(explicit) === normalizeComparable(match.awayTeam) ? explicit : match.awayTeam;
+  if (home > away) return match.homeTeam;
+  if (away > home) return match.awayTeam;
 
   const hp = match.homePenalties;
   const ap = match.awayPenalties;
@@ -3859,22 +3839,15 @@ function knockoutWinner(match) {
 
   if (!Number.isFinite(homePens) || !Number.isFinite(awayPens) || homePens === awayPens) return "";
 
-  const penWinner = homePens > awayPens ? match.homeTeam : match.awayTeam;
-  return explicit && normalizeComparable(explicit) === normalizeComparable(penWinner) ? explicit : penWinner;
+  return homePens > awayPens ? match.homeTeam : match.awayTeam;
 }
+
 function clearAutoKnockoutSlots() {
   const matches = appSettings.knockout?.matches || [];
   matches.forEach(match => {
     if (!isManualKnockoutRound(match)) {
       match.homeTeam = "";
       match.awayTeam = "";
-      match.homeScore = null;
-      match.awayScore = null;
-      match.homePenalties = null;
-      match.awayPenalties = null;
-      match.winner = "";
-      match.winnerTeam = "";
-      match.qualified = "";
     }
   });
 }
@@ -4199,27 +4172,6 @@ function renderKnockoutInlineEditor(match, mode = "desktop") {
   `;
 }
 
-function knockoutAdminQualifiedSelected(match) {
-  return match?.qualified || match?.winnerTeam || match?.winner || (knockoutMatchHasResult(match) ? knockoutWinner(match) : "");
-}
-
-function knockoutAdminQualifiedOptions(match) {
-  const selected = knockoutAdminQualifiedSelected(match);
-  const teams = [match?.homeTeam || "", match?.awayTeam || ""].filter(Boolean);
-  return `<option value="">A definir pelo resultado</option>${teams.map(team => `<option value="${escapeHtml(team)}" ${normalizeComparable(team) === normalizeComparable(selected) ? "selected" : ""}>${escapeHtml(team)}</option>`).join("")}`;
-}
-
-function renderKnockoutQualifiedControl(match) {
-  const disabled = match?.homeTeam && match?.awayTeam ? "" : "disabled";
-  return `
-    <label class="ko-score-label ko-qualified-label-v247 ko-qualified-label-v253">Equipa qualificada
-      <select class="ko-qualified-team-v247" ${disabled}>
-        ${knockoutAdminQualifiedOptions(match)}
-      </select>
-    </label>
-  `;
-}
-
 function renderKnockoutRecordForm(match) {
   const firstRound = isFirstKnockoutRound(match);
   const teamsReady = Boolean(match.homeTeam && match.awayTeam);
@@ -4257,7 +4209,6 @@ function renderKnockoutRecordForm(match) {
             <input class="ko-away-penalties" type="number" min="0" inputmode="numeric" value="${match.awayPenalties ?? ""}" placeholder="0" ${canScore ? "" : "disabled"} />
           </span>
         </label>
-        ${renderKnockoutQualifiedControl(match)}
       </div>
       <button class="primary small ko-card-save" type="button" data-ko-save="${escapeHtml(match.id)}">${firstRound ? "Guardar equipas/resultado" : "Guardar resultado"}</button>
     </div>
@@ -4657,8 +4608,6 @@ function renderKnockoutAdmin() {
               </span>
             </label>
 
-            ${renderKnockoutQualifiedControl(match)}
-
             <button class="primary small" type="button" data-ko-save="${escapeHtml(match.id)}">${firstRound ? "Guardar 16 avos" : "Guardar resultado"}</button>
             <button class="secondary small ko-record-open-btn-v244" type="button" data-ko-record="${escapeHtml(match.id)}">${knockoutMatchHasResult(match) ? "Editar em modal" : "Adicionar em modal"}</button>
           </div>
@@ -4805,10 +4754,7 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
     awayScore: match.awayScore ?? null,
     homePenalties: match.homePenalties ?? null,
     awayPenalties: match.awayPenalties ?? null,
-    matchDate: match.matchDate || "",
-    winner: match.winner || "",
-    winnerTeam: match.winnerTeam || "",
-    qualified: match.qualified || ""
+    matchDate: match.matchDate || ""
   };
 
   if (firstRound) {
@@ -4849,20 +4795,6 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
   const awayScoreValue = row.querySelector(".ko-away-score")?.value ?? "";
   const homePenaltiesValue = row.querySelector(".ko-home-penalties")?.value ?? "";
   const awayPenaltiesValue = row.querySelector(".ko-away-penalties")?.value ?? "";
-
-  if ((homeScoreValue === "") !== (awayScoreValue === "")) {
-    toast("Preenche os dois campos do resultado ou deixa os dois vazios.");
-    return;
-  }
-
-  if (homeScoreValue !== "") {
-    const homeNumber = Number(homeScoreValue);
-    const awayNumber = Number(awayScoreValue);
-    if (!Number.isFinite(homeNumber) || !Number.isFinite(awayNumber) || homeNumber < 0 || awayNumber < 0 || !Number.isInteger(homeNumber) || !Number.isInteger(awayNumber)) {
-      toast("O resultado tem de ter golos validos.");
-      return;
-    }
-  }
 
   match.homeScore = homeScoreValue === "" ? null : Number(homeScoreValue);
   match.awayScore = awayScoreValue === "" ? null : Number(awayScoreValue);
@@ -4921,23 +4853,7 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
     match.winner = qualifiedValue;
     match.winnerTeam = qualifiedValue;
     match.qualified = qualifiedValue;
-  } else if (hasFullScore) {
-    const computedQualified = knockoutWinner({
-      ...match,
-      winner: "",
-      winnerTeam: "",
-      qualified: ""
-    });
-    if (computedQualified) {
-      match.winner = computedQualified;
-      match.winnerTeam = computedQualified;
-      match.qualified = computedQualified;
-    } else {
-      match.winner = "";
-      match.winnerTeam = "";
-      match.qualified = "";
-    }
-  } else {
+  } else if (!hasFullScore) {
     match.winner = "";
     match.winnerTeam = "";
     match.qualified = "";
@@ -4958,10 +4874,7 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
       awayScore: match.awayScore ?? null,
       homePenalties: match.homePenalties ?? null,
       awayPenalties: match.awayPenalties ?? null,
-      matchDate: match.matchDate || "",
-      winner: match.winner || "",
-      winnerTeam: match.winnerTeam || "",
-      qualified: match.qualified || ""
+      matchDate: match.matchDate || ""
     }
   }, { sync: true });
   markSettingsPending();
@@ -13304,10 +13217,7 @@ function startKnockoutAutoBetIntervalV244() {
 }
 
 startKnockoutAutoBetIntervalV244();
-document.addEventListener("focusin", event => {
-  if (window.__isMundialTextFieldActiveV250?.(event.target)) return;
-  forceKnockoutAutoBetCheckV244(450);
-});
+document.addEventListener("focusin", () => forceKnockoutAutoBetCheckV244(450));
 document.addEventListener("click", event => {
   if (event.target.closest?.("#knockoutBetModalV241, #knockoutRecordModal, button, input, select, textarea, a")) return;
   forceKnockoutAutoBetCheckV244(900);
@@ -14143,1664 +14053,248 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 startKnockoutMandatoryWatcherV247();
 
+// v248 - correcoes do modal obrigatorio, preenchimento API dos 16 avos e limpeza visual da Fase Final.
+const linkedPlayerForProfileOriginalV248 = typeof linkedPlayerForProfileV241 === "function" ? linkedPlayerForProfileV241 : null;
+if (linkedPlayerForProfileOriginalV248 && !window.__linkedPlayerByNameV248) {
+  window.__linkedPlayerByNameV248 = true;
+  linkedPlayerForProfileV241 = function linkedPlayerForProfileNameFallbackV248(profile = currentProfile) {
+    const direct = linkedPlayerForProfileOriginalV248(profile);
+    if (direct) return direct;
+    if (!profile) return null;
 
-// v250 — correção real do foco nos campos/selects.
-// Problema: os watchers automáticos da Fase Final e alguns renders globais corriam
-// logo depois de tocar num input/select/textarea. Isso reconstruía DOM ou abria modal
-// e o campo perdia foco imediatamente. Esta guarda não mexe no valor dos campos:
-// apenas adia renders/modais automáticos enquanto há um campo ativo.
-const FORM_FOCUS_IDLE_MS_V250 = 1400;
-let mundialFormLastInteractionV250 = 0;
-let mundialFormIdleTimersV250 = new Map();
+    const players = playersCatalogV241();
+    const possibleNames = [
+      profile.linkedPlayerName,
+      profile.playerName,
+      profile.jogador,
+      profile.name
+    ].map(value => String(value || "").trim()).filter(Boolean);
 
-function mundialTextFieldV250(target) {
-  try {
-    const el = target?.closest?.("input, select, textarea, [contenteditable='true'], [contenteditable=''], [contenteditable='plaintext-only']");
-    if (!el) return null;
-    const tag = String(el.tagName || "").toLowerCase();
-    const type = String(el.type || "").toLowerCase();
-    if (tag === "textarea" || tag === "select") return el;
-    if (el.isContentEditable) return el;
-    if (tag !== "input") return null;
-    if (["button", "submit", "reset", "checkbox", "radio", "file", "image", "hidden"].includes(type)) return null;
-    return el;
-  } catch {
+    for (const name of possibleNames) {
+      const normalized = normalizeComparable(name);
+      const exact = players.find(player => normalizeComparable(player.name) === normalized);
+      if (exact) return exact;
+    }
+
+    const explicitName = String(profile.linkedPlayerName || profile.playerName || profile.jogador || "").trim();
+    if (explicitName) {
+      return {
+        id: profile.linkedPlayerId || playerIdFromName(explicitName),
+        playerId: profile.linkedPlayerId || playerIdFromName(explicitName),
+        name: explicitName,
+        playerName: explicitName,
+        linkedEmail: normalizeEmail(profile.email || profile.id || ""),
+        linkedUid: profile.uid || "",
+        active: true,
+        source: "profile"
+      };
+    }
+
     return null;
+  };
+}
+
+function portugalDateTimeLocalFromApiV248(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return normalizeKnockoutMatchDateV243(value);
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone: PORTUGAL_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(date).map(part => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+function knockoutApiFixtureIsR32V248(match) {
+  const stage = String(match?.stage || match?.footballDataStage || "").toUpperCase();
+  return stage.includes("32") || stage.includes("16TH") || stage.includes("ROUND_OF_32");
+}
+
+function cleanApiKnockoutFixturesV248(data = {}) {
+  const source = [
+    ...(Array.isArray(data.knockoutFixtures) ? data.knockoutFixtures : []),
+    ...(Array.isArray(data.updatedKnockoutMatches) ? data.updatedKnockoutMatches : []),
+    ...(Array.isArray(data.upcoming) ? data.upcoming : [])
+  ].filter(match => match?.homeTeam && match?.awayTeam)
+    .filter(match => String(match.stage || match.footballDataStage || "").toUpperCase() !== "GROUP_STAGE");
+
+  const byKey = new Map();
+  source.forEach(match => {
+    const key = [
+      normalizeComparable(match.homeTeam),
+      normalizeComparable(match.awayTeam),
+      match.utcDate || match.matchDate || match.footballDataUtcDate || ""
+    ].join("|");
+    if (!byKey.has(key)) byKey.set(key, match);
+  });
+
+  const all = [...byKey.values()].sort((a, b) => {
+    const aTime = new Date(a.utcDate || a.matchDate || a.footballDataUtcDate || "").getTime() || 0;
+    const bTime = new Date(b.utcDate || b.matchDate || b.footballDataUtcDate || "").getTime() || 0;
+    return aTime - bTime;
+  });
+
+  const r32 = all.filter(knockoutApiFixtureIsR32V248);
+  return (r32.length >= 8 ? r32 : all).slice(0, 16);
+}
+
+function applyApiFixturesToR32V248(fixtures = [], overwrite = false) {
+  ensureKnockoutSettings();
+  const slots = knockoutMatches().filter(match => match.round === "r32").sort((a, b) => a.index - b.index);
+  let changed = 0;
+
+  fixtures.slice(0, slots.length).forEach((fixture, index) => {
+    const slot = slots[index];
+    if (!slot) return;
+    const hasTeams = Boolean(slot.homeTeam && slot.awayTeam);
+    const sameExternal = fixture.footballDataId && String(slot.footballDataId || "") === String(fixture.footballDataId);
+    if (hasTeams && !overwrite && !sameExternal) return;
+
+    const nextDate = portugalDateTimeLocalFromApiV248(fixture.utcDate || fixture.matchDate || fixture.footballDataUtcDate || "");
+    const before = JSON.stringify({
+      homeTeam: slot.homeTeam || "",
+      awayTeam: slot.awayTeam || "",
+      matchDate: slot.matchDate || "",
+      footballDataId: slot.footballDataId || ""
+    });
+
+    Object.assign(slot, {
+      homeTeam: fixture.homeTeam || slot.homeTeam || "",
+      awayTeam: fixture.awayTeam || slot.awayTeam || "",
+      matchDate: nextDate || slot.matchDate || "",
+      date: nextDate || slot.matchDate || "",
+      footballDataId: fixture.footballDataId || slot.footballDataId || "",
+      footballDataStatus: fixture.status || fixture.footballDataStatus || slot.footballDataStatus || "",
+      footballDataStage: fixture.stage || fixture.footballDataStage || slot.footballDataStage || "",
+      footballDataGroup: fixture.group || fixture.footballDataGroup || slot.footballDataGroup || "",
+      footballDataUtcDate: fixture.utcDate || fixture.footballDataUtcDate || slot.footballDataUtcDate || "",
+      source: "football-data.org",
+      updatedAt: new Date().toISOString()
+    });
+
+    const after = JSON.stringify({
+      homeTeam: slot.homeTeam || "",
+      awayTeam: slot.awayTeam || "",
+      matchDate: slot.matchDate || "",
+      footballDataId: slot.footballDataId || ""
+    });
+    if (before !== after) changed += 1;
+  });
+
+  if (changed) {
+    propagateKnockoutWinners(false);
+    markSettingsPending();
+    saveLocalData("fase final preenchida pela API");
   }
+
+  return changed;
 }
 
-function mundialActiveTextFieldV250() {
-  return mundialTextFieldV250(document.activeElement);
-}
+async function fillKnockoutR32FromApiV248(overwrite = false) {
+  if (!hasPermission("editKnockout")) return toast("Sem permissao para editar a Fase Final.");
+  if (!currentUser || !firebaseAuth) return toast("Tens de estar com login feito.");
 
-function mundialMarkFormInteractionV250(target) {
-  if (mundialTextFieldV250(target)) mundialFormLastInteractionV250 = Date.now();
-}
+  const url = footballDataFunctionUrlV139();
+  if (!url) return toast("Projeto Firebase em falta no config.js.");
 
-function mundialFormIsActiveV250() {
-  if (mundialActiveTextFieldV250()) return true;
-  return Date.now() - mundialFormLastInteractionV250 < FORM_FOCUS_IDLE_MS_V250;
-}
+  const btn = $("fillKnockoutApiBtnV248");
+  const oldText = btn?.textContent || "";
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A procurar na API...";
+  }
 
-window.__isMundialTextFieldActiveV250 = function isMundialTextFieldActiveV250(target) {
-  return Boolean(mundialTextFieldV250(target) || mundialFormIsActiveV250());
-};
+  try {
+    const token = await currentUser.getIdToken(true);
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        competition: "WC",
+        season: "2026",
+        mode: "manual",
+        daysBefore: 3,
+        daysAfter: 120
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) throw new Error(data.error || `HTTP ${response.status}`);
 
-function mundialRunWhenFormIdleV250(key, fn, delay = FORM_FOCUS_IDLE_MS_V250) {
-  const old = mundialFormIdleTimersV250.get(key);
-  if (old) clearTimeout(old);
-  const timer = setTimeout(() => {
-    mundialFormIdleTimersV250.delete(key);
-    if (mundialFormIsActiveV250()) {
-      mundialRunWhenFormIdleV250(key, fn, delay);
+    mergeFootballDataKnockoutV139(data.updatedKnockoutMatches || []);
+    const fixtures = cleanApiKnockoutFixturesV248(data);
+    if (!fixtures.length) {
+      toast("A API ainda nao devolveu jogos da Fase Final com equipas definidas.");
       return;
     }
-    try { fn(); } catch (error) { console.warn(`v250: ação adiada falhou (${key})`, error); }
-  }, delay);
-  mundialFormIdleTimersV250.set(key, timer);
+
+    const changed = applyApiFixturesToR32V248(fixtures, overwrite);
+    if (!changed) {
+      toast("Nao havia slots vazios para preencher nos 16 avos.");
+      return;
+    }
+
+    await persistSettings();
+    renderKnockout();
+    renderKnockoutAdmin();
+    scheduleKnockoutMandatoryCheckV247(500);
+    toast(`${changed} jogo(s) dos 16 avos preenchido(s) pela API.`);
+  } catch (error) {
+    console.error("Preencher 16 avos pela API falhou:", error);
+    toast(`API Fase Final: ${error.message || "erro"}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = oldText || "Preencher 16 avos pela API";
+    }
+  }
 }
 
-// Marca interação em campos antes dos listeners antigos da app correrem.
-["pointerdown", "mousedown", "touchstart", "click", "focusin", "keydown", "input", "change"].forEach(type => {
-  document.addEventListener(type, event => mundialMarkFormInteractionV250(event.target), true);
-});
+function addKnockoutApiFillControlsV248() {
+  const panel = $("knockoutAdminPanel");
+  if (!panel || $("fillKnockoutApiBtnV248")) return;
+  const note = panel.querySelector(".ko-admin-note") || panel.firstElementChild;
+  if (!note) return;
+  const box = document.createElement("div");
+  box.className = "ko-api-fill-v248";
+  box.innerHTML = `
+    <div>
+      <strong>Preencher 16 avos pela API</strong>
+      <span>Vai buscar os jogos da Fase Final à football-data.org e preenche os slots vazios. Depois a árvore continua automática até à final.</span>
+    </div>
+    <button id="fillKnockoutApiBtnV248" class="secondary small" type="button">Preencher 16 avos pela API</button>
+  `;
+  note.insertAdjacentElement("afterend", box);
+}
 
-document.addEventListener("focusout", event => {
-  if (!mundialTextFieldV250(event.target)) return;
-  mundialFormLastInteractionV250 = Date.now();
-  mundialRunWhenFormIdleV250("post-focusout-check", () => {
-    try { scheduleKnockoutMandatoryCheckV247?.(250); } catch {}
-  }, FORM_FOCUS_IDLE_MS_V250);
+const renderKnockoutAdminOriginalV248 = typeof renderKnockoutAdmin === "function" ? renderKnockoutAdmin : null;
+if (renderKnockoutAdminOriginalV248 && !window.__renderKnockoutAdminApiFillV248) {
+  window.__renderKnockoutAdminApiFillV248 = true;
+  renderKnockoutAdmin = function renderKnockoutAdminApiFillV248() {
+    const result = renderKnockoutAdminOriginalV248.apply(this, arguments);
+    setTimeout(addKnockoutApiFillControlsV248, 0);
+    return result;
+  };
+}
+
+document.addEventListener("click", event => {
+  const apiBtn = event.target.closest?.("#fillKnockoutApiBtnV248");
+  if (!apiBtn) return;
+  event.preventDefault();
+  event.stopPropagation();
+  fillKnockoutR32FromApiV248(false);
 }, true);
 
-function mundialDeferAutoWorkV250(key, original, context, args) {
-  if (!mundialFormIsActiveV250()) return original.apply(context, args);
-  mundialRunWhenFormIdleV250(key, () => original.apply(context, args));
-  return undefined;
-}
-
-function mundialPatchFunctionV250(name, getter, setter) {
-  try {
-    const original = getter();
-    if (typeof original !== "function" || original.__mundialFocusPatchedV250) return;
-    const patched = function mundialFocusSafeV250() {
-      return mundialDeferAutoWorkV250(name, original, this, arguments);
-    };
-    patched.__mundialFocusPatchedV250 = true;
-    setter(patched);
-  } catch (error) {
-    console.warn(`v250: não consegui proteger ${name}`, error);
-  }
-}
-
-if (!window.__mundialGlobalFocusFixV250) {
-  window.__mundialGlobalFocusFixV250 = true;
-
-  // Renders principais que podem reconstruir inputs/selects.
-  mundialPatchFunctionV250("renderAll", () => renderAll, value => { renderAll = value; });
-  mundialPatchFunctionV250("renderActivePageV187", () => renderActivePageV187, value => { renderActivePageV187 = value; });
-  mundialPatchFunctionV250("renderCalendar", () => renderCalendar, value => { renderCalendar = value; });
-  mundialPatchFunctionV250("renderAdmin", () => renderAdmin, value => { renderAdmin = value; });
-  mundialPatchFunctionV250("renderSettingsForm", () => renderSettingsForm, value => { renderSettingsForm = value; });
-  mundialPatchFunctionV250("renderAppSettingsPanelV162", () => renderAppSettingsPanelV162, value => { renderAppSettingsPanelV162 = value; });
-  mundialPatchFunctionV250("renderUserBetsEditor", () => renderUserBetsEditor, value => { renderUserBetsEditor = value; });
-  mundialPatchFunctionV250("renderPermissionsUsers", () => renderPermissionsUsers, value => { renderPermissionsUsers = value; });
-  mundialPatchFunctionV250("renderKnockout", () => renderKnockout, value => { renderKnockout = value; });
-  mundialPatchFunctionV250("renderKnockoutAdmin", () => renderKnockoutAdmin, value => { renderKnockoutAdmin = value; });
-  if (typeof renderAdminSectionsV187 === "function") mundialPatchFunctionV250("renderAdminSectionsV187", () => renderAdminSectionsV187, value => { renderAdminSectionsV187 = value; });
-  if (typeof renderAdminSectionsV190 === "function") mundialPatchFunctionV250("renderAdminSectionsV190", () => renderAdminSectionsV190, value => { renderAdminSectionsV190 = value; });
-  if (typeof organizeAdminPageV228 === "function") mundialPatchFunctionV250("organizeAdminPageV228", () => organizeAdminPageV228, value => { organizeAdminPageV228 = value; });
-  if (typeof organizeSettingsPageV228 === "function") mundialPatchFunctionV250("organizeSettingsPageV228", () => organizeSettingsPageV228, value => { organizeSettingsPageV228 = value; });
-  if (typeof renderSuspendedGameAdminV159 === "function") mundialPatchFunctionV250("renderSuspendedGameAdminV159", () => renderSuspendedGameAdminV159, value => { renderSuspendedGameAdminV159 = value; });
-}
-
-// Protege especificamente o modal obrigatório da Fase Final.
-const scheduleKnockoutMandatoryCheckOriginalV250 = typeof scheduleKnockoutMandatoryCheckV247 === "function" ? scheduleKnockoutMandatoryCheckV247 : null;
-if (scheduleKnockoutMandatoryCheckOriginalV250 && !window.__koMandatoryScheduleFocusFixV250) {
-  window.__koMandatoryScheduleFocusFixV250 = true;
-  scheduleKnockoutMandatoryCheckV247 = function scheduleKnockoutMandatoryCheckFocusFixV250(delay = 700) {
-    if (mundialFormIsActiveV250()) {
-      mundialRunWhenFormIdleV250("scheduleKnockoutMandatoryCheckV247", () => scheduleKnockoutMandatoryCheckOriginalV250.call(this, Math.max(250, delay)));
-      return undefined;
-    }
-    return scheduleKnockoutMandatoryCheckOriginalV250.apply(this, arguments);
-  };
-}
-
-const runKnockoutMandatoryCheckOriginalV250 = typeof runKnockoutMandatoryCheckV247 === "function" ? runKnockoutMandatoryCheckV247 : null;
-if (runKnockoutMandatoryCheckOriginalV250 && !window.__koMandatoryRunFocusFixV250) {
-  window.__koMandatoryRunFocusFixV250 = true;
-  runKnockoutMandatoryCheckV247 = function runKnockoutMandatoryCheckFocusFixV250() {
-    if (mundialFormIsActiveV250()) {
-      mundialRunWhenFormIdleV250("runKnockoutMandatoryCheckV247", () => runKnockoutMandatoryCheckOriginalV250.apply(this, arguments));
-      return undefined;
-    }
-    return runKnockoutMandatoryCheckOriginalV250.apply(this, arguments);
-  };
-}
-
-const openKnockoutMandatoryModalOriginalV250 = typeof openKnockoutMandatoryModalV247 === "function" ? openKnockoutMandatoryModalV247 : null;
-if (openKnockoutMandatoryModalOriginalV250 && !window.__koMandatoryOpenFocusFixV250) {
-  window.__koMandatoryOpenFocusFixV250 = true;
-  openKnockoutMandatoryModalV247 = function openKnockoutMandatoryModalFocusFixV250() {
-    const active = mundialActiveTextFieldV250();
-    const modal = document.getElementById("knockoutMandatoryModalV247");
-    const activeInsideMandatory = Boolean(active && modal && modal.contains(active));
-
-    // Não abrir o modal por cima de outro campo que o user acabou de tocar/escrever.
-    if (mundialFormIsActiveV250() && !activeInsideMandatory) {
-      mundialRunWhenFormIdleV250("openKnockoutMandatoryModalV247", () => openKnockoutMandatoryModalOriginalV250.apply(this, arguments));
-      return false;
-    }
-    return openKnockoutMandatoryModalOriginalV250.apply(this, arguments);
-  };
-}
-
-const renderKnockoutMandatoryModalOriginalV250 = typeof renderKnockoutMandatoryModalV247 === "function" ? renderKnockoutMandatoryModalV247 : null;
-if (renderKnockoutMandatoryModalOriginalV250 && !window.__koMandatoryRenderFocusFixV250) {
-  window.__koMandatoryRenderFocusFixV250 = true;
-  renderKnockoutMandatoryModalV247 = function renderKnockoutMandatoryModalFocusFixV250() {
-    const modal = document.getElementById("knockoutMandatoryModalV247");
-    const active = mundialActiveTextFieldV250();
-    const activeInsideMandatory = Boolean(active && modal && modal.contains(active));
-    const body = document.getElementById("koMandatoryBodyV247");
-    const hasRows = Boolean(body?.querySelector?.("[data-ko-mandatory-match]"));
-
-    // Se o user está a preencher o próprio modal, não reconstruir o HTML.
-    if (activeInsideMandatory && hasRows) {
-      try {
-        const subtitle = document.getElementById("koMandatorySubtitleV247");
-        const player = knockoutMandatoryPlayerV247?.();
-        const pending = knockoutMandatoryPendingMatchesV247?.() || [];
-        if (subtitle && player) subtitle.textContent = `${player.name} - ${pending.length} aposta(s) por preencher`;
-      } catch {}
-      return undefined;
-    }
-    return renderKnockoutMandatoryModalOriginalV250.apply(this, arguments);
-  };
-}
-
-const forceKnockoutAutoBetCheckOriginalV250 = typeof forceKnockoutAutoBetCheckV244 === "function" ? forceKnockoutAutoBetCheckV244 : null;
-if (forceKnockoutAutoBetCheckOriginalV250 && !window.__koAutoForceFocusFixV250) {
-  window.__koAutoForceFocusFixV250 = true;
-  forceKnockoutAutoBetCheckV244 = function forceKnockoutAutoBetCheckFocusFixV250(delay = 500) {
-    if (mundialFormIsActiveV250()) {
-      mundialRunWhenFormIdleV250("forceKnockoutAutoBetCheckV244", () => forceKnockoutAutoBetCheckOriginalV250.call(this, delay));
-      return undefined;
-    }
-    return forceKnockoutAutoBetCheckOriginalV250.apply(this, arguments);
-  };
-}
-
-const queueRealtimeRenderOriginalV250 = typeof queueRealtimeRender === "function" ? queueRealtimeRender : null;
-if (queueRealtimeRenderOriginalV250 && !window.__queueRealtimeFocusFixV250) {
-  window.__queueRealtimeFocusFixV250 = true;
-  queueRealtimeRender = function queueRealtimeRenderFocusFixV250(reason = "firebase realtime") {
-    if (mundialFormIsActiveV250()) {
-      mundialRunWhenFormIdleV250("queueRealtimeRender", () => queueRealtimeRenderOriginalV250.call(this, reason));
-      return undefined;
-    }
-    return queueRealtimeRenderOriginalV250.apply(this, arguments);
-  };
-}
-
-// Diagnóstico simples para testar no DevTools se voltar a acontecer.
-window.debugFocusV250 = function debugFocusV250() {
-  const active = document.activeElement;
-  return {
-    activeTag: active?.tagName || "",
-    activeId: active?.id || "",
-    activeClass: String(active?.className || ""),
-    formActive: mundialFormIsActiveV250(),
-    msSinceFormInteraction: Date.now() - mundialFormLastInteractionV250
-  };
-};
-
-// v251 — lógica segura para detetar apostas obrigatórias da Fase Final.
-// Esta camada centraliza a decisão "por apostar / apostado / fora do prazo" sem redesenhar o modal.
-const KNOCKOUT_REQUIRED_VERSION_V251 = "251.0";
-const KNOCKOUT_REQUIRED_LOCK_MINUTES_V251 = 5;
-
-function knockoutRequiredNowV251() {
-  return Date.now();
-}
-
-function knockoutRequiredDataReadyV251() {
-  const missing = [];
-  if (!currentUser) missing.push("auth/user");
-  if (!currentProfile) missing.push("perfil");
-  if (!appSettings) missing.push("definicoes");
-  if (!appSettings?.knockout || !Array.isArray(appSettings.knockout.matches)) missing.push("jogos-fase-final");
-  if (!Array.isArray(bets)) missing.push("apostas");
-  return { ready: missing.length === 0, missing };
-}
-
-function knockoutRequiredCurrentPlayerV251() {
-  try { return linkedPlayerForCurrentUserV241?.() || null; } catch { return null; }
-}
-
-function knockoutRequiredMatchStartMillisV251(match) {
-  try {
-    const time = knockoutMatchStartMillisV241?.(match) || 0;
-    return Number.isFinite(Number(time)) ? Number(time) : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function knockoutRequiredDeadlineMillisV251(match) {
-  const start = knockoutRequiredMatchStartMillisV251(match);
-  return start ? start - (KNOCKOUT_REQUIRED_LOCK_MINUTES_V251 * 60 * 1000) : 0;
-}
-
-function knockoutRequiredHasFinalResultV251(match) {
-  try { return Boolean(knockoutMatchHasResult?.(match)); } catch { return false; }
-}
-
-function knockoutRequiredExistingBetV251(player, match) {
-  if (!player || !match?.id) return null;
-  try {
-    return knockoutBetForPlayerMatchV241?.(player.id, match.id) || null;
-  } catch {
-    return (bets || []).find(bet => String(bet?.playerId || "") === String(player.id || "") && String(bet?.gameId || "") === String(match.id || "")) || null;
-  }
-}
-
-function knockoutRequiredReadinessV251(match) {
-  const reasons = [];
-  if (!match || !match.id) reasons.push("sem-id");
-  if (!String(match?.homeTeam || "").trim()) reasons.push("sem-equipa-1");
-  if (!String(match?.awayTeam || "").trim()) reasons.push("sem-equipa-2");
-  if (!knockoutRequiredMatchStartMillisV251(match)) reasons.push("sem-data-hora");
-  if (knockoutRequiredHasFinalResultV251(match)) reasons.push("resultado-lancado");
-
-  return {
-    ready: reasons.length === 0,
-    reasons,
-    startAt: knockoutRequiredMatchStartMillisV251(match),
-    deadlineAt: knockoutRequiredDeadlineMillisV251(match)
-  };
-}
-
-function knockoutRequiredDeadlineOpenV251(match, now = knockoutRequiredNowV251()) {
-  const deadline = knockoutRequiredDeadlineMillisV251(match);
-  return Boolean(deadline && Number(now) < deadline);
-}
-
-function knockoutRequiredStatusForMatchV251(match, player, now = knockoutRequiredNowV251()) {
-  const readiness = knockoutRequiredReadinessV251(match);
-  const bet = knockoutRequiredExistingBetV251(player, match);
-
-  if (!readiness.ready) {
-    return { key: "not-ready", label: "Não obrigatório", ready: false, reasons: readiness.reasons, bet: null, startAt: readiness.startAt, deadlineAt: readiness.deadlineAt };
-  }
-
-  if (!player) {
-    return { key: "no-player", label: "Sem jogador ligado", ready: true, reasons: [], bet: null, startAt: readiness.startAt, deadlineAt: readiness.deadlineAt };
-  }
-
-  if (bet) {
-    return { key: "done", label: "Apostado", ready: true, reasons: [], bet, startAt: readiness.startAt, deadlineAt: readiness.deadlineAt };
-  }
-
-  if (!knockoutRequiredDeadlineOpenV251(match, now)) {
-    return { key: "missed", label: "Fora deste jogo", ready: true, reasons: [], bet: null, startAt: readiness.startAt, deadlineAt: readiness.deadlineAt };
-  }
-
-  return { key: "pending", label: "Por apostar", ready: true, reasons: [], bet: null, startAt: readiness.startAt, deadlineAt: readiness.deadlineAt };
-}
-
-function knockoutRequiredMatchSummaryV251(item) {
-  const match = item.match || item;
-  const status = item.status || knockoutRequiredStatusForMatchV251(match, knockoutRequiredCurrentPlayerV251());
-  return {
-    id: match?.id || "",
-    round: match?.round || "",
-    roundLabel: knockoutRoundLabel?.(match?.round) || match?.roundLabel || "Fase Final",
-    index: match?.index || "",
-    homeTeam: match?.homeTeam || "",
-    awayTeam: match?.awayTeam || "",
-    matchDate: match?.matchDate || match?.date || "",
-    startAt: status.startAt || 0,
-    deadlineAt: status.deadlineAt || 0,
-    status: status.key,
-    label: status.label,
-    reasons: status.reasons || [],
-    hasBet: Boolean(status.bet)
-  };
-}
-
-function knockoutRequiredDetectionV251(options = {}) {
-  const now = Number(options.now || knockoutRequiredNowV251());
-  const data = knockoutRequiredDataReadyV251();
-  const player = knockoutRequiredCurrentPlayerV251();
-  const report = {
-    version: KNOCKOUT_REQUIRED_VERSION_V251,
-    dataReady: data.ready,
-    missingData: data.missing,
-    hasCurrentUser: Boolean(currentUser),
-    userEmail: normalizeEmail?.(currentUser?.email || "") || "",
-    profileRole: currentProfile?.role || "",
-    profileActive: currentProfile?.active !== false,
-    player: player ? { id: player.id, name: player.name } : null,
-    mandatory: [],
-    pending: [],
-    missed: [],
-    done: [],
-    notReady: [],
-    counts: { mandatory: 0, pending: 0, missed: 0, done: 0, notReady: 0 }
-  };
-
-  if (!data.ready || currentProfile?.active === false) {
-    return report;
-  }
-
-  try { ensureKnockoutSettings?.(); } catch {}
-
-  const matches = (typeof knockoutMatches === "function" ? knockoutMatches() : appSettings?.knockout?.matches || []) || [];
-  matches.forEach(match => {
-    const status = knockoutRequiredStatusForMatchV251(match, player, now);
-    const item = { match, status };
-
-    if (status.ready) report.mandatory.push(item);
-    else report.notReady.push(item);
-
-    if (status.key === "pending") report.pending.push(item);
-    else if (status.key === "missed") report.missed.push(item);
-    else if (status.key === "done") report.done.push(item);
-  });
-
-  const sortByStart = (a, b) => (a.status.startAt || 9999999999999) - (b.status.startAt || 9999999999999) || String(a.match?.id || "").localeCompare(String(b.match?.id || ""));
-  report.mandatory.sort(sortByStart);
-  report.pending.sort(sortByStart);
-  report.missed.sort(sortByStart);
-  report.done.sort(sortByStart);
-  report.notReady.sort(sortByStart);
-  report.counts = {
-    mandatory: report.mandatory.length,
-    pending: report.pending.length,
-    missed: report.missed.length,
-    done: report.done.length,
-    notReady: report.notReady.length
-  };
-  return report;
-}
-
-function knockoutRequiredDebugReportV251(options = {}) {
-  const report = knockoutRequiredDetectionV251(options);
-  return {
-    version: report.version,
-    dataReady: report.dataReady,
-    missingData: report.missingData,
-    hasCurrentUser: report.hasCurrentUser,
-    userEmail: report.userEmail,
-    profileRole: report.profileRole,
-    profileActive: report.profileActive,
-    player: report.player,
-    counts: report.counts,
-    pending: report.pending.map(knockoutRequiredMatchSummaryV251),
-    missed: report.missed.map(knockoutRequiredMatchSummaryV251),
-    done: report.done.map(knockoutRequiredMatchSummaryV251),
-    mandatory: report.mandatory.map(knockoutRequiredMatchSummaryV251),
-    notReady: report.notReady.map(knockoutRequiredMatchSummaryV251)
-  };
-}
-
-// Liga a lógica antiga dos painéis/modais à função central v251.
-if (!window.__knockoutRequiredLogicV251) {
-  window.__knockoutRequiredLogicV251 = true;
-
-  try {
-    knockoutMatchReadyForBetV245 = function knockoutMatchReadyForBetV251(match) {
-      return knockoutRequiredReadinessV251(match).ready;
-    };
-  } catch {}
-
-  try {
-    currentUserRequiredKnockoutBetsV245 = function currentUserRequiredKnockoutBetsV251() {
-      return knockoutRequiredDetectionV251().pending.map(item => item.match);
-    };
-    currentUserMissedKnockoutBetsV245 = function currentUserMissedKnockoutBetsV251() {
-      return knockoutRequiredDetectionV251().missed.map(item => item.match);
-    };
-    currentUserDoneKnockoutBetsV245 = function currentUserDoneKnockoutBetsV251() {
-      return knockoutRequiredDetectionV251().done.map(item => item.match);
-    };
-  } catch {}
-
-  try {
-    knockoutMatchMandatoryReadyV247 = function knockoutMatchMandatoryReadyV251(match) {
-      return knockoutRequiredReadinessV251(match).ready;
-    };
-    knockoutBetDeadlineMillisV247 = function knockoutBetDeadlineMillisV251(match) {
-      return knockoutRequiredDeadlineMillisV251(match);
-    };
-    knockoutMandatoryDeadlineOpenV247 = function knockoutMandatoryDeadlineOpenV251(match) {
-      return knockoutRequiredDeadlineOpenV251(match);
-    };
-    knockoutMandatoryDataReadyV247 = function knockoutMandatoryDataReadyV251() {
-      return knockoutRequiredDataReadyV251().ready;
-    };
-    knockoutMandatoryPlayerV247 = function knockoutMandatoryPlayerV251() {
-      return knockoutRequiredCurrentPlayerV251();
-    };
-    knockoutMandatoryPendingMatchesV247 = function knockoutMandatoryPendingMatchesV251() {
-      return knockoutRequiredDetectionV251().pending.map(item => item.match);
-    };
-    knockoutMandatoryMissedMatchesV247 = function knockoutMandatoryMissedMatchesV251() {
-      return knockoutRequiredDetectionV251().missed.map(item => item.match);
-    };
-    knockoutMandatoryDoneMatchesV247 = function knockoutMandatoryDoneMatchesV251() {
-      return knockoutRequiredDetectionV251().done.map(item => item.match);
-    };
-    knockoutMandatoryStatusV247 = function knockoutMandatoryStatusV251(match) {
-      const status = knockoutRequiredStatusForMatchV251(match, knockoutRequiredCurrentPlayerV251());
-      return { key: status.key, label: status.label };
-    };
-  } catch {}
-
-  try {
-    eligibleAutoKnockoutBetMatchesV243 = function eligibleAutoKnockoutBetMatchesV251() {
-      return knockoutRequiredDetectionV251().pending.map(item => item.match);
-    };
-  } catch {}
-
-  window.getKnockoutRequiredDetectionV251 = knockoutRequiredDetectionV251;
-  window.debugKnockoutRequiredV251 = knockoutRequiredDebugReportV251;
-}
-
-// v252 — Modal automático obrigatório ligado à lógica segura v251.
-// Nesta fase o modal não inventa regras: só abre quando o relatório central v251
-// diz que há apostas pendentes reais da Fase Final.
-const KNOCKOUT_MANDATORY_VERSION_V252 = "252.0";
-let knockoutMandatoryTimerV252 = null;
-let knockoutMandatoryOpeningV252 = false;
-
-function knockoutMandatoryReportV252() {
-  try {
-    return knockoutRequiredDetectionV251?.() || null;
-  } catch (error) {
-    console.warn("Relatório obrigatório Fase Final v252 falhou:", error);
-    return null;
-  }
-}
-
-function knockoutMandatoryFormBusyV252() {
-  try {
-    if (typeof window.__isMundialTextFieldActiveV250 === "function" && window.__isMundialTextFieldActiveV250()) return true;
-  } catch {}
-  const active = document.activeElement;
-  if (!active) return false;
-  try {
-    return Boolean(active.closest?.("input, select, textarea, [contenteditable='true'], [contenteditable=''], [contenteditable='plaintext-only']"));
-  } catch {
-    return false;
-  }
-}
-
-function knockoutMandatoryModalVisibleV252() {
-  const modal = document.getElementById("knockoutMandatoryModalV247");
-  return Boolean(modal && !modal.classList.contains("hidden"));
-}
-
-function knockoutMandatoryPendingItemsV252() {
-  const report = knockoutMandatoryReportV252();
-  if (!report?.dataReady) return [];
-  return Array.isArray(report.pending) ? report.pending : [];
-}
-
-function knockoutMandatoryPendingMatchesV252() {
-  return knockoutMandatoryPendingItemsV252().map(item => item.match).filter(Boolean);
-}
-
-function knockoutMandatoryCanAutoOpenV252() {
-  const report = knockoutMandatoryReportV252();
-  if (!report?.dataReady) return { ok: false, reason: "dados-a-carregar", report };
-  if (!report.player) return { ok: false, reason: "sem-jogador", report };
-  if (currentProfile?.active === false) return { ok: false, reason: "user-inativo", report };
-  if (!report.pending?.length) return { ok: false, reason: "sem-pendentes", report };
-  if (document.hidden) return { ok: false, reason: "documento-oculto", report };
-  return { ok: true, reason: "pendentes", report };
-}
-
-function runKnockoutMandatoryCheckV252() {
-  clearTimeout(knockoutMandatoryTimerV252);
-  knockoutMandatoryTimerV252 = null;
-
-  if (knockoutMandatoryOpeningV252) return false;
-
-  const decision = knockoutMandatoryCanAutoOpenV252();
-
-  if (!decision.ok) {
-    if (decision.report?.dataReady && !decision.report?.pending?.length) {
-      try { closeKnockoutMandatoryModalV247?.(true); } catch {}
-    } else if (!decision.report?.dataReady) {
-      scheduleKnockoutMandatoryCheckV252(900);
-    }
-    return false;
-  }
-
-  const visible = knockoutMandatoryModalVisibleV252();
-  if (knockoutMandatoryFormBusyV252() && !visible) {
-    scheduleKnockoutMandatoryCheckV252(1200);
-    return false;
-  }
-
-  knockoutMandatoryOpeningV252 = true;
-  try {
-    if (typeof renderKnockoutMandatoryModalV247 === "function" && visible) {
-      // Se o modal já está aberto, deixa o render protegido da v250 decidir se pode atualizar.
-      renderKnockoutMandatoryModalV247();
-    }
-    if (typeof openKnockoutMandatoryModalV247 === "function") {
-      return openKnockoutMandatoryModalV247();
-    }
-  } catch (error) {
-    console.warn("Abrir modal obrigatório Fase Final v252 falhou:", error);
-  } finally {
-    knockoutMandatoryOpeningV252 = false;
-  }
-  return false;
-}
-
-function scheduleKnockoutMandatoryCheckV252(delay = 700) {
-  clearTimeout(knockoutMandatoryTimerV252);
-  knockoutMandatoryTimerV252 = setTimeout(runKnockoutMandatoryCheckV252, Math.max(80, Number(delay) || 700));
-}
-
-if (!window.__koMandatoryModalV252) {
-  window.__koMandatoryModalV252 = true;
-
-  // A lista do modal passa a vir diretamente do relatório seguro v251.
-  try {
-    knockoutMandatoryPendingMatchesV247 = function knockoutMandatoryPendingMatchesV252Adapter() {
-      return knockoutMandatoryPendingMatchesV252();
-    };
-    knockoutMandatoryMissedMatchesV247 = function knockoutMandatoryMissedMatchesV252Adapter() {
-      const report = knockoutMandatoryReportV252();
-      return report?.dataReady ? (report.missed || []).map(item => item.match).filter(Boolean) : [];
-    };
-    knockoutMandatoryDoneMatchesV247 = function knockoutMandatoryDoneMatchesV252Adapter() {
-      const report = knockoutMandatoryReportV252();
-      return report?.dataReady ? (report.done || []).map(item => item.match).filter(Boolean) : [];
-    };
-    knockoutMandatoryDataReadyV247 = function knockoutMandatoryDataReadyV252Adapter() {
-      return Boolean(knockoutMandatoryReportV252()?.dataReady);
-    };
-  } catch {}
-
-  // Substitui os checks antigos por uma entrada única e previsível.
-  if (typeof runKnockoutMandatoryCheckV247 === "function") {
-    runKnockoutMandatoryCheckV247 = function runKnockoutMandatoryCheckV252Adapter() {
-      return runKnockoutMandatoryCheckV252();
-    };
-  }
-  if (typeof scheduleKnockoutMandatoryCheckV247 === "function") {
-    scheduleKnockoutMandatoryCheckV247 = function scheduleKnockoutMandatoryCheckV252Adapter(delay = 700) {
-      return scheduleKnockoutMandatoryCheckV252(delay);
-    };
-  }
-
-  // Neutraliza o modal antigo de jogo único: o automático passa a ser só o modal obrigatório.
-  try {
-    maybeOpenNextKnockoutBetModalV243 = function maybeOpenNextKnockoutBetModalV252() {
-      return runKnockoutMandatoryCheckV252();
-    };
-    scheduleKnockoutAutoBetCheckV243 = function scheduleKnockoutAutoBetCheckV252(delay = 700) {
-      return scheduleKnockoutMandatoryCheckV252(delay);
-    };
-    forceKnockoutAutoBetCheckV244 = function forceKnockoutAutoBetCheckV252(delay = 500) {
-      return scheduleKnockoutMandatoryCheckV252(delay);
-    };
-  } catch {}
-
-  // Gatilhos leves: auth/Firebase/render/navegação já chamam funções antigas,
-  // mas estes cobrem entrada/reentrada da app sem criar loops pesados.
-  document.addEventListener("DOMContentLoaded", () => scheduleKnockoutMandatoryCheckV252(1800));
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) scheduleKnockoutMandatoryCheckV252(350); });
-  window.addEventListener("focus", () => scheduleKnockoutMandatoryCheckV252(450));
-
-  document.addEventListener("click", event => {
-    if (!event.target?.closest?.(".tabs [data-tab], .app-nav, .bottom-nav, [data-route], .sidebar")) return;
-    scheduleKnockoutMandatoryCheckV252(120);
-  }, true);
-
-  window.debugKnockoutMandatoryModalV252 = function debugKnockoutMandatoryModalV252() {
-    const decision = knockoutMandatoryCanAutoOpenV252();
-    return {
-      version: KNOCKOUT_MANDATORY_VERSION_V252,
-      decision: decision.reason,
-      canOpen: decision.ok,
-      formBusy: knockoutMandatoryFormBusyV252(),
-      modalVisible: knockoutMandatoryModalVisibleV252(),
-      report: typeof debugKnockoutRequiredV251 === "function" ? debugKnockoutRequiredV251() : decision.report
-    };
-  };
-  window.forceKnockoutMandatoryModalV252 = function forceKnockoutMandatoryModalV252() {
-    return runKnockoutMandatoryCheckV252();
-  };
-
-  scheduleKnockoutMandatoryCheckV252(2200);
-}
-
-// v253 — Resultado real do Admin + equipa qualificada + passagem automática.
-const KNOCKOUT_ADMIN_RESULT_VERSION_V253 = "257.0";
-
-function debugKnockoutAdminResultV253() {
-  try {
-    ensureKnockoutSettings?.();
-    return {
-      version: KNOCKOUT_ADMIN_RESULT_VERSION_V253,
-      matches: knockoutMatches().map(match => ({
-        id: match.id,
-        round: match.round,
-        index: match.index,
-        homeTeam: match.homeTeam || "",
-        awayTeam: match.awayTeam || "",
-        homeScore: match.homeScore ?? null,
-        awayScore: match.awayScore ?? null,
-        homePenalties: match.homePenalties ?? null,
-        awayPenalties: match.awayPenalties ?? null,
-        qualified: match.qualified || match.winnerTeam || match.winner || "",
-        computedWinner: knockoutWinner(match),
-        nextMatchId: match.nextMatchId || "",
-        nextSlot: match.nextSlot || ""
-      }))
-    };
-  } catch (error) {
-    console.warn("Diagnóstico resultado Admin Fase Final v253 falhou:", error);
-    return { version: KNOCKOUT_ADMIN_RESULT_VERSION_V253, error: String(error?.message || error) };
-  }
-}
-
-window.debugKnockoutAdminResultV253 = debugKnockoutAdminResultV253;
-
-
-// v254 — Correção calma do modal obrigatório para USERS.
-// O problema provável: depois do login, um input/select escondido podia continuar com foco
-// e a proteção v250 adiava o modal para sempre. Esta camada só corrige o disparo do modal;
-// não mexe em pontuação nem na passagem de equipas.
-const KNOCKOUT_MANDATORY_USER_MODAL_VERSION_V254 = "257.0";
-let knockoutMandatoryTimerV254 = null;
-let knockoutMandatoryIntervalV254 = null;
-let knockoutMandatoryRunningV254 = false;
-
-function mundialElementReallyVisibleV254(el) {
-  if (!el || !el.isConnected) return false;
-  if (el.disabled || el.getAttribute?.("aria-hidden") === "true") return false;
-  if (el.closest?.(".hidden, [hidden], #loginScreen.auth-hidden, .auth-hidden")) return false;
-  const style = window.getComputedStyle ? window.getComputedStyle(el) : null;
-  if (style && (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0)) return false;
-  try {
-    const rects = el.getClientRects?.();
-    if (rects && rects.length === 0) return false;
-  } catch {}
-  return true;
-}
-
-function mundialVisibleTextFieldV254(target = document.activeElement) {
-  try {
-    const el = target?.closest?.("input, select, textarea, [contenteditable='true'], [contenteditable=''], [contenteditable='plaintext-only']");
-    if (!el || !mundialElementReallyVisibleV254(el)) return null;
-    const tag = String(el.tagName || "").toLowerCase();
-    const type = String(el.type || "").toLowerCase();
-    if (tag === "textarea" || tag === "select" || el.isContentEditable) return el;
-    if (tag !== "input") return null;
-    if (["button", "submit", "reset", "checkbox", "radio", "file", "image", "hidden"].includes(type)) return null;
-    return el;
-  } catch {
-    return null;
-  }
-}
-
-function knockoutMandatoryModalElementV254() {
-  return document.getElementById("knockoutMandatoryModalV247");
-}
-
-function knockoutMandatoryModalVisibleV254() {
-  const modal = knockoutMandatoryModalElementV254();
-  return Boolean(modal && !modal.classList.contains("hidden"));
-}
-
-function knockoutMandatoryVisibleFieldOutsideModalV254() {
-  const active = mundialVisibleTextFieldV254(document.activeElement);
-  if (!active) return null;
-  const modal = knockoutMandatoryModalElementV254();
-  if (modal && modal.contains(active)) return null;
-  return active;
-}
-
-function knockoutMandatoryClearHiddenFocusV254() {
-  const active = document.activeElement;
-  if (!active) return;
-  if (mundialVisibleTextFieldV254(active)) return;
-  try { active.blur?.(); } catch {}
-  try { mundialFormLastInteractionV250 = 0; } catch {}
-}
-
-function knockoutRequiredCurrentPlayerV254() {
-  let player = null;
-  try { player = linkedPlayerForCurrentUserV241?.() || null; } catch {}
-  if (player) return player;
-
-  const profile = currentProfile || {};
-  const email = normalizeEmail?.(profile.email || currentUser?.email || profile.id || "") || "";
-  const linkedId = String(profile.linkedPlayerId || profile.playerId || "").trim();
-  const linkedName = String(profile.linkedPlayerName || profile.playerName || profile.name || "").trim();
-  const uid = String(profile.uid || currentUser?.uid || "").trim();
-
-  const catalog = (() => { try { return playersCatalogV241?.() || []; } catch { return []; } })();
-  if (linkedId) {
-    player = catalog.find(item => String(item.id || item.playerId || "") === linkedId) || null;
-    if (player) return player;
-  }
-  if (uid) {
-    player = catalog.find(item => String(item.linkedUid || "") === uid) || null;
-    if (player) return player;
-  }
-  if (email) {
-    player = catalog.find(item => normalizeEmail?.(item.linkedEmail || item.email || "") === email) || null;
-    if (player) return player;
-  }
-  if (linkedName) {
-    const normalized = normalizeComparable?.(linkedName) || linkedName.toLowerCase();
-    player = catalog.find(item => (normalizeComparable?.(item.name || item.playerName || "") || String(item.name || item.playerName || "").toLowerCase()) === normalized) || null;
-    if (player) return player;
-  }
-  return null;
-}
-
-function knockoutMandatoryReportV254() {
-  try {
-    const report = knockoutRequiredDetectionV251?.() || null;
-    if (!report) return null;
-    // Se a v251 não encontrou jogador por causa de cache/perfil, tenta a deteção robusta v254.
-    if (!report.player) {
-      const player = knockoutRequiredCurrentPlayerV254();
-      if (player && report.dataReady && currentProfile?.active !== false) {
-        const now = Date.now();
-        const matches = (typeof knockoutMatches === "function" ? knockoutMatches() : appSettings?.knockout?.matches || []) || [];
-        const rebuilt = { ...report, player: { id: player.id, name: player.name }, mandatory: [], pending: [], missed: [], done: [], notReady: [] };
-        matches.forEach(match => {
-          const status = knockoutRequiredStatusForMatchV251(match, player, now);
-          const item = { match, status };
-          if (status.ready) rebuilt.mandatory.push(item);
-          else rebuilt.notReady.push(item);
-          if (status.key === "pending") rebuilt.pending.push(item);
-          else if (status.key === "missed") rebuilt.missed.push(item);
-          else if (status.key === "done") rebuilt.done.push(item);
-        });
-        const sortByStart = (a, b) => (a.status.startAt || 9999999999999) - (b.status.startAt || 9999999999999) || String(a.match?.id || "").localeCompare(String(b.match?.id || ""));
-        rebuilt.mandatory.sort(sortByStart); rebuilt.pending.sort(sortByStart); rebuilt.missed.sort(sortByStart); rebuilt.done.sort(sortByStart); rebuilt.notReady.sort(sortByStart);
-        rebuilt.counts = { mandatory: rebuilt.mandatory.length, pending: rebuilt.pending.length, missed: rebuilt.missed.length, done: rebuilt.done.length, notReady: rebuilt.notReady.length };
-        return rebuilt;
-      }
-    }
-    return report;
-  } catch (error) {
-    console.warn("Relatório modal obrigatório v254 falhou:", error);
-    return null;
-  }
-}
-
-function knockoutMandatoryPendingMatchesV254() {
-  const report = knockoutMandatoryReportV254();
-  return report?.dataReady ? (report.pending || []).map(item => item.match).filter(Boolean) : [];
-}
-
-function knockoutMandatoryMissedMatchesV254() {
-  const report = knockoutMandatoryReportV254();
-  return report?.dataReady ? (report.missed || []).map(item => item.match).filter(Boolean) : [];
-}
-
-function knockoutMandatoryDoneMatchesV254() {
-  const report = knockoutMandatoryReportV254();
-  return report?.dataReady ? (report.done || []).map(item => item.match).filter(Boolean) : [];
-}
-
-function openKnockoutMandatoryModalV254() {
-  const pending = knockoutMandatoryPendingMatchesV254();
-  if (!pending.length) {
-    try { closeKnockoutMandatoryModalV247?.(true); } catch {}
-    return false;
-  }
-
-  knockoutMandatoryClearHiddenFocusV254();
-
-  const activeOutside = knockoutMandatoryVisibleFieldOutsideModalV254();
-  if (activeOutside && !knockoutMandatoryModalVisibleV254()) {
-    scheduleKnockoutMandatoryCheckV254(900);
-    return false;
-  }
-
-  const modal = ensureKnockoutMandatoryModalV247?.();
-  if (!modal) return false;
-  try { renderKnockoutMandatoryModalV247?.(); } catch (error) { console.warn("Render modal obrigatório v254 falhou:", error); }
-  modal.classList.remove("hidden");
-  document.body.classList.add("ko-mandatory-open-v247", "ko-mandatory-open-v254");
-  return true;
-}
-
-function runKnockoutMandatoryCheckV254() {
-  clearTimeout(knockoutMandatoryTimerV254);
-  knockoutMandatoryTimerV254 = null;
-  if (knockoutMandatoryRunningV254) return false;
-  knockoutMandatoryRunningV254 = true;
-
-  try {
-    if (!currentUser || document.hidden) return false;
-    knockoutMandatoryClearHiddenFocusV254();
-
-    const report = knockoutMandatoryReportV254();
-    if (!report?.dataReady) {
-      scheduleKnockoutMandatoryCheckV254(900);
-      return false;
-    }
-
-    if (!report.player || currentProfile?.active === false) {
-      try { closeKnockoutMandatoryModalV247?.(true); } catch {}
-      return false;
-    }
-
-    if (!report.pending?.length) {
-      try { closeKnockoutMandatoryModalV247?.(true); } catch {}
-      return false;
-    }
-
-    return openKnockoutMandatoryModalV254();
-  } catch (error) {
-    console.warn("Check modal obrigatório Fase Final v254 falhou:", error);
-    return false;
-  } finally {
-    knockoutMandatoryRunningV254 = false;
-  }
-}
-
-function scheduleKnockoutMandatoryCheckV254(delay = 500) {
-  clearTimeout(knockoutMandatoryTimerV254);
-  knockoutMandatoryTimerV254 = setTimeout(runKnockoutMandatoryCheckV254, Math.max(80, Number(delay) || 500));
-}
-
-function startKnockoutMandatoryWatcherV254() {
-  if (knockoutMandatoryIntervalV254) return;
-  knockoutMandatoryIntervalV254 = setInterval(() => {
-    if (!document.hidden) scheduleKnockoutMandatoryCheckV254(120);
-  }, 5000);
-}
-
-if (!window.__koMandatoryModalV254) {
-  window.__koMandatoryModalV254 = true;
-
-  // A partir daqui, todos os caminhos antigos passam pela deteção robusta v254.
-  try { knockoutRequiredCurrentPlayerV251 = knockoutRequiredCurrentPlayerV254; } catch {}
-  try { knockoutMandatoryPlayerV247 = knockoutRequiredCurrentPlayerV254; } catch {}
-  try { knockoutMandatoryPendingMatchesV247 = knockoutMandatoryPendingMatchesV254; } catch {}
-  try { knockoutMandatoryMissedMatchesV247 = knockoutMandatoryMissedMatchesV254; } catch {}
-  try { knockoutMandatoryDoneMatchesV247 = knockoutMandatoryDoneMatchesV254; } catch {}
-  try { knockoutMandatoryDataReadyV247 = () => Boolean(knockoutMandatoryReportV254()?.dataReady); } catch {}
-  try { knockoutMandatoryPendingMatchesV252 = knockoutMandatoryPendingMatchesV254; } catch {}
-  try { knockoutMandatoryCanAutoOpenV252 = function knockoutMandatoryCanAutoOpenV254() {
-    const report = knockoutMandatoryReportV254();
-    if (!report?.dataReady) return { ok: false, reason: "dados-a-carregar", report };
-    if (!report.player) return { ok: false, reason: "sem-jogador", report };
-    if (currentProfile?.active === false) return { ok: false, reason: "user-inativo", report };
-    if (!report.pending?.length) return { ok: false, reason: "sem-pendentes", report };
-    if (document.hidden) return { ok: false, reason: "documento-oculto", report };
-    return { ok: true, reason: "pendentes", report };
-  }; } catch {}
-
-  try { openKnockoutMandatoryModalV247 = openKnockoutMandatoryModalV254; } catch {}
-  try { runKnockoutMandatoryCheckV247 = runKnockoutMandatoryCheckV254; } catch {}
-  try { scheduleKnockoutMandatoryCheckV247 = scheduleKnockoutMandatoryCheckV254; } catch {}
-  try { runKnockoutMandatoryCheckV252 = runKnockoutMandatoryCheckV254; } catch {}
-  try { scheduleKnockoutMandatoryCheckV252 = scheduleKnockoutMandatoryCheckV254; } catch {}
-  try { maybeOpenNextKnockoutBetModalV243 = runKnockoutMandatoryCheckV254; } catch {}
-  try { scheduleKnockoutAutoBetCheckV243 = scheduleKnockoutMandatoryCheckV254; } catch {}
-  try { forceKnockoutAutoBetCheckV244 = scheduleKnockoutMandatoryCheckV254; } catch {}
-
-  const queueRealtimeRenderOriginalV254 = typeof queueRealtimeRender === "function" ? queueRealtimeRender : null;
-  if (queueRealtimeRenderOriginalV254 && !queueRealtimeRenderOriginalV254.__koMandatoryV254) {
-    queueRealtimeRender = function queueRealtimeRenderMandatoryV254() {
-      const result = queueRealtimeRenderOriginalV254.apply(this, arguments);
-      scheduleKnockoutMandatoryCheckV254(650);
-      return result;
-    };
-    queueRealtimeRender.__koMandatoryV254 = true;
-  }
-
-  const renderAllOriginalV254 = typeof renderAll === "function" ? renderAll : null;
-  if (renderAllOriginalV254 && !renderAllOriginalV254.__koMandatoryV254) {
-    renderAll = function renderAllMandatoryV254() {
-      const result = renderAllOriginalV254.apply(this, arguments);
-      scheduleKnockoutMandatoryCheckV254(700);
-      return result;
-    };
-    renderAll.__koMandatoryV254 = true;
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    startKnockoutMandatoryWatcherV254();
-    scheduleKnockoutMandatoryCheckV254(1600);
-  });
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) scheduleKnockoutMandatoryCheckV254(250); });
-  window.addEventListener("focus", () => scheduleKnockoutMandatoryCheckV254(300));
-  document.addEventListener("click", event => {
-    if (event.target?.closest?.(".tabs [data-tab], .app-nav, .bottom-nav, [data-route], .sidebar, #appShell")) {
-      scheduleKnockoutMandatoryCheckV254(180);
-    }
-  }, true);
-
-  window.debugKnockoutMandatoryModalV254 = function debugKnockoutMandatoryModalV254() {
-    const report = knockoutMandatoryReportV254();
-    const active = document.activeElement;
-    return {
-      version: KNOCKOUT_MANDATORY_USER_MODAL_VERSION_V254,
-      dataReady: Boolean(report?.dataReady),
-      missingData: report?.missingData || [],
-      player: report?.player || null,
-      pending: report?.pending?.map?.(knockoutRequiredMatchSummaryV251) || [],
-      missed: report?.missed?.map?.(knockoutRequiredMatchSummaryV251) || [],
-      done: report?.done?.map?.(knockoutRequiredMatchSummaryV251) || [],
-      counts: report?.counts || {},
-      modalVisible: knockoutMandatoryModalVisibleV254(),
-      activeTag: active?.tagName || "",
-      activeId: active?.id || "",
-      activeVisibleField: Boolean(mundialVisibleTextFieldV254(active)),
-      visibleFieldOutsideModal: Boolean(knockoutMandatoryVisibleFieldOutsideModalV254())
-    };
-  };
-  window.forceKnockoutMandatoryModalV254 = runKnockoutMandatoryCheckV254;
-
-  startKnockoutMandatoryWatcherV254();
-  scheduleKnockoutMandatoryCheckV254(2200);
-}
-
-// v255 — Diagnóstico real do modal obrigatório da Fase Final + persistência reforçada da data/hora.
-// Objetivo: deixar claro PORQUE um jogo não abre modal e garantir que a data/hora guardada pelo Admin fica persistida.
-const KNOCKOUT_MANDATORY_DIAG_VERSION_V255 = "257.0";
-let knockoutMandatoryTimerV255 = null;
-
-function knockoutV255NormalizeMatchDateValue(value) {
-  try {
-    const normalized = normalizeKnockoutMatchDateV243?.(value || "") || "";
-    if (normalized) return normalized;
-  } catch {}
-  try {
-    const raw = String(value || "").trim();
-    const direct = raw.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
-    if (direct) return direct[1];
-  } catch {}
-  return "";
-}
-
-function knockoutV255SyncMatchDateFields(match, value) {
-  if (!match) return "";
-  const normalized = knockoutV255NormalizeMatchDateValue(value || match.matchDate || match.date || match.kickoff || match.startAt || match.time || "");
-  if (!normalized) return "";
-  match.matchDate = normalized;
-  match.date = normalized;
-  match.kickoff = normalized;
-  match.startAt = normalized;
-  match.time = normalized;
-  return normalized;
-}
-
-function knockoutV255MatchStartMillis(match) {
-  try {
-    const normalized = knockoutV255SyncMatchDateFields(match);
-    if (!normalized) return 0;
-    const date = parsePortugalDate?.(normalized) || new Date(normalized);
-    const time = date?.getTime?.() || 0;
-    return Number.isFinite(time) ? time : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function knockoutV255Player() {
-  // v256: evitar recursão/overrides no arranque. Usa apenas detetores originais seguros.
-  try {
-    const direct = linkedPlayerForCurrentUserV241?.() || null;
-    if (direct) return direct;
-  } catch {}
-  try { return knockoutRequiredCurrentPlayerV254?.() || null; } catch {}
-  return null;
-}
-
-function knockoutV255ExistingBet(player, match) {
-  if (!player || !match?.id) return null;
-  try {
-    const direct = knockoutBetForPlayerMatchV241?.(player.id, match.id);
-    if (direct) return direct;
-  } catch {}
-  const playerIds = new Set([player.id, player.playerId].filter(Boolean).map(String));
-  const playerNames = new Set([player.name, player.playerName].filter(Boolean).map(name => normalizeComparable?.(name) || String(name).toLowerCase()));
-  return (bets || []).find(bet => {
-    const sameGame = String(bet?.gameId || bet?.matchId || bet?.idJogo || "") === String(match.id || "");
-    if (!sameGame) return false;
-    if (playerIds.size && playerIds.has(String(bet?.playerId || bet?.jogadorId || ""))) return true;
-    const betName = normalizeComparable?.(bet?.playerName || bet?.name || "") || String(bet?.playerName || bet?.name || "").toLowerCase();
-    return Boolean(betName && playerNames.has(betName));
-  }) || null;
-}
-
-function knockoutV255StateForMatch(match, player = knockoutV255Player(), now = Date.now()) {
-  const reasons = [];
-  if (!match || !match.id) reasons.push("sem-id");
-  if (!String(match?.homeTeam || "").trim()) reasons.push("sem-equipa-1");
-  if (!String(match?.awayTeam || "").trim()) reasons.push("sem-equipa-2");
-  const startAt = knockoutV255MatchStartMillis(match);
-  if (!startAt) reasons.push("sem-data-hora");
-  const hasResult = (() => { try { return Boolean(knockoutMatchHasResult?.(match)); } catch { return false; } })();
-  if (hasResult) reasons.push("resultado-lancado");
-
-  const deadlineAt = startAt ? startAt - (5 * 60 * 1000) : 0;
-  const ready = !reasons.length;
-  const bet = knockoutV255ExistingBet(player, match);
-
-  if (!ready) {
-    return { key: "not-ready", label: "Não obrigatório", ready, reasons, startAt, deadlineAt, bet: null };
-  }
-  if (!player) {
-    return { key: "no-player", label: "Sem jogador ligado", ready: true, reasons: [], startAt, deadlineAt, bet: null };
-  }
-  if (bet) {
-    return { key: "done", label: "Apostado", ready: true, reasons: [], startAt, deadlineAt, bet };
-  }
-  if (!deadlineAt || Number(now) >= deadlineAt) {
-    return { key: "missed", label: "Fora deste jogo", ready: true, reasons: [], startAt, deadlineAt, bet: null };
-  }
-  return { key: "pending", label: "Por apostar", ready: true, reasons: [], startAt, deadlineAt, bet: null };
-}
-
-function knockoutV255Report() {
-  const data = (() => { try { return knockoutRequiredDataReadyV251?.() || { ready: false, missing: ["logica"] }; } catch { return { ready: false, missing: ["erro-logica"] }; } })();
-  const player = knockoutV255Player();
-  const matches = (() => { try { ensureKnockoutSettings?.(); return knockoutMatches?.() || appSettings?.knockout?.matches || []; } catch { return appSettings?.knockout?.matches || []; } })();
-  const report = {
-    version: KNOCKOUT_MANDATORY_DIAG_VERSION_V255,
-    dataReady: Boolean(data.ready),
-    missingData: data.missing || [],
-    user: currentUser ? { uid: currentUser.uid || "", email: normalizeEmail?.(currentUser.email || "") || "" } : null,
-    profile: currentProfile ? { name: currentProfile.name || "", role: currentProfile.role || "", active: currentProfile.active !== false, linkedPlayerId: currentProfile.linkedPlayerId || "", linkedPlayerName: currentProfile.linkedPlayerName || "" } : null,
-    player: player ? { id: player.id || player.playerId || "", name: player.name || player.playerName || "" } : null,
-    pending: [], missed: [], done: [], notReady: [], mandatory: [],
-    counts: { pending: 0, missed: 0, done: 0, notReady: 0, mandatory: 0 }
-  };
-  if (!report.dataReady || currentProfile?.active === false) return report;
-
-  matches.forEach(match => {
-    const state = knockoutV255StateForMatch(match, player);
-    const item = { match, state };
-    if (state.ready) report.mandatory.push(item);
-    else report.notReady.push(item);
-    if (state.key === "pending") report.pending.push(item);
-    else if (state.key === "missed") report.missed.push(item);
-    else if (state.key === "done") report.done.push(item);
-  });
-
-  const sortByStart = (a, b) => (a.state.startAt || 9999999999999) - (b.state.startAt || 9999999999999) || String(a.match?.id || "").localeCompare(String(b.match?.id || ""));
-  [report.pending, report.missed, report.done, report.notReady, report.mandatory].forEach(list => list.sort(sortByStart));
-  report.counts = {
-    pending: report.pending.length,
-    missed: report.missed.length,
-    done: report.done.length,
-    notReady: report.notReady.length,
-    mandatory: report.mandatory.length
-  };
-  return report;
-}
-
-function knockoutV255SummaryItem(item) {
-  const match = item.match || item;
-  const state = item.state || knockoutV255StateForMatch(match);
-  return {
-    id: match?.id || "",
-    round: match?.round || "",
-    roundLabel: knockoutRoundLabel?.(match?.round) || match?.roundLabel || "Fase Final",
-    index: match?.index || "",
-    homeTeam: match?.homeTeam || "",
-    awayTeam: match?.awayTeam || "",
-    matchDate: match?.matchDate || match?.date || "",
-    startAt: state.startAt || 0,
-    deadlineAt: state.deadlineAt || 0,
-    status: state.key,
-    label: state.label,
-    reasons: state.reasons || [],
-    hasBet: Boolean(state.bet)
-  };
-}
-
-function knockoutV255Debug() {
-  const report = knockoutV255Report();
-  return {
-    version: report.version,
-    dataReady: report.dataReady,
-    missingData: report.missingData,
-    user: report.user,
-    profile: report.profile,
-    player: report.player,
-    counts: report.counts,
-    pending: report.pending.map(knockoutV255SummaryItem),
-    missed: report.missed.map(knockoutV255SummaryItem),
-    done: report.done.map(knockoutV255SummaryItem),
-    notReady: report.notReady.map(knockoutV255SummaryItem)
-  };
-}
-
-function knockoutV255PendingMatches() { return knockoutV255Report().pending.map(item => item.match).filter(Boolean); }
-function knockoutV255MissedMatches() { return knockoutV255Report().missed.map(item => item.match).filter(Boolean); }
-function knockoutV255DoneMatches() { return knockoutV255Report().done.map(item => item.match).filter(Boolean); }
-
-function knockoutV255RunModalCheck() {
-  clearTimeout(knockoutMandatoryTimerV255);
-  knockoutMandatoryTimerV255 = null;
-  const report = knockoutV255Report();
-  if (!report.dataReady || !report.player || !report.pending.length || document.hidden) {
-    if (!report.pending.length) {
-      try { closeKnockoutMandatoryModalV247?.(true); } catch {}
-    }
-    return false;
-  }
-  try {
-    const modal = ensureKnockoutMandatoryModalV247?.();
-    if (!modal) return false;
-    renderKnockoutMandatoryModalV247?.();
-    modal.classList.remove("hidden");
-    document.body.classList.add("ko-mandatory-open-v247", "ko-mandatory-open-v255");
-    return true;
-  } catch (error) {
-    console.warn("v255: abrir modal obrigatório falhou", error);
-    return false;
-  }
-}
-
-function knockoutV255ScheduleModalCheck(delay = 400) {
-  clearTimeout(knockoutMandatoryTimerV255);
-  knockoutMandatoryTimerV255 = setTimeout(knockoutV255RunModalCheck, Math.max(80, Number(delay) || 400));
-}
-
-function knockoutV255DecorateStatuses() {
-  try {
-    const player = knockoutV255Player();
-    document.querySelectorAll("#knockoutBracket [data-ko-admin], #knockoutMobileV121 [data-ko-admin]").forEach(card => {
-      const match = knockoutMatchById?.(card.dataset.koAdmin || "");
-      if (!match) return;
-      const state = knockoutV255StateForMatch(match, player);
-      let badge = card.querySelector(".ko-user-status-v255");
-      if (!badge) {
-        badge = document.createElement("div");
-        badge.className = "ko-user-status-v255";
-        card.appendChild(badge);
-      }
-      badge.className = `ko-user-status-v255 ${state.key}`;
-      badge.title = state.reasons?.length ? state.reasons.join(", ") : state.label;
-      badge.textContent = state.key === "not-ready" && state.reasons?.length ? state.reasons.join(" · ") : state.label;
-    });
-  } catch (error) {
-    console.warn("v255: estados Fase Final falharam", error);
-  }
-}
-
-if (!window.__koMandatoryDiagnosticsV255) {
-  window.__koMandatoryDiagnosticsV255 = true;
-
-  // v256: a v255 estava a correr verificações automáticas logo no login e podia bloquear o arranque.
-  // Mantemos apenas diagnóstico manual e reforço de data/hora quando o Admin guarda um jogo.
-  const saveKnockoutMatchFromAdminOriginalV255 = typeof saveKnockoutMatchFromAdmin === "function" ? saveKnockoutMatchFromAdmin : null;
-  if (saveKnockoutMatchFromAdminOriginalV255 && !saveKnockoutMatchFromAdminOriginalV255.__koV255) {
-    saveKnockoutMatchFromAdmin = async function saveKnockoutMatchFromAdminV255(matchId, sourceElement = null) {
-      const row = sourceElement?.closest?.(`[data-ko-admin="${CSS.escape(matchId)}"]`) || document.querySelector(`[data-ko-admin="${CSS.escape(matchId)}"]`);
-      const dateValueBefore = row?.querySelector?.(".ko-match-date-v243")?.value || "";
-      const result = await saveKnockoutMatchFromAdminOriginalV255.apply(this, arguments);
-      const match = knockoutMatchById?.(matchId);
-      const normalized = knockoutV255NormalizeMatchDateValue(dateValueBefore || match?.matchDate || match?.date || "");
-      if (match && normalized) {
-        knockoutV255SyncMatchDateFields(match, normalized);
-        try {
-          markSettingsPending?.();
-          saveLocalData?.("fase final data/hora reforçada v256");
-          await saveSettingsFastToFirebase?.("fase final data/hora reforçada v256");
-        } catch (error) {
-          console.warn("v256: não consegui reforçar data/hora no Firebase", error);
-          try { scheduleFullSync?.("fase final data/hora reforçada v256", 500); } catch {}
-        }
-      }
-      try { renderKnockout?.(); } catch {}
-      try { renderKnockoutAdmin?.(); } catch {}
-      setTimeout(() => { try { knockoutV255DecorateStatuses(); } catch {} }, 80);
-      return result;
-    };
-    saveKnockoutMatchFromAdmin.__koV255 = true;
-  }
-
-  const renderKnockoutOriginalV255 = typeof renderKnockout === "function" ? renderKnockout : null;
-  if (renderKnockoutOriginalV255 && !renderKnockoutOriginalV255.__koV255) {
-    renderKnockout = function renderKnockoutV255() {
-      const result = renderKnockoutOriginalV255.apply(this, arguments);
-      setTimeout(() => { try { knockoutV255DecorateStatuses(); } catch {} }, 0);
-      return result;
-    };
-    renderKnockout.__koV255 = true;
-  }
-
-  window.debugFaseFinalModalV255 = knockoutV255Debug;
-  window.debugFaseFinalModalV256 = knockoutV255Debug;
-  window.debugKnockoutMandatoryModalV255 = knockoutV255Debug;
-  window.debugKnockoutMandatoryModalV256 = knockoutV255Debug;
-  window.forceFaseFinalModalV256 = knockoutV255RunModalCheck;
-  window.forceKnockoutMandatoryModalV256 = knockoutV255RunModalCheck;
-}
-
-
-// v257 — Correção real da deteção de apostas obrigatórias da Fase Final.
-// A v256 já corrigiu o login, mas alguns users continuavam a ver "em dia" mesmo com jogo aberto.
-// Esta camada usa uma fonte única e simples: jogos da Fase Final com equipas + data/hora + sem resultado,
-// cruzados com o jogador ligado ao user e as apostas já existentes.
-const KNOCKOUT_MANDATORY_FINAL_FIX_VERSION_V257 = "257.0";
-let knockoutMandatoryTimerV257 = null;
-let knockoutMandatoryIntervalV257 = null;
-
-function koV257Normalize(value) {
-  try { return normalizeComparable?.(value || "") || String(value || "").trim().toLowerCase(); }
-  catch { return String(value || "").trim().toLowerCase(); }
-}
-
-function koV257Email(value) {
-  try { return normalizeEmail?.(value || "") || String(value || "").trim().toLowerCase(); }
-  catch { return String(value || "").trim().toLowerCase(); }
-}
-
-function koV257Players() {
-  try { return playersCatalogV241?.() || []; }
-  catch { return appSettings?.players || []; }
-}
-
-function koV257CurrentPlayer() {
-  let player = null;
-  try { player = linkedPlayerForCurrentUserV241?.() || null; } catch {}
-  if (player?.id || player?.playerId) return { ...player, id: String(player.id || player.playerId), name: String(player.name || player.playerName || "") };
-
-  const profile = currentProfile || {};
-  const email = koV257Email(profile.email || currentUser?.email || profile.id || "");
-  const uid = String(profile.uid || currentUser?.uid || "").trim();
-  const linkedId = String(profile.linkedPlayerId || profile.playerId || profile.jogadorId || "").trim();
-  const linkedName = String(profile.linkedPlayerName || profile.playerName || profile.jogadorName || "").trim();
-  const players = koV257Players();
-
-  if (linkedId) {
-    player = players.find(item => String(item.id || item.playerId || "") === linkedId) || null;
-    if (player) return { ...player, id: String(player.id || player.playerId), name: String(player.name || player.playerName || "") };
-    // Mesmo que o catálogo ainda não tenha o jogador, usa a ligação do perfil para não perder a obrigatoriedade.
-    return { id: linkedId, playerId: linkedId, name: linkedName || linkedId, playerName: linkedName || linkedId, source: "profile-link-v257" };
-  }
-
-  if (uid) {
-    player = players.find(item => String(item.linkedUid || item.uid || "") === uid) || null;
-    if (player) return { ...player, id: String(player.id || player.playerId), name: String(player.name || player.playerName || "") };
-  }
-
-  if (email) {
-    player = players.find(item => koV257Email(item.linkedEmail || item.email || item.userEmail || "") === email) || null;
-    if (player) return { ...player, id: String(player.id || player.playerId), name: String(player.name || player.playerName || "") };
-  }
-
-  if (linkedName) {
-    const wanted = koV257Normalize(linkedName);
-    player = players.find(item => koV257Normalize(item.name || item.playerName || "") === wanted) || null;
-    if (player) return { ...player, id: String(player.id || player.playerId), name: String(player.name || player.playerName || "") };
-    return { id: (typeof playerIdFromName === "function" ? playerIdFromName(linkedName) : wanted), playerId: (typeof playerIdFromName === "function" ? playerIdFromName(linkedName) : wanted), name: linkedName, playerName: linkedName, source: "profile-name-v257" };
-  }
-
-  return null;
-}
-
-function koV257MatchStartMillis(match) {
-  try {
-    const direct = knockoutMatchStartMillisV241?.(match) || 0;
-    if (Number.isFinite(Number(direct)) && Number(direct) > 0) return Number(direct);
-  } catch {}
-  const raw = String(match?.matchDate || match?.date || match?.kickoff || match?.startAt || match?.time || "").trim();
-  if (!raw) return 0;
-  try {
-    const normalized = normalizeKnockoutMatchDateV243?.(raw) || raw;
-    const date = parsePortugalDate?.(normalized) || new Date(normalized);
-    const time = date?.getTime?.() || 0;
-    return Number.isFinite(time) ? time : 0;
-  } catch {
-    const time = new Date(raw).getTime();
-    return Number.isFinite(time) ? time : 0;
-  }
-}
-
-function koV257HasResult(match) {
-  try { return Boolean(knockoutMatchHasResult?.(match)); }
-  catch {
-    const home = match?.homeScore ?? match?.homeGoals ?? match?.homeResult;
-    const away = match?.awayScore ?? match?.awayGoals ?? match?.awayResult;
-    return home !== undefined && home !== null && home !== "" && away !== undefined && away !== null && away !== "";
-  }
-}
-
-function koV257DeadlineMillis(match) {
-  const start = koV257MatchStartMillis(match);
-  return start ? start - (5 * 60 * 1000) : 0;
-}
-
-function koV257Matches() {
-  try { ensureKnockoutSettings?.(); } catch {}
-  const list = (typeof knockoutMatches === "function" ? knockoutMatches() : appSettings?.knockout?.matches || []) || [];
-  return Array.isArray(list) ? list : [];
-}
-
-function koV257ReadyReasons(match) {
-  const reasons = [];
-  if (!match || !match.id) reasons.push("sem-id");
-  if (!String(match?.homeTeam || "").trim()) reasons.push("sem-equipa-1");
-  if (!String(match?.awayTeam || "").trim()) reasons.push("sem-equipa-2");
-  if (!koV257MatchStartMillis(match)) reasons.push("sem-data-hora");
-  if (koV257HasResult(match)) reasons.push("resultado-lancado");
-  return reasons;
-}
-
-function koV257ExistingBet(player, match) {
-  if (!player || !match?.id) return null;
-  try {
-    const direct = knockoutBetForPlayerMatchV241?.(String(player.id || player.playerId || ""), String(match.id || ""));
-    if (direct) return direct;
-  } catch {}
-
-  const playerIds = new Set([player.id, player.playerId, player.jogadorId].filter(Boolean).map(String));
-  const playerNames = new Set([player.name, player.playerName, player.jogadorName].filter(Boolean).map(koV257Normalize));
-  const matchIds = new Set([match.id, match.matchId, match.gameId].filter(Boolean).map(String));
-
-  return (bets || []).find(bet => {
-    const sameGame = matchIds.has(String(bet?.gameId || bet?.matchId || bet?.knockoutMatchId || bet?.idJogo || ""));
-    if (!sameGame) return false;
-    if (playerIds.size && playerIds.has(String(bet?.playerId || bet?.playerID || bet?.jogadorId || bet?.userPlayerId || ""))) return true;
-    const betName = koV257Normalize(bet?.playerName || bet?.name || bet?.jogadorName || "");
-    return Boolean(betName && playerNames.has(betName));
-  }) || null;
-}
-
-function koV257State(match, player = koV257CurrentPlayer(), now = Date.now()) {
-  const reasons = koV257ReadyReasons(match);
-  const startAt = koV257MatchStartMillis(match);
-  const deadlineAt = koV257DeadlineMillis(match);
-  const ready = reasons.length === 0;
-  const bet = ready ? koV257ExistingBet(player, match) : null;
-
-  if (!ready) return { key: "not-ready", label: reasons.join(" · ") || "Não obrigatório", ready: false, reasons, bet: null, startAt, deadlineAt };
-  if (!player) return { key: "no-player", label: "Sem jogador ligado", ready: true, reasons: [], bet: null, startAt, deadlineAt };
-  if (bet) return { key: "done", label: "Apostado", ready: true, reasons: [], bet, startAt, deadlineAt };
-  if (!deadlineAt || Number(now) >= deadlineAt) return { key: "missed", label: "Fora deste jogo", ready: true, reasons: [], bet: null, startAt, deadlineAt };
-  return { key: "pending", label: "Por apostar", ready: true, reasons: [], bet: null, startAt, deadlineAt };
-}
-
-function koV257Report(now = Date.now()) {
-  const dataReady = Boolean(currentUser && currentProfile && appSettings?.knockout && Array.isArray(appSettings.knockout.matches) && Array.isArray(bets));
-  const missingData = [];
-  if (!currentUser) missingData.push("auth/user");
-  if (!currentProfile) missingData.push("perfil");
-  if (!appSettings?.knockout || !Array.isArray(appSettings?.knockout?.matches)) missingData.push("jogos-fase-final");
-  if (!Array.isArray(bets)) missingData.push("apostas");
-
-  const player = koV257CurrentPlayer();
-  const report = {
-    version: KNOCKOUT_MANDATORY_FINAL_FIX_VERSION_V257,
-    dataReady,
-    missingData,
-    hasCurrentUser: Boolean(currentUser),
-    userEmail: koV257Email(currentUser?.email || currentProfile?.email || currentProfile?.id || ""),
-    profileRole: currentProfile?.role || "",
-    profileActive: currentProfile?.active !== false,
-    player: player ? { id: String(player.id || player.playerId || ""), name: String(player.name || player.playerName || "") } : null,
-    mandatory: [], pending: [], missed: [], done: [], notReady: [],
-    counts: { mandatory: 0, pending: 0, missed: 0, done: 0, notReady: 0 }
-  };
-  if (!dataReady || currentProfile?.active === false) return report;
-
-  koV257Matches().forEach(match => {
-    const state = koV257State(match, player, now);
-    const status = { key: state.key, label: state.label, ready: state.ready, reasons: state.reasons || [], bet: state.bet || null, startAt: state.startAt || 0, deadlineAt: state.deadlineAt || 0 };
-    const item = { match, status, state };
-    if (state.ready) report.mandatory.push(item);
-    else report.notReady.push(item);
-    if (state.key === "pending") report.pending.push(item);
-    else if (state.key === "missed") report.missed.push(item);
-    else if (state.key === "done") report.done.push(item);
-  });
-
-  const sortByStart = (a, b) => (a.status.startAt || 9999999999999) - (b.status.startAt || 9999999999999) || String(a.match?.id || "").localeCompare(String(b.match?.id || ""));
-  [report.mandatory, report.pending, report.missed, report.done, report.notReady].forEach(list => list.sort(sortByStart));
-  report.counts = {
-    mandatory: report.mandatory.length,
-    pending: report.pending.length,
-    missed: report.missed.length,
-    done: report.done.length,
-    notReady: report.notReady.length
-  };
-  return report;
-}
-
-function koV257Summary(item) {
-  const match = item.match || item;
-  const status = item.status || item.state || koV257State(match);
-  return {
-    id: match?.id || "",
-    round: match?.round || "",
-    roundLabel: knockoutRoundLabel?.(match?.round) || match?.roundLabel || "Fase Final",
-    index: match?.index || "",
-    homeTeam: match?.homeTeam || "",
-    awayTeam: match?.awayTeam || "",
-    matchDate: match?.matchDate || match?.date || match?.kickoff || "",
-    startAt: status.startAt || 0,
-    deadlineAt: status.deadlineAt || 0,
-    status: status.key,
-    label: status.label,
-    reasons: status.reasons || [],
-    hasBet: Boolean(status.bet)
-  };
-}
-
-function koV257Debug() {
-  const report = koV257Report();
-  return {
-    version: report.version,
-    dataReady: report.dataReady,
-    missingData: report.missingData,
-    userEmail: report.userEmail,
-    profileRole: report.profileRole,
-    profileActive: report.profileActive,
-    player: report.player,
-    counts: report.counts,
-    pending: report.pending.map(koV257Summary),
-    missed: report.missed.map(koV257Summary),
-    done: report.done.map(koV257Summary),
-    notReady: report.notReady.map(koV257Summary),
-    mandatory: report.mandatory.map(koV257Summary)
-  };
-}
-
-function koV257PendingMatches() { return koV257Report().pending.map(item => item.match).filter(Boolean); }
-function koV257MissedMatches() { return koV257Report().missed.map(item => item.match).filter(Boolean); }
-function koV257DoneMatches() { return koV257Report().done.map(item => item.match).filter(Boolean); }
-
-function koV257OpenMandatoryModal() {
-  const pending = koV257PendingMatches();
-  if (!pending.length) {
-    try { closeKnockoutMandatoryModalV247?.(true); } catch {}
-    return false;
-  }
-  try { document.activeElement?.blur?.(); } catch {}
-  const modal = ensureKnockoutMandatoryModalV247?.();
-  if (!modal) return false;
-  try { renderKnockoutMandatoryModalV247?.(); } catch (error) { console.warn("v257: render modal obrigatório falhou", error); }
-  modal.classList.remove("hidden");
-  document.body.classList.add("ko-mandatory-open-v247", "ko-mandatory-open-v257");
-  return true;
-}
-
-function koV257RunMandatoryCheck() {
-  clearTimeout(knockoutMandatoryTimerV257);
-  knockoutMandatoryTimerV257 = null;
-  const report = koV257Report();
-  if (!report.dataReady || !report.player || currentProfile?.active === false || document.hidden) return false;
-  if (!report.pending.length) {
-    try { closeKnockoutMandatoryModalV247?.(true); } catch {}
-    return false;
-  }
-  return koV257OpenMandatoryModal();
-}
-
-function koV257ScheduleMandatoryCheck(delay = 500) {
-  clearTimeout(knockoutMandatoryTimerV257);
-  knockoutMandatoryTimerV257 = setTimeout(koV257RunMandatoryCheck, Math.max(80, Number(delay) || 500));
-}
-
-function koV257DecorateStatuses() {
-  try {
-    const player = koV257CurrentPlayer();
-    document.querySelectorAll("#knockoutBracket [data-ko-admin], #knockoutMobileV121 [data-ko-admin]").forEach(card => {
-      const match = knockoutMatchById?.(card.dataset.koAdmin || "");
-      if (!match) return;
-      const state = koV257State(match, player);
-      let badge = card.querySelector(".ko-user-status-v257") || card.querySelector(".ko-user-status-v255") || card.querySelector(".ko-user-status-v247");
-      if (!badge) {
-        badge = document.createElement("div");
-        card.appendChild(badge);
-      }
-      badge.className = `ko-user-status-v257 ${state.key}`;
-      badge.title = state.reasons?.length ? state.reasons.join(", ") : state.label;
-      badge.textContent = state.label;
-    });
-  } catch (error) {
-    console.warn("v257: estados Fase Final falharam", error);
-  }
-}
-
-if (!window.__koMandatoryFinalFixV257) {
-  window.__koMandatoryFinalFixV257 = true;
-
-  try { knockoutRequiredCurrentPlayerV251 = koV257CurrentPlayer; } catch {}
-  try { knockoutRequiredExistingBetV251 = koV257ExistingBet; } catch {}
-  try { knockoutRequiredMatchStartMillisV251 = koV257MatchStartMillis; } catch {}
-  try { knockoutRequiredDeadlineMillisV251 = koV257DeadlineMillis; } catch {}
-  try { knockoutRequiredDetectionV251 = koV257Report; } catch {}
-  try { debugKnockoutRequiredV251 = koV257Debug; } catch {}
-
-  try { currentUserRequiredKnockoutBetsV245 = koV257PendingMatches; } catch {}
-  try { currentUserMissedKnockoutBetsV245 = koV257MissedMatches; } catch {}
-  try { currentUserDoneKnockoutBetsV245 = koV257DoneMatches; } catch {}
-  try { shouldForceRequiredKnockoutBetsV245 = () => koV257PendingMatches().length > 0; } catch {}
-
-  try { knockoutMandatoryPlayerV247 = koV257CurrentPlayer; } catch {}
-  try { knockoutMandatoryPendingMatchesV247 = koV257PendingMatches; } catch {}
-  try { knockoutMandatoryMissedMatchesV247 = koV257MissedMatches; } catch {}
-  try { knockoutMandatoryDoneMatchesV247 = koV257DoneMatches; } catch {}
-  try { knockoutMandatoryDataReadyV247 = () => koV257Report().dataReady; } catch {}
-  try { knockoutMandatoryStatusV247 = match => { const state = koV257State(match); return { key: state.key, label: state.label }; }; } catch {}
-
-  try { knockoutMandatoryReportV252 = koV257Report; } catch {}
-  try { knockoutMandatoryPendingMatchesV252 = koV257PendingMatches; } catch {}
-  try { knockoutMandatoryCanAutoOpenV252 = function koV257CanAutoOpen() {
-    const report = koV257Report();
-    if (!report.dataReady) return { ok: false, reason: "dados-a-carregar", report };
-    if (!report.player) return { ok: false, reason: "sem-jogador", report };
-    if (currentProfile?.active === false) return { ok: false, reason: "user-inativo", report };
-    if (!report.pending.length) return { ok: false, reason: "sem-pendentes", report };
-    if (document.hidden) return { ok: false, reason: "documento-oculto", report };
-    return { ok: true, reason: "pendentes", report };
-  }; } catch {}
-
-  try { knockoutMandatoryReportV254 = koV257Report; } catch {}
-  try { knockoutMandatoryPendingMatchesV254 = koV257PendingMatches; } catch {}
-  try { knockoutMandatoryMissedMatchesV254 = koV257MissedMatches; } catch {}
-  try { knockoutMandatoryDoneMatchesV254 = koV257DoneMatches; } catch {}
-  try { knockoutV255Report = koV257Report; } catch {}
-  try { knockoutV255PendingMatches = koV257PendingMatches; } catch {}
-  try { knockoutV255MissedMatches = koV257MissedMatches; } catch {}
-  try { knockoutV255DoneMatches = koV257DoneMatches; } catch {}
-  try { knockoutV255StateForMatch = koV257State; } catch {}
-
-  try { openKnockoutMandatoryModalV247 = koV257OpenMandatoryModal; } catch {}
-  try { runKnockoutMandatoryCheckV247 = koV257RunMandatoryCheck; } catch {}
-  try { scheduleKnockoutMandatoryCheckV247 = koV257ScheduleMandatoryCheck; } catch {}
-  try { runKnockoutMandatoryCheckV252 = koV257RunMandatoryCheck; } catch {}
-  try { scheduleKnockoutMandatoryCheckV252 = koV257ScheduleMandatoryCheck; } catch {}
-  try { runKnockoutMandatoryCheckV254 = koV257RunMandatoryCheck; } catch {}
-  try { scheduleKnockoutMandatoryCheckV254 = koV257ScheduleMandatoryCheck; } catch {}
-  try { knockoutV255RunModalCheck = koV257RunMandatoryCheck; } catch {}
-  try { knockoutV255ScheduleModalCheck = koV257ScheduleMandatoryCheck; } catch {}
-  try { forceKnockoutAutoBetCheckV244 = koV257ScheduleMandatoryCheck; } catch {}
-  try { scheduleKnockoutAutoBetCheckV243 = koV257ScheduleMandatoryCheck; } catch {}
-  try { maybeOpenNextKnockoutBetModalV243 = koV257RunMandatoryCheck; } catch {}
-
-  const renderAllOriginalV257 = typeof renderAll === "function" ? renderAll : null;
-  if (renderAllOriginalV257 && !renderAllOriginalV257.__koV257) {
-    renderAll = function renderAllV257() {
-      const result = renderAllOriginalV257.apply(this, arguments);
-      setTimeout(() => {
-        try { injectKnockoutRequiredHomePanelV245?.(); } catch {}
-        try { koV257DecorateStatuses(); } catch {}
-        koV257ScheduleMandatoryCheck(700);
-      }, 80);
-      return result;
-    };
-    renderAll.__koV257 = true;
-  }
-
-  const renderCalendarOriginalV257 = typeof renderCalendar === "function" ? renderCalendar : null;
-  if (renderCalendarOriginalV257 && !renderCalendarOriginalV257.__koV257) {
-    renderCalendar = function renderCalendarV257() {
-      const result = renderCalendarOriginalV257.apply(this, arguments);
-      setTimeout(() => {
-        try { injectKnockoutRequiredHomePanelV245?.(); } catch {}
-        koV257ScheduleMandatoryCheck(600);
-      }, 80);
-      return result;
-    };
-    renderCalendar.__koV257 = true;
-  }
-
-  const renderKnockoutOriginalV257 = typeof renderKnockout === "function" ? renderKnockout : null;
-  if (renderKnockoutOriginalV257 && !renderKnockoutOriginalV257.__koV257) {
-    renderKnockout = function renderKnockoutV257() {
-      const result = renderKnockoutOriginalV257.apply(this, arguments);
-      setTimeout(koV257DecorateStatuses, 80);
-      koV257ScheduleMandatoryCheck(700);
-      return result;
-    };
-    renderKnockout.__koV257 = true;
-  }
-
-  const loadDataOriginalV257 = typeof loadData === "function" ? loadData : null;
-  if (loadDataOriginalV257 && !loadDataOriginalV257.__koV257) {
-    loadData = async function loadDataV257() {
-      const result = await loadDataOriginalV257.apply(this, arguments);
-      koV257ScheduleMandatoryCheck(1100);
-      return result;
-    };
-    loadData.__koV257 = true;
-  }
-
-  document.addEventListener("DOMContentLoaded", () => koV257ScheduleMandatoryCheck(2200));
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) koV257ScheduleMandatoryCheck(350); });
-  window.addEventListener("focus", () => koV257ScheduleMandatoryCheck(450));
-  document.addEventListener("click", event => {
-    if (event.target?.closest?.(".tabs [data-tab], [data-ko-admin], #appShell, #gamesList")) koV257ScheduleMandatoryCheck(220);
-  }, true);
-
-  if (!knockoutMandatoryIntervalV257) {
-    knockoutMandatoryIntervalV257 = setInterval(() => {
-      if (!document.hidden) koV257ScheduleMandatoryCheck(200);
-    }, 8000);
-  }
-
-  window.debugFaseFinalModalV257 = koV257Debug;
-  window.debugKnockoutMandatoryModalV257 = koV257Debug;
-  window.forceFaseFinalModalV257 = koV257RunMandatoryCheck;
-  window.forceKnockoutMandatoryModalV257 = koV257RunMandatoryCheck;
-
-  koV257ScheduleMandatoryCheck(2600);
-}
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(() => {
+    scheduleKnockoutMandatoryCheckV247(200);
+    addKnockoutApiFillControlsV248();
+  }, 1200);
+});

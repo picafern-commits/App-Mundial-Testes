@@ -12064,27 +12064,138 @@ body.ko-mandatory-open-v247{
   }
 }
 
-/* v255 — estado visível de apostas obrigatórias na Fase Final */
-.ko-user-status-v255{
-  position:relative;
-  z-index:5;
-  margin-top:4px;
-  padding:3px 6px;
-  border-radius:999px;
-  border:1px solid rgba(148,163,184,.25);
-  background:rgba(15,23,42,.78);
-  color:#cbd5e1;
-  font-size:9px;
-  line-height:1.05;
-  font-weight:1000;
-  text-align:center;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+/* v248 - Fase Final mais legivel em ecrã total e controlos API */
+.ko-api-fill-v248{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin:12px 0;
+  padding:14px 16px;
+  border:1px solid rgba(56,189,248,.24);
+  border-radius:16px;
+  background:linear-gradient(135deg,rgba(8,47,73,.34),rgba(15,23,42,.78));
 }
-.ko-user-status-v255.pending{border-color:rgba(251,191,36,.55);background:rgba(251,191,36,.16);color:#fde68a;}
-.ko-user-status-v255.done{border-color:rgba(52,211,153,.45);background:rgba(16,185,129,.14);color:#bbf7d0;}
-.ko-user-status-v255.missed{border-color:rgba(248,113,113,.45);background:rgba(239,68,68,.14);color:#fecaca;}
-.ko-user-status-v255.not-ready{border-color:rgba(148,163,184,.20);background:rgba(15,23,42,.64);color:#94a3b8;}
-.ko-user-status-v255.no-player{border-color:rgba(96,165,250,.38);background:rgba(59,130,246,.13);color:#bfdbfe;}
-body.knockout-layout-active #knockoutBracket .ko-user-status-v255{display:block!important;font-size:8px!important;padding:2px 4px!important;margin-top:2px!important;}
+
+.ko-api-fill-v248 strong{
+  display:block;
+  color:#fff;
+  font-size:15px;
+}
+
+.ko-api-fill-v248 span{
+  display:block;
+  margin-top:4px;
+  color:var(--muted,#a8b3c7);
+  font-weight:800;
+  line-height:1.35;
+}
+
+@media(min-width:761px){
+  body.knockout-layout-active #knockoutBracket .bracket-photo-shell{
+    padding:14px 18px 16px!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .bracket-photo-grid-split{
+    --ko-card:clamp(68px,7.15vh,86px)!important;
+    --ko-team:clamp(22px,2.28vh,27px)!important;
+    --ko-team-text:clamp(11px,1.08vh,13px)!important;
+    --ko-title-text:clamp(9px,.9vh,11px)!important;
+    --ko-gap:clamp(6px,.65vh,9px)!important;
+    --r16-top:clamp(42px,4.8vh,62px)!important;
+    --r16-gap:clamp(86px,9.8vh,124px)!important;
+    --qf-top:clamp(122px,14.2vh,176px)!important;
+    --qf-gap:clamp(244px,28.6vh,352px)!important;
+    --sf-top:clamp(286px,33.5vh,410px)!important;
+    --line-r32:clamp(42px,4.8vh,62px)!important;
+    --line-r16:clamp(84px,9.6vh,122px)!important;
+    --line-qf:clamp(166px,19.1vh,244px)!important;
+    grid-template-columns:
+      minmax(196px,1.2fr)
+      minmax(184px,1.1fr)
+      minmax(170px,1fr)
+      minmax(156px,.92fr)
+      minmax(144px,.72fr)
+      minmax(156px,.92fr)
+      minmax(170px,1fr)
+      minmax(184px,1.1fr)
+      minmax(196px,1.2fr)!important;
+    gap:clamp(10px,.85vw,18px)!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .bracket-photo-round h3{
+    height:30px!important;
+    min-height:30px!important;
+    margin-bottom:10px!important;
+    font-size:11px!important;
+    letter-spacing:0!important;
+    color:#fff8cf!important;
+    background:rgba(255,212,90,.13)!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .bracket-photo-grid-split .knockout-match{
+    padding:7px 8px!important;
+    gap:4px!important;
+    border-radius:12px!important;
+    border-color:rgba(255,212,90,.34)!important;
+    background:linear-gradient(180deg,rgba(20,31,49,.98),rgba(8,13,23,.98))!important;
+    box-shadow:0 12px 24px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.04)!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .bracket-photo-grid-split .ko-team{
+    padding:0 8px!important;
+    grid-template-columns:minmax(0,1fr) 24px!important;
+    border-radius:8px!important;
+    background:rgba(255,212,90,.075)!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .bracket-photo-grid-split .ko-team span{
+    color:#ffe9a6!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .bracket-photo-grid-split .ko-team b{
+    font-size:clamp(12px,1.18vh,14px)!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .ko-page-layout-panel{
+    top:46px!important;
+    right:18px!important;
+    width:168px!important;
+    z-index:20!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .ko-page-layout-panel summary{
+    min-height:34px!important;
+    font-size:11px!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .bracket-final-badge{
+    max-width:150px!important;
+    min-height:124px!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .bracket-center-final{
+    max-width:150px!important;
+  }
+}
+
+@media(min-width:761px) and (max-width:1500px){
+  body.knockout-layout-active #knockoutBracket .bracket-photo-shell{
+    overflow:auto!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .bracket-photo-grid-split{
+    min-width:1500px!important;
+  }
+}
+
+@media(max-width:760px){
+  .ko-api-fill-v248{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .ko-api-fill-v248 button{
+    width:100%;
+  }
+}

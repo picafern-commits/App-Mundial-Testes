@@ -1006,6 +1006,12 @@ async function runFootballDataSyncCoreV151(options = {}) {
     .filter(match => !["FINISHED", "AWARDED"].includes(String(match.status || "").toUpperCase()))
     .slice(0, 12)
     .map(footballMatchSummary);
+  const knockoutFixtures = matches
+    .filter(match => String(match.stage || "").toUpperCase() !== "GROUP_STAGE")
+    .filter(match => footballApiTeamName(match.homeTeam) && footballApiTeamName(match.awayTeam))
+    .sort((a, b) => footballMatchDateMillis(a.utcDate) - footballMatchDateMillis(b.utcDate))
+    .map(footballMatchSummary)
+    .slice(0, 48);
   const liveOrLocked = matches
     .filter(footballShouldLockMatch)
     .map(footballMatchSummary);
@@ -1180,6 +1186,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
     nextSyncGame: precheck.meta.nextSyncGame,
     nextSyncStartsAt: precheck.meta.nextSyncStartsAt,
     upcoming,
+    knockoutFixtures,
     liveOrLocked,
     lastError: FieldValue.delete()
   }, { merge: true });
@@ -1239,6 +1246,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
     liveUpdated,
     knockoutPropagationChanged,
     upcoming,
+    knockoutFixtures,
     liveOrLocked,
     lastSyncIso: new Date().toISOString()
   };
