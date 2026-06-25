@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v238";
+const APP_VERSION_LABEL = "v239";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -233,10 +233,23 @@ function defaultKnockoutPointSettings() {
   return { ...defaultPointSettings(), penalties: 2 };
 }
 
+function defaultVisualTheme() {
+  return {
+    primary: "#6d5cff",
+    secondary: "#38bdf8",
+    accent: "#ffd45a",
+    success: "#26c281",
+    warning: "#f59e0b",
+    danger: "#ef4444",
+    background: "#020816"
+  };
+}
+
 function defaultSettings() {
   return {
     points: defaultPointSettings(),
     knockoutPoints: defaultKnockoutPointSettings(),
+    visualTheme: defaultVisualTheme(),
     extraResults: { mvp: "", topScorer: "", champion: "" },
     extraPredictions: {},
     importedPoints: {},
@@ -329,6 +342,7 @@ function mergeSettings(input = {}) {
     ...base, ...input,
     points: { ...base.points, ...(input.points || {}) },
     knockoutPoints: { ...base.knockoutPoints, ...(input.knockoutPoints || {}) },
+    visualTheme: { ...base.visualTheme, ...(input.visualTheme || {}) },
     extraResults: { ...base.extraResults, ...(input.extraResults || {}) },
     extraPredictions: { ...(input.extraPredictions || {}) },
     importedPoints: { ...(input.importedPoints || {}) },
@@ -12599,4 +12613,212 @@ document.addEventListener("click", event => {
 document.addEventListener("DOMContentLoaded", () => {
   setTimeout(polishPremiumUiV238, 500);
   setTimeout(polishPremiumUiV238, 1400);
+});
+
+// v239 - arrumacao visual e sistema simples de cores para o Dono.
+const VISUAL_THEME_STORAGE_KEY_V239 = `${STORAGE_KEY}_visual_theme_v239`;
+
+function sanitizeThemeColorV239(value, fallback) {
+  const text = String(value || "").trim();
+  return /^#[0-9a-fA-F]{6}$/.test(text) ? text : fallback;
+}
+
+function visualThemeV239() {
+  const defaults = defaultVisualTheme();
+  let local = {};
+  try {
+    local = JSON.parse(localStorage.getItem(VISUAL_THEME_STORAGE_KEY_V239) || "{}") || {};
+  } catch {
+    local = {};
+  }
+  const saved = appSettings?.visualTheme || {};
+  const merged = { ...defaults, ...local, ...saved };
+  return Object.fromEntries(Object.entries(defaults).map(([key, fallback]) => [
+    key,
+    sanitizeThemeColorV239(merged[key], fallback)
+  ]));
+}
+
+function hexToRgbV239(hex) {
+  const clean = sanitizeThemeColorV239(hex, "#000000").slice(1);
+  return [
+    parseInt(clean.slice(0, 2), 16),
+    parseInt(clean.slice(2, 4), 16),
+    parseInt(clean.slice(4, 6), 16)
+  ];
+}
+
+function rgbaFromHexV239(hex, alpha = 1) {
+  const [r, g, b] = hexToRgbV239(hex);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function isOwnerProfileV239() {
+  return normalizeRole(currentProfile?.role) === "owner";
+}
+
+function applyVisualThemeV239(theme = visualThemeV239()) {
+  const root = document.documentElement;
+  root.style.setProperty("--owner-primary", theme.primary);
+  root.style.setProperty("--owner-primary-soft", rgbaFromHexV239(theme.primary, .18));
+  root.style.setProperty("--owner-primary-line", rgbaFromHexV239(theme.primary, .44));
+  root.style.setProperty("--owner-secondary", theme.secondary);
+  root.style.setProperty("--owner-secondary-soft", rgbaFromHexV239(theme.secondary, .14));
+  root.style.setProperty("--owner-accent", theme.accent);
+  root.style.setProperty("--owner-success", theme.success);
+  root.style.setProperty("--owner-warning", theme.warning);
+  root.style.setProperty("--owner-danger", theme.danger);
+  root.style.setProperty("--owner-bg", theme.background);
+  root.style.setProperty("--premium-purple", theme.primary);
+  root.style.setProperty("--premium-purple-2", theme.primary);
+  root.style.setProperty("--premium-blue", theme.secondary);
+  root.style.setProperty("--premium-cyan", theme.secondary);
+  root.style.setProperty("--premium-gold", theme.accent);
+  root.style.setProperty("--premium-green", theme.success);
+  root.style.setProperty("--premium-red", theme.danger);
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeMeta) themeMeta.setAttribute("content", theme.background);
+  document.body?.classList.add("theme-owner-v239");
+}
+
+function renderThemePanelV239() {
+  const content = typeof settingsSectionContentV213 === "function"
+    ? settingsSectionContentV213("preferences")
+    : $("settingsTab");
+  if (!content) return;
+
+  let panel = $("ownerThemePanelV239");
+  if (!isOwnerProfileV239()) {
+    panel?.remove();
+    return;
+  }
+
+  if (!panel) {
+    panel = document.createElement("article");
+    panel.id = "ownerThemePanelV239";
+    content.prepend(panel);
+  }
+
+  panel.className = "owner-theme-panel-v239";
+  const theme = visualThemeV239();
+  const rows = [
+    ["primary", "Cor principal", "Botoes ativos, abas e realces"],
+    ["secondary", "Cor secundaria", "Detalhes azuis e apoio visual"],
+    ["accent", "Dourado / destaque", "Titulos, bracket e avisos leves"],
+    ["success", "Sucesso / online", "Estados OK e vencedores"],
+    ["warning", "Aviso", "Alertas e pendentes"],
+    ["danger", "Erro", "Falhas e acoes perigosas"],
+    ["background", "Fundo", "Base escura da app"]
+  ];
+
+  panel.innerHTML = `
+    <div class="owner-theme-head-v239">
+      <div>
+        <strong>Sistema de cores</strong>
+        <span>So o Dono pode trocar as cores principais da app.</span>
+      </div>
+      <div class="owner-theme-actions-v239">
+        <button type="button" class="secondary small" data-theme-reset-v239>Repor</button>
+        <button type="button" class="primary small" data-theme-save-v239>Guardar cores</button>
+      </div>
+    </div>
+    <div class="owner-theme-preview-v239">
+      <span style="--swatch:${escapeHtml(theme.primary)}"></span>
+      <span style="--swatch:${escapeHtml(theme.secondary)}"></span>
+      <span style="--swatch:${escapeHtml(theme.accent)}"></span>
+      <span style="--swatch:${escapeHtml(theme.success)}"></span>
+      <span style="--swatch:${escapeHtml(theme.warning)}"></span>
+      <span style="--swatch:${escapeHtml(theme.danger)}"></span>
+    </div>
+    <div class="owner-theme-grid-v239">
+      ${rows.map(([key, label, hint]) => `
+        <label>
+          <span>${escapeHtml(label)}</span>
+          <input type="color" value="${escapeHtml(theme[key])}" data-theme-color-v239="${escapeHtml(key)}" />
+          <small>${escapeHtml(hint)}</small>
+        </label>
+      `).join("")}
+    </div>
+  `;
+}
+
+async function saveVisualThemeV239(reset = false) {
+  if (!isOwnerProfileV239()) {
+    toast("So o Dono pode alterar as cores.");
+    return;
+  }
+
+  const next = reset ? defaultVisualTheme() : { ...visualThemeV239() };
+  if (!reset) {
+    document.querySelectorAll("[data-theme-color-v239]").forEach(input => {
+      const key = input.getAttribute("data-theme-color-v239");
+      if (key && Object.prototype.hasOwnProperty.call(next, key)) {
+        next[key] = sanitizeThemeColorV239(input.value, next[key]);
+      }
+    });
+  }
+
+  appSettings.visualTheme = next;
+  localStorage.setItem(VISUAL_THEME_STORAGE_KEY_V239, JSON.stringify(next));
+  applyVisualThemeV239(next);
+  renderThemePanelV239();
+  await persistSettings();
+  toast(reset ? "Cores repostas." : "Cores guardadas.");
+}
+
+function updateThemePreviewV239() {
+  const theme = { ...visualThemeV239() };
+  document.querySelectorAll("[data-theme-color-v239]").forEach(input => {
+    const key = input.getAttribute("data-theme-color-v239");
+    if (key) theme[key] = sanitizeThemeColorV239(input.value, theme[key] || "#000000");
+  });
+  applyVisualThemeV239(theme);
+}
+
+function polishCleanLayoutV239() {
+  applyVisualThemeV239();
+  renderThemePanelV239();
+  document.querySelectorAll(".tab-panel").forEach(panel => {
+    panel.classList.toggle("clean-page-v239", panel.classList.contains("active"));
+  });
+}
+
+const polishPremiumOriginalV239 = typeof polishPremiumUiV238 === "function" ? polishPremiumUiV238 : null;
+if (polishPremiumOriginalV239 && !window.__polishCleanLayoutV239) {
+  window.__polishCleanLayoutV239 = true;
+  polishPremiumUiV238 = function polishPremiumUiCleanV239() {
+    const result = polishPremiumOriginalV239.apply(this, arguments);
+    setTimeout(polishCleanLayoutV239, 0);
+    return result;
+  };
+}
+
+const renderSettingsOriginalV239 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
+if (renderSettingsOriginalV239 && !window.__renderThemeSettingsV239) {
+  window.__renderThemeSettingsV239 = true;
+  renderAppSettingsPanelV162 = function renderThemeSettingsV239() {
+    const result = renderSettingsOriginalV239.apply(this, arguments);
+    setTimeout(polishCleanLayoutV239, 0);
+    return result;
+  };
+}
+
+document.addEventListener("input", event => {
+  if (event.target.closest?.("[data-theme-color-v239]")) updateThemePreviewV239();
+}, true);
+
+document.addEventListener("click", event => {
+  if (event.target.closest?.("[data-theme-save-v239]")) {
+    saveVisualThemeV239(false);
+    return;
+  }
+  if (event.target.closest?.("[data-theme-reset-v239]")) {
+    saveVisualThemeV239(true);
+  }
+}, true);
+
+document.addEventListener("DOMContentLoaded", () => {
+  applyVisualThemeV239();
+  setTimeout(polishCleanLayoutV239, 700);
+  setTimeout(polishCleanLayoutV239, 1600);
 });
