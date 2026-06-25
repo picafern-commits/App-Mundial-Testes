@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v249";
+const APP_VERSION_LABEL = "v250";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -13217,7 +13217,10 @@ function startKnockoutAutoBetIntervalV244() {
 }
 
 startKnockoutAutoBetIntervalV244();
-document.addEventListener("focusin", () => forceKnockoutAutoBetCheckV244(450));
+document.addEventListener("focusin", event => {
+  if (window.__isMundialTextFieldActiveV250?.(event.target)) return;
+  forceKnockoutAutoBetCheckV244(450);
+});
 document.addEventListener("click", event => {
   if (event.target.closest?.("#knockoutBetModalV241, #knockoutRecordModal, button, input, select, textarea, a")) return;
   forceKnockoutAutoBetCheckV244(900);
@@ -14054,322 +14057,214 @@ document.addEventListener("DOMContentLoaded", () => {
 startKnockoutMandatoryWatcherV247();
 
 
-// v248 - Corrige selects/inputs a perder foco quando o modal obrigatorio atualiza.
-// O problema vinha do watcher da Fase Final a re-renderizar o modal enquanto o user estava a escrever/escolher.
-function knockoutMandatoryModalOpenV248() {
-  const modal = document.getElementById("knockoutMandatoryModalV247");
-  return Boolean(modal && !modal.classList.contains("hidden"));
-}
+// v250 — correção real do foco nos campos/selects.
+// Problema: os watchers automáticos da Fase Final e alguns renders globais corriam
+// logo depois de tocar num input/select/textarea. Isso reconstruía DOM ou abria modal
+// e o campo perdia foco imediatamente. Esta guarda não mexe no valor dos campos:
+// apenas adia renders/modais automáticos enquanto há um campo ativo.
+const FORM_FOCUS_IDLE_MS_V250 = 1400;
+let mundialFormLastInteractionV250 = 0;
+let mundialFormIdleTimersV250 = new Map();
 
-function knockoutMandatoryFocusedFieldV248() {
-  const modal = document.getElementById("knockoutMandatoryModalV247");
-  const active = document.activeElement;
-  if (!modal || !active || !modal.contains(active)) return null;
-  return active.matches?.("input, select, textarea") ? active : null;
-}
-
-function knockoutMandatoryPendingSignatureV248() {
-  try {
-    return knockoutMandatoryPendingMatchesV247()
-      .map(match => `${match.id}:${knockoutBetDeadlineMillisV247(match)}:${match.homeTeam}:${match.awayTeam}`)
-      .join("|");
-  } catch {
-    return "";
-  }
-}
-
-function knockoutMandatoryDraftV248() {
-  const draft = {};
-  document.querySelectorAll("[data-ko-mandatory-match]").forEach(row => {
-    const id = row.dataset.koMandatoryMatch || "";
-    if (!id) return;
-    draft[id] = {
-      home: row.querySelector(".ko-mandatory-home-v247")?.value ?? "",
-      away: row.querySelector(".ko-mandatory-away-v247")?.value ?? "",
-      winner: row.querySelector(".ko-mandatory-winner-v247")?.value ?? ""
-    };
-  });
-  return draft;
-}
-
-function restoreKnockoutMandatoryDraftV248(draft = {}) {
-  Object.entries(draft || {}).forEach(([id, values]) => {
-    let row = null;
-    try { row = document.querySelector(`[data-ko-mandatory-match="${CSS.escape(id)}"]`); } catch { row = null; }
-    if (!row) return;
-    const home = row.querySelector(".ko-mandatory-home-v247");
-    const away = row.querySelector(".ko-mandatory-away-v247");
-    const winner = row.querySelector(".ko-mandatory-winner-v247");
-    if (home && values.home !== undefined) home.value = values.home;
-    if (away && values.away !== undefined) away.value = values.away;
-    if (winner && values.winner !== undefined) winner.value = values.winner;
-  });
-}
-
-const renderKnockoutMandatoryModalOriginalV248 = typeof renderKnockoutMandatoryModalV247 === "function" ? renderKnockoutMandatoryModalV247 : null;
-if (renderKnockoutMandatoryModalOriginalV248 && !window.__koMandatoryRenderFocusFixV248) {
-  window.__koMandatoryRenderFocusFixV248 = true;
-  window.__koMandatoryLastSignatureV248 = "";
-
-  renderKnockoutMandatoryModalV247 = function renderKnockoutMandatoryModalStableV248() {
-    const modal = document.getElementById("knockoutMandatoryModalV247");
-    const focusedField = knockoutMandatoryFocusedFieldV248();
-    const signature = knockoutMandatoryPendingSignatureV248();
-    const hasRows = Boolean(document.querySelector("#koMandatoryBodyV247 [data-ko-mandatory-match]"));
-
-    // Se o user está a escrever ou com um select aberto, não reconstruir o HTML à força.
-    // Isto evita o abre/fecha dos selects e os inputs a perderem foco.
-    if (focusedField && hasRows && window.__koMandatoryLastSignatureV248 === signature) {
-      const subtitle = document.getElementById("koMandatorySubtitleV247");
-      const player = knockoutMandatoryPlayerV247?.();
-      const pending = knockoutMandatoryPendingMatchesV247?.() || [];
-      if (subtitle && player) subtitle.textContent = `${player.name} - ${pending.length} aposta(s) por preencher`;
-      return;
-    }
-
-    const draft = knockoutMandatoryDraftV248();
-    const result = renderKnockoutMandatoryModalOriginalV248.apply(this, arguments);
-    window.__koMandatoryLastSignatureV248 = signature;
-    restoreKnockoutMandatoryDraftV248(draft);
-    return result;
-  };
-}
-
-const openKnockoutMandatoryModalOriginalV248 = typeof openKnockoutMandatoryModalV247 === "function" ? openKnockoutMandatoryModalV247 : null;
-if (openKnockoutMandatoryModalOriginalV248 && !window.__koMandatoryOpenFocusFixV248) {
-  window.__koMandatoryOpenFocusFixV248 = true;
-
-  openKnockoutMandatoryModalV247 = function openKnockoutMandatoryModalStableV248() {
-    const pending = knockoutMandatoryPendingMatchesV247?.() || [];
-    if (!pending.length) {
-      closeKnockoutMandatoryModalV247?.(true);
-      return false;
-    }
-
-    const modal = ensureKnockoutMandatoryModalV247();
-    const wasOpen = knockoutMandatoryModalOpenV248();
-    const focusedField = knockoutMandatoryFocusedFieldV248();
-    renderKnockoutMandatoryModalV247();
-    modal.classList.remove("hidden");
-    document.body.classList.add("ko-mandatory-open-v247");
-
-    // Só focar automaticamente na primeira abertura. Nas atualizações, manter o campo/selector onde o user está.
-    if (!wasOpen && !focusedField) {
-      setTimeout(() => {
-        const current = document.activeElement;
-        if (current && modal.contains(current) && current.matches?.("input, select, textarea")) return;
-        modal.querySelector("input, select")?.focus?.({ preventScroll: true });
-      }, 60);
-    }
-    return true;
-  };
-}
-
-const closeTopModalOriginalV248 = typeof closeTopModalV162 === "function" ? closeTopModalV162 : null;
-if (closeTopModalOriginalV248 && !window.__koMandatoryCloseGuardV248) {
-  window.__koMandatoryCloseGuardV248 = true;
-  closeTopModalV162 = function closeTopModalGuardMandatoryV248() {
-    const modals = [...document.querySelectorAll(".modal")].filter(modal => !modal.classList.contains("hidden"));
-    const modal = modals.at(-1);
-    if (modal?.id === "knockoutMandatoryModalV247") {
-      return closeKnockoutMandatoryModalV247?.(false) || false;
-    }
-    return closeTopModalOriginalV248.apply(this, arguments);
-  };
-}
-
-document.addEventListener("pointerdown", event => {
-  if (!event.target.closest?.("#knockoutMandatoryModalV247 input, #knockoutMandatoryModalV247 select, #knockoutMandatoryModalV247 textarea")) return;
-  window.__koMandatoryLastUserEditV248 = Date.now();
-}, { capture: true, passive: true });
-
-document.addEventListener("input", event => {
-  if (!event.target.closest?.("#knockoutMandatoryModalV247")) return;
-  window.__koMandatoryLastUserEditV248 = Date.now();
-}, true);
-
-// v249 - Corrige perda global de foco em inputs/selects/textareas.
-// Causa: watchers/renderizações automáticas (Firebase/Fase Final/modal obrigatório) redesenhavam a página
-// enquanto o utilizador tinha um campo aberto. Agora renderizações automáticas esperam o campo ficar idle.
-const FORM_IDLE_DELAY_V249 = 900;
-let formLastEditAtV249 = 0;
-let formLastNonFieldPointerAtV249 = 0;
-const pendingIdleActionsV249 = new Map();
-
-function formFieldFromTargetV249(target) {
+function mundialTextFieldV250(target) {
   try {
     const el = target?.closest?.("input, select, textarea, [contenteditable='true'], [contenteditable=''], [contenteditable='plaintext-only']");
     if (!el) return null;
-    if (el.matches?.("input[type='button'], input[type='submit'], input[type='reset'], input[type='checkbox'], input[type='radio'], button")) return null;
-    if (el.disabled || el.readOnly) return null;
+    const tag = String(el.tagName || "").toLowerCase();
+    const type = String(el.type || "").toLowerCase();
+    if (tag === "textarea" || tag === "select") return el;
+    if (el.isContentEditable) return el;
+    if (tag !== "input") return null;
+    if (["button", "submit", "reset", "checkbox", "radio", "file", "image", "hidden"].includes(type)) return null;
     return el;
   } catch {
     return null;
   }
 }
 
-function markFormEditingV249(target) {
-  if (formFieldFromTargetV249(target)) formLastEditAtV249 = Date.now();
+function mundialActiveTextFieldV250() {
+  return mundialTextFieldV250(document.activeElement);
 }
 
-function markNonFieldPointerV249(target) {
-  if (!formFieldFromTargetV249(target)) formLastNonFieldPointerAtV249 = Date.now();
+function mundialMarkFormInteractionV250(target) {
+  if (mundialTextFieldV250(target)) mundialFormLastInteractionV250 = Date.now();
 }
 
-function isFormInteractionActiveV249() {
-  const now = Date.now();
-  // Se o último gesto foi num botão/card fora de campos, não bloquear ações desse clique.
-  if (now - formLastNonFieldPointerAtV249 < 220) return false;
-
-  const active = document.activeElement;
-  if (formFieldFromTargetV249(active)) return true;
-  return now - formLastEditAtV249 < FORM_IDLE_DELAY_V249;
+function mundialFormIsActiveV250() {
+  if (mundialActiveTextFieldV250()) return true;
+  return Date.now() - mundialFormLastInteractionV250 < FORM_FOCUS_IDLE_MS_V250;
 }
 
-function runWhenFormIdleV249(key, fn, delay = FORM_IDLE_DELAY_V249) {
-  const existing = pendingIdleActionsV249.get(key);
-  if (existing) clearTimeout(existing);
+window.__isMundialTextFieldActiveV250 = function isMundialTextFieldActiveV250(target) {
+  return Boolean(mundialTextFieldV250(target) || mundialFormIsActiveV250());
+};
 
+function mundialRunWhenFormIdleV250(key, fn, delay = FORM_FOCUS_IDLE_MS_V250) {
+  const old = mundialFormIdleTimersV250.get(key);
+  if (old) clearTimeout(old);
   const timer = setTimeout(() => {
-    pendingIdleActionsV249.delete(key);
-    if (isFormInteractionActiveV249()) {
-      runWhenFormIdleV249(key, fn, delay);
+    mundialFormIdleTimersV250.delete(key);
+    if (mundialFormIsActiveV250()) {
+      mundialRunWhenFormIdleV250(key, fn, delay);
       return;
     }
-    try { fn(); } catch (error) { console.warn(`Ação idle v249 falhou (${key}):`, error); }
+    try { fn(); } catch (error) { console.warn(`v250: ação adiada falhou (${key})`, error); }
   }, delay);
-
-  pendingIdleActionsV249.set(key, timer);
+  mundialFormIdleTimersV250.set(key, timer);
 }
 
-["pointerdown", "mousedown", "touchstart"].forEach(type => {
-  document.addEventListener(type, event => {
-    markFormEditingV249(event.target);
-    markNonFieldPointerV249(event.target);
-  }, { capture: true, passive: true });
-});
-
-["focusin", "keydown", "input", "change"].forEach(type => {
-  document.addEventListener(type, event => markFormEditingV249(event.target), true);
+// Marca interação em campos antes dos listeners antigos da app correrem.
+["pointerdown", "mousedown", "touchstart", "click", "focusin", "keydown", "input", "change"].forEach(type => {
+  document.addEventListener(type, event => mundialMarkFormInteractionV250(event.target), true);
 });
 
 document.addEventListener("focusout", event => {
-  if (!formFieldFromTargetV249(event.target)) return;
-  formLastEditAtV249 = Date.now();
+  if (!mundialTextFieldV250(event.target)) return;
+  mundialFormLastInteractionV250 = Date.now();
+  mundialRunWhenFormIdleV250("post-focusout-check", () => {
+    try { scheduleKnockoutMandatoryCheckV247?.(250); } catch {}
+  }, FORM_FOCUS_IDLE_MS_V250);
 }, true);
 
-function deferRenderWhileFormActiveV249(label, fn, context, args) {
-  if (!isFormInteractionActiveV249()) return fn.apply(context, args);
-  runWhenFormIdleV249(label, () => fn.apply(context, args), FORM_IDLE_DELAY_V249);
+function mundialDeferAutoWorkV250(key, original, context, args) {
+  if (!mundialFormIsActiveV250()) return original.apply(context, args);
+  mundialRunWhenFormIdleV250(key, () => original.apply(context, args));
   return undefined;
 }
 
-function patchRenderGuardV249(name, getter, setter) {
+function mundialPatchFunctionV250(name, getter, setter) {
   try {
     const original = getter();
-    if (typeof original !== "function") return;
-    setter(function guardedRenderV249() {
-      return deferRenderWhileFormActiveV249(name, original, this, arguments);
-    });
+    if (typeof original !== "function" || original.__mundialFocusPatchedV250) return;
+    const patched = function mundialFocusSafeV250() {
+      return mundialDeferAutoWorkV250(name, original, this, arguments);
+    };
+    patched.__mundialFocusPatchedV250 = true;
+    setter(patched);
   } catch (error) {
-    console.warn(`Guard render v249 falhou em ${name}:`, error);
+    console.warn(`v250: não consegui proteger ${name}`, error);
   }
 }
 
-if (!window.__formFocusGlobalGuardV249) {
-  window.__formFocusGlobalGuardV249 = true;
+if (!window.__mundialGlobalFocusFixV250) {
+  window.__mundialGlobalFocusFixV250 = true;
 
-  patchRenderGuardV249("renderAll", () => renderAll, value => { renderAll = value; });
-  patchRenderGuardV249("renderActivePageV187", () => renderActivePageV187, value => { renderActivePageV187 = value; });
-  patchRenderGuardV249("renderCalendar", () => renderCalendar, value => { renderCalendar = value; });
-  patchRenderGuardV249("renderAdmin", () => renderAdmin, value => { renderAdmin = value; });
-  patchRenderGuardV249("renderSettingsForm", () => renderSettingsForm, value => { renderSettingsForm = value; });
-  patchRenderGuardV249("renderAppSettingsPanelV162", () => renderAppSettingsPanelV162, value => { renderAppSettingsPanelV162 = value; });
-  patchRenderGuardV249("renderUserBetsEditor", () => renderUserBetsEditor, value => { renderUserBetsEditor = value; });
-  patchRenderGuardV249("renderPermissionsUsers", () => renderPermissionsUsers, value => { renderPermissionsUsers = value; });
-  patchRenderGuardV249("renderKnockout", () => renderKnockout, value => { renderKnockout = value; });
-  patchRenderGuardV249("renderKnockoutAdmin", () => renderKnockoutAdmin, value => { renderKnockoutAdmin = value; });
+  // Renders principais que podem reconstruir inputs/selects.
+  mundialPatchFunctionV250("renderAll", () => renderAll, value => { renderAll = value; });
+  mundialPatchFunctionV250("renderActivePageV187", () => renderActivePageV187, value => { renderActivePageV187 = value; });
+  mundialPatchFunctionV250("renderCalendar", () => renderCalendar, value => { renderCalendar = value; });
+  mundialPatchFunctionV250("renderAdmin", () => renderAdmin, value => { renderAdmin = value; });
+  mundialPatchFunctionV250("renderSettingsForm", () => renderSettingsForm, value => { renderSettingsForm = value; });
+  mundialPatchFunctionV250("renderAppSettingsPanelV162", () => renderAppSettingsPanelV162, value => { renderAppSettingsPanelV162 = value; });
+  mundialPatchFunctionV250("renderUserBetsEditor", () => renderUserBetsEditor, value => { renderUserBetsEditor = value; });
+  mundialPatchFunctionV250("renderPermissionsUsers", () => renderPermissionsUsers, value => { renderPermissionsUsers = value; });
+  mundialPatchFunctionV250("renderKnockout", () => renderKnockout, value => { renderKnockout = value; });
+  mundialPatchFunctionV250("renderKnockoutAdmin", () => renderKnockoutAdmin, value => { renderKnockoutAdmin = value; });
+  if (typeof renderAdminSectionsV187 === "function") mundialPatchFunctionV250("renderAdminSectionsV187", () => renderAdminSectionsV187, value => { renderAdminSectionsV187 = value; });
+  if (typeof renderAdminSectionsV190 === "function") mundialPatchFunctionV250("renderAdminSectionsV190", () => renderAdminSectionsV190, value => { renderAdminSectionsV190 = value; });
+  if (typeof organizeAdminPageV228 === "function") mundialPatchFunctionV250("organizeAdminPageV228", () => organizeAdminPageV228, value => { organizeAdminPageV228 = value; });
+  if (typeof organizeSettingsPageV228 === "function") mundialPatchFunctionV250("organizeSettingsPageV228", () => organizeSettingsPageV228, value => { organizeSettingsPageV228 = value; });
+  if (typeof renderSuspendedGameAdminV159 === "function") mundialPatchFunctionV250("renderSuspendedGameAdminV159", () => renderSuspendedGameAdminV159, value => { renderSuspendedGameAdminV159 = value; });
 }
 
-const queueRealtimeRenderOriginalV249 = typeof queueRealtimeRender === "function" ? queueRealtimeRender : null;
-if (queueRealtimeRenderOriginalV249 && !window.__queueRealtimeFocusGuardV249) {
-  window.__queueRealtimeFocusGuardV249 = true;
-  queueRealtimeRender = function queueRealtimeRenderFocusGuardV249(reason = "firebase realtime") {
-    if (isFormInteractionActiveV249()) {
-      runWhenFormIdleV249("queueRealtimeRender", () => queueRealtimeRenderOriginalV249.call(this, reason), FORM_IDLE_DELAY_V249);
+// Protege especificamente o modal obrigatório da Fase Final.
+const scheduleKnockoutMandatoryCheckOriginalV250 = typeof scheduleKnockoutMandatoryCheckV247 === "function" ? scheduleKnockoutMandatoryCheckV247 : null;
+if (scheduleKnockoutMandatoryCheckOriginalV250 && !window.__koMandatoryScheduleFocusFixV250) {
+  window.__koMandatoryScheduleFocusFixV250 = true;
+  scheduleKnockoutMandatoryCheckV247 = function scheduleKnockoutMandatoryCheckFocusFixV250(delay = 700) {
+    if (mundialFormIsActiveV250()) {
+      mundialRunWhenFormIdleV250("scheduleKnockoutMandatoryCheckV247", () => scheduleKnockoutMandatoryCheckOriginalV250.call(this, Math.max(250, delay)));
       return undefined;
     }
-    return queueRealtimeRenderOriginalV249.apply(this, arguments);
+    return scheduleKnockoutMandatoryCheckOriginalV250.apply(this, arguments);
   };
 }
 
-const runKnockoutMandatoryCheckOriginalV249 = typeof runKnockoutMandatoryCheckV247 === "function" ? runKnockoutMandatoryCheckV247 : null;
-if (runKnockoutMandatoryCheckOriginalV249 && !window.__koMandatoryRunFocusGuardV249) {
-  window.__koMandatoryRunFocusGuardV249 = true;
-  runKnockoutMandatoryCheckV247 = function runKnockoutMandatoryCheckFocusGuardV249() {
-    if (isFormInteractionActiveV249()) {
-      runWhenFormIdleV249("knockoutMandatoryCheck", () => runKnockoutMandatoryCheckOriginalV249.apply(this, arguments), FORM_IDLE_DELAY_V249);
+const runKnockoutMandatoryCheckOriginalV250 = typeof runKnockoutMandatoryCheckV247 === "function" ? runKnockoutMandatoryCheckV247 : null;
+if (runKnockoutMandatoryCheckOriginalV250 && !window.__koMandatoryRunFocusFixV250) {
+  window.__koMandatoryRunFocusFixV250 = true;
+  runKnockoutMandatoryCheckV247 = function runKnockoutMandatoryCheckFocusFixV250() {
+    if (mundialFormIsActiveV250()) {
+      mundialRunWhenFormIdleV250("runKnockoutMandatoryCheckV247", () => runKnockoutMandatoryCheckOriginalV250.apply(this, arguments));
       return undefined;
     }
-    return runKnockoutMandatoryCheckOriginalV249.apply(this, arguments);
+    return runKnockoutMandatoryCheckOriginalV250.apply(this, arguments);
   };
 }
 
-const scheduleKnockoutMandatoryCheckOriginalV249 = typeof scheduleKnockoutMandatoryCheckV247 === "function" ? scheduleKnockoutMandatoryCheckV247 : null;
-if (scheduleKnockoutMandatoryCheckOriginalV249 && !window.__koMandatoryScheduleFocusGuardV249) {
-  window.__koMandatoryScheduleFocusGuardV249 = true;
-  scheduleKnockoutMandatoryCheckV247 = function scheduleKnockoutMandatoryCheckFocusGuardV249(delay = 700) {
-    if (isFormInteractionActiveV249()) {
-      runWhenFormIdleV249("knockoutMandatorySchedule", () => scheduleKnockoutMandatoryCheckOriginalV249.call(this, Math.max(350, delay)), FORM_IDLE_DELAY_V249);
-      return undefined;
-    }
-    return scheduleKnockoutMandatoryCheckOriginalV249.apply(this, arguments);
-  };
-}
+const openKnockoutMandatoryModalOriginalV250 = typeof openKnockoutMandatoryModalV247 === "function" ? openKnockoutMandatoryModalV247 : null;
+if (openKnockoutMandatoryModalOriginalV250 && !window.__koMandatoryOpenFocusFixV250) {
+  window.__koMandatoryOpenFocusFixV250 = true;
+  openKnockoutMandatoryModalV247 = function openKnockoutMandatoryModalFocusFixV250() {
+    const active = mundialActiveTextFieldV250();
+    const modal = document.getElementById("knockoutMandatoryModalV247");
+    const activeInsideMandatory = Boolean(active && modal && modal.contains(active));
 
-const openKnockoutMandatoryModalOriginalV249 = typeof openKnockoutMandatoryModalV247 === "function" ? openKnockoutMandatoryModalV247 : null;
-if (openKnockoutMandatoryModalOriginalV249 && !window.__koMandatoryOpenFocusGuardV249) {
-  window.__koMandatoryOpenFocusGuardV249 = true;
-  openKnockoutMandatoryModalV247 = function openKnockoutMandatoryModalFocusGuardV249() {
-    if (isFormInteractionActiveV249()) {
-      runWhenFormIdleV249("openKnockoutMandatoryModal", () => openKnockoutMandatoryModalOriginalV249.apply(this, arguments), FORM_IDLE_DELAY_V249);
+    // Não abrir o modal por cima de outro campo que o user acabou de tocar/escrever.
+    if (mundialFormIsActiveV250() && !activeInsideMandatory) {
+      mundialRunWhenFormIdleV250("openKnockoutMandatoryModalV247", () => openKnockoutMandatoryModalOriginalV250.apply(this, arguments));
       return false;
     }
-    return openKnockoutMandatoryModalOriginalV249.apply(this, arguments);
+    return openKnockoutMandatoryModalOriginalV250.apply(this, arguments);
   };
 }
 
-if (typeof forceKnockoutAutoBetCheckV244 === "function" && !window.__forceKoAutoFocusGuardV249) {
-  window.__forceKoAutoFocusGuardV249 = true;
-  const forceKoAutoOriginalV249 = forceKnockoutAutoBetCheckV244;
-  forceKnockoutAutoBetCheckV244 = function forceKnockoutAutoBetCheckFocusGuardV249(delay = 500) {
-    if (isFormInteractionActiveV249()) {
-      runWhenFormIdleV249("forceKnockoutAutoBetCheck", () => forceKoAutoOriginalV249.call(this, delay), FORM_IDLE_DELAY_V249);
+const renderKnockoutMandatoryModalOriginalV250 = typeof renderKnockoutMandatoryModalV247 === "function" ? renderKnockoutMandatoryModalV247 : null;
+if (renderKnockoutMandatoryModalOriginalV250 && !window.__koMandatoryRenderFocusFixV250) {
+  window.__koMandatoryRenderFocusFixV250 = true;
+  renderKnockoutMandatoryModalV247 = function renderKnockoutMandatoryModalFocusFixV250() {
+    const modal = document.getElementById("knockoutMandatoryModalV247");
+    const active = mundialActiveTextFieldV250();
+    const activeInsideMandatory = Boolean(active && modal && modal.contains(active));
+    const body = document.getElementById("koMandatoryBodyV247");
+    const hasRows = Boolean(body?.querySelector?.("[data-ko-mandatory-match]"));
+
+    // Se o user está a preencher o próprio modal, não reconstruir o HTML.
+    if (activeInsideMandatory && hasRows) {
+      try {
+        const subtitle = document.getElementById("koMandatorySubtitleV247");
+        const player = knockoutMandatoryPlayerV247?.();
+        const pending = knockoutMandatoryPendingMatchesV247?.() || [];
+        if (subtitle && player) subtitle.textContent = `${player.name} - ${pending.length} aposta(s) por preencher`;
+      } catch {}
       return undefined;
     }
-    return forceKoAutoOriginalV249.apply(this, arguments);
+    return renderKnockoutMandatoryModalOriginalV250.apply(this, arguments);
   };
 }
 
-if (typeof scheduleKnockoutAutoBetCheckV243 === "function" && !window.__scheduleKoAutoFocusGuardV249) {
-  window.__scheduleKoAutoFocusGuardV249 = true;
-  const scheduleKoAutoOriginalV249 = scheduleKnockoutAutoBetCheckV243;
-  scheduleKnockoutAutoBetCheckV243 = function scheduleKnockoutAutoBetCheckFocusGuardV249(delay = 500) {
-    if (isFormInteractionActiveV249()) {
-      runWhenFormIdleV249("scheduleKnockoutAutoBetCheck", () => scheduleKoAutoOriginalV249.call(this, delay), FORM_IDLE_DELAY_V249);
+const forceKnockoutAutoBetCheckOriginalV250 = typeof forceKnockoutAutoBetCheckV244 === "function" ? forceKnockoutAutoBetCheckV244 : null;
+if (forceKnockoutAutoBetCheckOriginalV250 && !window.__koAutoForceFocusFixV250) {
+  window.__koAutoForceFocusFixV250 = true;
+  forceKnockoutAutoBetCheckV244 = function forceKnockoutAutoBetCheckFocusFixV250(delay = 500) {
+    if (mundialFormIsActiveV250()) {
+      mundialRunWhenFormIdleV250("forceKnockoutAutoBetCheckV244", () => forceKnockoutAutoBetCheckOriginalV250.call(this, delay));
       return undefined;
     }
-    return scheduleKoAutoOriginalV249.apply(this, arguments);
+    return forceKnockoutAutoBetCheckOriginalV250.apply(this, arguments);
   };
 }
 
-window.debugFormFocusV249 = function debugFormFocusV249() {
+const queueRealtimeRenderOriginalV250 = typeof queueRealtimeRender === "function" ? queueRealtimeRender : null;
+if (queueRealtimeRenderOriginalV250 && !window.__queueRealtimeFocusFixV250) {
+  window.__queueRealtimeFocusFixV250 = true;
+  queueRealtimeRender = function queueRealtimeRenderFocusFixV250(reason = "firebase realtime") {
+    if (mundialFormIsActiveV250()) {
+      mundialRunWhenFormIdleV250("queueRealtimeRender", () => queueRealtimeRenderOriginalV250.call(this, reason));
+      return undefined;
+    }
+    return queueRealtimeRenderOriginalV250.apply(this, arguments);
+  };
+}
+
+// Diagnóstico simples para testar no DevTools se voltar a acontecer.
+window.debugFocusV250 = function debugFocusV250() {
+  const active = document.activeElement;
   return {
-    activeTag: document.activeElement?.tagName || "",
-    activeId: document.activeElement?.id || "",
-    activeClass: document.activeElement?.className || "",
-    formActive: isFormInteractionActiveV249(),
-    lastEditMs: Date.now() - formLastEditAtV249,
-    lastNonFieldPointerMs: Date.now() - formLastNonFieldPointerAtV249
+    activeTag: active?.tagName || "",
+    activeId: active?.id || "",
+    activeClass: String(active?.className || ""),
+    formActive: mundialFormIsActiveV250(),
+    msSinceFormInteraction: Date.now() - mundialFormLastInteractionV250
   };
 };
