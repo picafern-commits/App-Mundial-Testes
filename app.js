@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v255";
+const APP_VERSION_LABEL = "v256";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -14784,7 +14784,7 @@ if (!window.__koMandatoryModalV252) {
 }
 
 // v253 — Resultado real do Admin + equipa qualificada + passagem automática.
-const KNOCKOUT_ADMIN_RESULT_VERSION_V253 = "255.0";
+const KNOCKOUT_ADMIN_RESULT_VERSION_V253 = "256.0";
 
 function debugKnockoutAdminResultV253() {
   try {
@@ -14820,7 +14820,7 @@ window.debugKnockoutAdminResultV253 = debugKnockoutAdminResultV253;
 // O problema provável: depois do login, um input/select escondido podia continuar com foco
 // e a proteção v250 adiava o modal para sempre. Esta camada só corrige o disparo do modal;
 // não mexe em pontuação nem na passagem de equipas.
-const KNOCKOUT_MANDATORY_USER_MODAL_VERSION_V254 = "255.0";
+const KNOCKOUT_MANDATORY_USER_MODAL_VERSION_V254 = "256.0";
 let knockoutMandatoryTimerV254 = null;
 let knockoutMandatoryIntervalV254 = null;
 let knockoutMandatoryRunningV254 = false;
@@ -15117,7 +15117,7 @@ if (!window.__koMandatoryModalV254) {
 
 // v255 — Diagnóstico real do modal obrigatório da Fase Final + persistência reforçada da data/hora.
 // Objetivo: deixar claro PORQUE um jogo não abre modal e garantir que a data/hora guardada pelo Admin fica persistida.
-const KNOCKOUT_MANDATORY_DIAG_VERSION_V255 = "255.0";
+const KNOCKOUT_MANDATORY_DIAG_VERSION_V255 = "256.0";
 let knockoutMandatoryTimerV255 = null;
 
 function knockoutV255NormalizeMatchDateValue(value) {
@@ -15158,7 +15158,13 @@ function knockoutV255MatchStartMillis(match) {
 }
 
 function knockoutV255Player() {
-  try { return knockoutRequiredCurrentPlayerV254?.() || knockoutRequiredCurrentPlayerV251?.() || linkedPlayerForCurrentUserV241?.() || null; } catch { return null; }
+  // v256: evitar recursão/overrides no arranque. Usa apenas detetores originais seguros.
+  try {
+    const direct = linkedPlayerForCurrentUserV241?.() || null;
+    if (direct) return direct;
+  } catch {}
+  try { return knockoutRequiredCurrentPlayerV254?.() || null; } catch {}
+  return null;
 }
 
 function knockoutV255ExistingBet(player, match) {
@@ -15339,30 +15345,8 @@ function knockoutV255DecorateStatuses() {
 if (!window.__koMandatoryDiagnosticsV255) {
   window.__koMandatoryDiagnosticsV255 = true;
 
-  // A deteção final passa a usar a camada v255, que explica os motivos e sincroniza datas em todas as chaves conhecidas.
-  try { knockoutRequiredCurrentPlayerV251 = knockoutV255Player; } catch {}
-  try { knockoutMandatoryPlayerV247 = knockoutV255Player; } catch {}
-  try { knockoutMandatoryPendingMatchesV247 = knockoutV255PendingMatches; } catch {}
-  try { knockoutMandatoryMissedMatchesV247 = knockoutV255MissedMatches; } catch {}
-  try { knockoutMandatoryDoneMatchesV247 = knockoutV255DoneMatches; } catch {}
-  try { knockoutMandatoryPendingMatchesV252 = knockoutV255PendingMatches; } catch {}
-  try { knockoutMandatoryPendingMatchesV254 = knockoutV255PendingMatches; } catch {}
-  try { currentUserRequiredKnockoutBetsV245 = knockoutV255PendingMatches; } catch {}
-  try { currentUserMissedKnockoutBetsV245 = knockoutV255MissedMatches; } catch {}
-  try { currentUserDoneKnockoutBetsV245 = knockoutV255DoneMatches; } catch {}
-  try { eligibleAutoKnockoutBetMatchesV243 = knockoutV255PendingMatches; } catch {}
-
-  try { openKnockoutMandatoryModalV247 = knockoutV255RunModalCheck; } catch {}
-  try { runKnockoutMandatoryCheckV247 = knockoutV255RunModalCheck; } catch {}
-  try { runKnockoutMandatoryCheckV252 = knockoutV255RunModalCheck; } catch {}
-  try { runKnockoutMandatoryCheckV254 = knockoutV255RunModalCheck; } catch {}
-  try { scheduleKnockoutMandatoryCheckV247 = knockoutV255ScheduleModalCheck; } catch {}
-  try { scheduleKnockoutMandatoryCheckV252 = knockoutV255ScheduleModalCheck; } catch {}
-  try { scheduleKnockoutMandatoryCheckV254 = knockoutV255ScheduleModalCheck; } catch {}
-  try { scheduleKnockoutAutoBetCheckV243 = knockoutV255ScheduleModalCheck; } catch {}
-  try { forceKnockoutAutoBetCheckV244 = knockoutV255ScheduleModalCheck; } catch {}
-  try { maybeOpenNextKnockoutBetModalV243 = knockoutV255RunModalCheck; } catch {}
-
+  // v256: a v255 estava a correr verificações automáticas logo no login e podia bloquear o arranque.
+  // Mantemos apenas diagnóstico manual e reforço de data/hora quando o Admin guarda um jogo.
   const saveKnockoutMatchFromAdminOriginalV255 = typeof saveKnockoutMatchFromAdmin === "function" ? saveKnockoutMatchFromAdmin : null;
   if (saveKnockoutMatchFromAdminOriginalV255 && !saveKnockoutMatchFromAdminOriginalV255.__koV255) {
     saveKnockoutMatchFromAdmin = async function saveKnockoutMatchFromAdminV255(matchId, sourceElement = null) {
@@ -15372,22 +15356,19 @@ if (!window.__koMandatoryDiagnosticsV255) {
       const match = knockoutMatchById?.(matchId);
       const normalized = knockoutV255NormalizeMatchDateValue(dateValueBefore || match?.matchDate || match?.date || "");
       if (match && normalized) {
-        const before = match.matchDate || "";
         knockoutV255SyncMatchDateFields(match, normalized);
-        if (before !== match.matchDate || match.date !== normalized || match.kickoff !== normalized || match.startAt !== normalized) {
-          try {
-            markSettingsPending?.();
-            saveLocalData?.("fase final data/hora reforçada v255");
-            await saveSettingsFastToFirebase?.("fase final data/hora reforçada v255");
-          } catch (error) {
-            console.warn("v255: não consegui reforçar data/hora no Firebase", error);
-            try { scheduleFullSync?.("fase final data/hora reforçada v255", 500); } catch {}
-          }
+        try {
+          markSettingsPending?.();
+          saveLocalData?.("fase final data/hora reforçada v256");
+          await saveSettingsFastToFirebase?.("fase final data/hora reforçada v256");
+        } catch (error) {
+          console.warn("v256: não consegui reforçar data/hora no Firebase", error);
+          try { scheduleFullSync?.("fase final data/hora reforçada v256", 500); } catch {}
         }
       }
       try { renderKnockout?.(); } catch {}
       try { renderKnockoutAdmin?.(); } catch {}
-      setTimeout(() => { knockoutV255DecorateStatuses(); knockoutV255ScheduleModalCheck(120); }, 80);
+      setTimeout(() => { try { knockoutV255DecorateStatuses(); } catch {} }, 80);
       return result;
     };
     saveKnockoutMatchFromAdmin.__koV255 = true;
@@ -15397,37 +15378,17 @@ if (!window.__koMandatoryDiagnosticsV255) {
   if (renderKnockoutOriginalV255 && !renderKnockoutOriginalV255.__koV255) {
     renderKnockout = function renderKnockoutV255() {
       const result = renderKnockoutOriginalV255.apply(this, arguments);
-      setTimeout(() => { knockoutV255DecorateStatuses(); knockoutV255ScheduleModalCheck(220); }, 0);
+      setTimeout(() => { try { knockoutV255DecorateStatuses(); } catch {} }, 0);
       return result;
     };
     renderKnockout.__koV255 = true;
   }
 
-  const renderAllOriginalV255 = typeof renderAll === "function" ? renderAll : null;
-  if (renderAllOriginalV255 && !renderAllOriginalV255.__koV255) {
-    renderAll = function renderAllV255() {
-      const result = renderAllOriginalV255.apply(this, arguments);
-      setTimeout(() => { knockoutV255DecorateStatuses(); knockoutV255ScheduleModalCheck(450); }, 0);
-      return result;
-    };
-    renderAll.__koV255 = true;
-  }
-
-  document.addEventListener("DOMContentLoaded", () => knockoutV255ScheduleModalCheck(1600));
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) knockoutV255ScheduleModalCheck(250); });
-  window.addEventListener("focus", () => knockoutV255ScheduleModalCheck(300));
-  document.addEventListener("click", event => {
-    if (event.target?.closest?.(".tabs [data-tab], #appShell, #knockoutTab, [data-ko-save], [data-ko-record]")) {
-      knockoutV255ScheduleModalCheck(180);
-      setTimeout(knockoutV255DecorateStatuses, 80);
-    }
-  }, true);
-
   window.debugFaseFinalModalV255 = knockoutV255Debug;
+  window.debugFaseFinalModalV256 = knockoutV255Debug;
   window.debugKnockoutMandatoryModalV255 = knockoutV255Debug;
-  window.forceFaseFinalModalV255 = knockoutV255RunModalCheck;
-  window.forceKnockoutMandatoryModalV255 = knockoutV255RunModalCheck;
-
-  setInterval(() => { if (!document.hidden) knockoutV255ScheduleModalCheck(120); }, 5000);
-  knockoutV255ScheduleModalCheck(2200);
+  window.debugKnockoutMandatoryModalV256 = knockoutV255Debug;
+  window.forceFaseFinalModalV256 = knockoutV255RunModalCheck;
+  window.forceKnockoutMandatoryModalV256 = knockoutV255RunModalCheck;
 }
+
