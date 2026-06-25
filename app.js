@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v252";
+const APP_VERSION_LABEL = "v253";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -3728,6 +3728,9 @@ function defaultKnockoutMatches() {
         homePenalties: null,
         awayPenalties: null,
         matchDate: "",
+        winner: "",
+        winnerTeam: "",
+        qualified: "",
         nextMatchId: round.next ? `ko_${round.next}_${String(nextIndex).padStart(2, "0")}` : "",
         nextSlot: round.next ? (index % 2 === 1 ? "homeTeam" : "awayTeam") : "",
         updatedAt: ""
@@ -3753,7 +3756,10 @@ function ensureKnockoutSettings() {
         ...saved,
         homePenalties: saved.homePenalties ?? null,
         awayPenalties: saved.awayPenalties ?? null,
-        matchDate: saved.matchDate || saved.date || saved.kickoff || saved.startAt || saved.time || ""
+        matchDate: saved.matchDate || saved.date || saved.kickoff || saved.startAt || saved.time || "",
+        winner: saved.winner || saved.winnerTeam || saved.qualified || "",
+        winnerTeam: saved.winnerTeam || saved.winner || saved.qualified || "",
+        qualified: saved.qualified || saved.winnerTeam || saved.winner || ""
       };
     })
   };
@@ -3814,8 +3820,20 @@ function clearInvalidAutoKnockoutScores(previousTeams) {
       match.awayScore = null;
       match.homePenalties = null;
       match.awayPenalties = null;
+      match.winner = "";
+      match.winnerTeam = "";
+      match.qualified = "";
     }
   });
+}
+
+function knockoutExplicitQualifiedTeam(match) {
+  const direct = match?.qualified || match?.winnerTeam || match?.winner || match?.winnerName || "";
+  if (!direct || !match?.homeTeam || !match?.awayTeam) return "";
+  const normalized = normalizeComparable(direct);
+  if (normalized === normalizeComparable(match.homeTeam)) return match.homeTeam;
+  if (normalized === normalizeComparable(match.awayTeam)) return match.awayTeam;
+  return "";
 }
 
 function knockoutWinner(match) {
@@ -3826,8 +3844,10 @@ function knockoutWinner(match) {
   const away = Number(match.awayScore);
   if (!Number.isFinite(home) || !Number.isFinite(away)) return "";
 
-  if (home > away) return match.homeTeam;
-  if (away > home) return match.awayTeam;
+  const explicit = knockoutExplicitQualifiedTeam(match);
+
+  if (home > away) return explicit && normalizeComparable(explicit) === normalizeComparable(match.homeTeam) ? explicit : match.homeTeam;
+  if (away > home) return explicit && normalizeComparable(explicit) === normalizeComparable(match.awayTeam) ? explicit : match.awayTeam;
 
   const hp = match.homePenalties;
   const ap = match.awayPenalties;
@@ -3839,15 +3859,22 @@ function knockoutWinner(match) {
 
   if (!Number.isFinite(homePens) || !Number.isFinite(awayPens) || homePens === awayPens) return "";
 
-  return homePens > awayPens ? match.homeTeam : match.awayTeam;
+  const penWinner = homePens > awayPens ? match.homeTeam : match.awayTeam;
+  return explicit && normalizeComparable(explicit) === normalizeComparable(penWinner) ? explicit : penWinner;
 }
-
 function clearAutoKnockoutSlots() {
   const matches = appSettings.knockout?.matches || [];
   matches.forEach(match => {
     if (!isManualKnockoutRound(match)) {
       match.homeTeam = "";
       match.awayTeam = "";
+      match.homeScore = null;
+      match.awayScore = null;
+      match.homePenalties = null;
+      match.awayPenalties = null;
+      match.winner = "";
+      match.winnerTeam = "";
+      match.qualified = "";
     }
   });
 }
@@ -4172,6 +4199,27 @@ function renderKnockoutInlineEditor(match, mode = "desktop") {
   `;
 }
 
+function knockoutAdminQualifiedSelected(match) {
+  return match?.qualified || match?.winnerTeam || match?.winner || (knockoutMatchHasResult(match) ? knockoutWinner(match) : "");
+}
+
+function knockoutAdminQualifiedOptions(match) {
+  const selected = knockoutAdminQualifiedSelected(match);
+  const teams = [match?.homeTeam || "", match?.awayTeam || ""].filter(Boolean);
+  return `<option value="">A definir pelo resultado</option>${teams.map(team => `<option value="${escapeHtml(team)}" ${normalizeComparable(team) === normalizeComparable(selected) ? "selected" : ""}>${escapeHtml(team)}</option>`).join("")}`;
+}
+
+function renderKnockoutQualifiedControl(match) {
+  const disabled = match?.homeTeam && match?.awayTeam ? "" : "disabled";
+  return `
+    <label class="ko-score-label ko-qualified-label-v247 ko-qualified-label-v253">Equipa qualificada
+      <select class="ko-qualified-team-v247" ${disabled}>
+        ${knockoutAdminQualifiedOptions(match)}
+      </select>
+    </label>
+  `;
+}
+
 function renderKnockoutRecordForm(match) {
   const firstRound = isFirstKnockoutRound(match);
   const teamsReady = Boolean(match.homeTeam && match.awayTeam);
@@ -4209,6 +4257,7 @@ function renderKnockoutRecordForm(match) {
             <input class="ko-away-penalties" type="number" min="0" inputmode="numeric" value="${match.awayPenalties ?? ""}" placeholder="0" ${canScore ? "" : "disabled"} />
           </span>
         </label>
+        ${renderKnockoutQualifiedControl(match)}
       </div>
       <button class="primary small ko-card-save" type="button" data-ko-save="${escapeHtml(match.id)}">${firstRound ? "Guardar equipas/resultado" : "Guardar resultado"}</button>
     </div>
@@ -4608,6 +4657,8 @@ function renderKnockoutAdmin() {
               </span>
             </label>
 
+            ${renderKnockoutQualifiedControl(match)}
+
             <button class="primary small" type="button" data-ko-save="${escapeHtml(match.id)}">${firstRound ? "Guardar 16 avos" : "Guardar resultado"}</button>
             <button class="secondary small ko-record-open-btn-v244" type="button" data-ko-record="${escapeHtml(match.id)}">${knockoutMatchHasResult(match) ? "Editar em modal" : "Adicionar em modal"}</button>
           </div>
@@ -4754,7 +4805,10 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
     awayScore: match.awayScore ?? null,
     homePenalties: match.homePenalties ?? null,
     awayPenalties: match.awayPenalties ?? null,
-    matchDate: match.matchDate || ""
+    matchDate: match.matchDate || "",
+    winner: match.winner || "",
+    winnerTeam: match.winnerTeam || "",
+    qualified: match.qualified || ""
   };
 
   if (firstRound) {
@@ -4795,6 +4849,20 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
   const awayScoreValue = row.querySelector(".ko-away-score")?.value ?? "";
   const homePenaltiesValue = row.querySelector(".ko-home-penalties")?.value ?? "";
   const awayPenaltiesValue = row.querySelector(".ko-away-penalties")?.value ?? "";
+
+  if ((homeScoreValue === "") !== (awayScoreValue === "")) {
+    toast("Preenche os dois campos do resultado ou deixa os dois vazios.");
+    return;
+  }
+
+  if (homeScoreValue !== "") {
+    const homeNumber = Number(homeScoreValue);
+    const awayNumber = Number(awayScoreValue);
+    if (!Number.isFinite(homeNumber) || !Number.isFinite(awayNumber) || homeNumber < 0 || awayNumber < 0 || !Number.isInteger(homeNumber) || !Number.isInteger(awayNumber)) {
+      toast("O resultado tem de ter golos validos.");
+      return;
+    }
+  }
 
   match.homeScore = homeScoreValue === "" ? null : Number(homeScoreValue);
   match.awayScore = awayScoreValue === "" ? null : Number(awayScoreValue);
@@ -4853,7 +4921,23 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
     match.winner = qualifiedValue;
     match.winnerTeam = qualifiedValue;
     match.qualified = qualifiedValue;
-  } else if (!hasFullScore) {
+  } else if (hasFullScore) {
+    const computedQualified = knockoutWinner({
+      ...match,
+      winner: "",
+      winnerTeam: "",
+      qualified: ""
+    });
+    if (computedQualified) {
+      match.winner = computedQualified;
+      match.winnerTeam = computedQualified;
+      match.qualified = computedQualified;
+    } else {
+      match.winner = "";
+      match.winnerTeam = "";
+      match.qualified = "";
+    }
+  } else {
     match.winner = "";
     match.winnerTeam = "";
     match.qualified = "";
@@ -4874,7 +4958,10 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
       awayScore: match.awayScore ?? null,
       homePenalties: match.homePenalties ?? null,
       awayPenalties: match.awayPenalties ?? null,
-      matchDate: match.matchDate || ""
+      matchDate: match.matchDate || "",
+      winner: match.winner || "",
+      winnerTeam: match.winnerTeam || "",
+      qualified: match.qualified || ""
     }
   }, { sync: true });
   markSettingsPending();
@@ -14696,3 +14783,34 @@ if (!window.__koMandatoryModalV252) {
   scheduleKnockoutMandatoryCheckV252(2200);
 }
 
+// v253 — Resultado real do Admin + equipa qualificada + passagem automática.
+const KNOCKOUT_ADMIN_RESULT_VERSION_V253 = "253.0";
+
+function debugKnockoutAdminResultV253() {
+  try {
+    ensureKnockoutSettings?.();
+    return {
+      version: KNOCKOUT_ADMIN_RESULT_VERSION_V253,
+      matches: knockoutMatches().map(match => ({
+        id: match.id,
+        round: match.round,
+        index: match.index,
+        homeTeam: match.homeTeam || "",
+        awayTeam: match.awayTeam || "",
+        homeScore: match.homeScore ?? null,
+        awayScore: match.awayScore ?? null,
+        homePenalties: match.homePenalties ?? null,
+        awayPenalties: match.awayPenalties ?? null,
+        qualified: match.qualified || match.winnerTeam || match.winner || "",
+        computedWinner: knockoutWinner(match),
+        nextMatchId: match.nextMatchId || "",
+        nextSlot: match.nextSlot || ""
+      }))
+    };
+  } catch (error) {
+    console.warn("Diagnóstico resultado Admin Fase Final v253 falhou:", error);
+    return { version: KNOCKOUT_ADMIN_RESULT_VERSION_V253, error: String(error?.message || error) };
+  }
+}
+
+window.debugKnockoutAdminResultV253 = debugKnockoutAdminResultV253;
