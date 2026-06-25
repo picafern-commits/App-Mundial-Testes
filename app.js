@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v239";
+const APP_VERSION_LABEL = "v240";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -12822,3 +12822,744 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(polishCleanLayoutV239, 700);
   setTimeout(polishCleanLayoutV239, 1600);
 });
+
+
+// v240 — Ligação Users ↔ Jogadores + apostas da Fase Final por playerId.
+// Ideia base:
+// - users/{email}.linkedPlayerId define a conta ligada ao jogador.
+// - appSettings.players guarda o catálogo estável de jogadores.
+// - bets continua a ser a fonte das apostas; apostas da fase final usam gameId = match.id.
+
+function playersCatalogV240() {
+  const byId = new Map();
+
+  function addPlayer(player, source = "auto") {
+    if (!player) return;
+    const name = String(player.name || player.playerName || player.nome || "").trim();
+    const id = String(player.id || player.playerId || playerIdFromName(name)).trim();
+    if (!name || !id) return;
+
+    const existing = byId.get(id) || {};
+    byId.set(id, {
+      ...existing,
+      ...player,
+      id,
+      playerId: id,
+      name,
+      playerName: name,
+      normalizedName: normalizeComparable(name),
+      email: normalizeEmail(player.email || player.linkedEmail || existing.email || ""),
+      linkedEmail: normalizeEmail(player.linkedEmail || player.email || existing.linkedEmail || ""),
+      linkedUid: player.linkedUid || existing.linkedUid || "",
+      active: player.active !== false,
+      source: existing.source || player.source || source
+    });
+  }
+
+  (appSettings.players || []).forEach(player => addPlayer(player, "settings"));
+
+  (appSettings.users || []).forEach(name => {
+    addPlayer({ id: playerIdFromName(name), name, source: "manual" }, "manual");
+  });
+
+  (bets || []).forEach(bet => {
+    const name = String(bet.playerName || bet.name || bet.playerId || "").trim();
+    if (!name) return;
+    addPlayer({
+      id: bet.playerId || playerIdFromName(name),
+      name,
+      source: bet.source || "bets"
+    }, "bets");
+  });
+
+  Object.keys(appSettings.extraPredictions || {}).forEach(name => {
+    addPlayer({ id: playerIdFromName(name), name, source: "extras" }, "extras");
+  });
+
+  Object.keys(appSettings.importedPoints || {}).forEach(name => {
+    addPlayer({ id: playerIdFromName(name), name, source: "pontos" }, "pontos");
+  });
+
+  (permissionsCache || []).forEach(profile => {
+    const linkedPlayerId = profile.linkedPlayerId || "";
+    if (!linkedPlayerId) return;
+    const email = normalizeEmail(profile.email || profile.id);
+    const name = String(profile.linkedPlayerName || profile.name || "").trim();
+    const existing = byId.get(linkedPlayerId);
+    addPlayer({
+      id: linkedPlayerId,
+      name: existing?.name || name || displayNameFromEmail(email),
+      linkedEmail: email,
+      email: existing?.email || "",
+      linkedUid: profile.uid || existing?.linkedUid || "",
+      source: existing?.source || "linked"
+    }, "linked");
+  });
+
+  const players = [...byId.values()]
+    .filter(player => player.active !== false)
+    .sort((a, b) => a.name.localeCompare(b.name, "pt"));
+
+  appSettings.players = players.map(player => ({
+    id: player.id,
+    playerId: player.id,
+    name: player.name,
+    normalizedName: player.normalizedName,
+    email: player.email || "",
+    linkedEmail: player.linkedEmail || "",
+    linkedUid: player.linkedUid || "",
+    active: player.active !== false,
+    source: player.source || "auto"
+  }));
+
+  return players;
+}
+
+function playerByIdV240(playerId) {
+  return playersCatalogV240().find(player => player.id === playerId || player.playerId === playerId) || null;
+}
+
+function findSuggestedPlayerForUserV240(profile) {
+  const email = normalizeEmail(profile?.email || profile?.id);
+  const name = String(profile?.name || displayNameFromEmail(email) || "").trim();
+  const normalizedName = normalizeComparable(name);
+  const players = playersCatalogV240();
+
+  const byLinkedEmail = players.find(player => normalizeEmail(player.linkedEmail || player.email) === email);
+  if (byLinkedEmail) return byLinkedEmail;
+
+  const byName = players.find(player => normalizeComparable(player.name) === normalizedName);
+  if (byName) return byName;
+
+  const byContains = players.find(player => {
+    const n = normalizeComparable(player.name);
+    return n && normalizedName && (n.includes(normalizedName) || normalizedName.includes(n));
+  });
+
+  return byContains || null;
+}
+
+function linkedPlayerForProfileV240(profile = currentProfile) {
+  if (!profile) return null;
+
+  const direct = profile.linkedPlayerId ? playerByIdV240(profile.linkedPlayerId) : null;
+  if (direct) return direct;
+
+  const email = normalizeEmail(profile.email || profile.id);
+  const byEmail = playersCatalogV240().find(player => normalizeEmail(player.linkedEmail || player.email) === email);
+  if (byEmail) return byEmail;
+
+  return null;
+}
+
+function linkedPlayerForCurrentUserV240() {
+  return linkedPlayerForProfileV240(currentProfile);
+}
+
+function playerLinkStatusV240(profile) {
+  const linked = linkedPlayerForProfileV240(profile);
+  if (linked) return { key: "linked", label: "Ligado", player: linked };
+
+  const suggestion = findSuggestedPlayerForUserV240(profile);
+  if (suggestion) return { key: "suggestion", label: "Sugestão encontrada", player: suggestion };
+
+  return { key: "missing", label: "Por ligar", player: null };
+}
+
+function playerOptionsHtmlV240(selectedId = "", includeEmpty = true) {
+  const players = playersCatalogV240();
+  return `
+    ${includeEmpty ? `<option value="">— Por ligar —</option>` : ""}
+    ${players.map(player => `
+      <option value="${escapeHtml(player.id)}" ${player.id === selectedId ? "selected" : ""}>
+        ${escapeHtml(player.name)}
+      </option>
+    `).join("")}
+  `;
+}
+
+function renderPlayerLinkBadgeV240(profile) {
+  const status = playerLinkStatusV240(profile);
+  return `<span class="player-link-badge-v240 player-link-${escapeHtml(status.key)}">${escapeHtml(status.label)}${status.player ? ` · ${escapeHtml(status.player.name)}` : ""}</span>`;
+}
+
+function currentUserCanBetKnockoutV240() {
+  return Boolean(currentUser && currentProfile?.active !== false && hasPermission("knockout"));
+}
+
+function knockoutMatchStartMillisV240(match) {
+  const raw = match?.matchDate || match?.date || match?.kickoff || match?.startAt || match?.time || "";
+  if (!raw) return 0;
+  const date = parsePortugalDate(raw);
+  const time = date?.getTime?.() || 0;
+  return Number.isFinite(time) ? time : 0;
+}
+
+function isKnockoutBetLockedV240(match) {
+  if (!match) return true;
+  if (!match.homeTeam || !match.awayTeam) return true;
+  if (knockoutMatchHasResult(match)) return true;
+
+  const start = knockoutMatchStartMillisV240(match);
+  if (start && Date.now() >= start) return true;
+
+  return false;
+}
+
+function knockoutBetForPlayerMatchV240(playerId, matchId) {
+  return (bets || []).find(bet => bet.playerId === playerId && bet.gameId === matchId) || null;
+}
+
+function knockoutBetButtonLabelV240(match) {
+  const player = linkedPlayerForCurrentUserV240();
+  if (!player) return "Ligar jogador";
+  const existing = knockoutBetForPlayerMatchV240(player.id, match.id);
+  if (isKnockoutBetLockedV240(match)) return existing ? "Ver aposta" : "Bloqueado";
+  return existing ? "Editar aposta" : "Apostar";
+}
+
+function ensureKnockoutBetModalV240() {
+  let modal = $("knockoutBetModalV240");
+  if (modal) return modal;
+
+  modal = document.createElement("div");
+  modal.id = "knockoutBetModalV240";
+  modal.className = "modal hidden knockout-bet-modal-v240";
+  modal.innerHTML = `
+    <div class="modal-card knockout-bet-card-v240">
+      <div class="modal-head">
+        <div>
+          <h2 id="knockoutBetTitleV240">Aposta da Fase Final</h2>
+          <p id="knockoutBetSubtitleV240">Escolhe o resultado antes do jogo começar.</p>
+        </div>
+        <button id="closeKnockoutBetModalV240" class="icon-button" type="button" aria-label="Fechar">×</button>
+      </div>
+
+      <div id="knockoutBetBodyV240" class="knockout-bet-body-v240"></div>
+
+      <div class="modal-actions">
+        <button id="deleteKnockoutBetV240" class="secondary danger-soft-v240" type="button">Apagar aposta</button>
+        <button id="saveKnockoutBetV240" class="primary" type="button">Guardar aposta</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  $("closeKnockoutBetModalV240")?.addEventListener("click", closeKnockoutBetModalV240);
+  modal.addEventListener("click", event => {
+    if (event.target === modal) closeKnockoutBetModalV240();
+  });
+  $("saveKnockoutBetV240")?.addEventListener("click", saveKnockoutBetFromModalV240);
+  $("deleteKnockoutBetV240")?.addEventListener("click", deleteKnockoutBetFromModalV240);
+
+  return modal;
+}
+
+let activeKnockoutBetMatchIdV240 = "";
+
+function openKnockoutBetModalV240(matchId) {
+  ensureKnockoutSettings();
+  const match = knockoutMatchById(matchId);
+  const modal = ensureKnockoutBetModalV240();
+  const body = $("knockoutBetBodyV240");
+  const title = $("knockoutBetTitleV240");
+  const subtitle = $("knockoutBetSubtitleV240");
+  const saveBtn = $("saveKnockoutBetV240");
+  const deleteBtn = $("deleteKnockoutBetV240");
+
+  activeKnockoutBetMatchIdV240 = matchId;
+
+  if (!match || !body) return;
+
+  const player = linkedPlayerForCurrentUserV240();
+  const locked = isKnockoutBetLockedV240(match);
+  const existing = player ? knockoutBetForPlayerMatchV240(player.id, match.id) : null;
+  const score = existing ? knockoutBetScorePair(existing) : null;
+  const pens = existing ? knockoutBetPenaltyPair(existing) : null;
+
+  if (title) title.textContent = `${match.homeTeam || "Equipa"} vs ${match.awayTeam || "Equipa"}`;
+  if (subtitle) subtitle.textContent = player
+    ? `Aposta ligada ao jogador: ${player.name}`
+    : "A tua conta ainda não está ligada a nenhum jogador.";
+
+  if (!player) {
+    body.innerHTML = `
+      <div class="knockout-bet-warning-v240">
+        <strong>Conta sem jogador ligado</strong>
+        <span>Para apostar na Fase Final, o Admin tem de ligar o teu user ao jogador correto.</span>
+      </div>
+    `;
+    if (saveBtn) saveBtn.disabled = true;
+    if (deleteBtn) deleteBtn.disabled = true;
+    modal.classList.remove("hidden");
+    return;
+  }
+
+  const lockedText = locked
+    ? knockoutMatchHasResult(match)
+      ? "Este jogo já tem resultado final. A aposta está bloqueada."
+      : "Este jogo já começou ou ainda não está disponível. A aposta está bloqueada."
+    : "Ainda podes guardar/alterar a aposta.";
+
+  body.innerHTML = `
+    <div class="knockout-bet-player-v240">
+      <span>Jogador</span>
+      <strong>${escapeHtml(player.name)}</strong>
+    </div>
+
+    <div class="knockout-bet-match-v240">
+      <div>
+        <span>${escapeHtml(match.homeTeam || "A definir")}</span>
+        <input id="knockoutBetHomeV240" type="number" min="0" inputmode="numeric" value="${score ? score.home : ""}" ${locked ? "disabled" : ""} />
+      </div>
+      <b>VS</b>
+      <div>
+        <span>${escapeHtml(match.awayTeam || "A definir")}</span>
+        <input id="knockoutBetAwayV240" type="number" min="0" inputmode="numeric" value="${score ? score.away : ""}" ${locked ? "disabled" : ""} />
+      </div>
+    </div>
+
+    <details class="knockout-bet-penalties-v240" ${pens ? "open" : ""}>
+      <summary>Penáltis, se apostares empate</summary>
+      <div class="knockout-bet-match-v240 penalties">
+        <div>
+          <span>${escapeHtml(match.homeTeam || "Casa")}</span>
+          <input id="knockoutBetHomePensV240" type="number" min="0" inputmode="numeric" value="${pens ? pens.home : ""}" ${locked ? "disabled" : ""} />
+        </div>
+        <b>Pen.</b>
+        <div>
+          <span>${escapeHtml(match.awayTeam || "Fora")}</span>
+          <input id="knockoutBetAwayPensV240" type="number" min="0" inputmode="numeric" value="${pens ? pens.away : ""}" ${locked ? "disabled" : ""} />
+        </div>
+      </div>
+    </details>
+
+    <div class="knockout-bet-status-v240 ${locked ? "locked" : "open"}">
+      ${escapeHtml(lockedText)}
+    </div>
+  `;
+
+  if (saveBtn) saveBtn.disabled = locked;
+  if (deleteBtn) deleteBtn.disabled = locked || !existing;
+  modal.classList.remove("hidden");
+}
+
+function closeKnockoutBetModalV240() {
+  $("knockoutBetModalV240")?.classList.add("hidden");
+  activeKnockoutBetMatchIdV240 = "";
+}
+
+async function saveKnockoutBetFromModalV240() {
+  const match = knockoutMatchById(activeKnockoutBetMatchIdV240);
+  const player = linkedPlayerForCurrentUserV240();
+  if (!match || !player) return toast("A tua conta ainda não está ligada a um jogador.");
+  if (isKnockoutBetLockedV240(match)) return toast("Aposta bloqueada para este jogo.");
+
+  const home = Number($("knockoutBetHomeV240")?.value);
+  const away = Number($("knockoutBetAwayV240")?.value);
+
+  if (!Number.isFinite(home) || !Number.isFinite(away) || home < 0 || away < 0) {
+    return toast("Preenche o resultado da aposta.");
+  }
+
+  const homePensRaw = $("knockoutBetHomePensV240")?.value;
+  const awayPensRaw = $("knockoutBetAwayPensV240")?.value;
+  const homePens = homePensRaw === "" || homePensRaw === undefined ? null : Number(homePensRaw);
+  const awayPens = awayPensRaw === "" || awayPensRaw === undefined ? null : Number(awayPensRaw);
+
+  if (home === away && (homePens === null || awayPens === null || !Number.isFinite(homePens) || !Number.isFinite(awayPens) || homePens === awayPens)) {
+    return toast("Se apostas empate, indica penáltis e um vencedor.");
+  }
+
+  const winner = home > away ? match.homeTeam : away > home ? match.awayTeam : homePens > awayPens ? match.homeTeam : match.awayTeam;
+  const id = `${activeKnockoutBetMatchIdV240}_${player.id}`;
+
+  const bet = {
+    id,
+    gameId: activeKnockoutBetMatchIdV240,
+    playerId: player.id,
+    playerName: player.name,
+    uid: currentUser?.uid || "",
+    email: normalizeEmail(currentUser?.email || ""),
+    source: "FaseFinalUser",
+    type: "knockout",
+    homeGuess: home,
+    awayGuess: away,
+    homePenalties: homePens,
+    awayPenalties: awayPens,
+    winner,
+    updatedAt: new Date().toISOString()
+  };
+
+  await persistBet(bet);
+  addSystemLog("Aposta Fase Final", `${player.name} guardou aposta em ${match.homeTeam} vs ${match.awayTeam}.`, { matchId: match.id, playerId: player.id }, { sync: true });
+  closeKnockoutBetModalV240();
+  renderKnockout();
+  renderScore();
+  toast("Aposta guardada.");
+}
+
+async function deleteKnockoutBetFromModalV240() {
+  const match = knockoutMatchById(activeKnockoutBetMatchIdV240);
+  const player = linkedPlayerForCurrentUserV240();
+  if (!match || !player) return;
+  if (isKnockoutBetLockedV240(match)) return toast("Aposta bloqueada para este jogo.");
+
+  const existing = knockoutBetForPlayerMatchV240(player.id, match.id);
+  if (!existing) return closeKnockoutBetModalV240();
+
+  bets = bets.filter(bet => !(bet.gameId === match.id && bet.playerId === player.id));
+  markBetsForDelete([existing.id]);
+  saveLocalData("apagar aposta fase final");
+  scheduleFullSync("apagar aposta fase final", 300);
+  closeKnockoutBetModalV240();
+  renderKnockout();
+  renderScore();
+  toast("Aposta apagada.");
+}
+
+function addKnockoutBetButtonsV240() {
+  const container = $("knockoutBracket");
+  if (!container || !knockoutAvailable()) return;
+
+  container.querySelectorAll("[data-ko-admin]").forEach(card => {
+    const matchId = card.dataset.koAdmin;
+    const match = knockoutMatchById(matchId);
+    if (!match || !match.homeTeam || !match.awayTeam) return;
+    if (card.querySelector("[data-ko-user-bet-v240]")) return;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "ko-user-bet-btn-v240";
+    btn.dataset.koUserBetV240 = matchId;
+    btn.textContent = knockoutBetButtonLabelV240(match);
+    btn.disabled = !currentUserCanBetKnockoutV240() || (!linkedPlayerForCurrentUserV240() && !hasPermission("managePermissions"));
+    card.appendChild(btn);
+  });
+}
+
+const renderKnockoutOriginalV240 = typeof renderKnockout === "function" ? renderKnockout : null;
+if (renderKnockoutOriginalV240 && !window.__renderKnockoutBetsV240) {
+  window.__renderKnockoutBetsV240 = true;
+  renderKnockout = function renderKnockoutWithBetsV240() {
+    const result = renderKnockoutOriginalV240.apply(this, arguments);
+    setTimeout(addKnockoutBetButtonsV240, 0);
+    setTimeout(addKnockoutBetButtonsV240, 200);
+    return result;
+  };
+}
+
+document.addEventListener("click", event => {
+  const betBtn = event.target.closest?.("[data-ko-user-bet-v240]");
+  if (!betBtn) return;
+  event.preventDefault();
+  event.stopPropagation();
+  openKnockoutBetModalV240(betBtn.dataset.koUserBetV240);
+}, true);
+
+// Admin: render de users com ligação jogador.
+const renderPermissionsUsersOriginalV240 = typeof renderPermissionsUsers === "function" ? renderPermissionsUsers : null;
+if (renderPermissionsUsersOriginalV240 && !window.__renderPermissionsPlayerLinkV240) {
+  window.__renderPermissionsPlayerLinkV240 = true;
+  renderPermissionsUsers = function renderPermissionsUsersPlayerLinkV240() {
+    const list = $("permissionsUsersList");
+    if (!list) return;
+
+    if (!hasPermission("managePermissions")) {
+      list.innerHTML = `<div class="empty small-empty">Não tens permissão para gerir utilizadores.</div>`;
+      return;
+    }
+
+    playersCatalogV240();
+
+    if (!permissionsCache.length) {
+      list.innerHTML = `<div class="empty small-empty">Ainda não existem utilizadores registados.</div>`;
+      return;
+    }
+
+    const missing = permissionsCache.filter(user => !linkedPlayerForProfileV240(user)).length;
+    const linked = permissionsCache.length - missing;
+
+    const labels = {
+      calendar: "Ver Calendário",
+      score: "Ver Pontuação",
+      knockout: "Ver Fase Final",
+      notifications: "Ver Notificações",
+      logs: "Ver Logs",
+      settings: "Ver Configurações",
+      adminTab: "Ver Admin",
+      admin: "Poder Admin",
+      editResults: "Editar resultados",
+      importExcel: "Importar Excel",
+      editUsers: "Users do jogo",
+      editPoints: "Sistema pontos",
+      editKnockout: "Editar Fase Final",
+      managePermissions: "Permissões"
+    };
+
+    list.innerHTML = `
+      <section class="player-link-summary-v240">
+        <div>
+          <strong>Ligação Users ↔ Jogadores</strong>
+          <span>${linked} ligado(s) · ${missing} por ligar · ${playersCatalogV240().length} jogador(es) na liga</span>
+        </div>
+        <button class="secondary small" type="button" data-auto-link-players-v240>Auto ligar sugestões</button>
+      </section>
+
+      ${permissionsCache.map(user => {
+        const email = normalizeEmail(user.email || user.id);
+        const visibleName = String(user.name || "").trim() || displayNameFromEmail(email);
+        const role = normalizeRole(user.role);
+        const isOwnerUser = role === "owner";
+        const perms = { ...permissionsForRole(role), ...(user.permissions || {}) };
+        const active = user.active !== false;
+        const status = playerLinkStatusV240(user);
+        const selectedPlayerId = user.linkedPlayerId || status.player?.id || "";
+
+        return `
+          <article class="permission-user-card player-link-card-v240" data-permission-card="${escapeHtml(email)}">
+            <div class="permission-user-head">
+              <div>
+                <strong>${escapeHtml(visibleName)}</strong>
+                <span>${escapeHtml(email)} · ${roleLabel(role)} · ${active ? "Ativo" : "Bloqueado"}</span>
+                ${renderPlayerLinkBadgeV240(user)}
+              </div>
+              <div class="permission-user-actions">
+                <label class="permission-name-label">
+                  Nome visível
+                  <input class="permission-name-input" type="text" data-name-email="${escapeHtml(email)}" value="${escapeHtml(visibleName)}" placeholder="Nome visível" />
+                </label>
+                <label class="permission-player-label-v240">
+                  Jogador ligado
+                  <select data-linked-player-email-v240="${escapeHtml(email)}">
+                    ${playerOptionsHtmlV240(user.linkedPlayerId || "", true)}
+                  </select>
+                </label>
+                <select data-role-email="${escapeHtml(email)}">
+                  <option value="user" ${role === "user" ? "selected" : ""}>User normal</option>
+                  <option value="admin" ${role === "admin" ? "selected" : ""}>Admin</option>
+                  <option value="owner" ${role === "owner" ? "selected" : ""}>Dono</option>
+                </select>
+                <label class="perm-active">
+                  <input type="checkbox" data-active-email="${escapeHtml(email)}" ${active ? "checked" : ""} />
+                  Ativo
+                </label>
+                <button class="primary small" type="button" data-save-permissions="${escapeHtml(email)}">Guardar</button>
+              </div>
+            </div>
+            ${status.key === "suggestion" && !user.linkedPlayerId ? `
+              <div class="player-link-suggestion-v240">
+                Sugestão: <strong>${escapeHtml(status.player.name)}</strong>
+                <button class="secondary small" type="button" data-confirm-player-link-v240="${escapeHtml(email)}" data-player-id="${escapeHtml(status.player.id)}">Confirmar ligação</button>
+              </div>
+            ` : ""}
+            <div class="permission-grid">
+              ${Object.entries(labels).map(([key, label]) => renderPermissionCheckbox(email, key, label, perms[key], isOwnerUser)).join("")}
+            </div>
+          </article>
+        `;
+      }).join("")}
+    `;
+  };
+}
+
+const savePermissionUserOriginalV240 = typeof savePermissionUser === "function" ? savePermissionUser : null;
+if (savePermissionUserOriginalV240 && !window.__savePermissionPlayerLinkV240) {
+  window.__savePermissionPlayerLinkV240 = true;
+  savePermissionUser = async function savePermissionUserPlayerLinkV240(email) {
+    if (!db || !firebaseApi) return toast("Firebase não está ligado.");
+    if (!hasPermission("managePermissions")) return toast("Sem permissão para gerir utilizadores.");
+
+    const normalized = normalizeEmail(email);
+    if (!normalized) return toast("Email inválido.");
+
+    const card = document.querySelector(`[data-permission-card="${CSS.escape(normalized)}"]`);
+    const existingProfile = permissionsCache.find(user => normalizeEmail(user.email || user.id) === normalized) || {};
+
+    const role = normalizeRole(document.querySelector(`[data-role-email="${CSS.escape(normalized)}"]`)?.value || $("permissionRoleInput")?.value || "user");
+    const activeInput = document.querySelector(`[data-active-email="${CSS.escape(normalized)}"]`);
+    const active = activeInput ? activeInput.checked : true;
+    const isOwnerUser = role === "owner";
+
+    const nameInput = document.querySelector(`[data-name-email="${CSS.escape(normalized)}"]`) || $("permissionNameInput");
+    const visibleName = String(nameInput?.value || existingProfile.name || displayNameFromEmail(normalized)).trim() || displayNameFromEmail(normalized);
+
+    const linkedSelect = document.querySelector(`[data-linked-player-email-v240="${CSS.escape(normalized)}"]`);
+    const linkedPlayerId = linkedSelect ? linkedSelect.value : existingProfile.linkedPlayerId || "";
+    const linkedPlayer = linkedPlayerId ? playerByIdV240(linkedPlayerId) : null;
+
+    const permissions = permissionsForRole(role);
+    if (card && !isOwnerUser) {
+      card.querySelectorAll("[data-perm-key]").forEach(input => {
+        permissions[input.dataset.permKey] = input.checked;
+      });
+    }
+
+    const profile = {
+      ...existingProfile,
+      uid: existingProfile.uid || "",
+      email: normalized,
+      name: visibleName,
+      role,
+      active,
+      permissions,
+      linkedPlayerId,
+      linkedPlayerName: linkedPlayer?.name || "",
+      updatedAt: new Date().toISOString()
+    };
+
+    if (!profile.createdAt) profile.createdAt = new Date().toISOString();
+
+    // Atualiza catálogo de jogadores localmente também.
+    playersCatalogV240();
+    appSettings.players = (appSettings.players || []).map(player => {
+      if (linkedPlayerId && player.id === linkedPlayerId) {
+        return {
+          ...player,
+          linkedEmail: normalized,
+          linkedUid: profile.uid || player.linkedUid || "",
+          email: player.email || ""
+        };
+      }
+      if (player.linkedEmail && normalizeEmail(player.linkedEmail) === normalized && player.id !== linkedPlayerId) {
+        return { ...player, linkedEmail: "", linkedUid: "" };
+      }
+      return player;
+    });
+
+    const { doc, setDoc } = firebaseApi;
+    await withTimeout(setDoc(doc(db, "users", normalized), profile, { merge: true }), 12000, "guardar utilizador");
+
+    markSettingsPending();
+    saveLocalData("guardar ligação user jogador");
+    scheduleFullSync("guardar ligação user jogador", 300);
+
+    if (profile.uid) {
+      try {
+        await setDoc(doc(db, PRESENCE_COLLECTION, profile.uid), {
+          uid: profile.uid,
+          email: normalized,
+          name: visibleName,
+          role,
+          linkedPlayerId,
+          linkedPlayerName: linkedPlayer?.name || "",
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (presenceError) {
+        console.warn("Nome guardado no user, mas não atualizado na presença:", presenceError);
+      }
+    }
+
+    addSystemLog("Utilizador guardado", `${visibleName} (${normalized}) ficou ligado a ${linkedPlayer?.name || "nenhum jogador"}.`, {
+      email: normalized,
+      linkedPlayerId,
+      linkedPlayerName: linkedPlayer?.name || "",
+      role,
+      active
+    }, { sync: true });
+
+    toast("Utilizador guardado.");
+    await loadPermissionsUsers();
+    renderPermissionsUsers();
+
+    if (normalizeEmail(currentUser?.email) === normalized) {
+      currentProfile = await readUserProfile(currentUser);
+      currentProfile.linkedPlayerId = linkedPlayerId;
+      currentProfile.linkedPlayerName = linkedPlayer?.name || "";
+      updateSessionBox();
+      applyPermissionsToUi();
+      updateMyPresence(false).catch(error => console.warn("Atualizar presença após nome falhou:", error));
+    }
+
+    loadOnlineUsers().catch(error => console.warn("Atualizar lista online após nome falhou:", error));
+  };
+}
+
+async function confirmPlayerLinkV240(email, playerId) {
+  const select = document.querySelector(`[data-linked-player-email-v240="${CSS.escape(normalizeEmail(email))}"]`);
+  if (select) select.value = playerId;
+  await savePermissionUser(email);
+}
+
+async function autoLinkPlayerSuggestionsV240() {
+  if (!hasPermission("managePermissions")) return toast("Sem permissão.");
+
+  let count = 0;
+  for (const profile of permissionsCache) {
+    if (profile.linkedPlayerId) continue;
+    const suggestion = findSuggestedPlayerForUserV240(profile);
+    if (!suggestion) continue;
+    const email = normalizeEmail(profile.email || profile.id);
+    const select = document.querySelector(`[data-linked-player-email-v240="${CSS.escape(email)}"]`);
+    if (select) {
+      select.value = suggestion.id;
+      count += 1;
+    }
+  }
+
+  toast(count ? `${count} sugestão(ões) pronta(s). Carrega Guardar em cada user.` : "Não encontrei sugestões novas.");
+}
+
+document.addEventListener("click", event => {
+  const confirmBtn = event.target.closest?.("[data-confirm-player-link-v240]");
+  if (confirmBtn) {
+    event.preventDefault();
+    confirmPlayerLinkV240(confirmBtn.dataset.confirmPlayerLinkV240, confirmBtn.dataset.playerId);
+    return;
+  }
+
+  const autoBtn = event.target.closest?.("[data-auto-link-players-v240]");
+  if (autoBtn) {
+    event.preventDefault();
+    autoLinkPlayerSuggestionsV240();
+  }
+}, true);
+
+const readUserProfileOriginalV240 = typeof readUserProfile === "function" ? readUserProfile : null;
+if (readUserProfileOriginalV240 && !window.__readProfilePlayerLinkV240) {
+  window.__readProfilePlayerLinkV240 = true;
+  readUserProfile = async function readUserProfileWithPlayerV240(user) {
+    const profile = await readUserProfileOriginalV240(user);
+    try {
+      const linked = linkedPlayerForProfileV240(profile) || findSuggestedPlayerForUserV240(profile);
+      if (linked && !profile.linkedPlayerId && normalizeEmail(linked.linkedEmail || linked.email) === normalizeEmail(profile.email)) {
+        profile.linkedPlayerId = linked.id;
+        profile.linkedPlayerName = linked.name;
+      }
+    } catch (error) {
+      console.warn("Ligação jogador no perfil falhou:", error);
+    }
+    return profile;
+  };
+}
+
+const updateSessionBoxOriginalV240 = typeof updateSessionBox === "function" ? updateSessionBox : null;
+if (updateSessionBoxOriginalV240 && !window.__sessionPlayerLinkV240) {
+  window.__sessionPlayerLinkV240 = true;
+  updateSessionBox = function updateSessionBoxPlayerLinkV240() {
+    updateSessionBoxOriginalV240();
+    const label = $("sessionUserLabel");
+    if (!label || !currentUser) return;
+
+    const player = linkedPlayerForCurrentUserV240();
+    const existing = $("sessionPlayerLinkV240");
+    if (existing) existing.remove();
+
+    const chip = document.createElement("small");
+    chip.id = "sessionPlayerLinkV240";
+    chip.className = `session-player-link-v240 ${player ? "linked" : "missing"}`;
+    chip.textContent = player ? `Jogador: ${player.name}` : "Jogador por ligar";
+    label.parentElement?.appendChild(chip);
+  };
+}
+
+const renderAllOriginalV240 = typeof renderAll === "function" ? renderAll : null;
+if (renderAllOriginalV240 && !window.__renderAllPlayersV240) {
+  window.__renderAllPlayersV240 = true;
+  renderAll = function renderAllPlayersV240() {
+    try { playersCatalogV240(); } catch (error) { console.warn("Catálogo players falhou:", error); }
+    const result = renderAllOriginalV240.apply(this, arguments);
+    setTimeout(addKnockoutBetButtonsV240, 0);
+    return result;
+  };
+}
