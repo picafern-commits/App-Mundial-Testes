@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v256";
+const APP_VERSION_LABEL = "v257";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -14784,7 +14784,7 @@ if (!window.__koMandatoryModalV252) {
 }
 
 // v253 — Resultado real do Admin + equipa qualificada + passagem automática.
-const KNOCKOUT_ADMIN_RESULT_VERSION_V253 = "256.0";
+const KNOCKOUT_ADMIN_RESULT_VERSION_V253 = "257.0";
 
 function debugKnockoutAdminResultV253() {
   try {
@@ -14820,7 +14820,7 @@ window.debugKnockoutAdminResultV253 = debugKnockoutAdminResultV253;
 // O problema provável: depois do login, um input/select escondido podia continuar com foco
 // e a proteção v250 adiava o modal para sempre. Esta camada só corrige o disparo do modal;
 // não mexe em pontuação nem na passagem de equipas.
-const KNOCKOUT_MANDATORY_USER_MODAL_VERSION_V254 = "256.0";
+const KNOCKOUT_MANDATORY_USER_MODAL_VERSION_V254 = "257.0";
 let knockoutMandatoryTimerV254 = null;
 let knockoutMandatoryIntervalV254 = null;
 let knockoutMandatoryRunningV254 = false;
@@ -15117,7 +15117,7 @@ if (!window.__koMandatoryModalV254) {
 
 // v255 — Diagnóstico real do modal obrigatório da Fase Final + persistência reforçada da data/hora.
 // Objetivo: deixar claro PORQUE um jogo não abre modal e garantir que a data/hora guardada pelo Admin fica persistida.
-const KNOCKOUT_MANDATORY_DIAG_VERSION_V255 = "256.0";
+const KNOCKOUT_MANDATORY_DIAG_VERSION_V255 = "257.0";
 let knockoutMandatoryTimerV255 = null;
 
 function knockoutV255NormalizeMatchDateValue(value) {
@@ -15392,3 +15392,415 @@ if (!window.__koMandatoryDiagnosticsV255) {
   window.forceKnockoutMandatoryModalV256 = knockoutV255RunModalCheck;
 }
 
+
+// v257 — Correção real da deteção de apostas obrigatórias da Fase Final.
+// A v256 já corrigiu o login, mas alguns users continuavam a ver "em dia" mesmo com jogo aberto.
+// Esta camada usa uma fonte única e simples: jogos da Fase Final com equipas + data/hora + sem resultado,
+// cruzados com o jogador ligado ao user e as apostas já existentes.
+const KNOCKOUT_MANDATORY_FINAL_FIX_VERSION_V257 = "257.0";
+let knockoutMandatoryTimerV257 = null;
+let knockoutMandatoryIntervalV257 = null;
+
+function koV257Normalize(value) {
+  try { return normalizeComparable?.(value || "") || String(value || "").trim().toLowerCase(); }
+  catch { return String(value || "").trim().toLowerCase(); }
+}
+
+function koV257Email(value) {
+  try { return normalizeEmail?.(value || "") || String(value || "").trim().toLowerCase(); }
+  catch { return String(value || "").trim().toLowerCase(); }
+}
+
+function koV257Players() {
+  try { return playersCatalogV241?.() || []; }
+  catch { return appSettings?.players || []; }
+}
+
+function koV257CurrentPlayer() {
+  let player = null;
+  try { player = linkedPlayerForCurrentUserV241?.() || null; } catch {}
+  if (player?.id || player?.playerId) return { ...player, id: String(player.id || player.playerId), name: String(player.name || player.playerName || "") };
+
+  const profile = currentProfile || {};
+  const email = koV257Email(profile.email || currentUser?.email || profile.id || "");
+  const uid = String(profile.uid || currentUser?.uid || "").trim();
+  const linkedId = String(profile.linkedPlayerId || profile.playerId || profile.jogadorId || "").trim();
+  const linkedName = String(profile.linkedPlayerName || profile.playerName || profile.jogadorName || "").trim();
+  const players = koV257Players();
+
+  if (linkedId) {
+    player = players.find(item => String(item.id || item.playerId || "") === linkedId) || null;
+    if (player) return { ...player, id: String(player.id || player.playerId), name: String(player.name || player.playerName || "") };
+    // Mesmo que o catálogo ainda não tenha o jogador, usa a ligação do perfil para não perder a obrigatoriedade.
+    return { id: linkedId, playerId: linkedId, name: linkedName || linkedId, playerName: linkedName || linkedId, source: "profile-link-v257" };
+  }
+
+  if (uid) {
+    player = players.find(item => String(item.linkedUid || item.uid || "") === uid) || null;
+    if (player) return { ...player, id: String(player.id || player.playerId), name: String(player.name || player.playerName || "") };
+  }
+
+  if (email) {
+    player = players.find(item => koV257Email(item.linkedEmail || item.email || item.userEmail || "") === email) || null;
+    if (player) return { ...player, id: String(player.id || player.playerId), name: String(player.name || player.playerName || "") };
+  }
+
+  if (linkedName) {
+    const wanted = koV257Normalize(linkedName);
+    player = players.find(item => koV257Normalize(item.name || item.playerName || "") === wanted) || null;
+    if (player) return { ...player, id: String(player.id || player.playerId), name: String(player.name || player.playerName || "") };
+    return { id: (typeof playerIdFromName === "function" ? playerIdFromName(linkedName) : wanted), playerId: (typeof playerIdFromName === "function" ? playerIdFromName(linkedName) : wanted), name: linkedName, playerName: linkedName, source: "profile-name-v257" };
+  }
+
+  return null;
+}
+
+function koV257MatchStartMillis(match) {
+  try {
+    const direct = knockoutMatchStartMillisV241?.(match) || 0;
+    if (Number.isFinite(Number(direct)) && Number(direct) > 0) return Number(direct);
+  } catch {}
+  const raw = String(match?.matchDate || match?.date || match?.kickoff || match?.startAt || match?.time || "").trim();
+  if (!raw) return 0;
+  try {
+    const normalized = normalizeKnockoutMatchDateV243?.(raw) || raw;
+    const date = parsePortugalDate?.(normalized) || new Date(normalized);
+    const time = date?.getTime?.() || 0;
+    return Number.isFinite(time) ? time : 0;
+  } catch {
+    const time = new Date(raw).getTime();
+    return Number.isFinite(time) ? time : 0;
+  }
+}
+
+function koV257HasResult(match) {
+  try { return Boolean(knockoutMatchHasResult?.(match)); }
+  catch {
+    const home = match?.homeScore ?? match?.homeGoals ?? match?.homeResult;
+    const away = match?.awayScore ?? match?.awayGoals ?? match?.awayResult;
+    return home !== undefined && home !== null && home !== "" && away !== undefined && away !== null && away !== "";
+  }
+}
+
+function koV257DeadlineMillis(match) {
+  const start = koV257MatchStartMillis(match);
+  return start ? start - (5 * 60 * 1000) : 0;
+}
+
+function koV257Matches() {
+  try { ensureKnockoutSettings?.(); } catch {}
+  const list = (typeof knockoutMatches === "function" ? knockoutMatches() : appSettings?.knockout?.matches || []) || [];
+  return Array.isArray(list) ? list : [];
+}
+
+function koV257ReadyReasons(match) {
+  const reasons = [];
+  if (!match || !match.id) reasons.push("sem-id");
+  if (!String(match?.homeTeam || "").trim()) reasons.push("sem-equipa-1");
+  if (!String(match?.awayTeam || "").trim()) reasons.push("sem-equipa-2");
+  if (!koV257MatchStartMillis(match)) reasons.push("sem-data-hora");
+  if (koV257HasResult(match)) reasons.push("resultado-lancado");
+  return reasons;
+}
+
+function koV257ExistingBet(player, match) {
+  if (!player || !match?.id) return null;
+  try {
+    const direct = knockoutBetForPlayerMatchV241?.(String(player.id || player.playerId || ""), String(match.id || ""));
+    if (direct) return direct;
+  } catch {}
+
+  const playerIds = new Set([player.id, player.playerId, player.jogadorId].filter(Boolean).map(String));
+  const playerNames = new Set([player.name, player.playerName, player.jogadorName].filter(Boolean).map(koV257Normalize));
+  const matchIds = new Set([match.id, match.matchId, match.gameId].filter(Boolean).map(String));
+
+  return (bets || []).find(bet => {
+    const sameGame = matchIds.has(String(bet?.gameId || bet?.matchId || bet?.knockoutMatchId || bet?.idJogo || ""));
+    if (!sameGame) return false;
+    if (playerIds.size && playerIds.has(String(bet?.playerId || bet?.playerID || bet?.jogadorId || bet?.userPlayerId || ""))) return true;
+    const betName = koV257Normalize(bet?.playerName || bet?.name || bet?.jogadorName || "");
+    return Boolean(betName && playerNames.has(betName));
+  }) || null;
+}
+
+function koV257State(match, player = koV257CurrentPlayer(), now = Date.now()) {
+  const reasons = koV257ReadyReasons(match);
+  const startAt = koV257MatchStartMillis(match);
+  const deadlineAt = koV257DeadlineMillis(match);
+  const ready = reasons.length === 0;
+  const bet = ready ? koV257ExistingBet(player, match) : null;
+
+  if (!ready) return { key: "not-ready", label: reasons.join(" · ") || "Não obrigatório", ready: false, reasons, bet: null, startAt, deadlineAt };
+  if (!player) return { key: "no-player", label: "Sem jogador ligado", ready: true, reasons: [], bet: null, startAt, deadlineAt };
+  if (bet) return { key: "done", label: "Apostado", ready: true, reasons: [], bet, startAt, deadlineAt };
+  if (!deadlineAt || Number(now) >= deadlineAt) return { key: "missed", label: "Fora deste jogo", ready: true, reasons: [], bet: null, startAt, deadlineAt };
+  return { key: "pending", label: "Por apostar", ready: true, reasons: [], bet: null, startAt, deadlineAt };
+}
+
+function koV257Report(now = Date.now()) {
+  const dataReady = Boolean(currentUser && currentProfile && appSettings?.knockout && Array.isArray(appSettings.knockout.matches) && Array.isArray(bets));
+  const missingData = [];
+  if (!currentUser) missingData.push("auth/user");
+  if (!currentProfile) missingData.push("perfil");
+  if (!appSettings?.knockout || !Array.isArray(appSettings?.knockout?.matches)) missingData.push("jogos-fase-final");
+  if (!Array.isArray(bets)) missingData.push("apostas");
+
+  const player = koV257CurrentPlayer();
+  const report = {
+    version: KNOCKOUT_MANDATORY_FINAL_FIX_VERSION_V257,
+    dataReady,
+    missingData,
+    hasCurrentUser: Boolean(currentUser),
+    userEmail: koV257Email(currentUser?.email || currentProfile?.email || currentProfile?.id || ""),
+    profileRole: currentProfile?.role || "",
+    profileActive: currentProfile?.active !== false,
+    player: player ? { id: String(player.id || player.playerId || ""), name: String(player.name || player.playerName || "") } : null,
+    mandatory: [], pending: [], missed: [], done: [], notReady: [],
+    counts: { mandatory: 0, pending: 0, missed: 0, done: 0, notReady: 0 }
+  };
+  if (!dataReady || currentProfile?.active === false) return report;
+
+  koV257Matches().forEach(match => {
+    const state = koV257State(match, player, now);
+    const status = { key: state.key, label: state.label, ready: state.ready, reasons: state.reasons || [], bet: state.bet || null, startAt: state.startAt || 0, deadlineAt: state.deadlineAt || 0 };
+    const item = { match, status, state };
+    if (state.ready) report.mandatory.push(item);
+    else report.notReady.push(item);
+    if (state.key === "pending") report.pending.push(item);
+    else if (state.key === "missed") report.missed.push(item);
+    else if (state.key === "done") report.done.push(item);
+  });
+
+  const sortByStart = (a, b) => (a.status.startAt || 9999999999999) - (b.status.startAt || 9999999999999) || String(a.match?.id || "").localeCompare(String(b.match?.id || ""));
+  [report.mandatory, report.pending, report.missed, report.done, report.notReady].forEach(list => list.sort(sortByStart));
+  report.counts = {
+    mandatory: report.mandatory.length,
+    pending: report.pending.length,
+    missed: report.missed.length,
+    done: report.done.length,
+    notReady: report.notReady.length
+  };
+  return report;
+}
+
+function koV257Summary(item) {
+  const match = item.match || item;
+  const status = item.status || item.state || koV257State(match);
+  return {
+    id: match?.id || "",
+    round: match?.round || "",
+    roundLabel: knockoutRoundLabel?.(match?.round) || match?.roundLabel || "Fase Final",
+    index: match?.index || "",
+    homeTeam: match?.homeTeam || "",
+    awayTeam: match?.awayTeam || "",
+    matchDate: match?.matchDate || match?.date || match?.kickoff || "",
+    startAt: status.startAt || 0,
+    deadlineAt: status.deadlineAt || 0,
+    status: status.key,
+    label: status.label,
+    reasons: status.reasons || [],
+    hasBet: Boolean(status.bet)
+  };
+}
+
+function koV257Debug() {
+  const report = koV257Report();
+  return {
+    version: report.version,
+    dataReady: report.dataReady,
+    missingData: report.missingData,
+    userEmail: report.userEmail,
+    profileRole: report.profileRole,
+    profileActive: report.profileActive,
+    player: report.player,
+    counts: report.counts,
+    pending: report.pending.map(koV257Summary),
+    missed: report.missed.map(koV257Summary),
+    done: report.done.map(koV257Summary),
+    notReady: report.notReady.map(koV257Summary),
+    mandatory: report.mandatory.map(koV257Summary)
+  };
+}
+
+function koV257PendingMatches() { return koV257Report().pending.map(item => item.match).filter(Boolean); }
+function koV257MissedMatches() { return koV257Report().missed.map(item => item.match).filter(Boolean); }
+function koV257DoneMatches() { return koV257Report().done.map(item => item.match).filter(Boolean); }
+
+function koV257OpenMandatoryModal() {
+  const pending = koV257PendingMatches();
+  if (!pending.length) {
+    try { closeKnockoutMandatoryModalV247?.(true); } catch {}
+    return false;
+  }
+  try { document.activeElement?.blur?.(); } catch {}
+  const modal = ensureKnockoutMandatoryModalV247?.();
+  if (!modal) return false;
+  try { renderKnockoutMandatoryModalV247?.(); } catch (error) { console.warn("v257: render modal obrigatório falhou", error); }
+  modal.classList.remove("hidden");
+  document.body.classList.add("ko-mandatory-open-v247", "ko-mandatory-open-v257");
+  return true;
+}
+
+function koV257RunMandatoryCheck() {
+  clearTimeout(knockoutMandatoryTimerV257);
+  knockoutMandatoryTimerV257 = null;
+  const report = koV257Report();
+  if (!report.dataReady || !report.player || currentProfile?.active === false || document.hidden) return false;
+  if (!report.pending.length) {
+    try { closeKnockoutMandatoryModalV247?.(true); } catch {}
+    return false;
+  }
+  return koV257OpenMandatoryModal();
+}
+
+function koV257ScheduleMandatoryCheck(delay = 500) {
+  clearTimeout(knockoutMandatoryTimerV257);
+  knockoutMandatoryTimerV257 = setTimeout(koV257RunMandatoryCheck, Math.max(80, Number(delay) || 500));
+}
+
+function koV257DecorateStatuses() {
+  try {
+    const player = koV257CurrentPlayer();
+    document.querySelectorAll("#knockoutBracket [data-ko-admin], #knockoutMobileV121 [data-ko-admin]").forEach(card => {
+      const match = knockoutMatchById?.(card.dataset.koAdmin || "");
+      if (!match) return;
+      const state = koV257State(match, player);
+      let badge = card.querySelector(".ko-user-status-v257") || card.querySelector(".ko-user-status-v255") || card.querySelector(".ko-user-status-v247");
+      if (!badge) {
+        badge = document.createElement("div");
+        card.appendChild(badge);
+      }
+      badge.className = `ko-user-status-v257 ${state.key}`;
+      badge.title = state.reasons?.length ? state.reasons.join(", ") : state.label;
+      badge.textContent = state.label;
+    });
+  } catch (error) {
+    console.warn("v257: estados Fase Final falharam", error);
+  }
+}
+
+if (!window.__koMandatoryFinalFixV257) {
+  window.__koMandatoryFinalFixV257 = true;
+
+  try { knockoutRequiredCurrentPlayerV251 = koV257CurrentPlayer; } catch {}
+  try { knockoutRequiredExistingBetV251 = koV257ExistingBet; } catch {}
+  try { knockoutRequiredMatchStartMillisV251 = koV257MatchStartMillis; } catch {}
+  try { knockoutRequiredDeadlineMillisV251 = koV257DeadlineMillis; } catch {}
+  try { knockoutRequiredDetectionV251 = koV257Report; } catch {}
+  try { debugKnockoutRequiredV251 = koV257Debug; } catch {}
+
+  try { currentUserRequiredKnockoutBetsV245 = koV257PendingMatches; } catch {}
+  try { currentUserMissedKnockoutBetsV245 = koV257MissedMatches; } catch {}
+  try { currentUserDoneKnockoutBetsV245 = koV257DoneMatches; } catch {}
+  try { shouldForceRequiredKnockoutBetsV245 = () => koV257PendingMatches().length > 0; } catch {}
+
+  try { knockoutMandatoryPlayerV247 = koV257CurrentPlayer; } catch {}
+  try { knockoutMandatoryPendingMatchesV247 = koV257PendingMatches; } catch {}
+  try { knockoutMandatoryMissedMatchesV247 = koV257MissedMatches; } catch {}
+  try { knockoutMandatoryDoneMatchesV247 = koV257DoneMatches; } catch {}
+  try { knockoutMandatoryDataReadyV247 = () => koV257Report().dataReady; } catch {}
+  try { knockoutMandatoryStatusV247 = match => { const state = koV257State(match); return { key: state.key, label: state.label }; }; } catch {}
+
+  try { knockoutMandatoryReportV252 = koV257Report; } catch {}
+  try { knockoutMandatoryPendingMatchesV252 = koV257PendingMatches; } catch {}
+  try { knockoutMandatoryCanAutoOpenV252 = function koV257CanAutoOpen() {
+    const report = koV257Report();
+    if (!report.dataReady) return { ok: false, reason: "dados-a-carregar", report };
+    if (!report.player) return { ok: false, reason: "sem-jogador", report };
+    if (currentProfile?.active === false) return { ok: false, reason: "user-inativo", report };
+    if (!report.pending.length) return { ok: false, reason: "sem-pendentes", report };
+    if (document.hidden) return { ok: false, reason: "documento-oculto", report };
+    return { ok: true, reason: "pendentes", report };
+  }; } catch {}
+
+  try { knockoutMandatoryReportV254 = koV257Report; } catch {}
+  try { knockoutMandatoryPendingMatchesV254 = koV257PendingMatches; } catch {}
+  try { knockoutMandatoryMissedMatchesV254 = koV257MissedMatches; } catch {}
+  try { knockoutMandatoryDoneMatchesV254 = koV257DoneMatches; } catch {}
+  try { knockoutV255Report = koV257Report; } catch {}
+  try { knockoutV255PendingMatches = koV257PendingMatches; } catch {}
+  try { knockoutV255MissedMatches = koV257MissedMatches; } catch {}
+  try { knockoutV255DoneMatches = koV257DoneMatches; } catch {}
+  try { knockoutV255StateForMatch = koV257State; } catch {}
+
+  try { openKnockoutMandatoryModalV247 = koV257OpenMandatoryModal; } catch {}
+  try { runKnockoutMandatoryCheckV247 = koV257RunMandatoryCheck; } catch {}
+  try { scheduleKnockoutMandatoryCheckV247 = koV257ScheduleMandatoryCheck; } catch {}
+  try { runKnockoutMandatoryCheckV252 = koV257RunMandatoryCheck; } catch {}
+  try { scheduleKnockoutMandatoryCheckV252 = koV257ScheduleMandatoryCheck; } catch {}
+  try { runKnockoutMandatoryCheckV254 = koV257RunMandatoryCheck; } catch {}
+  try { scheduleKnockoutMandatoryCheckV254 = koV257ScheduleMandatoryCheck; } catch {}
+  try { knockoutV255RunModalCheck = koV257RunMandatoryCheck; } catch {}
+  try { knockoutV255ScheduleModalCheck = koV257ScheduleMandatoryCheck; } catch {}
+  try { forceKnockoutAutoBetCheckV244 = koV257ScheduleMandatoryCheck; } catch {}
+  try { scheduleKnockoutAutoBetCheckV243 = koV257ScheduleMandatoryCheck; } catch {}
+  try { maybeOpenNextKnockoutBetModalV243 = koV257RunMandatoryCheck; } catch {}
+
+  const renderAllOriginalV257 = typeof renderAll === "function" ? renderAll : null;
+  if (renderAllOriginalV257 && !renderAllOriginalV257.__koV257) {
+    renderAll = function renderAllV257() {
+      const result = renderAllOriginalV257.apply(this, arguments);
+      setTimeout(() => {
+        try { injectKnockoutRequiredHomePanelV245?.(); } catch {}
+        try { koV257DecorateStatuses(); } catch {}
+        koV257ScheduleMandatoryCheck(700);
+      }, 80);
+      return result;
+    };
+    renderAll.__koV257 = true;
+  }
+
+  const renderCalendarOriginalV257 = typeof renderCalendar === "function" ? renderCalendar : null;
+  if (renderCalendarOriginalV257 && !renderCalendarOriginalV257.__koV257) {
+    renderCalendar = function renderCalendarV257() {
+      const result = renderCalendarOriginalV257.apply(this, arguments);
+      setTimeout(() => {
+        try { injectKnockoutRequiredHomePanelV245?.(); } catch {}
+        koV257ScheduleMandatoryCheck(600);
+      }, 80);
+      return result;
+    };
+    renderCalendar.__koV257 = true;
+  }
+
+  const renderKnockoutOriginalV257 = typeof renderKnockout === "function" ? renderKnockout : null;
+  if (renderKnockoutOriginalV257 && !renderKnockoutOriginalV257.__koV257) {
+    renderKnockout = function renderKnockoutV257() {
+      const result = renderKnockoutOriginalV257.apply(this, arguments);
+      setTimeout(koV257DecorateStatuses, 80);
+      koV257ScheduleMandatoryCheck(700);
+      return result;
+    };
+    renderKnockout.__koV257 = true;
+  }
+
+  const loadDataOriginalV257 = typeof loadData === "function" ? loadData : null;
+  if (loadDataOriginalV257 && !loadDataOriginalV257.__koV257) {
+    loadData = async function loadDataV257() {
+      const result = await loadDataOriginalV257.apply(this, arguments);
+      koV257ScheduleMandatoryCheck(1100);
+      return result;
+    };
+    loadData.__koV257 = true;
+  }
+
+  document.addEventListener("DOMContentLoaded", () => koV257ScheduleMandatoryCheck(2200));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) koV257ScheduleMandatoryCheck(350); });
+  window.addEventListener("focus", () => koV257ScheduleMandatoryCheck(450));
+  document.addEventListener("click", event => {
+    if (event.target?.closest?.(".tabs [data-tab], [data-ko-admin], #appShell, #gamesList")) koV257ScheduleMandatoryCheck(220);
+  }, true);
+
+  if (!knockoutMandatoryIntervalV257) {
+    knockoutMandatoryIntervalV257 = setInterval(() => {
+      if (!document.hidden) koV257ScheduleMandatoryCheck(200);
+    }, 8000);
+  }
+
+  window.debugFaseFinalModalV257 = koV257Debug;
+  window.debugKnockoutMandatoryModalV257 = koV257Debug;
+  window.forceFaseFinalModalV257 = koV257RunMandatoryCheck;
+  window.forceKnockoutMandatoryModalV257 = koV257RunMandatoryCheck;
+
+  koV257ScheduleMandatoryCheck(2600);
+}
