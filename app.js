@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v253";
+const APP_VERSION_LABEL = "v254";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -14784,7 +14784,7 @@ if (!window.__koMandatoryModalV252) {
 }
 
 // v253 — Resultado real do Admin + equipa qualificada + passagem automática.
-const KNOCKOUT_ADMIN_RESULT_VERSION_V253 = "253.0";
+const KNOCKOUT_ADMIN_RESULT_VERSION_V253 = "254.0";
 
 function debugKnockoutAdminResultV253() {
   try {
@@ -14814,3 +14814,303 @@ function debugKnockoutAdminResultV253() {
 }
 
 window.debugKnockoutAdminResultV253 = debugKnockoutAdminResultV253;
+
+
+// v254 — Correção calma do modal obrigatório para USERS.
+// O problema provável: depois do login, um input/select escondido podia continuar com foco
+// e a proteção v250 adiava o modal para sempre. Esta camada só corrige o disparo do modal;
+// não mexe em pontuação nem na passagem de equipas.
+const KNOCKOUT_MANDATORY_USER_MODAL_VERSION_V254 = "254.0";
+let knockoutMandatoryTimerV254 = null;
+let knockoutMandatoryIntervalV254 = null;
+let knockoutMandatoryRunningV254 = false;
+
+function mundialElementReallyVisibleV254(el) {
+  if (!el || !el.isConnected) return false;
+  if (el.disabled || el.getAttribute?.("aria-hidden") === "true") return false;
+  if (el.closest?.(".hidden, [hidden], #loginScreen.auth-hidden, .auth-hidden")) return false;
+  const style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+  if (style && (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0)) return false;
+  try {
+    const rects = el.getClientRects?.();
+    if (rects && rects.length === 0) return false;
+  } catch {}
+  return true;
+}
+
+function mundialVisibleTextFieldV254(target = document.activeElement) {
+  try {
+    const el = target?.closest?.("input, select, textarea, [contenteditable='true'], [contenteditable=''], [contenteditable='plaintext-only']");
+    if (!el || !mundialElementReallyVisibleV254(el)) return null;
+    const tag = String(el.tagName || "").toLowerCase();
+    const type = String(el.type || "").toLowerCase();
+    if (tag === "textarea" || tag === "select" || el.isContentEditable) return el;
+    if (tag !== "input") return null;
+    if (["button", "submit", "reset", "checkbox", "radio", "file", "image", "hidden"].includes(type)) return null;
+    return el;
+  } catch {
+    return null;
+  }
+}
+
+function knockoutMandatoryModalElementV254() {
+  return document.getElementById("knockoutMandatoryModalV247");
+}
+
+function knockoutMandatoryModalVisibleV254() {
+  const modal = knockoutMandatoryModalElementV254();
+  return Boolean(modal && !modal.classList.contains("hidden"));
+}
+
+function knockoutMandatoryVisibleFieldOutsideModalV254() {
+  const active = mundialVisibleTextFieldV254(document.activeElement);
+  if (!active) return null;
+  const modal = knockoutMandatoryModalElementV254();
+  if (modal && modal.contains(active)) return null;
+  return active;
+}
+
+function knockoutMandatoryClearHiddenFocusV254() {
+  const active = document.activeElement;
+  if (!active) return;
+  if (mundialVisibleTextFieldV254(active)) return;
+  try { active.blur?.(); } catch {}
+  try { mundialFormLastInteractionV250 = 0; } catch {}
+}
+
+function knockoutRequiredCurrentPlayerV254() {
+  let player = null;
+  try { player = linkedPlayerForCurrentUserV241?.() || null; } catch {}
+  if (player) return player;
+
+  const profile = currentProfile || {};
+  const email = normalizeEmail?.(profile.email || currentUser?.email || profile.id || "") || "";
+  const linkedId = String(profile.linkedPlayerId || profile.playerId || "").trim();
+  const linkedName = String(profile.linkedPlayerName || profile.playerName || profile.name || "").trim();
+  const uid = String(profile.uid || currentUser?.uid || "").trim();
+
+  const catalog = (() => { try { return playersCatalogV241?.() || []; } catch { return []; } })();
+  if (linkedId) {
+    player = catalog.find(item => String(item.id || item.playerId || "") === linkedId) || null;
+    if (player) return player;
+  }
+  if (uid) {
+    player = catalog.find(item => String(item.linkedUid || "") === uid) || null;
+    if (player) return player;
+  }
+  if (email) {
+    player = catalog.find(item => normalizeEmail?.(item.linkedEmail || item.email || "") === email) || null;
+    if (player) return player;
+  }
+  if (linkedName) {
+    const normalized = normalizeComparable?.(linkedName) || linkedName.toLowerCase();
+    player = catalog.find(item => (normalizeComparable?.(item.name || item.playerName || "") || String(item.name || item.playerName || "").toLowerCase()) === normalized) || null;
+    if (player) return player;
+  }
+  return null;
+}
+
+function knockoutMandatoryReportV254() {
+  try {
+    const report = knockoutRequiredDetectionV251?.() || null;
+    if (!report) return null;
+    // Se a v251 não encontrou jogador por causa de cache/perfil, tenta a deteção robusta v254.
+    if (!report.player) {
+      const player = knockoutRequiredCurrentPlayerV254();
+      if (player && report.dataReady && currentProfile?.active !== false) {
+        const now = Date.now();
+        const matches = (typeof knockoutMatches === "function" ? knockoutMatches() : appSettings?.knockout?.matches || []) || [];
+        const rebuilt = { ...report, player: { id: player.id, name: player.name }, mandatory: [], pending: [], missed: [], done: [], notReady: [] };
+        matches.forEach(match => {
+          const status = knockoutRequiredStatusForMatchV251(match, player, now);
+          const item = { match, status };
+          if (status.ready) rebuilt.mandatory.push(item);
+          else rebuilt.notReady.push(item);
+          if (status.key === "pending") rebuilt.pending.push(item);
+          else if (status.key === "missed") rebuilt.missed.push(item);
+          else if (status.key === "done") rebuilt.done.push(item);
+        });
+        const sortByStart = (a, b) => (a.status.startAt || 9999999999999) - (b.status.startAt || 9999999999999) || String(a.match?.id || "").localeCompare(String(b.match?.id || ""));
+        rebuilt.mandatory.sort(sortByStart); rebuilt.pending.sort(sortByStart); rebuilt.missed.sort(sortByStart); rebuilt.done.sort(sortByStart); rebuilt.notReady.sort(sortByStart);
+        rebuilt.counts = { mandatory: rebuilt.mandatory.length, pending: rebuilt.pending.length, missed: rebuilt.missed.length, done: rebuilt.done.length, notReady: rebuilt.notReady.length };
+        return rebuilt;
+      }
+    }
+    return report;
+  } catch (error) {
+    console.warn("Relatório modal obrigatório v254 falhou:", error);
+    return null;
+  }
+}
+
+function knockoutMandatoryPendingMatchesV254() {
+  const report = knockoutMandatoryReportV254();
+  return report?.dataReady ? (report.pending || []).map(item => item.match).filter(Boolean) : [];
+}
+
+function knockoutMandatoryMissedMatchesV254() {
+  const report = knockoutMandatoryReportV254();
+  return report?.dataReady ? (report.missed || []).map(item => item.match).filter(Boolean) : [];
+}
+
+function knockoutMandatoryDoneMatchesV254() {
+  const report = knockoutMandatoryReportV254();
+  return report?.dataReady ? (report.done || []).map(item => item.match).filter(Boolean) : [];
+}
+
+function openKnockoutMandatoryModalV254() {
+  const pending = knockoutMandatoryPendingMatchesV254();
+  if (!pending.length) {
+    try { closeKnockoutMandatoryModalV247?.(true); } catch {}
+    return false;
+  }
+
+  knockoutMandatoryClearHiddenFocusV254();
+
+  const activeOutside = knockoutMandatoryVisibleFieldOutsideModalV254();
+  if (activeOutside && !knockoutMandatoryModalVisibleV254()) {
+    scheduleKnockoutMandatoryCheckV254(900);
+    return false;
+  }
+
+  const modal = ensureKnockoutMandatoryModalV247?.();
+  if (!modal) return false;
+  try { renderKnockoutMandatoryModalV247?.(); } catch (error) { console.warn("Render modal obrigatório v254 falhou:", error); }
+  modal.classList.remove("hidden");
+  document.body.classList.add("ko-mandatory-open-v247", "ko-mandatory-open-v254");
+  return true;
+}
+
+function runKnockoutMandatoryCheckV254() {
+  clearTimeout(knockoutMandatoryTimerV254);
+  knockoutMandatoryTimerV254 = null;
+  if (knockoutMandatoryRunningV254) return false;
+  knockoutMandatoryRunningV254 = true;
+
+  try {
+    if (!currentUser || document.hidden) return false;
+    knockoutMandatoryClearHiddenFocusV254();
+
+    const report = knockoutMandatoryReportV254();
+    if (!report?.dataReady) {
+      scheduleKnockoutMandatoryCheckV254(900);
+      return false;
+    }
+
+    if (!report.player || currentProfile?.active === false) {
+      try { closeKnockoutMandatoryModalV247?.(true); } catch {}
+      return false;
+    }
+
+    if (!report.pending?.length) {
+      try { closeKnockoutMandatoryModalV247?.(true); } catch {}
+      return false;
+    }
+
+    return openKnockoutMandatoryModalV254();
+  } catch (error) {
+    console.warn("Check modal obrigatório Fase Final v254 falhou:", error);
+    return false;
+  } finally {
+    knockoutMandatoryRunningV254 = false;
+  }
+}
+
+function scheduleKnockoutMandatoryCheckV254(delay = 500) {
+  clearTimeout(knockoutMandatoryTimerV254);
+  knockoutMandatoryTimerV254 = setTimeout(runKnockoutMandatoryCheckV254, Math.max(80, Number(delay) || 500));
+}
+
+function startKnockoutMandatoryWatcherV254() {
+  if (knockoutMandatoryIntervalV254) return;
+  knockoutMandatoryIntervalV254 = setInterval(() => {
+    if (!document.hidden) scheduleKnockoutMandatoryCheckV254(120);
+  }, 5000);
+}
+
+if (!window.__koMandatoryModalV254) {
+  window.__koMandatoryModalV254 = true;
+
+  // A partir daqui, todos os caminhos antigos passam pela deteção robusta v254.
+  try { knockoutRequiredCurrentPlayerV251 = knockoutRequiredCurrentPlayerV254; } catch {}
+  try { knockoutMandatoryPlayerV247 = knockoutRequiredCurrentPlayerV254; } catch {}
+  try { knockoutMandatoryPendingMatchesV247 = knockoutMandatoryPendingMatchesV254; } catch {}
+  try { knockoutMandatoryMissedMatchesV247 = knockoutMandatoryMissedMatchesV254; } catch {}
+  try { knockoutMandatoryDoneMatchesV247 = knockoutMandatoryDoneMatchesV254; } catch {}
+  try { knockoutMandatoryDataReadyV247 = () => Boolean(knockoutMandatoryReportV254()?.dataReady); } catch {}
+  try { knockoutMandatoryPendingMatchesV252 = knockoutMandatoryPendingMatchesV254; } catch {}
+  try { knockoutMandatoryCanAutoOpenV252 = function knockoutMandatoryCanAutoOpenV254() {
+    const report = knockoutMandatoryReportV254();
+    if (!report?.dataReady) return { ok: false, reason: "dados-a-carregar", report };
+    if (!report.player) return { ok: false, reason: "sem-jogador", report };
+    if (currentProfile?.active === false) return { ok: false, reason: "user-inativo", report };
+    if (!report.pending?.length) return { ok: false, reason: "sem-pendentes", report };
+    if (document.hidden) return { ok: false, reason: "documento-oculto", report };
+    return { ok: true, reason: "pendentes", report };
+  }; } catch {}
+
+  try { openKnockoutMandatoryModalV247 = openKnockoutMandatoryModalV254; } catch {}
+  try { runKnockoutMandatoryCheckV247 = runKnockoutMandatoryCheckV254; } catch {}
+  try { scheduleKnockoutMandatoryCheckV247 = scheduleKnockoutMandatoryCheckV254; } catch {}
+  try { runKnockoutMandatoryCheckV252 = runKnockoutMandatoryCheckV254; } catch {}
+  try { scheduleKnockoutMandatoryCheckV252 = scheduleKnockoutMandatoryCheckV254; } catch {}
+  try { maybeOpenNextKnockoutBetModalV243 = runKnockoutMandatoryCheckV254; } catch {}
+  try { scheduleKnockoutAutoBetCheckV243 = scheduleKnockoutMandatoryCheckV254; } catch {}
+  try { forceKnockoutAutoBetCheckV244 = scheduleKnockoutMandatoryCheckV254; } catch {}
+
+  const queueRealtimeRenderOriginalV254 = typeof queueRealtimeRender === "function" ? queueRealtimeRender : null;
+  if (queueRealtimeRenderOriginalV254 && !queueRealtimeRenderOriginalV254.__koMandatoryV254) {
+    queueRealtimeRender = function queueRealtimeRenderMandatoryV254() {
+      const result = queueRealtimeRenderOriginalV254.apply(this, arguments);
+      scheduleKnockoutMandatoryCheckV254(650);
+      return result;
+    };
+    queueRealtimeRender.__koMandatoryV254 = true;
+  }
+
+  const renderAllOriginalV254 = typeof renderAll === "function" ? renderAll : null;
+  if (renderAllOriginalV254 && !renderAllOriginalV254.__koMandatoryV254) {
+    renderAll = function renderAllMandatoryV254() {
+      const result = renderAllOriginalV254.apply(this, arguments);
+      scheduleKnockoutMandatoryCheckV254(700);
+      return result;
+    };
+    renderAll.__koMandatoryV254 = true;
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    startKnockoutMandatoryWatcherV254();
+    scheduleKnockoutMandatoryCheckV254(1600);
+  });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) scheduleKnockoutMandatoryCheckV254(250); });
+  window.addEventListener("focus", () => scheduleKnockoutMandatoryCheckV254(300));
+  document.addEventListener("click", event => {
+    if (event.target?.closest?.(".tabs [data-tab], .app-nav, .bottom-nav, [data-route], .sidebar, #appShell")) {
+      scheduleKnockoutMandatoryCheckV254(180);
+    }
+  }, true);
+
+  window.debugKnockoutMandatoryModalV254 = function debugKnockoutMandatoryModalV254() {
+    const report = knockoutMandatoryReportV254();
+    const active = document.activeElement;
+    return {
+      version: KNOCKOUT_MANDATORY_USER_MODAL_VERSION_V254,
+      dataReady: Boolean(report?.dataReady),
+      missingData: report?.missingData || [],
+      player: report?.player || null,
+      pending: report?.pending?.map?.(knockoutRequiredMatchSummaryV251) || [],
+      missed: report?.missed?.map?.(knockoutRequiredMatchSummaryV251) || [],
+      done: report?.done?.map?.(knockoutRequiredMatchSummaryV251) || [],
+      counts: report?.counts || {},
+      modalVisible: knockoutMandatoryModalVisibleV254(),
+      activeTag: active?.tagName || "",
+      activeId: active?.id || "",
+      activeVisibleField: Boolean(mundialVisibleTextFieldV254(active)),
+      visibleFieldOutsideModal: Boolean(knockoutMandatoryVisibleFieldOutsideModalV254())
+    };
+  };
+  window.forceKnockoutMandatoryModalV254 = runKnockoutMandatoryCheckV254;
+
+  startKnockoutMandatoryWatcherV254();
+  scheduleKnockoutMandatoryCheckV254(2200);
+}
