@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v247";
+const APP_VERSION_LABEL = "v248";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -14052,3 +14052,138 @@ document.addEventListener("DOMContentLoaded", () => {
   scheduleKnockoutMandatoryCheckV247(1800);
 });
 startKnockoutMandatoryWatcherV247();
+
+
+// v248 - Corrige selects/inputs a perder foco quando o modal obrigatorio atualiza.
+// O problema vinha do watcher da Fase Final a re-renderizar o modal enquanto o user estava a escrever/escolher.
+function knockoutMandatoryModalOpenV248() {
+  const modal = document.getElementById("knockoutMandatoryModalV247");
+  return Boolean(modal && !modal.classList.contains("hidden"));
+}
+
+function knockoutMandatoryFocusedFieldV248() {
+  const modal = document.getElementById("knockoutMandatoryModalV247");
+  const active = document.activeElement;
+  if (!modal || !active || !modal.contains(active)) return null;
+  return active.matches?.("input, select, textarea") ? active : null;
+}
+
+function knockoutMandatoryPendingSignatureV248() {
+  try {
+    return knockoutMandatoryPendingMatchesV247()
+      .map(match => `${match.id}:${knockoutBetDeadlineMillisV247(match)}:${match.homeTeam}:${match.awayTeam}`)
+      .join("|");
+  } catch {
+    return "";
+  }
+}
+
+function knockoutMandatoryDraftV248() {
+  const draft = {};
+  document.querySelectorAll("[data-ko-mandatory-match]").forEach(row => {
+    const id = row.dataset.koMandatoryMatch || "";
+    if (!id) return;
+    draft[id] = {
+      home: row.querySelector(".ko-mandatory-home-v247")?.value ?? "",
+      away: row.querySelector(".ko-mandatory-away-v247")?.value ?? "",
+      winner: row.querySelector(".ko-mandatory-winner-v247")?.value ?? ""
+    };
+  });
+  return draft;
+}
+
+function restoreKnockoutMandatoryDraftV248(draft = {}) {
+  Object.entries(draft || {}).forEach(([id, values]) => {
+    let row = null;
+    try { row = document.querySelector(`[data-ko-mandatory-match="${CSS.escape(id)}"]`); } catch { row = null; }
+    if (!row) return;
+    const home = row.querySelector(".ko-mandatory-home-v247");
+    const away = row.querySelector(".ko-mandatory-away-v247");
+    const winner = row.querySelector(".ko-mandatory-winner-v247");
+    if (home && values.home !== undefined) home.value = values.home;
+    if (away && values.away !== undefined) away.value = values.away;
+    if (winner && values.winner !== undefined) winner.value = values.winner;
+  });
+}
+
+const renderKnockoutMandatoryModalOriginalV248 = typeof renderKnockoutMandatoryModalV247 === "function" ? renderKnockoutMandatoryModalV247 : null;
+if (renderKnockoutMandatoryModalOriginalV248 && !window.__koMandatoryRenderFocusFixV248) {
+  window.__koMandatoryRenderFocusFixV248 = true;
+  window.__koMandatoryLastSignatureV248 = "";
+
+  renderKnockoutMandatoryModalV247 = function renderKnockoutMandatoryModalStableV248() {
+    const modal = document.getElementById("knockoutMandatoryModalV247");
+    const focusedField = knockoutMandatoryFocusedFieldV248();
+    const signature = knockoutMandatoryPendingSignatureV248();
+    const hasRows = Boolean(document.querySelector("#koMandatoryBodyV247 [data-ko-mandatory-match]"));
+
+    // Se o user está a escrever ou com um select aberto, não reconstruir o HTML à força.
+    // Isto evita o abre/fecha dos selects e os inputs a perderem foco.
+    if (focusedField && hasRows && window.__koMandatoryLastSignatureV248 === signature) {
+      const subtitle = document.getElementById("koMandatorySubtitleV247");
+      const player = knockoutMandatoryPlayerV247?.();
+      const pending = knockoutMandatoryPendingMatchesV247?.() || [];
+      if (subtitle && player) subtitle.textContent = `${player.name} - ${pending.length} aposta(s) por preencher`;
+      return;
+    }
+
+    const draft = knockoutMandatoryDraftV248();
+    const result = renderKnockoutMandatoryModalOriginalV248.apply(this, arguments);
+    window.__koMandatoryLastSignatureV248 = signature;
+    restoreKnockoutMandatoryDraftV248(draft);
+    return result;
+  };
+}
+
+const openKnockoutMandatoryModalOriginalV248 = typeof openKnockoutMandatoryModalV247 === "function" ? openKnockoutMandatoryModalV247 : null;
+if (openKnockoutMandatoryModalOriginalV248 && !window.__koMandatoryOpenFocusFixV248) {
+  window.__koMandatoryOpenFocusFixV248 = true;
+
+  openKnockoutMandatoryModalV247 = function openKnockoutMandatoryModalStableV248() {
+    const pending = knockoutMandatoryPendingMatchesV247?.() || [];
+    if (!pending.length) {
+      closeKnockoutMandatoryModalV247?.(true);
+      return false;
+    }
+
+    const modal = ensureKnockoutMandatoryModalV247();
+    const wasOpen = knockoutMandatoryModalOpenV248();
+    const focusedField = knockoutMandatoryFocusedFieldV248();
+    renderKnockoutMandatoryModalV247();
+    modal.classList.remove("hidden");
+    document.body.classList.add("ko-mandatory-open-v247");
+
+    // Só focar automaticamente na primeira abertura. Nas atualizações, manter o campo/selector onde o user está.
+    if (!wasOpen && !focusedField) {
+      setTimeout(() => {
+        const current = document.activeElement;
+        if (current && modal.contains(current) && current.matches?.("input, select, textarea")) return;
+        modal.querySelector("input, select")?.focus?.({ preventScroll: true });
+      }, 60);
+    }
+    return true;
+  };
+}
+
+const closeTopModalOriginalV248 = typeof closeTopModalV162 === "function" ? closeTopModalV162 : null;
+if (closeTopModalOriginalV248 && !window.__koMandatoryCloseGuardV248) {
+  window.__koMandatoryCloseGuardV248 = true;
+  closeTopModalV162 = function closeTopModalGuardMandatoryV248() {
+    const modals = [...document.querySelectorAll(".modal")].filter(modal => !modal.classList.contains("hidden"));
+    const modal = modals.at(-1);
+    if (modal?.id === "knockoutMandatoryModalV247") {
+      return closeKnockoutMandatoryModalV247?.(false) || false;
+    }
+    return closeTopModalOriginalV248.apply(this, arguments);
+  };
+}
+
+document.addEventListener("pointerdown", event => {
+  if (!event.target.closest?.("#knockoutMandatoryModalV247 input, #knockoutMandatoryModalV247 select, #knockoutMandatoryModalV247 textarea")) return;
+  window.__koMandatoryLastUserEditV248 = Date.now();
+}, { capture: true, passive: true });
+
+document.addEventListener("input", event => {
+  if (!event.target.closest?.("#knockoutMandatoryModalV247")) return;
+  window.__koMandatoryLastUserEditV248 = Date.now();
+}, true);

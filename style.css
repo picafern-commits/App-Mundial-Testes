@@ -12063,3 +12063,18 @@ body.ko-mandatory-open-v247{
     min-width:1320px!important;
   }
 }
+
+
+/* v248 - mantém selects/inputs do modal obrigatorio estáveis ao toque/clique */
+.ko-mandatory-modal-v247 input,
+.ko-mandatory-modal-v247 select,
+.ko-mandatory-modal-v247 textarea{
+  pointer-events:auto!important;
+  touch-action:manipulation;
+}
+.ko-mandatory-modal-v247 input:focus,
+.ko-mandatory-modal-v247 select:focus,
+.ko-mandatory-modal-v247 textarea:focus{
+  outline:2px solid rgba(124,92,255,.55);
+  outline-offset:2px;
+}
