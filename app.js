@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v237";
+const APP_VERSION_LABEL = "v238";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -12422,4 +12422,181 @@ document.addEventListener("click", event => {
 document.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => { if ($("adminTab")?.classList.contains("active")) organizeAdminPageV228(); }, 500);
   setTimeout(() => { if ($("settingsTab")?.classList.contains("active")) organizeSettingsPageV228(); }, 500);
+});
+
+// v238 - camada visual premium. Apenas cria elementos de apresentacao.
+function activePageKeyV238() {
+  const active = document.querySelector(".tab-panel.active")?.id || "calendarTab";
+  return active
+    .replace("Tab", "")
+    .replace("score", "pontuacao")
+    .replace("knockout", "fase-final")
+    .replace("notifications", "notificacoes")
+    .replace("settings", "configuracoes");
+}
+
+function updatePremiumPageClassV238() {
+  document.body.dataset.pageV238 = activePageKeyV238();
+}
+
+function initialsV238(name = "") {
+  return String(name || "MP")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map(part => part[0] || "")
+    .join("")
+    .toUpperCase() || "MP";
+}
+
+function renderScorePremiumSummaryV238() {
+  const target = $("scoreSummary");
+  if (!target || target.querySelector("#scorePremiumSummaryV238")) return;
+  const rows = leaderboard();
+  if (!rows.length) return;
+
+  const leader = rows[0];
+  const totalGames = games.length || 0;
+  const played = games.filter(hasFinalResult).length;
+  const average = rows.length ? Math.round(rows.reduce((sum, row) => sum + Number(row.points || 0), 0) / rows.length) : 0;
+  const exact = rows.reduce((sum, row) => sum + Number(row.exact || 0), 0);
+  const currentName = String(currentProfile?.name || currentUser?.email || "").trim().toLowerCase();
+
+  target.querySelectorAll(".player-score-card").forEach(card => {
+    const name = String(card.querySelector(".player-score-main strong")?.textContent || "").trim().toLowerCase();
+    card.classList.toggle("is-current-v238", Boolean(currentName && name && (name === currentName || currentName.includes(name))));
+  });
+
+  const summary = document.createElement("div");
+  summary.id = "scorePremiumSummaryV238";
+  summary.className = "score-premium-summary-v238";
+  summary.innerHTML = `
+    <article class="leader">
+      <span class="score-avatar-v238">${escapeHtml(initialsV238(leader.playerName))}</span>
+      <div><small>Lider</small><strong>${escapeHtml(leader.playerName)}</strong><b>${leader.points} pts</b></div>
+    </article>
+    <article><i></i><div><small>Jogos com resultado</small><strong>${played} / ${totalGames}</strong><p>${totalGames ? Math.round((played / totalGames) * 100) : 0}% concluidos</p></div></article>
+    <article><i></i><div><small>Media de pontos</small><strong>${average} pts</strong><p>Por participante</p></div></article>
+    <article><i></i><div><small>Exatos</small><strong>${exact}</strong><p>Total de resultados exatos</p></div></article>
+  `;
+  target.prepend(summary);
+}
+
+function renderLogsPremiumSummaryV238() {
+  const unlocked = isLogsUnlocked();
+  const panel = $("logsUnlockedPanel");
+  if (!panel || !unlocked) return;
+
+  let summary = $("logsPremiumSummaryV238");
+  if (!summary) {
+    summary = document.createElement("div");
+    summary.id = "logsPremiumSummaryV238";
+    summary.className = "logs-premium-summary-v238";
+    panel.prepend(summary);
+  }
+
+  const all = systemLogs();
+  const today = new Date().toISOString().slice(0, 10);
+  const todayCount = all.filter(log => String(log.at || "").slice(0, 10) === today).length;
+  const errors = all.filter(log => logCategoryV162(log) === "errors").length;
+  const adminCount = all.filter(log => logCategoryV162(log) === "admin").length;
+  const lastSync = all.find(log => logCategoryV162(log) === "sync");
+
+  summary.innerHTML = `
+    <article><span></span><div><small>Ultima sync</small><strong>${lastSync ? escapeHtml(formatLogTime(lastSync.at)) : "-"}</strong><p>${lastSync ? escapeHtml(lastSync.action || "Sync") : "Sem registo"}</p></div></article>
+    <article><span></span><div><small>Erros</small><strong>${errors}</strong><p>Registos acumulados</p></div></article>
+    <article><span></span><div><small>Acoes admin</small><strong>${adminCount}</strong><p>Eventos de gestao</p></div></article>
+    <article><span></span><div><small>Eventos hoje</small><strong>${todayCount}</strong><p>Atividade do dia</p></div></article>
+  `;
+}
+
+function renderAdminApiCardV238() {
+  const unlocked = $("adminUnlocked");
+  if (!unlocked || unlocked.classList.contains("hidden")) return;
+
+  let card = $("adminApiCardV238");
+  if (!card) {
+    card = document.createElement("article");
+    card.id = "adminApiCardV238";
+    card.className = "admin-api-card-v238";
+  }
+
+  const logs = systemLogs();
+  const lastSync = logs.find(log => logCategoryV162(log) === "sync");
+  const error = logs.find(log => logCategoryV162(log) === "errors");
+  const online = storageMode === "firebase";
+  card.innerHTML = `
+    <div class="admin-api-head-v238">
+      <span>API</span>
+      <strong>API - football-data.org</strong>
+      <em class="${error ? "warn" : online ? "ok" : "idle"}">${error ? "Em espera" : online ? "Online" : "A iniciar"}</em>
+    </div>
+    <dl>
+      <div><dt>Modo API</dt><dd>Inteligente</dd></div>
+      <div><dt>Estado</dt><dd>${online ? "Online" : "Em espera"}</dd></div>
+      <div><dt>Proximo jogo com sync</dt><dd>Calculado pela smart sync</dd></div>
+      <div><dt>Ultima verificacao</dt><dd>${lastSync ? escapeHtml(formatLogTime(lastSync.at)) : "-"}</dd></div>
+      <div><dt>Ultima sync real</dt><dd>${lastSync ? escapeHtml(lastSync.action || "Sync API") : "-"}</dd></div>
+    </dl>
+  `;
+
+  const overview = $("adminOverviewV162");
+  if (overview?.parentElement === unlocked) overview.insertAdjacentElement("afterend", card);
+  else unlocked.prepend(card);
+}
+
+function polishPremiumUiV238() {
+  updatePremiumPageClassV238();
+  renderScorePremiumSummaryV238();
+  renderLogsPremiumSummaryV238();
+  renderAdminApiCardV238();
+}
+
+const renderScoreOriginalV238 = typeof renderScore === "function" ? renderScore : null;
+if (renderScoreOriginalV238 && !window.__renderScorePremiumV238) {
+  window.__renderScorePremiumV238 = true;
+  renderScore = function renderScorePremiumV238() {
+    const result = renderScoreOriginalV238.apply(this, arguments);
+    setTimeout(renderScorePremiumSummaryV238, 0);
+    return result;
+  };
+}
+
+const renderSystemLogsOriginalV238 = typeof renderSystemLogs === "function" ? renderSystemLogs : null;
+if (renderSystemLogsOriginalV238 && !window.__renderLogsPremiumV238) {
+  window.__renderLogsPremiumV238 = true;
+  renderSystemLogs = function renderLogsPremiumV238() {
+    const result = renderSystemLogsOriginalV238.apply(this, arguments);
+    setTimeout(renderLogsPremiumSummaryV238, 0);
+    return result;
+  };
+}
+
+const renderAdminOverviewOriginalV238 = typeof renderAdminOverviewV162 === "function" ? renderAdminOverviewV162 : null;
+if (renderAdminOverviewOriginalV238 && !window.__renderAdminOverviewPremiumV238) {
+  window.__renderAdminOverviewPremiumV238 = true;
+  renderAdminOverviewV162 = function renderAdminOverviewPremiumV238() {
+    const result = renderAdminOverviewOriginalV238.apply(this, arguments);
+    setTimeout(renderAdminApiCardV238, 0);
+    return result;
+  };
+}
+
+const renderAllOriginalV238 = typeof renderAll === "function" ? renderAll : null;
+if (renderAllOriginalV238 && !window.__renderAllPremiumV238) {
+  window.__renderAllPremiumV238 = true;
+  renderAll = function renderAllPremiumV238() {
+    const result = renderAllOriginalV238.apply(this, arguments);
+    setTimeout(polishPremiumUiV238, 0);
+    return result;
+  };
+}
+
+document.addEventListener("click", event => {
+  if (event.target.closest?.("[data-tab]")) setTimeout(polishPremiumUiV238, 80);
+}, true);
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(polishPremiumUiV238, 500);
+  setTimeout(polishPremiumUiV238, 1400);
 });

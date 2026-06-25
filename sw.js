@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v237-knockout-board-layout";
+const CACHE_NAME = "mundial-pontos-2026-v238-premium-redesign";
 const APP_SHELL = [
   "./",
   "./index.html",
