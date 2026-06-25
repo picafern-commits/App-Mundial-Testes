@@ -9,8 +9,8 @@ const PENDING_BETS_KEY = `${STORAGE_KEY}_pending_bets_v1`;
 const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
-const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v259";
+const LOGS_PIN = "26060";
+const APP_VERSION_LABEL = "v260";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -17107,3 +17107,223 @@ try { currentUserMissedKnockoutBetsV245 = () => []; } catch {}
 try { currentUserDoneKnockoutBetsV245 = () => []; } catch {}
 try { shouldForceRequiredKnockoutBetsV245 = () => false; } catch {}
 disableKnockoutMandatorySystemV259();
+
+
+// v260 — Fase Final em lista simples. Acaba com a árvore visual no separador Fase Final.
+const APP_VERSION_V260 = "260.0";
+
+function koV260Team(match, side) {
+  try { return knockoutTeamNameV121?.(match, side) || (side === "home" ? match?.homeTeam : match?.awayTeam) || "A definir"; }
+  catch { return (side === "home" ? match?.homeTeam : match?.awayTeam) || "A definir"; }
+}
+
+function koV260Score(match, side) {
+  try { return knockoutScoreV121?.(match, side); }
+  catch {
+    const value = side === "home" ? match?.homeScore : match?.awayScore;
+    return value === null || value === undefined || value === "" ? null : Number(value);
+  }
+}
+
+function koV260MatchDate(match) {
+  try { return knockoutCalendarGameDateV259?.(match) || knockoutMatchDateInputValueV243?.(match) || match?.matchDate || match?.date || match?.kickoff || match?.startAt || match?.time || ""; }
+  catch { return match?.matchDate || match?.date || match?.kickoff || match?.startAt || match?.time || ""; }
+}
+
+function koV260Winner(match) {
+  try { return knockoutWinner?.(match) || knockoutWinnerV121?.(match) || match?.qualified || match?.winnerTeam || match?.winner || ""; }
+  catch { return match?.qualified || match?.winnerTeam || match?.winner || ""; }
+}
+
+function koV260Status(match) {
+  const home = String(match?.homeTeam || "").trim();
+  const away = String(match?.awayTeam || "").trim();
+  const date = koV260MatchDate(match);
+  const hasTeams = Boolean(home && away);
+  const hasResult = Boolean(knockoutMatchHasResult?.(match));
+  const winner = koV260Winner(match);
+  if (!hasTeams) return { key: "waiting", label: "Equipas por definir", detail: "À espera das equipas" };
+  if (!date) return { key: "no-date", label: "Sem data/hora", detail: "Define a data para aparecer no Calendário" };
+  if (hasResult && winner) return { key: "done", label: "Resultado lançado", detail: `Qualificada: ${winner}` };
+  if (hasResult && !winner) return { key: "needs-qualified", label: "Falta qualificada", detail: "Escolhe quem passou" };
+  return { key: "open", label: "Aberto para apostas", detail: "Aparece no Calendário normal" };
+}
+
+function koV260ScoreText(match) {
+  const home = koV260Score(match, "home");
+  const away = koV260Score(match, "away");
+  if (home === null || away === null || Number.isNaN(home) || Number.isNaN(away)) return "VS";
+  return `${home} - ${away}`;
+}
+
+function koV260PenaltiesText(match) {
+  try {
+    const pens = knockoutPenaltiesV121?.(match);
+    if (pens) return `Penáltis ${pens.home} - ${pens.away}`;
+  } catch {}
+  const hp = match?.homePenalties;
+  const ap = match?.awayPenalties;
+  if (hp !== null && hp !== undefined && hp !== "" && ap !== null && ap !== undefined && ap !== "") return `Penáltis ${hp} - ${ap}`;
+  return "";
+}
+
+function koV260BetsCount(match) {
+  try { return betsForGame?.(match?.id)?.length || 0; }
+  catch { return Array.isArray(bets) ? bets.filter(bet => String(bet.gameId || "") === String(match?.id || "")).length : 0; }
+}
+
+function koV260RenderMatchCard(match) {
+  const status = koV260Status(match);
+  const winner = koV260Winner(match);
+  const home = koV260Team(match, "home");
+  const away = koV260Team(match, "away");
+  const date = koV260MatchDate(match);
+  const pens = koV260PenaltiesText(match);
+  const editable = canEditKnockoutInline?.();
+  const readyForCalendar = (() => { try { return knockoutMatchIsCalendarReadyV259?.(match); } catch { return false; } })();
+  const betsCount = koV260BetsCount(match);
+
+  return `
+    <article class="ko-list-card-v260 ko-status-${escapeHtml(status.key)} ${editable ? "ko-match-clickable" : ""}" data-ko-admin="${escapeHtml(match.id)}" ${editable ? `role="button" tabindex="0" aria-label="Editar ${escapeHtml(knockoutRoundLabel(match.round))} jogo ${escapeHtml(String(match.index))}"` : ""}>
+      <div class="ko-list-card-top-v260">
+        <div>
+          <span>${escapeHtml(knockoutRoundLabel(match.round))}</span>
+          <strong>Jogo ${escapeHtml(String(match.index || ""))}</strong>
+        </div>
+        <em class="ko-list-status-v260">${escapeHtml(status.label)}</em>
+      </div>
+
+      <div class="ko-list-matchline-v260">
+        <div class="ko-list-team-v260 ${winner && normalizeComparable(winner) === normalizeComparable(home) ? "winner" : ""}">${escapeHtml(home)}</div>
+        <div class="ko-list-score-v260">${escapeHtml(koV260ScoreText(match))}</div>
+        <div class="ko-list-team-v260 ${winner && normalizeComparable(winner) === normalizeComparable(away) ? "winner" : ""}">${escapeHtml(away)}</div>
+      </div>
+
+      <div class="ko-list-meta-v260">
+        <span>${date ? escapeHtml(dateTimePortugal(date)) : "Sem data/hora"}</span>
+        ${pens ? `<span>${escapeHtml(pens)}</span>` : ""}
+        <span>${betsCount} aposta(s)</span>
+        ${readyForCalendar ? `<span class="calendar-ok">No Calendário</span>` : `<span>Não aparece no Calendário</span>`}
+      </div>
+
+      ${winner ? `<div class="ko-list-qualified-v260">Qualificada: <strong>${escapeHtml(winner)}</strong></div>` : `<div class="ko-list-qualified-v260 muted">${escapeHtml(status.detail)}</div>`}
+
+      ${editable ? `
+        <div class="ko-list-actions-v260">
+          <button class="secondary small ko-record-open-btn-v244" type="button" data-ko-record="${escapeHtml(match.id)}">Editar jogo</button>
+        </div>` : ""}
+    </article>`;
+}
+
+function koV260RoundSummary(matches) {
+  const total = matches.length;
+  const done = matches.filter(match => knockoutMatchHasResult?.(match)).length;
+  const ready = matches.filter(match => koV260Status(match).key === "open").length;
+  const missing = matches.filter(match => koV260Status(match).key === "waiting" || koV260Status(match).key === "no-date").length;
+  return `${done}/${total} com resultado · ${ready} aberto(s) · ${missing} por preparar`;
+}
+
+function koV260RenderRound(round) {
+  const matches = knockoutMatches().filter(match => match.round === round.key);
+  return `
+    <section class="ko-list-round-v260" data-ko-round-v260="${escapeHtml(round.key)}">
+      <div class="ko-list-round-head-v260">
+        <div>
+          <span>Fase Final</span>
+          <strong>${escapeHtml(round.label)}</strong>
+        </div>
+        <small>${escapeHtml(koV260RoundSummary(matches))}</small>
+      </div>
+      <div class="ko-list-cards-v260">
+        ${matches.map(koV260RenderMatchCard).join("")}
+      </div>
+    </section>`;
+}
+
+function koV260RenderKnockoutList() {
+  ensureKnockoutSettings?.();
+  const notice = $("knockoutLockNotice");
+  const container = $("knockoutBracket");
+  if (!container) return;
+
+  document.getElementById("knockoutMobileV121")?.remove();
+  container.classList.add("ko-list-root-v260");
+  container.classList.remove("bracket-tree-active-v260");
+
+  if (!knockoutAvailable?.()) {
+    const missing = games.filter(needsFinalResult).length;
+    if (notice) notice.innerHTML = `<strong>Fase Final bloqueada</strong><span>Faltam ${missing} resultado(s) da fase de grupos. O Admin pode ativar no painel Admin.</span>`;
+    container.innerHTML = "";
+    return;
+  }
+
+  if (notice) notice.innerHTML = "";
+  const finalMatch = knockoutMatches().find(match => match.round === "final");
+  const champion = koV260Winner(finalMatch);
+  const totalMatches = knockoutMatches().length;
+  const readyCalendar = knockoutMatches().filter(match => { try { return knockoutMatchIsCalendarReadyV259?.(match); } catch { return false; } }).length;
+  const results = knockoutMatches().filter(match => knockoutMatchHasResult?.(match)).length;
+
+  container.innerHTML = `
+    <div class="ko-list-page-v260">
+      <header class="ko-list-hero-v260">
+        <div>
+          <span>Mundial Pontos 2026</span>
+          <strong>Fase Final em lista</strong>
+          <small>Sem árvore. Cada jogo fica em card limpo, por fase.</small>
+        </div>
+        <div class="ko-list-champion-v260 ${champion ? "has-champion" : ""}">
+          <span>Campeão</span>
+          <strong>${escapeHtml(champion || "Por decidir")}</strong>
+        </div>
+      </header>
+
+      <div class="ko-list-stats-v260">
+        <span><strong>${results}</strong> resultados lançados</span>
+        <span><strong>${readyCalendar}</strong> jogos no Calendário</span>
+        <span><strong>${totalMatches}</strong> jogos totais</span>
+      </div>
+
+      <div class="ko-list-rounds-v260">
+        ${KNOCKOUT_ROUNDS.map(koV260RenderRound).join("")}
+      </div>
+    </div>`;
+}
+
+try {
+  renderKnockout = koV260RenderKnockoutList;
+  window.renderKnockout = renderKnockout;
+} catch {}
+
+try {
+  renderKnockoutMobileV121 = function renderKnockoutMobileDisabledV260() {
+    document.getElementById("knockoutMobileV121")?.remove();
+  };
+  setupKnockoutMobileV121 = renderKnockoutMobileV121;
+} catch {}
+
+function debugFaseFinalListaV260() {
+  ensureKnockoutSettings?.();
+  return {
+    version: APP_VERSION_V260,
+    matches: knockoutMatches().map(match => ({
+      id: match.id,
+      round: match.round,
+      index: match.index,
+      homeTeam: match.homeTeam || "",
+      awayTeam: match.awayTeam || "",
+      matchDate: koV260MatchDate(match),
+      status: koV260Status(match),
+      result: koV260ScoreText(match),
+      winner: koV260Winner(match),
+      bets: koV260BetsCount(match)
+    }))
+  };
+}
+window.debugFaseFinalListaV260 = debugFaseFinalListaV260;
+
+setTimeout(() => {
+  try {
+    if (document.querySelector(".tab-panel.active")?.id === "knockoutTab") renderKnockout?.();
+  } catch {}
+}, 500);
