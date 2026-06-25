@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "25959";
-const APP_VERSION_LABEL = "v233";
+const APP_VERSION_LABEL = "v235";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -3997,6 +3997,114 @@ function setupKnockoutAdjustTopButton() {
   });
 }
 
+let knockoutViewModeV235 = localStorage.getItem("mundial_ko_view_mode_v235") || "bracket";
+
+function setKnockoutViewModeV235(mode) {
+  knockoutViewModeV235 = mode === "list" ? "list" : "bracket";
+  localStorage.setItem("mundial_ko_view_mode_v235", knockoutViewModeV235);
+  renderKnockout();
+}
+
+function knockoutHasScore(match) {
+  return match.homeScore !== null && match.homeScore !== undefined && match.homeScore !== "" &&
+    match.awayScore !== null && match.awayScore !== undefined && match.awayScore !== "";
+}
+
+function knockoutHasPenalties(match) {
+  return match.homePenalties !== null && match.homePenalties !== undefined && match.homePenalties !== "" &&
+    match.awayPenalties !== null && match.awayPenalties !== undefined && match.awayPenalties !== "";
+}
+
+function knockoutMatchStateV235(match) {
+  const teamsReady = Boolean(match.homeTeam && match.awayTeam);
+  const hasScore = knockoutHasScore(match);
+  const hasPens = knockoutHasPenalties(match);
+  const winner = knockoutWinner(match);
+  const draw = hasScore && Number(match.homeScore) === Number(match.awayScore);
+
+  if (!teamsReady) return { key: "waiting", label: "A definir" };
+  if (winner && draw && hasPens) return { key: "penalties", label: "Penaltis" };
+  if (winner) return { key: "done", label: "Finalizado" };
+  if (draw && !hasPens) return { key: "needs-pens", label: "Faltam penaltis" };
+  if (hasScore) return { key: "pending", label: "Por confirmar" };
+  return { key: "ready", label: "Por jogar" };
+}
+
+function knockoutNextRoundLabelV235(round) {
+  const labels = { r32: "Oitavos", r16: "Quartos", qf: "Meias", sf: "Final", final: "campeao" };
+  return labels[round] || "proxima ronda";
+}
+
+function knockoutStatsV235() {
+  return knockoutMatches().reduce((stats, match) => {
+    const state = knockoutMatchStateV235(match);
+    stats.total += 1;
+    if (match.homeTeam && match.awayTeam) stats.defined += 1;
+    if (state.key === "done" || state.key === "penalties") stats.done += 1;
+    if (state.key === "penalties") stats.penalties += 1;
+    if (state.key === "waiting" || state.key === "ready" || state.key === "needs-pens") stats.pending += 1;
+    return stats;
+  }, { total: 0, defined: 0, done: 0, penalties: 0, pending: 0 });
+}
+
+function renderKnockoutViewHeaderV235(champion = "") {
+  const stats = knockoutStatsV235();
+  const active = knockoutViewModeV235 === "list" ? "list" : "bracket";
+
+  return `
+    <div class="ko-view-header-v235">
+      <div class="ko-view-summary-v235">
+        <span><strong>${stats.defined}</strong> definidos</span>
+        <span><strong>${stats.pending}</strong> pendentes</span>
+        <span><strong>${stats.done}</strong> finalizados</span>
+        <span><strong>${stats.penalties}</strong> penaltis</span>
+        <span><strong>${escapeHtml(champion || "A definir")}</strong> campeao</span>
+      </div>
+      <div class="ko-view-toggle-v235" role="tablist" aria-label="Vista da Fase Final">
+        <button class="${active === "bracket" ? "active" : ""}" type="button" data-ko-view-v235="bracket">Quadro</button>
+        <button class="${active === "list" ? "active" : ""}" type="button" data-ko-view-v235="list">Lista</button>
+      </div>
+    </div>`;
+}
+
+function renderKnockoutListViewV235() {
+  return `
+    <div class="ko-list-view-v235">
+      ${KNOCKOUT_ROUNDS.map(round => {
+        const matches = knockoutMatches().filter(match => match.round === round.key);
+        if (!matches.length) return "";
+        return `
+          <section class="ko-list-round-v235">
+            <header>
+              <strong>${escapeHtml(round.label)}</strong>
+              <span>${matches.length} jogo(s)</span>
+            </header>
+            <div class="ko-list-games-v235">
+              ${matches.map(match => renderKnockoutListMatchV235(match)).join("")}
+            </div>
+          </section>`;
+      }).join("")}
+    </div>`;
+}
+
+function renderKnockoutListMatchV235(match) {
+  const state = knockoutMatchStateV235(match);
+  const winner = knockoutWinner(match);
+  const score = knockoutHasScore(match) ? `${match.homeScore} - ${match.awayScore}` : "VS";
+  const pens = knockoutHasPenalties(match) ? `Pen. ${match.homePenalties}-${match.awayPenalties}` : "";
+  const editable = canEditKnockoutInline();
+
+  return `
+    <article class="ko-list-game-v235 ko-state-${state.key} ${editable ? "ko-match-clickable" : ""}" data-ko-admin="${escapeHtml(match.id)}" ${editable ? `role="button" tabindex="0" aria-label="Editar ${escapeHtml(match.roundLabel)} ${escapeHtml(match.index)}"` : ""}>
+      <div>
+        <small>${escapeHtml(match.roundLabel)} ${escapeHtml(match.index)}</small>
+        <strong>${escapeHtml(match.homeTeam || "A definir")} <em>${score}</em> ${escapeHtml(match.awayTeam || "A definir")}</strong>
+        ${winner ? `<span>Passa: ${escapeHtml(winner)}${pens ? ` - ${escapeHtml(pens)}` : ""}</span>` : `<span>${escapeHtml(pens || "Resultado por preencher")}</span>`}
+      </div>
+      <b>${escapeHtml(state.label)}</b>
+    </article>`;
+}
+
 function renderKnockout() {
   ensureKnockoutSettings();
   const notice = $("knockoutLockNotice");
@@ -4022,6 +4130,7 @@ function renderKnockout() {
       : `<strong>Fase Final ativa</strong><span>Tu defines a primeira ronda; depois os vencedores passam automaticamente até à final.</span>`;
   }
 
+  container.classList.toggle("ko-list-mode-v235", knockoutViewModeV235 === "list");
   container.innerHTML = `
     <div class="bracket-photo-shell">
       <div class="bracket-title-row">
@@ -4049,7 +4158,10 @@ function renderKnockout() {
       </div>
     </div>`;
 
-  container.innerHTML = renderKnockoutPhotoLayout(finalMatch, champion, thirdPlaceTeams);
+  container.innerHTML = `
+    ${renderKnockoutViewHeaderV235(champion)}
+    ${knockoutViewModeV235 === "list" ? renderKnockoutListViewV235() : renderKnockoutPhotoLayout(finalMatch, champion, thirdPlaceTeams)}
+  `;
   applyKnockoutLayoutFromSettings();
   requestAnimationFrame(applyKnockoutLayoutFromSettings);
 
@@ -4200,9 +4312,65 @@ function renderKnockoutRecordForm(match) {
           </span>
         </label>
       </div>
+      <div class="ko-record-preview-v235" data-ko-record-preview>
+        ${renderKnockoutRecordPreviewTextV235(match)}
+      </div>
       <button class="primary small ko-card-save" type="button" data-ko-save="${escapeHtml(match.id)}">${firstRound ? "Guardar equipas/resultado" : "Guardar resultado"}</button>
     </div>
   `;
+}
+
+function knockoutPreviewWinnerV235(match, data) {
+  const home = String(data.homeTeam || match.homeTeam || "").trim();
+  const away = String(data.awayTeam || match.awayTeam || "").trim();
+  const rawHomeScore = data.homeScore ?? match.homeScore ?? "";
+  const rawAwayScore = data.awayScore ?? match.awayScore ?? "";
+  const rawHomePens = data.homePenalties ?? match.homePenalties ?? "";
+  const rawAwayPens = data.awayPenalties ?? match.awayPenalties ?? "";
+  const homeScore = rawHomeScore === "" ? null : Number(rawHomeScore);
+  const awayScore = rawAwayScore === "" ? null : Number(rawAwayScore);
+  const homePens = rawHomePens === "" ? null : Number(rawHomePens);
+  const awayPens = rawAwayPens === "" ? null : Number(rawAwayPens);
+
+  if (!home || !away) return { type: "waiting", text: "Define as duas equipas para prever a passagem." };
+  if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) return { type: "ready", text: "Preenche o resultado para ver quem passa." };
+  if (homeScore > awayScore) return { type: "winner", winner: home };
+  if (awayScore > homeScore) return { type: "winner", winner: away };
+  if (!Number.isFinite(homePens) || !Number.isFinite(awayPens)) return { type: "pens", text: "Empate: preenche os penaltis para decidir." };
+  if (homePens > awayPens) return { type: "winner-pens", winner: home };
+  if (awayPens > homePens) return { type: "winner-pens", winner: away };
+  return { type: "pens", text: "Penaltis empatados. Ajusta para haver vencedor." };
+}
+
+function renderKnockoutRecordPreviewTextV235(match, data = {}) {
+  const preview = knockoutPreviewWinnerV235(match, data);
+  if (!preview.winner) return `<strong>Previsao</strong><span>${escapeHtml(preview.text)}</span>`;
+
+  const next = knockoutNextRoundLabelV235(match.round);
+  const suffix = match.round === "final"
+    ? `${preview.winner} fica como campeao.`
+    : `${preview.winner} passa para ${next}.`;
+  return `<strong>Previsao</strong><span>${escapeHtml(suffix)}</span>`;
+}
+
+function updateKnockoutRecordPreviewV235(modal) {
+  const form = modal?.querySelector?.(".ko-card-editor");
+  const preview = modal?.querySelector?.("[data-ko-record-preview]");
+  if (!form || !preview) return;
+
+  const match = knockoutMatchById(form.dataset.koAdmin);
+  if (!match) return;
+
+  const data = {
+    homeTeam: form.querySelector(".ko-home-team")?.value || match.homeTeam || "",
+    awayTeam: form.querySelector(".ko-away-team")?.value || match.awayTeam || "",
+    homeScore: form.querySelector(".ko-home-score")?.value ?? "",
+    awayScore: form.querySelector(".ko-away-score")?.value ?? "",
+    homePenalties: form.querySelector(".ko-home-penalties")?.value ?? "",
+    awayPenalties: form.querySelector(".ko-away-penalties")?.value ?? ""
+  };
+
+  preview.innerHTML = renderKnockoutRecordPreviewTextV235(match, data);
 }
 
 function closeKnockoutRecordModal() {
@@ -4253,8 +4421,11 @@ function openKnockoutRecordModal(matchId) {
       closeKnockoutRecordModal();
     }
   });
+  modal.addEventListener("input", () => updateKnockoutRecordPreviewV235(modal));
+  modal.addEventListener("change", () => updateKnockoutRecordPreviewV235(modal));
   document.body.classList.add("ko-record-modal-open");
   document.body.appendChild(modal);
+  updateKnockoutRecordPreviewV235(modal);
   document.addEventListener("keydown", handleKnockoutRecordModalKeydown);
   modal.querySelector("select, input")?.focus();
 }
@@ -4482,10 +4653,11 @@ function renderKnockoutMatch(match, layoutKey = "") {
   const lockedText = waiting ? "" : winner ? "Vencedor" : isDraw ? "Faltam penáltis" : "Por decidir";
 
   const editableAttrs = editable ? ` role="button" tabindex="0" aria-label="Editar ${escapeHtml(match.roundLabel)} ${escapeHtml(match.index)}"` : "";
+  const state = knockoutMatchStateV235(match);
 
   return `
-    <article class="knockout-match ${winner ? "has-winner" : ""} ${waiting ? "waiting" : ""} ${editable ? "ko-match-clickable" : ""}" data-ko-admin="${escapeHtml(match.id)}"${editableAttrs} ${layoutKey ? `data-ko-layout="${escapeHtml(layoutKey)}" style="--ko-match-offset:${knockoutLayoutValue(layoutKey)}px"` : ""}>
-      <div class="knockout-match-title">${escapeHtml(match.roundLabel)} ${match.index}</div>
+    <article class="knockout-match ko-state-${state.key} ${winner ? "has-winner" : ""} ${waiting ? "waiting" : ""} ${editable ? "ko-match-clickable" : ""}" data-ko-admin="${escapeHtml(match.id)}"${editableAttrs} ${layoutKey ? `data-ko-layout="${escapeHtml(layoutKey)}" style="--ko-match-offset:${knockoutLayoutValue(layoutKey)}px"` : ""}>
+      <div class="knockout-match-title">${escapeHtml(match.roundLabel)} ${match.index}<span>${escapeHtml(state.label)}</span></div>
 
       <div class="ko-team ${winner === match.homeTeam ? "winner" : ""}">
         <span>${escapeHtml(match.homeTeam || "A definir")}</span>
@@ -6858,6 +7030,12 @@ document.addEventListener("click", event => {
   const koRecordButton = event.target.closest("[data-ko-record]");
   if (koRecordButton) {
     openKnockoutRecordModal(koRecordButton.dataset.koRecord);
+    return;
+  }
+
+  const koViewButton = event.target.closest("[data-ko-view-v235]");
+  if (koViewButton) {
+    setKnockoutViewModeV235(koViewButton.dataset.koViewV235);
     return;
   }
 
