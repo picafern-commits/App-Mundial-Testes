@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v261";
+const APP_VERSION_LABEL = "v262";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -17574,3 +17574,83 @@ setTimeout(() => {
   try { koV261ReconcileKnockoutCalendarResults({ persist: false, reason: "arranque fase final api v261" }); } catch {}
   try { koV261ApplyRoundColors(); } catch {}
 }, 1400);
+
+
+// v262 — cores progressivas também nas barras de data do Calendário quando o dia tem jogos da Fase Final.
+const APP_VERSION_V262 = "262.0";
+
+function koV262RoundPriority(key) {
+  const order = { r32: 1, r16: 2, qf: 3, sf: 4, final: 5, ko: 0 };
+  return order[String(key || "ko")] ?? 0;
+}
+
+function koV262CalendarGameRoundKey(gameId) {
+  const id = String(gameId || "");
+  const game = (Array.isArray(games) ? games : []).find(item => String(item.id || "") === id) || null;
+  const match = (() => {
+    try { return typeof knockoutMatchById === "function" ? knockoutMatchById(id) : null; } catch { return null; }
+  })();
+  const source = { ...(game || {}), ...(match || {}) };
+  try {
+    return typeof koV261RoundKeyFromMatchOrGame === "function" ? koV261RoundKeyFromMatchOrGame(source) : "ko";
+  } catch {
+    return "ko";
+  }
+}
+
+function koV262BestRoundKeyForCalendarDay(dayBlock) {
+  const rows = Array.from(dayBlock?.querySelectorAll?.("[data-ko-calendar-game-v259]") || []);
+  if (!rows.length) return "";
+  return rows
+    .map(row => koV262CalendarGameRoundKey(row.getAttribute("data-ko-calendar-game-v259")))
+    .filter(Boolean)
+    .sort((a, b) => koV262RoundPriority(b) - koV262RoundPriority(a))[0] || "ko";
+}
+
+function koV262ApplyCalendarDayRoundColors() {
+  const classes = [
+    "ko-calendar-day-v262",
+    "ko-calendar-day-round-r32-v262",
+    "ko-calendar-day-round-r16-v262",
+    "ko-calendar-day-round-qf-v262",
+    "ko-calendar-day-round-sf-v262",
+    "ko-calendar-day-round-final-v262",
+    "ko-calendar-day-round-ko-v262"
+  ];
+
+  document.querySelectorAll(".day-block").forEach(dayBlock => {
+    dayBlock.classList.remove(...classes);
+    delete dayBlock.dataset.koCalendarRoundV262;
+
+    const roundKey = koV262BestRoundKeyForCalendarDay(dayBlock);
+    if (!roundKey) return;
+
+    dayBlock.classList.add("ko-calendar-day-v262", `ko-calendar-day-round-${roundKey}-v262`);
+    dayBlock.dataset.koCalendarRoundV262 = roundKey;
+  });
+}
+
+const renderCalendarOriginalV262 = typeof renderCalendar === "function" ? renderCalendar : null;
+if (renderCalendarOriginalV262 && !renderCalendarOriginalV262.__koCalendarDayColorsV262) {
+  renderCalendar = function renderCalendarV262() {
+    const result = renderCalendarOriginalV262.apply(this, arguments);
+    try { koV262ApplyCalendarDayRoundColors(); } catch {}
+    setTimeout(() => { try { koV262ApplyCalendarDayRoundColors(); } catch {} }, 90);
+    return result;
+  };
+  renderCalendar.__koCalendarDayColorsV262 = true;
+}
+
+window.debugFaseFinalCalendarColorsV262 = function debugFaseFinalCalendarColorsV262() {
+  try { koV262ApplyCalendarDayRoundColors(); } catch {}
+  return Array.from(document.querySelectorAll(".day-block")).map((dayBlock, index) => ({
+    index,
+    title: dayBlock.querySelector("h3")?.textContent?.trim() || "",
+    round: dayBlock.dataset.koCalendarRoundV262 || "fase-grupos",
+    knockoutGames: Array.from(dayBlock.querySelectorAll("[data-ko-calendar-game-v259]")).map(row => row.getAttribute("data-ko-calendar-game-v259"))
+  }));
+};
+
+setTimeout(() => {
+  try { koV262ApplyCalendarDayRoundColors(); } catch {}
+}, 1300);
