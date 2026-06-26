@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v290-users-online-fix";
+const CACHE_NAME = "mundial-pontos-2026-v291-apostas-ff-mobile-pagina";
 const APP_SHELL = [
   "./",
   "./index.html",

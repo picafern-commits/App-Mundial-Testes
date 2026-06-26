@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v290";
+const APP_VERSION_LABEL = "v291";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -20558,5 +20558,126 @@ window.debugUsersOnlineJogadorV290 = function debugUsersOnlineJogadorV290() {
       nome: onlineUserProfileV290(user)?.name || user.name || "",
       jogador: onlineUserPlayerLabelV290(user)
     }))
+  };
+};
+
+
+/* v291 — Apostas Fase Final no mobile em página fixa */
+const APP_VERSION_V291_BETS_MOBILE_PAGE = "291.0";
+
+function koV291IsMobile() {
+  try { return window.matchMedia("(max-width: 760px)").matches; }
+  catch { return window.innerWidth <= 760; }
+}
+
+function koV291ApplyBetHubMode() {
+  const modal = document.getElementById("knockoutBetHubV284");
+  if (!modal) return;
+  const mobile = koV291IsMobile();
+  modal.classList.toggle("ko-bet-mobile-page-v291", mobile);
+  modal.classList.toggle("ko-bet-desktop-modal-v291", !mobile);
+  document.body.classList.toggle("ko-bet-mobile-page-open-v291", mobile && !modal.classList.contains("hidden"));
+}
+
+(function installBetHubMobilePageV291() {
+  if (window.__betHubMobilePageV291) return;
+  window.__betHubMobilePageV291 = true;
+
+  const originalEnsure = typeof koV284EnsureModal === "function" ? koV284EnsureModal : null;
+  if (originalEnsure && !originalEnsure.__v291) {
+    koV284EnsureModal = function koV284EnsureModalMobilePageV291() {
+      const modal = originalEnsure.apply(this, arguments);
+      try {
+        const title = modal?.querySelector(".ko-bet-hub-head-v284 h2");
+        if (title && !title.dataset.v291) {
+          title.dataset.v291 = "1";
+          title.textContent = "Apostas Fase Final";
+        }
+        const closeBtn = modal?.querySelector("#closeKnockoutBetHubV284");
+        if (closeBtn) closeBtn.textContent = koV291IsMobile() ? "Voltar" : "×";
+      } catch {}
+      koV291ApplyBetHubMode();
+      return modal;
+    };
+    koV284EnsureModal.__v291 = true;
+    window.koV284EnsureModal = koV284EnsureModal;
+  }
+
+  const originalOpen = typeof koV284OpenHub === "function" ? koV284OpenHub : null;
+  if (originalOpen && !originalOpen.__v291) {
+    koV284OpenHub = function koV284OpenHubMobilePageV291() {
+      const result = originalOpen.apply(this, arguments);
+      koV291ApplyBetHubMode();
+      const modal = document.getElementById("knockoutBetHubV284");
+      try {
+        const closeBtn = modal?.querySelector("#closeKnockoutBetHubV284");
+        if (closeBtn) closeBtn.textContent = koV291IsMobile() ? "Voltar" : "×";
+        if (koV291IsMobile()) {
+          modal?.scrollTo?.(0, 0);
+          modal?.querySelector(".ko-bet-hub-body-v284")?.scrollTo?.(0, 0);
+        }
+      } catch {}
+      return result;
+    };
+    koV284OpenHub.__v291 = true;
+    window.koV284OpenHub = koV284OpenHub;
+    window.openFaseFinalBetsV284 = koV284OpenHub;
+  }
+
+  const originalClose = typeof koV284CloseHub === "function" ? koV284CloseHub : null;
+  if (originalClose && !originalClose.__v291) {
+    koV284CloseHub = function koV284CloseHubMobilePageCloseV291() {
+      const result = originalClose.apply(this, arguments);
+      document.body.classList.remove("ko-bet-mobile-page-open-v291");
+      koV291ApplyBetHubMode();
+      return result;
+    };
+    koV284CloseHub.__v291 = true;
+    window.koV284CloseHub = koV284CloseHub;
+  }
+
+  const originalRenderHub = typeof koV284RenderHub === "function" ? koV284RenderHub : null;
+  if (originalRenderHub && !originalRenderHub.__v291) {
+    koV284RenderHub = function koV284RenderHubMobilePageV291() {
+      const result = originalRenderHub.apply(this, arguments);
+      koV291ApplyBetHubMode();
+      return result;
+    };
+    koV284RenderHub.__v291 = true;
+    window.koV284RenderHub = koV284RenderHub;
+  }
+
+  window.addEventListener("resize", koV291ApplyBetHubMode, { passive: true });
+  window.addEventListener("orientationchange", () => setTimeout(koV291ApplyBetHubMode, 160), { passive: true });
+
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    const modal = document.getElementById("knockoutBetHubV284");
+    if (modal && !modal.classList.contains("hidden")) {
+      koV284CloseHub?.();
+    }
+  });
+
+  setTimeout(koV291ApplyBetHubMode, 800);
+})();
+
+window.debugApostasFFMobilePageV291 = function debugApostasFFMobilePageV291() {
+  const modal = document.getElementById("knockoutBetHubV284");
+  const card = modal?.querySelector(".ko-bet-hub-card-v284");
+  return {
+    version: APP_VERSION_V291_BETS_MOBILE_PAGE,
+    mobile: koV291IsMobile(),
+    open: modal ? !modal.classList.contains("hidden") : false,
+    modal: modal ? {
+      width: Math.round(modal.getBoundingClientRect().width),
+      scrollWidth: modal.scrollWidth,
+      classes: modal.className
+    } : null,
+    card: card ? {
+      width: Math.round(card.getBoundingClientRect().width),
+      scrollWidth: card.scrollWidth
+    } : null,
+    htmlScrollWidth: document.documentElement.scrollWidth,
+    bodyScrollWidth: document.body.scrollWidth
   };
 };
