@@ -23,7 +23,7 @@
     .hidden,#appShell.auth-hidden,.tab-panel:not(.active){display:none!important}
     body{margin:0;background:#070b13}
   </style>
-  <link rel="stylesheet" href="style.css?v=298" />
+  <link rel="stylesheet" href="style.css?v=299" />
 </head>
 <body class="desktop-fullscreen-instant-v148 pc-fullscreen-instant-v168">
 
@@ -131,6 +131,7 @@
       <button class="tab" type="button" data-tab="logsTab">Logs</button>
       <button class="tab" type="button" data-tab="adminTab">Admin</button>
       <button class="tab" type="button" data-tab="settingsTab">Configurações</button>
+      <button class="tab" type="button" data-tab="userSettingsTab">Minha Conta</button>
     </nav>
 
     <main>
@@ -160,6 +161,16 @@
         </div>
         <div id="knockoutLockNotice" class="knockout-lock-notice"></div>
         <div id="knockoutBracket" class="knockout-bracket"></div>
+      </section>
+
+      <section id="userSettingsTab" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <h2>Minha Conta</h2>
+            <p>Configurações pessoais deste user e deste dispositivo.</p>
+          </div>
+        </div>
+        <div id="userSettingsPanelV299" class="user-settings-panel-v299"></div>
       </section>
 
       <section id="notificationsTab" class="tab-panel">
@@ -465,7 +476,7 @@
         <div class="settings-grid-v162">
           <article class="settings-card-v162">
             <span>Versão</span>
-            <strong id="appVersionLabelV162">v298</strong>
+            <strong id="appVersionLabelV162">v299</strong>
             <p id="pwaUpdateStateV162">A verificar atualizações...</p>
             <div class="settings-actions-v162">
               <button id="forceUpdateAppBtnV162" class="primary" type="button">Atualizar app</button>

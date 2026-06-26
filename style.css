@@ -16109,3 +16109,154 @@ body.mandatory-notice-open-v295{
     text-align:center;
   }
 }
+
+
+/* v299 — Página Minha Conta / Configurações do User */
+.user-settings-panel-v299{
+  display:grid;
+  gap:14px;
+}
+
+.user-settings-card-v299{
+  border:1px solid rgba(148,163,184,.16);
+  background:linear-gradient(135deg,rgba(15,23,42,.84),rgba(7,17,29,.90));
+  border-radius:18px;
+  padding:16px;
+  box-shadow:0 14px 34px rgba(0,0,0,.18);
+}
+
+.user-profile-card-v299{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.user-settings-icon-v299{
+  width:52px;
+  height:52px;
+  border-radius:18px;
+  display:grid;
+  place-items:center;
+  font-size:25px;
+  background:rgba(34,184,207,.12);
+  border:1px solid rgba(34,184,207,.18);
+}
+
+.user-profile-card-v299 strong{
+  display:block;
+  color:#fff;
+  font-size:20px;
+  line-height:1.15;
+}
+
+.user-profile-card-v299 span{
+  display:block;
+  color:#aab8ce;
+  font-size:13px;
+  margin-top:3px;
+}
+
+.user-profile-card-v299 em{
+  display:inline-flex;
+  margin-top:8px;
+  padding:5px 9px;
+  border-radius:999px;
+  font-style:normal;
+  font-size:12px;
+  font-weight:1000;
+  color:#dbeafe;
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.10);
+}
+
+.user-settings-card-head-v299{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  align-items:flex-start;
+  margin-bottom:14px;
+}
+
+.user-settings-card-head-v299 h3{
+  margin:0;
+  color:#fff;
+  font-size:21px;
+}
+
+.user-settings-card-head-v299 p{
+  margin:4px 0 0;
+  color:#aab8ce;
+  font-size:13px;
+}
+
+.user-settings-card-head-v299 b{
+  flex:0 0 auto;
+  padding:8px 11px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:1000;
+  border:1px solid rgba(255,255,255,.12);
+}
+
+.user-settings-card-head-v299 b.is-on{
+  color:#bbf7d0;
+  background:rgba(34,197,94,.12);
+  border-color:rgba(34,197,94,.20);
+}
+
+.user-settings-card-head-v299 b.is-off{
+  color:#fecdd3;
+  background:rgba(127,29,29,.18);
+  border-color:rgba(248,113,113,.20);
+}
+
+.user-notification-state-v299{
+  display:grid;
+  gap:8px;
+  margin-bottom:14px;
+}
+
+.user-notification-state-v299 span{
+  color:#cbd5e1;
+  font-size:13px;
+  font-weight:800;
+}
+
+.user-notification-state-v299 strong{
+  color:#fff;
+}
+
+.user-notification-card-v299 button{
+  min-height:46px;
+  border-radius:14px;
+  font-weight:1000;
+}
+
+.user-notification-card-v299 small{
+  display:block;
+  margin-top:10px;
+  color:#8fa3bc;
+  font-size:12px;
+  line-height:1.35;
+}
+
+.danger-soft-v299{
+  color:#fecdd3!important;
+  border-color:rgba(248,113,113,.24)!important;
+  background:rgba(127,29,29,.16)!important;
+}
+
+@media(max-width:760px){
+  .user-settings-card-head-v299{
+    display:grid;
+    grid-template-columns:1fr;
+  }
+
+  .user-settings-card-head-v299 b{
+    justify-self:start;
+  }
+
+  .user-notification-card-v299 button{
+    width:100%;
+  }
+}

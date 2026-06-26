@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v298";
+const APP_VERSION_LABEL = "v299";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -22065,5 +22065,166 @@ window.debugNotificacoesUserV298 = function debugNotificacoesUserV298() {
     enabled: userNotificationsEnabledV298(),
     permission: typeof Notification !== "undefined" ? Notification.permission : "unsupported",
     hasToken: Boolean(localStorage.getItem(typeof pushLastTokenStorageKeyV181 === "function" ? pushLastTokenStorageKeyV181() : ""))
+  };
+};
+
+
+/* v299 — Página Minha Conta para users controlarem notificações */
+const APP_VERSION_V299_USER_SETTINGS_PAGE = "299.0";
+
+function permissionTabAllowedUserSettingsV299(tabId) {
+  if (tabId === "userSettingsTab") return true;
+  return null;
+}
+
+function renderUserSettingsPageV299() {
+  const panel = document.getElementById("userSettingsPanelV299");
+  if (!panel) return;
+
+  const email = normalizeEmail(currentUser?.email || currentProfile?.email || currentProfile?.id || "");
+  const name = String(currentProfile?.name || displayNameFromEmail?.(email) || email || "User").trim();
+  const role = (() => {
+    try { return roleLabel?.(normalizeRole(currentProfile?.role || "user")) || "User"; }
+    catch { return "User"; }
+  })();
+  const enabled = typeof userNotificationsEnabledV298 === "function" ? userNotificationsEnabledV298() : true;
+  const support = typeof pushSupportV181 === "function" ? pushSupportV181() : {};
+  const permission = support.permission || (typeof Notification !== "undefined" ? Notification.permission : "unsupported");
+  const hasToken = (() => {
+    try { return Boolean(localStorage.getItem(pushLastTokenStorageKeyV181())); }
+    catch { return false; }
+  })();
+
+  panel.innerHTML = `
+    <section class="user-settings-card-v299 user-profile-card-v299">
+      <div class="user-settings-icon-v299">👤</div>
+      <div>
+        <strong>${escapeHtml(name)}</strong>
+        <span>${escapeHtml(email || "Conta sem email")}</span>
+        <em>${escapeHtml(role)}</em>
+      </div>
+    </section>
+
+    <section class="user-settings-card-v299 user-notification-card-v299">
+      <div class="user-settings-card-head-v299">
+        <div>
+          <h3>Notificações</h3>
+          <p>Controla se este user/dispositivo recebe alertas da app.</p>
+        </div>
+        <b class="${enabled ? "is-on" : "is-off"}">${enabled ? "Ativas" : "Desligadas"}</b>
+      </div>
+
+      <div class="user-notification-state-v299">
+        <span>Permissão do dispositivo: <strong>${escapeHtml(permissionLabelV299(permission))}</strong></span>
+        <span>Token push: <strong>${hasToken ? "Guardado" : "Por ativar"}</strong></span>
+      </div>
+
+      <button class="${enabled ? "secondary danger-soft-v299" : "primary"}" type="button" data-toggle-user-notifications-v298>
+        ${enabled ? "Desativar notificações" : "Ativar notificações"}
+      </button>
+
+      <small>
+        Isto é guardado neste user/dispositivo. Se usares outro telemóvel ou PC, podes configurar lá também.
+      </small>
+    </section>
+  `;
+
+  try { renderUserNotificationsToggleV298?.(); } catch {}
+}
+
+function permissionLabelV299(permission) {
+  if (permission === "granted") return "Permitidas";
+  if (permission === "denied") return "Bloqueadas";
+  if (permission === "default") return "Por aceitar";
+  if (permission === "unsupported") return "Não suportado";
+  return permission || "Desconhecida";
+}
+
+(function installUserSettingsPageV299() {
+  if (window.__userSettingsPageV299) return;
+  window.__userSettingsPageV299 = true;
+
+  const originalPermissionTabAllowed = typeof permissionTabAllowed === "function" ? permissionTabAllowed : null;
+  if (originalPermissionTabAllowed && !originalPermissionTabAllowed.__v299) {
+    permissionTabAllowed = function permissionTabAllowedWithUserSettingsV299(tabId) {
+      if (tabId === "userSettingsTab") return true;
+      return originalPermissionTabAllowed.apply(this, arguments);
+    };
+    permissionTabAllowed.__v299 = true;
+    window.permissionTabAllowed = permissionTabAllowed;
+  }
+
+  const originalApplyPermissions = typeof applyPermissionsToUi === "function" ? applyPermissionsToUi : null;
+  if (originalApplyPermissions && !originalApplyPermissions.__v299) {
+    applyPermissionsToUi = function applyPermissionsToUiUserSettingsV299() {
+      const result = originalApplyPermissions.apply(this, arguments);
+      document.querySelector('[data-tab="userSettingsTab"]')?.classList.remove("hidden");
+      return result;
+    };
+    applyPermissionsToUi.__v299 = true;
+    window.applyPermissionsToUi = applyPermissionsToUi;
+  }
+
+  const originalRenderActive = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+  if (originalRenderActive && !originalRenderActive.__userSettingsV299) {
+    renderActivePageV187 = function renderActivePageUserSettingsV299(tabId = document.querySelector(".tab-panel.active")?.id || "calendarTab") {
+      if (tabId === "userSettingsTab") {
+        renderUserSettingsPageV299();
+        return;
+      }
+      const result = originalRenderActive.apply(this, arguments);
+      setTimeout(() => {
+        if (document.querySelector(".tab-panel.active")?.id === "userSettingsTab") renderUserSettingsPageV299();
+      }, 0);
+      return result;
+    };
+    renderActivePageV187.__userSettingsV299 = true;
+    window.renderActivePageV187 = renderActivePageV187;
+  }
+
+  const originalRenderAll = typeof renderAll === "function" ? renderAll : null;
+  if (originalRenderAll && !originalRenderAll.__userSettingsV299) {
+    renderAll = function renderAllUserSettingsV299() {
+      const result = originalRenderAll.apply(this, arguments);
+      document.querySelector('[data-tab="userSettingsTab"]')?.classList.remove("hidden");
+      setTimeout(() => {
+        if (document.querySelector(".tab-panel.active")?.id === "userSettingsTab") renderUserSettingsPageV299();
+      }, 150);
+      return result;
+    };
+    renderAll.__userSettingsV299 = true;
+    window.renderAll = renderAll;
+  }
+
+  const originalToggle = typeof toggleUserNotificationsV298 === "function" ? toggleUserNotificationsV298 : null;
+  if (originalToggle && !originalToggle.__userSettingsV299) {
+    toggleUserNotificationsV298 = function toggleUserNotificationsRefreshUserSettingsV299() {
+      const result = originalToggle.apply(this, arguments);
+      setTimeout(renderUserSettingsPageV299, 80);
+      return result;
+    };
+    toggleUserNotificationsV298.__userSettingsV299 = true;
+    window.toggleUserNotificationsV298 = toggleUserNotificationsV298;
+  }
+
+  document.addEventListener("click", event => {
+    if (event.target.closest?.('[data-tab="userSettingsTab"]')) {
+      setTimeout(renderUserSettingsPageV299, 120);
+    }
+  }, true);
+
+  setTimeout(() => {
+    document.querySelector('[data-tab="userSettingsTab"]')?.classList.remove("hidden");
+    if (document.querySelector(".tab-panel.active")?.id === "userSettingsTab") renderUserSettingsPageV299();
+  }, 800);
+})();
+
+window.debugUserSettingsPageV299 = function debugUserSettingsPageV299() {
+  return {
+    version: APP_VERSION_V299_USER_SETTINGS_PAGE,
+    tabExists: Boolean(document.querySelector('[data-tab="userSettingsTab"]')),
+    panelExists: Boolean(document.getElementById("userSettingsPanelV299")),
+    active: document.querySelector(".tab-panel.active")?.id || "",
+    notificationsEnabled: typeof userNotificationsEnabledV298 === "function" ? userNotificationsEnabledV298() : null
   };
 };

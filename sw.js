@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v298-notificacoes-por-user";
+const CACHE_NAME = "mundial-pontos-2026-v299-user-settings";
 const APP_VERSION_SW_V298_USER_NOTIFICATIONS = "298.0";
 let userNotificationsEnabledSwV298 = true;
 
