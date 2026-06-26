@@ -15064,3 +15064,66 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
   }
 }
 
+
+
+/* v287 — remover banner Apostas FF no calendário */
+#calendarTab .ko-bet-calendar-banner-v284{
+  display:none!important;
+}
+
+/* v287 — botão Fase Final igual aos restantes botões do topo/filtros */
+#calendarKnockoutGamesBtn,
+#calendarKnockoutGamesBtn.top-stat-card-like-v287{
+  min-height:42px!important;
+  height:42px!important;
+  padding:0 16px!important;
+  border-radius:12px!important;
+  border:1px solid rgba(148,163,184,.16)!important;
+  background:rgba(15,23,42,.72)!important;
+  color:#e5edf8!important;
+  font-weight:1000!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:8px!important;
+  box-shadow:none!important;
+  white-space:nowrap!important;
+}
+
+#calendarKnockoutGamesBtn .filter-count{
+  min-width:28px!important;
+  min-height:24px!important;
+  padding:2px 8px!important;
+  border-radius:999px!important;
+  background:rgba(148,163,184,.18)!important;
+  color:#e5edf8!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:12px!important;
+  line-height:1!important;
+}
+
+#calendarKnockoutGamesBtn.calendar-filter-active-v221,
+#calendarKnockoutGamesBtn.active-filter{
+  background:linear-gradient(135deg,#4f46e5,#7c3aed)!important;
+  color:#fff!important;
+  border-color:rgba(124,58,237,.55)!important;
+  box-shadow:0 0 24px rgba(124,58,237,.18)!important;
+}
+
+#calendarKnockoutGamesBtn.calendar-filter-active-v221 .filter-count,
+#calendarKnockoutGamesBtn.active-filter .filter-count{
+  background:rgba(255,255,255,.18)!important;
+  color:#fff!important;
+}
+
+@media(max-width:760px){
+  #calendarKnockoutGamesBtn,
+  #calendarKnockoutGamesBtn.top-stat-card-like-v287{
+    min-height:44px!important;
+    height:44px!important;
+    width:auto!important;
+  }
+}
+

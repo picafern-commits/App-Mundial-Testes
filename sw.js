@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v286-fase-final-filtro-ready";
+const CACHE_NAME = "mundial-pontos-2026-v287-ui-filtro-fase-final";
 const APP_SHELL = [
   "./",
   "./index.html",

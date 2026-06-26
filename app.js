@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v286";
+const APP_VERSION_LABEL = "v287";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -20279,3 +20279,63 @@ window.debugFaseFinalFiltroV286 = function debugFaseFinalFiltroV286() {
     }))
   };
 };
+
+
+/* v287 — limpar banner Apostas FF no Calendário e alinhar botão Fase Final */
+const APP_VERSION_V287_UI_FILTER_CLEAN = "287.0";
+
+(function installApostasFFCleanV287() {
+  if (window.__apostasFFCleanV287) return;
+  window.__apostasFFCleanV287 = true;
+
+  const originalRenderEntryV284 = typeof koV284RenderEntryPoints === "function" ? koV284RenderEntryPoints : null;
+  if (originalRenderEntryV284) {
+    koV284RenderEntryPoints = function koV284RenderEntryPointsTopbarOnlyV287() {
+      const html = typeof koV284EntryButtonHtml === "function" ? koV284EntryButtonHtml() : "";
+
+      // Remove o banner grande dentro do Calendário.
+      document.querySelectorAll(".ko-bet-calendar-banner-v284").forEach(el => el.remove());
+
+      // Mantém/atualiza apenas o botão compacto no topo.
+      const topbar = document.querySelector(".topbar");
+      if (topbar && html) {
+        let mount = topbar.querySelector(".ko-bet-entry-topbar-v284");
+        if (!mount) {
+          mount = document.createElement("div");
+          mount.className = "ko-bet-entry-mount-v284 ko-bet-entry-topbar-v284";
+          const session = document.getElementById("sessionBox") || topbar.lastElementChild;
+          if (session && session.parentElement === topbar) topbar.insertBefore(mount, session);
+          else topbar.appendChild(mount);
+        }
+        mount.innerHTML = html;
+      }
+
+      if (!html) {
+        document.querySelectorAll(".ko-bet-entry-topbar-v284").forEach(el => el.remove());
+      }
+    };
+    window.koV284RenderEntryPoints = koV284RenderEntryPoints;
+  }
+
+  const originalEnsureFilterV286 = typeof renderCalendarFilterState === "function" ? renderCalendarFilterState : null;
+  if (originalEnsureFilterV286 && !originalEnsureFilterV286.__v287) {
+    renderCalendarFilterState = function renderCalendarFilterStateCleanV287() {
+      const result = originalEnsureFilterV286.apply(this, arguments);
+      const btn = document.getElementById("calendarKnockoutGamesBtn");
+      if (btn) {
+        btn.classList.add("top-stat-card-like-v287");
+        btn.innerHTML = `Fase Final <span class="filter-count">${(Array.isArray(games) ? games : []).filter(koV286IsKnockoutGame || (() => false)).length}</span>`;
+      }
+      document.querySelectorAll(".ko-bet-calendar-banner-v284").forEach(el => el.remove());
+      return result;
+    };
+    renderCalendarFilterState.__v287 = true;
+    window.renderCalendarFilterState = renderCalendarFilterState;
+  }
+
+  setTimeout(() => {
+    try { koV284RenderEntryPoints?.(); } catch {}
+    try { renderCalendarFilterState?.(); } catch {}
+    document.querySelectorAll(".ko-bet-calendar-banner-v284").forEach(el => el.remove());
+  }, 500);
+})();
