@@ -16268,3 +16268,205 @@ body.mandatory-notice-open-v295{
 #knockoutTab [data-tab].page-hidden-v301{
   display:none!important;
 }
+
+
+/* v302 — Calendário estável: sem cards a ajeitar sozinhos */
+#calendarTab.calendar-stable-v302,
+#calendarTab.calendar-stable-v302 #gamesList,
+#calendarTab.calendar-stable-v302 .day-block,
+#calendarTab.calendar-stable-v302 .match-list,
+#calendarTab.calendar-stable-v302 .match-row{
+  transition:none!important;
+  animation:none!important;
+  scroll-behavior:auto!important;
+}
+
+#calendarTab.calendar-stable-v302 .match-row,
+#calendarTab .match-row.calendar-card-stable-v302{
+  transform:none!important;
+  will-change:auto!important;
+  contain:layout paint!important;
+  backface-visibility:hidden!important;
+}
+
+#calendarTab.calendar-stable-v302 .match-list{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:10px!important;
+  align-items:stretch!important;
+}
+
+#calendarTab.calendar-stable-v302 .day-block{
+  overflow:visible!important;
+}
+
+/* Mobile: estrutura fixa para não mudar altura/colunas depois do render */
+@media(max-width:760px){
+  #calendarTab.calendar-stable-v302 .match-row{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+  }
+
+  #calendarTab.calendar-stable-v302 .match-row .team strong,
+  #calendarTab.calendar-stable-v302 .match-row .bet-note,
+  #calendarTab.calendar-stable-v302 .match-row .state,
+  #calendarTab.calendar-stable-v302 .match-row .time{
+    transition:none!important;
+    animation:none!important;
+  }
+}
+
+
+/* v303 — Admin limpo, Resumo/Resultados movidos para Configurações do Dono */
+.owner-admin-moved-v303{
+  display:grid;
+  gap:14px;
+  padding:14px;
+  margin:0 0 16px;
+  border-radius:18px;
+  border:1px solid rgba(250,204,21,.22);
+  background:linear-gradient(135deg,rgba(250,204,21,.08),rgba(15,23,42,.82));
+}
+
+.owner-admin-moved-head-v303{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  align-items:center;
+}
+
+.owner-admin-moved-head-v303 strong{
+  display:block;
+  color:#fff;
+  font-size:18px;
+}
+
+.owner-admin-moved-head-v303 span{
+  display:block;
+  color:#b9c7dc;
+  font-size:13px;
+  margin-top:3px;
+  font-weight:800;
+}
+
+.owner-admin-slot-v303{
+  display:grid;
+  gap:12px;
+}
+
+.owner-admin-overview-v303{
+  margin:0!important;
+}
+
+.owner-results-card-v303{
+  margin:0!important;
+}
+
+#adminUnlocked > #adminOverviewV162,
+#adminSectionTabsV187 [data-admin-section-v187="results"]{
+  display:none!important;
+}
+
+
+/* v305 — Avisos obrigatórios fixos no Admin */
+#mandatoryNoticeAdminPanelV295.mandatory-notice-admin-fixed-v305{
+  display:grid!important;
+  margin:0 0 14px!important;
+  order:-5;
+}
+
+#settingsTab #mandatoryNoticeAdminPanelV295.mandatory-notice-admin-fixed-v305{
+  display:none!important;
+}
+
+
+/* v306 — Aviso obrigatório colapsável no Admin */
+#mandatoryNoticeCollapseV306.mandatory-notice-collapse-v306{
+  order:-5;
+  margin:0 0 14px!important;
+  border-color:rgba(250,204,21,.24)!important;
+  background:linear-gradient(135deg,rgba(250,204,21,.08),rgba(15,23,42,.82))!important;
+}
+
+#mandatoryNoticeCollapseV306 > summary{
+  cursor:pointer;
+}
+
+#mandatoryNoticeCollapseV306 > summary h2{
+  margin:0;
+}
+
+#mandatoryNoticeCollapseV306 > summary p{
+  margin:4px 0 0;
+  color:#b9c7dc;
+}
+
+#mandatoryNoticeCollapseV306[open] > summary{
+  border-bottom:1px solid rgba(255,255,255,.10);
+  margin-bottom:12px;
+  padding-bottom:12px;
+}
+
+#mandatoryNoticeCollapseV306[open] .collapse-icon{
+  transform:rotate(45deg);
+}
+
+#mandatoryNoticeCollapseV306 #mandatoryNoticeAdminPanelV295{
+  margin:0!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  padding:0!important;
+}
+
+#mandatoryNoticeAdminPanelV295.mandatory-notice-collapsible-v306 .mandatory-notice-admin-head-v295{
+  display:none!important;
+}
+
+
+/* v307 — clique funcional na aba Aviso obrigatório */
+#mandatoryNoticeCollapseV306.mandatory-notice-collapse-open-fix-v307 > summary{
+  pointer-events:auto!important;
+  user-select:none!important;
+  touch-action:manipulation!important;
+  position:relative!important;
+  z-index:2!important;
+}
+
+#mandatoryNoticeCollapseV306.mandatory-notice-collapse-open-fix-v307 > summary *{
+  pointer-events:none!important;
+}
+
+#mandatoryNoticeCollapseV306.mandatory-notice-collapse-open-fix-v307 > summary .collapse-icon{
+  pointer-events:none!important;
+  display:grid!important;
+  place-items:center!important;
+}
+
+
+/* v309 — Ver apostas eliminatórias exatamente igual ao modal antigo */
+#betsModal .bets-summary-card,
+#betsModal .bets-list-head,
+#betsModal .bet-user-row{
+  transition:none!important;
+}
+
+#betsModal .bets-list-head{
+  grid-template-columns:minmax(0,1fr) 120px 170px 70px;
+}
+
+#betsModal .bet-user-row{
+  grid-template-columns:minmax(0,1fr) 120px 170px 70px;
+}
+
+@media(max-width:760px){
+  #betsModal .bets-list-head{
+    display:none!important;
+  }
+
+  #betsModal .bet-user-row{
+    grid-template-columns:1fr!important;
+  }
+}
