@@ -16664,3 +16664,53 @@ body.mandatory-notice-open-v295{
   font-weight:1000;
   letter-spacing:.04em;
 }
+
+
+/* v310 — coluna Aposta mais larga no modal Ver apostas (Calendário > Fase Final) */
+#betsModal .bets-list-head.ko-list-head-edit-v308{
+  grid-template-columns:minmax(170px,.9fr) minmax(360px,1.9fr) minmax(150px,.8fr) 64px 52px!important;
+}
+
+#betsModal .bet-user-row.ko-direct-edit-row-v308{
+  grid-template-columns:minmax(170px,.9fr) minmax(360px,1.9fr) minmax(150px,.8fr) 64px 52px!important;
+  align-items:center!important;
+}
+
+#betsModal .bet-user-row.ko-direct-edit-row-v308 .bet-score-pill{
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  justify-content:flex-start!important;
+  padding:8px 14px!important;
+  border-radius:14px!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  line-height:1.2!important;
+}
+
+#betsModal .bet-user-row.ko-direct-edit-row-v308 .bet-type-pill{
+  width:100%!important;
+  min-width:0!important;
+}
+
+#betsModal .bet-user-row.ko-direct-edit-row-v308 .bet-user-main strong{
+  white-space:nowrap!important;
+}
+
+@media(max-width:1200px){
+  #betsModal .bets-list-head.ko-list-head-edit-v308{
+    grid-template-columns:minmax(160px,.95fr) minmax(300px,1.65fr) minmax(130px,.8fr) 60px 50px!important;
+  }
+
+  #betsModal .bet-user-row.ko-direct-edit-row-v308{
+    grid-template-columns:minmax(160px,.95fr) minmax(300px,1.65fr) minmax(130px,.8fr) 60px 50px!important;
+  }
+}
+
+@media(max-width:760px){
+  #betsModal .bet-user-row.ko-direct-edit-row-v308 .bet-score-pill{
+    white-space:normal!important;
+    overflow:visible!important;
+  }
+}

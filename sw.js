@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v309-calendario-marcador-live";
+const CACHE_NAME = "mundial-pontos-2026-v310-aposta-coluna-larga";
 const APP_VERSION_SW_V298_USER_NOTIFICATIONS = "298.0";
 let userNotificationsEnabledSwV298 = true;
 
