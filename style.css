@@ -16260,3 +16260,11 @@ body.mandatory-notice-open-v295{
     width:100%;
   }
 }
+
+
+/* v301 — páginas escondidas não aparecem na barra */
+.page-hidden-v301,
+.tabs .tab.page-hidden-v301,
+#knockoutTab [data-tab].page-hidden-v301{
+  display:none!important;
+}

@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v299";
+const APP_VERSION_LABEL = "v301";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -22226,5 +22226,376 @@ window.debugUserSettingsPageV299 = function debugUserSettingsPageV299() {
     panelExists: Boolean(document.getElementById("userSettingsPanelV299")),
     active: document.querySelector(".tab-panel.active")?.id || "",
     notificationsEnabled: typeof userNotificationsEnabledV298 === "function" ? userNotificationsEnabledV298() : null
+  };
+};
+
+
+/* v300 — Fix: minutos de bloqueio ficam guardados e não voltam aos 5 */
+const APP_VERSION_V300_LOCK_MINUTES_PERSIST_FIX = "300.0";
+const KO_LOCK_MINUTES_LOCAL_KEY_V300 = `${STORAGE_KEY || "mundial"}_ko_bet_lock_minutes_v300`;
+
+function koLockMinutesLocalV300() {
+  try {
+    const raw = localStorage.getItem(KO_LOCK_MINUTES_LOCAL_KEY_V300);
+    if (raw === null || raw === "") return null;
+    const value = Number(raw);
+    if (Number.isFinite(value) && value >= 0) return Math.floor(value);
+  } catch {}
+  return null;
+}
+
+function saveKoLockMinutesLocalV300(minutes) {
+  try {
+    if (Number.isFinite(Number(minutes)) && Number(minutes) >= 0) {
+      localStorage.setItem(KO_LOCK_MINUTES_LOCAL_KEY_V300, String(Math.floor(Number(minutes))));
+    }
+  } catch {}
+}
+
+function koReadStoredLockMinutesV300() {
+  try {
+    const candidates = [
+      appSettings?.knockout?.betLockMinutes,
+      appSettings?.knockout?.lockMinutes,
+      appSettings?.knockout?.betLockBeforeMinutes,
+      appSettings?.betLockMinutes,
+      koLockMinutesLocalV300()
+    ];
+
+    for (const raw of candidates) {
+      if (raw === undefined || raw === null || raw === "") continue;
+      const value = Number(raw);
+      if (Number.isFinite(value) && value >= 0) return Math.floor(value);
+    }
+  } catch {}
+
+  const local = koLockMinutesLocalV300();
+  return local !== null ? local : 5;
+}
+
+function koWriteLockMinutesEverywhereV300(minutes) {
+  const value = Math.max(0, Math.floor(Number(minutes) || 0));
+  try { ensureKnockoutSettings?.(); } catch {}
+  appSettings.knockout = appSettings.knockout || {};
+  appSettings.knockout.betLockMinutes = value;
+  appSettings.knockout.lockMinutes = value;
+  appSettings.knockout.betLockBeforeMinutes = value;
+  appSettings.betLockMinutes = value;
+  saveKoLockMinutesLocalV300(value);
+  return value;
+}
+
+function koLockMinutesV300() {
+  const value = koReadStoredLockMinutesV300();
+  koWriteLockMinutesEverywhereV300(value);
+  return value;
+}
+
+(function installLockMinutesPersistFixV300() {
+  if (window.__lockMinutesPersistFixV300) return;
+  window.__lockMinutesPersistFixV300 = true;
+
+  const localValue = koLockMinutesLocalV300();
+  if (localValue !== null) koWriteLockMinutesEverywhereV300(localValue);
+  else koWriteLockMinutesEverywhereV300(koReadStoredLockMinutesV300());
+
+  // Substitui a leitura antiga que voltava ao default 5.
+  koLockMinutesV293 = function koLockMinutesPersistV300() {
+    return koLockMinutesV300();
+  };
+  window.koLockMinutesV293 = koLockMinutesV293;
+
+  koLockMinutesLabelV293 = function koLockMinutesLabelPersistV300() {
+    const minutes = koLockMinutesV300();
+    if (minutes === 0) return "bloqueia à hora do jogo";
+    if (minutes === 1) return "bloqueia 1 minuto antes";
+    return `bloqueia ${minutes} minutos antes`;
+  };
+  window.koLockMinutesLabelV293 = koLockMinutesLabelV293;
+
+  knockoutBetLockMillisV243 = function knockoutBetLockMillisPersistV300(match) {
+    const start = knockoutMatchStartMillisV241?.(match) || 0;
+    return start ? start - (koLockMinutesV300() * 60 * 1000) : 0;
+  };
+  window.knockoutBetLockMillisV243 = knockoutBetLockMillisV243;
+
+  knockoutBetDeadlineLabelV243 = function knockoutBetDeadlineLabelPersistV300(match) {
+    const deadline = knockoutBetLockMillisV243(match);
+    if (!deadline) return "Data/hora por definir";
+    return dateTimePortugal(new Date(deadline));
+  };
+  window.knockoutBetDeadlineLabelV243 = knockoutBetDeadlineLabelV243;
+
+  isKnockoutBetLockedV241 = function isKnockoutBetLockedPersistV300(match) {
+    if (!match) return true;
+    if (!match.homeTeam || !match.awayTeam) return true;
+    if (knockoutMatchHasResult?.(match)) return true;
+    const deadline = knockoutBetLockMillisV243(match);
+    if (!deadline) return true;
+    return Date.now() >= deadline;
+  };
+  window.isKnockoutBetLockedV241 = isKnockoutBetLockedV241;
+
+  const originalRenderPanel = typeof renderKnockoutLockConfigPanelV293 === "function" ? renderKnockoutLockConfigPanelV293 : null;
+  if (originalRenderPanel && !originalRenderPanel.__v300) {
+    renderKnockoutLockConfigPanelV293 = function renderKnockoutLockConfigPanelPersistV300() {
+      koWriteLockMinutesEverywhereV300(koReadStoredLockMinutesV300());
+      const result = originalRenderPanel.apply(this, arguments);
+      const input = document.getElementById("koLockMinutesInputV293");
+      if (input) input.value = String(koLockMinutesV300());
+      try { updateKnockoutLockPreviewV293?.(); } catch {}
+      return result;
+    };
+    renderKnockoutLockConfigPanelV293.__v300 = true;
+    window.renderKnockoutLockConfigPanelV293 = renderKnockoutLockConfigPanelV293;
+  }
+
+  saveKnockoutLockMinutesV293 = async function saveKnockoutLockMinutesPersistV300() {
+    if (typeof koCanManageLockMinutesV293 === "function" && !koCanManageLockMinutesV293()) {
+      return toast?.("Sem permissão para alterar o bloqueio.");
+    }
+
+    const input = document.getElementById("koLockMinutesInputV293");
+    const value = Number(input?.value);
+    if (!Number.isFinite(value) || value < 0) return toast?.("Mete um número válido de minutos.");
+
+    const minutes = koWriteLockMinutesEverywhereV300(value);
+
+    try {
+      // Guarda também no local antes do Firebase, para o painel não saltar para 5 se o sync demorar.
+      saveLocalData?.("bloqueio apostas fase final v300");
+    } catch {}
+
+    try {
+      if (typeof saveSettingsFastToFirebase === "function") {
+        const saved = await saveSettingsFastToFirebase("bloqueio apostas fase final v300");
+        if (!saved) scheduleFullSync?.("bloqueio apostas fase final v300", 300);
+      } else {
+        scheduleFullSync?.("bloqueio apostas fase final v300", 300);
+      }
+    } catch (error) {
+      console.warn("v300: falhou guardar bloqueio", error);
+      try { scheduleFullSync?.("bloqueio apostas fase final v300", 500); } catch {}
+    }
+
+    // Reaplica depois de qualquer merge/render que possa ter reposto o default.
+    koWriteLockMinutesEverywhereV300(minutes);
+
+    try { addSystemLog?.("Configuração Fase Final", `Bloqueio das apostas alterado para ${minutes} minuto(s).`, { betLockMinutes: minutes }, { sync: true }); } catch {}
+    try { renderCalendar?.(); } catch {}
+    try { renderKnockout?.(); } catch {}
+    try { koV284RenderHub?.(); } catch {}
+
+    renderKnockoutLockConfigPanelV293?.();
+    const finalInput = document.getElementById("koLockMinutesInputV293");
+    if (finalInput) finalInput.value = String(minutes);
+    try { updateKnockoutLockPreviewV293?.(); } catch {}
+
+    toast?.(`Bloqueio guardado: ${koLockMinutesLabelV293()}.`);
+  };
+  window.saveKnockoutLockMinutesV293 = saveKnockoutLockMinutesV293;
+
+  const originalSaveLocalData = typeof saveLocalData === "function" ? saveLocalData : null;
+  if (originalSaveLocalData && !originalSaveLocalData.__lockMinutesV300) {
+    saveLocalData = function saveLocalDataLockMinutesV300() {
+      const minutes = koReadStoredLockMinutesV300();
+      koWriteLockMinutesEverywhereV300(minutes);
+      return originalSaveLocalData.apply(this, arguments);
+    };
+    saveLocalData.__lockMinutesV300 = true;
+    window.saveLocalData = saveLocalData;
+  }
+
+  const originalMergeSettings = typeof mergeSettings === "function" ? mergeSettings : null;
+  if (originalMergeSettings && !originalMergeSettings.__lockMinutesV300) {
+    mergeSettings = function mergeSettingsLockMinutesV300(settings) {
+      const currentLocal = koLockMinutesLocalV300();
+      const result = originalMergeSettings.apply(this, arguments);
+      appSettings = result;
+      const fromResult = koReadStoredLockMinutesV300();
+      koWriteLockMinutesEverywhereV300(currentLocal !== null ? currentLocal : fromResult);
+      return appSettings;
+    };
+    mergeSettings.__lockMinutesV300 = true;
+    window.mergeSettings = mergeSettings;
+  }
+
+  setTimeout(() => {
+    koWriteLockMinutesEverywhereV300(koReadStoredLockMinutesV300());
+    try { renderKnockoutLockConfigPanelV293?.(); } catch {}
+  }, 900);
+})();
+
+window.debugBloqueioMinutosV300 = function debugBloqueioMinutosV300() {
+  return {
+    version: APP_VERSION_V300_LOCK_MINUTES_PERSIST_FIX,
+    local: koLockMinutesLocalV300(),
+    appSettingsKnockout: appSettings?.knockout || null,
+    value: koLockMinutesV300(),
+    input: document.getElementById("koLockMinutesInputV293")?.value || ""
+  };
+};
+
+
+/* v301 — Barra de páginas respeita páginas desativadas/escondidas */
+const APP_VERSION_V301_PAGE_BAR_PERMISSIONS_FIX = "301.0";
+
+function pageVisibilitySettingsV301() {
+  try {
+    if (typeof savedAdminLayoutSettingsV213 === "function") return savedAdminLayoutSettingsV213();
+  } catch {}
+  return { pages: {} };
+}
+
+function tabKeyForTabIdV301(tabId = "") {
+  const map = {
+    calendarTab: "calendar",
+    scoreTab: "score",
+    knockoutTab: "knockout",
+    notificationsTab: "notifications",
+    logsTab: "logs",
+    adminTab: "adminTab",
+    settingsTab: "settings",
+    userSettingsTab: "userSettings"
+  };
+  return map[tabId] || String(tabId || "").replace(/Tab$/, "");
+}
+
+function tabIsVisibleForCurrentUserV301(tabId = "") {
+  if (!tabId) return false;
+  if (tabId === "userSettingsTab") return true;
+
+  const settings = pageVisibilitySettingsV301();
+  const key = tabKeyForTabIdV301(tabId);
+
+  if (settings?.pages?.[key] === false) return false;
+
+  try {
+    if (typeof permissionTabAllowed === "function" && !permissionTabAllowed(tabId)) return false;
+  } catch {}
+
+  return true;
+}
+
+function applyPageBarPermissionsV301() {
+  const settings = pageVisibilitySettingsV301();
+
+  document.querySelectorAll(".tabs .tab[data-tab], nav.tabs [data-tab], [role='tablist'] [data-tab]").forEach(button => {
+    const tabId = button.dataset.tab || "";
+    const key = tabKeyForTabIdV301(tabId);
+    const visible = tabId === "userSettingsTab" ? true : settings?.pages?.[key] !== false && tabIsVisibleForCurrentUserV301(tabId);
+
+    button.classList.toggle("user-hidden-v202", !visible);
+    button.classList.toggle("page-hidden-v301", !visible);
+    button.hidden = !visible;
+    button.style.display = visible ? "" : "none";
+    button.setAttribute("aria-hidden", visible ? "false" : "true");
+  });
+
+  // Algumas versões antigas criavam barras duplicadas dentro da Fase Final.
+  document.querySelectorAll("#knockoutTab [data-tab]").forEach(button => {
+    const tabId = button.dataset.tab || "";
+    const key = tabKeyForTabIdV301(tabId);
+    const visible = tabId === "userSettingsTab" ? true : settings?.pages?.[key] !== false && tabIsVisibleForCurrentUserV301(tabId);
+
+    button.classList.toggle("page-hidden-v301", !visible);
+    button.hidden = !visible;
+    button.style.display = visible ? "" : "none";
+    button.setAttribute("aria-hidden", visible ? "false" : "true");
+  });
+
+  const activeButton = document.querySelector(".tab.active[data-tab]");
+  const activeTabId = activeButton?.dataset.tab || document.querySelector(".tab-panel.active")?.id || "";
+  if (activeTabId && !tabIsVisibleForCurrentUserV301(activeTabId)) {
+    const firstAllowed = [...document.querySelectorAll(".tabs .tab[data-tab]")].find(btn => {
+      const tabId = btn.dataset.tab;
+      return tabIsVisibleForCurrentUserV301(tabId) && !btn.hidden && btn.style.display !== "none";
+    });
+    if (firstAllowed?.dataset.tab) {
+      try { setActiveTabStateV217(firstAllowed.dataset.tab); } catch {}
+      try { renderActivePageV187?.(firstAllowed.dataset.tab); } catch {}
+    }
+  }
+}
+
+(function installPageBarPermissionsFixV301() {
+  if (window.__pageBarPermissionsFixV301) return;
+  window.__pageBarPermissionsFixV301 = true;
+
+  const originalApplyPermissions = typeof applyPermissionsToUi === "function" ? applyPermissionsToUi : null;
+  if (originalApplyPermissions && !originalApplyPermissions.__pageBarV301) {
+    applyPermissionsToUi = function applyPermissionsToUiPageBarV301() {
+      const result = originalApplyPermissions.apply(this, arguments);
+      applyPageBarPermissionsV301();
+      return result;
+    };
+    applyPermissionsToUi.__pageBarV301 = true;
+    window.applyPermissionsToUi = applyPermissionsToUi;
+  }
+
+  const originalApplyLayout = typeof applyAdminLayoutSettingsV213 === "function" ? applyAdminLayoutSettingsV213 : null;
+  if (originalApplyLayout && !originalApplyLayout.__pageBarV301) {
+    applyAdminLayoutSettingsV213 = function applyAdminLayoutSettingsPageBarV301() {
+      const result = originalApplyLayout.apply(this, arguments);
+      applyPageBarPermissionsV301();
+      return result;
+    };
+    applyAdminLayoutSettingsV213.__pageBarV301 = true;
+    window.applyAdminLayoutSettingsV213 = applyAdminLayoutSettingsV213;
+  }
+
+  const originalRenderAll = typeof renderAll === "function" ? renderAll : null;
+  if (originalRenderAll && !originalRenderAll.__pageBarV301) {
+    renderAll = function renderAllPageBarV301() {
+      const result = originalRenderAll.apply(this, arguments);
+      setTimeout(applyPageBarPermissionsV301, 0);
+      setTimeout(applyPageBarPermissionsV301, 250);
+      return result;
+    };
+    renderAll.__pageBarV301 = true;
+    window.renderAll = renderAll;
+  }
+
+  const originalRenderKnockout = typeof renderKnockout === "function" ? renderKnockout : null;
+  if (originalRenderKnockout && !originalRenderKnockout.__pageBarV301) {
+    renderKnockout = function renderKnockoutPageBarV301() {
+      const result = originalRenderKnockout.apply(this, arguments);
+      setTimeout(applyPageBarPermissionsV301, 0);
+      setTimeout(applyPageBarPermissionsV301, 200);
+      return result;
+    };
+    renderKnockout.__pageBarV301 = true;
+    window.renderKnockout = renderKnockout;
+  }
+
+  document.addEventListener("click", event => {
+    if (event.target.closest?.("[data-tab], [data-page-visible-v213], [data-admin-layout-reset-v213]")) {
+      setTimeout(applyPageBarPermissionsV301, 80);
+      setTimeout(applyPageBarPermissionsV301, 300);
+    }
+  }, true);
+
+  document.addEventListener("change", event => {
+    if (event.target.closest?.("[data-page-visible-v213]")) {
+      setTimeout(applyPageBarPermissionsV301, 60);
+      setTimeout(applyPageBarPermissionsV301, 250);
+    }
+  }, true);
+
+  setTimeout(applyPageBarPermissionsV301, 600);
+  setTimeout(applyPageBarPermissionsV301, 1400);
+})();
+
+window.debugBarraPaginasV301 = function debugBarraPaginasV301() {
+  return {
+    version: APP_VERSION_V301_PAGE_BAR_PERMISSIONS_FIX,
+    settings: pageVisibilitySettingsV301()?.pages || {},
+    tabs: [...document.querySelectorAll("[data-tab]")].map(el => ({
+      tab: el.dataset.tab,
+      text: el.textContent.trim(),
+      hidden: el.hidden,
+      display: el.style.display,
+      classes: el.className
+    }))
   };
 };
