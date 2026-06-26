@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v292";
+const APP_VERSION_LABEL = "v293";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -20746,5 +20746,229 @@ window.debugApostasFFCardsV292 = function debugApostasFFCardsV292() {
       text: card.querySelector("header strong")?.textContent?.trim() || ""
     })),
     bodyScroll: document.querySelector("#knockoutBetHubV284 .ko-bet-hub-body-v284")?.scrollHeight || 0
+  };
+};
+
+
+/* v293 — Admin/Dono define minutos de bloqueio das apostas da Fase Final */
+const APP_VERSION_V293_KO_LOCK_CONFIG = "293.0";
+const KO_LOCK_MINUTES_DEFAULT_V293 = 5;
+
+function koLockMinutesV293() {
+  try {
+    const raw = appSettings?.knockout?.betLockMinutes;
+    const value = Number(raw);
+    if (Number.isFinite(value) && value >= 0) return Math.floor(value);
+  } catch {}
+  return KO_LOCK_MINUTES_DEFAULT_V293;
+}
+
+function koLockMinutesLabelV293() {
+  const minutes = koLockMinutesV293();
+  if (minutes === 0) return "bloqueia à hora do jogo";
+  if (minutes === 1) return "bloqueia 1 minuto antes";
+  return `bloqueia ${minutes} minutos antes`;
+}
+
+function koCanManageLockMinutesV293() {
+  try {
+    const role = normalizeRole(currentProfile?.role || "");
+    return role === "owner" || role === "admin" || Boolean(isOwner || isAdmin);
+  } catch {
+    return Boolean(isOwner || isAdmin);
+  }
+}
+
+function koLockMillisV293(match) {
+  const start = knockoutMatchStartMillisV241?.(match) || 0;
+  return start ? start - (koLockMinutesV293() * 60 * 1000) : 0;
+}
+
+function koDeadlineLabelV293(match) {
+  const deadline = koLockMillisV293(match);
+  if (!deadline) return "Data/hora por definir";
+  return dateTimePortugal(new Date(deadline));
+}
+
+(function installKnockoutLockConfigV293() {
+  if (window.__knockoutLockConfigV293) return;
+  window.__knockoutLockConfigV293 = true;
+
+  // Garante estrutura.
+  try {
+    ensureKnockoutSettings?.();
+    appSettings.knockout = appSettings.knockout || {};
+    if (appSettings.knockout.betLockMinutes === undefined || appSettings.knockout.betLockMinutes === null || appSettings.knockout.betLockMinutes === "") {
+      appSettings.knockout.betLockMinutes = KO_LOCK_MINUTES_DEFAULT_V293;
+    }
+  } catch {}
+
+  // Override seguro: tudo passa a usar o valor configurado.
+  knockoutBetLockMillisV243 = function knockoutBetLockMillisConfigV293(match) {
+    return koLockMillisV293(match);
+  };
+  window.knockoutBetLockMillisV243 = knockoutBetLockMillisV243;
+
+  knockoutBetDeadlineLabelV243 = function knockoutBetDeadlineLabelConfigV293(match) {
+    return koDeadlineLabelV293(match);
+  };
+  window.knockoutBetDeadlineLabelV243 = knockoutBetDeadlineLabelV243;
+
+  isKnockoutBetLockedV241 = function isKnockoutBetLockedConfigV293(match) {
+    if (!match) return true;
+    if (!match.homeTeam || !match.awayTeam) return true;
+    if (knockoutMatchHasResult?.(match)) return true;
+    const deadline = koLockMillisV293(match);
+    if (!deadline) return true;
+    return Date.now() >= deadline;
+  };
+  window.isKnockoutBetLockedV241 = isKnockoutBetLockedV241;
+
+  knockoutBetButtonLabelV241 = function knockoutBetButtonLabelConfigV293(match) {
+    const player = linkedPlayerForCurrentUserV241?.();
+    if (!player) return "Ligar jogador";
+    const existing = knockoutBetForPlayerMatchV241?.(player.id, match.id);
+    if (!knockoutMatchStartMillisV241?.(match)) return existing ? "Ver aposta" : "Sem data/hora";
+    if (isKnockoutBetLockedV241?.(match)) return existing ? "Ver aposta" : "Bloqueado";
+    return existing ? "Editar aposta" : "Apostar";
+  };
+  window.knockoutBetButtonLabelV241 = knockoutBetButtonLabelV241;
+
+  const originalRenderAdmin = typeof renderKnockoutAdmin === "function" ? renderKnockoutAdmin : null;
+  if (originalRenderAdmin && !originalRenderAdmin.__v293) {
+    renderKnockoutAdmin = function renderKnockoutAdminLockConfigV293() {
+      const result = originalRenderAdmin.apply(this, arguments);
+      setTimeout(renderKnockoutLockConfigPanelV293, 0);
+      return result;
+    };
+    renderKnockoutAdmin.__v293 = true;
+    window.renderKnockoutAdmin = renderKnockoutAdmin;
+  }
+
+  const originalRenderSettings = typeof renderSettingsForm === "function" ? renderSettingsForm : null;
+  if (originalRenderSettings && !originalRenderSettings.__v293) {
+    renderSettingsForm = function renderSettingsFormLockConfigV293() {
+      const result = originalRenderSettings.apply(this, arguments);
+      setTimeout(renderKnockoutLockConfigPanelV293, 0);
+      return result;
+    };
+    renderSettingsForm.__v293 = true;
+    window.renderSettingsForm = renderSettingsForm;
+  }
+
+  document.addEventListener("click", event => {
+    const button = event.target.closest?.("#saveKoLockMinutesV293");
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    saveKnockoutLockMinutesV293();
+  }, true);
+
+  document.addEventListener("input", event => {
+    if (event.target?.id !== "koLockMinutesInputV293") return;
+    updateKnockoutLockPreviewV293();
+  }, true);
+
+  setTimeout(renderKnockoutLockConfigPanelV293, 900);
+})();
+
+function renderKnockoutLockConfigPanelV293() {
+  if (!koCanManageLockMinutesV293()) return;
+
+  const adminPanel = document.getElementById("knockoutAdminPanel");
+  if (!adminPanel) return;
+
+  let panel = document.getElementById("koLockConfigPanelV293");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "koLockConfigPanelV293";
+    panel.className = "ko-lock-config-panel-v293";
+  }
+
+  panel.innerHTML = `
+    <div>
+      <strong>Bloqueio das apostas da Fase Final</strong>
+      <span>Define quantos minutos antes da hora do jogo as apostas ficam bloqueadas.</span>
+    </div>
+    <label>
+      <span>Minutos antes do jogo</span>
+      <input id="koLockMinutesInputV293" type="number" min="0" step="1" value="${escapeHtml(String(koLockMinutesV293()))}" />
+    </label>
+    <button id="saveKoLockMinutesV293" class="primary small" type="button">Guardar bloqueio</button>
+    <em id="koLockPreviewV293">${escapeHtml(koLockMinutesLabelV293())}</em>
+  `;
+
+  if (adminPanel.firstElementChild) adminPanel.insertBefore(panel, adminPanel.firstElementChild);
+  else adminPanel.appendChild(panel);
+
+  updateKnockoutLockPreviewV293();
+}
+
+function updateKnockoutLockPreviewV293() {
+  const input = document.getElementById("koLockMinutesInputV293");
+  const preview = document.getElementById("koLockPreviewV293");
+  if (!input || !preview) return;
+  const value = Number(input.value);
+  if (!Number.isFinite(value) || value < 0) {
+    preview.textContent = "Mete um número válido.";
+    preview.classList.add("error");
+    return;
+  }
+  preview.classList.remove("error");
+  const minutes = Math.floor(value);
+  preview.textContent = minutes === 0
+    ? "As apostas bloqueiam à hora exata do jogo."
+    : `As apostas bloqueiam ${minutes} minuto${minutes === 1 ? "" : "s"} antes do jogo.`;
+}
+
+async function saveKnockoutLockMinutesV293() {
+  if (!koCanManageLockMinutesV293()) return toast?.("Sem permissão para alterar o bloqueio.");
+
+  const input = document.getElementById("koLockMinutesInputV293");
+  const value = Number(input?.value);
+  if (!Number.isFinite(value) || value < 0) return toast?.("Mete um número válido de minutos.");
+
+  const minutes = Math.floor(value);
+  ensureKnockoutSettings?.();
+  appSettings.knockout = appSettings.knockout || {};
+  appSettings.knockout.betLockMinutes = minutes;
+
+  try {
+    if (typeof saveSettingsFastToFirebase === "function") {
+      await saveSettingsFastToFirebase("bloqueio apostas fase final v293");
+    } else {
+      saveLocalData?.("bloqueio apostas fase final v293");
+      scheduleFullSync?.("bloqueio apostas fase final v293", 300);
+    }
+  } catch (error) {
+    console.warn("v293: falhou guardar bloqueio", error);
+    try {
+      saveLocalData?.("bloqueio apostas fase final v293");
+      scheduleFullSync?.("bloqueio apostas fase final v293", 500);
+    } catch {}
+  }
+
+  try { addSystemLog?.("Configuração Fase Final", `Bloqueio das apostas alterado para ${minutes} minuto(s).`, { betLockMinutes: minutes }, { sync: true }); } catch {}
+  try { renderCalendar?.(); } catch {}
+  try { renderKnockout?.(); } catch {}
+  try { koV284RenderHub?.(); } catch {}
+  renderKnockoutLockConfigPanelV293();
+  toast?.(`Bloqueio guardado: ${koLockMinutesLabelV293()}.`);
+}
+
+window.debugBloqueioApostasV293 = function debugBloqueioApostasV293(matchId = "") {
+  const match = matchId ? knockoutMatchById?.(matchId) : (appSettings?.knockout?.matches || [])[0];
+  return {
+    version: APP_VERSION_V293_KO_LOCK_CONFIG,
+    minutos: koLockMinutesV293(),
+    label: koLockMinutesLabelV293(),
+    match: match ? {
+      id: match.id,
+      jogo: `${match.homeTeam || ""} vs ${match.awayTeam || ""}`,
+      start: knockoutMatchStartMillisV241?.(match),
+      lock: knockoutBetLockMillisV243?.(match),
+      deadline: knockoutBetDeadlineLabelV243?.(match),
+      locked: isKnockoutBetLockedV241?.(match)
+    } : null
   };
 };

@@ -15652,3 +15652,80 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
   }
 }
 
+
+
+/* v293 — Configuração do bloqueio das apostas da Fase Final */
+.ko-lock-config-panel-v293{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 220px auto auto;
+  gap:12px;
+  align-items:end;
+  padding:14px;
+  margin:0 0 14px;
+  border:1px solid rgba(34,184,207,.24);
+  border-radius:16px;
+  background:linear-gradient(135deg,rgba(34,184,207,.10),rgba(124,58,237,.08));
+}
+
+.ko-lock-config-panel-v293 strong{
+  display:block;
+  color:#fff;
+  font-size:16px;
+  line-height:1.15;
+}
+
+.ko-lock-config-panel-v293 span{
+  display:block;
+  color:#b9c7dc;
+  font-size:12px;
+  line-height:1.25;
+  margin-top:4px;
+  font-weight:800;
+}
+
+.ko-lock-config-panel-v293 label{
+  display:grid;
+  gap:6px;
+  min-width:0;
+}
+
+.ko-lock-config-panel-v293 input{
+  min-height:40px;
+  border-radius:11px;
+  border:1px solid rgba(255,255,255,.14);
+  background:#07111d;
+  color:#fff;
+  font-weight:1000;
+  padding:8px 10px;
+}
+
+.ko-lock-config-panel-v293 em{
+  color:#ffd84d;
+  font-style:normal;
+  font-weight:1000;
+  font-size:12px;
+  line-height:1.2;
+  padding:10px 12px;
+  border-radius:12px;
+  background:rgba(250,204,21,.08);
+  border:1px solid rgba(250,204,21,.18);
+}
+
+.ko-lock-config-panel-v293 em.error{
+  color:#fecdd3;
+  background:rgba(127,29,29,.28);
+  border-color:rgba(248,113,113,.28);
+}
+
+@media(max-width:760px){
+  .ko-lock-config-panel-v293{
+    grid-template-columns:1fr;
+    gap:10px;
+  }
+
+  .ko-lock-config-panel-v293 button{
+    width:100%;
+    min-height:44px;
+  }
+}
+
