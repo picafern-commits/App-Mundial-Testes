@@ -16359,3 +16359,111 @@ body.mandatory-notice-open-v295{
   background:linear-gradient(90deg,#0f766e,#38bdf8)!important;
   border-color:rgba(45,212,191,.35)!important;
 }
+
+
+/* v306 — Gestão limpa das apostas eliminatórias só para o Dono */
+.owner-ko-unlock-panel-v306{
+  display:grid;
+  gap:12px;
+  padding:14px;
+  margin:0 0 14px;
+  border-radius:16px;
+  border:1px solid rgba(45,212,191,.22);
+  background:linear-gradient(135deg,rgba(20,184,166,.09),rgba(15,23,42,.78));
+}
+
+.owner-ko-head-v306{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+}
+
+.owner-ko-head-v306 strong{
+  display:block;
+  color:#fff;
+  font-size:16px;
+}
+
+.owner-ko-head-v306 span{
+  display:block;
+  color:#aab8ce;
+  font-size:12px;
+  font-weight:800;
+  margin-top:3px;
+}
+
+.owner-ko-form-v306,
+.owner-ko-score-v306{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+
+.owner-ko-score-v306{
+  grid-template-columns:100px 100px minmax(0,1fr);
+}
+
+.owner-ko-form-v306 label,
+.owner-ko-score-v306 label{
+  display:grid;
+  gap:6px;
+  color:#cbd5e1;
+  font-size:12px;
+  font-weight:1000;
+}
+
+.owner-ko-form-v306 select,
+.owner-ko-score-v306 select,
+.owner-ko-score-v306 input{
+  width:100%;
+  min-height:40px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.13);
+  background:#07111d;
+  color:#fff;
+  padding:9px 11px;
+  font-weight:900;
+  box-sizing:border-box;
+}
+
+.owner-ko-edit-v306{
+  display:grid;
+  gap:12px;
+  padding:12px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.035);
+}
+
+.owner-ko-edit-v306 strong{
+  color:#fff;
+}
+
+.owner-ko-edit-v306 span,
+.owner-ko-edit-v306 small{
+  display:block;
+  color:#aab8ce;
+  margin-top:3px;
+  font-weight:800;
+}
+
+.owner-ko-actions-v306{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+@media(max-width:760px){
+  .owner-ko-head-v306,
+  .owner-ko-form-v306,
+  .owner-ko-score-v306{
+    grid-template-columns:1fr;
+    display:grid;
+  }
+
+  .owner-ko-head-v306 button,
+  .owner-ko-actions-v306 button{
+    width:100%;
+  }
+}
