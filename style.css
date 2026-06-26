@@ -14412,3 +14412,186 @@ button{
   }
 }
 
+
+
+/* v279 — Calendário mobile compacto: reduzir altura exagerada dos cards */
+@media (max-width: 760px){
+  #calendarTab .calendar-day,
+  #calendarTab .day-group,
+  #calendarTab .calendar-day-card{
+    margin:10px 0!important;
+  }
+
+  #calendarTab .calendar-day-header,
+  #calendarTab .day-header,
+  #calendarTab [class*="day-title"]{
+    min-height:38px!important;
+    padding:9px 12px!important;
+    font-size:14px!important;
+  }
+
+  #calendarTab .game-card,
+  #calendarTab .match-card,
+  #calendarTab .calendar-game-card,
+  #calendarTab [data-game-id],
+  #calendarTab article[class*="game"],
+  #calendarTab article[class*="match"]{
+    padding:12px!important;
+    gap:8px!important;
+    border-radius:15px!important;
+    min-height:0!important;
+    align-content:start!important;
+  }
+
+  #calendarTab .game-card + .game-card,
+  #calendarTab .match-card + .match-card,
+  #calendarTab .calendar-game-card + .calendar-game-card,
+  #calendarTab [data-game-id] + [data-game-id]{
+    margin-top:8px!important;
+  }
+
+  #calendarTab .game-meta,
+  #calendarTab .match-meta,
+  #calendarTab .calendar-meta,
+  #calendarTab .game-info{
+    gap:6px!important;
+    font-size:12px!important;
+    line-height:1.15!important;
+  }
+
+  #calendarTab .badge,
+  #calendarTab .pill,
+  #calendarTab [class*="badge"],
+  #calendarTab [class*="pill"]{
+    min-height:24px!important;
+    padding:3px 9px!important;
+    font-size:11px!important;
+    line-height:1!important;
+  }
+
+  #calendarTab .teams,
+  #calendarTab .match-teams,
+  #calendarTab .game-teams,
+  #calendarTab .calendar-teams,
+  #calendarTab [class*="teams"]{
+    gap:4px!important;
+  }
+
+  #calendarTab .team,
+  #calendarTab .team-name,
+  #calendarTab [class*="team"]{
+    font-size:18px!important;
+    line-height:1.15!important;
+  }
+
+  #calendarTab .vs,
+  #calendarTab [class*="vs"]{
+    min-width:38px!important;
+    min-height:26px!important;
+    padding:3px 10px!important;
+    font-size:13px!important;
+    line-height:1!important;
+    margin:1px 0!important;
+  }
+
+  #calendarTab .score,
+  #calendarTab .result,
+  #calendarTab [class*="score"],
+  #calendarTab [class*="result"]{
+    font-size:15px!important;
+    line-height:1.1!important;
+  }
+
+  /* Hora e estado ficam compactos; deixa de empurrar o card para baixo. */
+  #calendarTab .time,
+  #calendarTab .game-time,
+  #calendarTab .match-time,
+  #calendarTab [class*="time"]{
+    font-size:17px!important;
+    line-height:1!important;
+    min-height:0!important;
+  }
+
+  #calendarTab .status,
+  #calendarTab .game-status,
+  #calendarTab .match-status,
+  #calendarTab [class*="status"]{
+    min-height:24px!important;
+    padding:3px 9px!important;
+    font-size:11px!important;
+    line-height:1!important;
+  }
+
+  #calendarTab small,
+  #calendarTab .muted,
+  #calendarTab [class*="muted"],
+  #calendarTab [class*="secondary"]{
+    font-size:11px!important;
+    line-height:1.2!important;
+  }
+
+  #calendarTab .game-actions,
+  #calendarTab .match-actions,
+  #calendarTab .calendar-actions,
+  #calendarTab .actions,
+  #calendarTab [class*="actions"]{
+    gap:7px!important;
+    margin-top:2px!important;
+  }
+
+  #calendarTab .game-actions button,
+  #calendarTab .match-actions button,
+  #calendarTab .calendar-actions button,
+  #calendarTab .actions button,
+  #calendarTab [class*="actions"] button,
+  #calendarTab article button,
+  #calendarTab .game-card button,
+  #calendarTab .match-card button,
+  #calendarTab .calendar-game-card button{
+    min-height:40px!important;
+    height:auto!important;
+    padding:8px 12px!important;
+    border-radius:11px!important;
+    font-size:14px!important;
+    line-height:1.1!important;
+  }
+
+  /* Caso o card use layout interno antigo com muitas colunas/linhas, força áreas compactas. */
+  #calendarTab .game-card > *,
+  #calendarTab .match-card > *,
+  #calendarTab .calendar-game-card > *,
+  #calendarTab [data-game-id] > *{
+    margin-top:0!important;
+    margin-bottom:0!important;
+  }
+}
+
+@media (max-width: 420px){
+  #calendarTab .game-card,
+  #calendarTab .match-card,
+  #calendarTab .calendar-game-card,
+  #calendarTab [data-game-id],
+  #calendarTab article[class*="game"],
+  #calendarTab article[class*="match"]{
+    padding:10px!important;
+    gap:7px!important;
+  }
+
+  #calendarTab .team,
+  #calendarTab .team-name,
+  #calendarTab [class*="team"]{
+    font-size:17px!important;
+  }
+
+  #calendarTab .game-actions button,
+  #calendarTab .match-actions button,
+  #calendarTab .calendar-actions button,
+  #calendarTab .actions button,
+  #calendarTab [class*="actions"] button,
+  #calendarTab article button{
+    min-height:38px!important;
+    font-size:13px!important;
+    padding:7px 10px!important;
+  }
+}
+
