@@ -14991,3 +14991,76 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
   }
 }
 
+
+
+/* v285 — Calendário: dia misto mantém barra normal, só o card da Fase Final fica colorido */
+.day-block.calendar-day-mixed-v285{
+  border-color:var(--line)!important;
+}
+
+.day-block.calendar-day-mixed-v285 h3{
+  background:linear-gradient(90deg, #ffcf3f, #ffe58a)!important;
+  color:#151000!important;
+  text-shadow:none!important;
+}
+
+
+
+/* v286 — Filtro Fase Final + jogos bloqueados até poder apostar */
+#calendarKnockoutGamesBtn{
+  border:1px solid rgba(34,184,207,.26);
+}
+
+#calendarKnockoutGamesBtn.calendar-filter-active-v221,
+#calendarKnockoutGamesBtn.active-filter{
+  background:linear-gradient(135deg,#0ea5e9,#22c55e)!important;
+  color:#fff!important;
+  box-shadow:0 0 24px rgba(34,184,207,.18)!important;
+}
+
+.knockout-calendar-row-v259.ko-bet-not-ready-v286{
+  border-color:rgba(248,113,113,.42)!important;
+  background:linear-gradient(135deg,rgba(127,29,29,.28),rgba(15,23,42,.92))!important;
+  opacity:.86;
+}
+
+.knockout-calendar-row-v259.ko-bet-not-ready-v286 .ko-calendar-pill-v259,
+.knockout-calendar-row-v259.ko-bet-not-ready-v286 .state{
+  border-color:rgba(248,113,113,.46)!important;
+  background:rgba(127,29,29,.36)!important;
+  color:#fecdd3!important;
+}
+
+.knockout-calendar-row-v259.ko-bet-not-ready-v286 .score-vs{
+  border-color:rgba(248,113,113,.34)!important;
+  color:#fecdd3!important;
+}
+
+.knockout-calendar-row-v259.ko-bet-ready-v286{
+  opacity:1;
+}
+
+.ko-bet-card-v284.ko-bet-state-not-ready{
+  border-color:rgba(248,113,113,.34)!important;
+  background:linear-gradient(180deg,rgba(127,29,29,.24),rgba(7,11,19,.96))!important;
+}
+
+.ko-bet-card-v284.ko-bet-state-not-ready header b{
+  background:rgba(127,29,29,.42)!important;
+  border-color:rgba(248,113,113,.35)!important;
+  color:#fecdd3!important;
+}
+
+.ko-bet-card-v284.ko-bet-state-not-ready input,
+.ko-bet-card-v284.ko-bet-state-not-ready select{
+  opacity:.65;
+  cursor:not-allowed;
+}
+
+@media(max-width:760px){
+  #calendarKnockoutGamesBtn{
+    min-height:44px!important;
+    white-space:nowrap!important;
+  }
+}
+
