@@ -14547,3 +14547,82 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
     padding:14px 16px 18px!important;
   }
 }
+
+
+/* v282 — barra de navegação da Fase Final igual à barra das outras páginas */
+@media (min-width: 761px){
+  body.knockout-layout-active .app-shell,
+  body.knockout-layout-active .app-shell.knockout-screen-active{
+    padding-top:14px!important;
+    padding-left:18px!important;
+    padding-right:18px!important;
+    padding-bottom:8px!important;
+    box-sizing:border-box!important;
+  }
+
+  body.knockout-layout-active .tabs{
+    width:100%!important;
+    max-width:100%!important;
+    min-height:58px!important;
+    height:58px!important;
+    margin:0 0 10px!important;
+    padding:10px 12px!important;
+    display:flex!important;
+    align-items:center!important;
+    gap:10px!important;
+    border-radius:14px!important;
+    box-sizing:border-box!important;
+  }
+
+  body.knockout-layout-active .tabs .tab{
+    min-height:38px!important;
+    height:38px!important;
+    padding:0 16px!important;
+    border-radius:10px!important;
+    font-size:13px!important;
+    line-height:1!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+  }
+
+  body.knockout-layout-active #knockoutTab.active{
+    height:calc(100dvh - 94px)!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket.knockout-bracket{
+    height:100%!important;
+    padding:0 0 8px!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .ko-road-board-v270{
+    padding-top:16px!important;
+    padding-bottom:18px!important;
+  }
+}
+
+@media (min-width: 761px) and (max-height: 850px){
+  body.knockout-layout-active .app-shell,
+  body.knockout-layout-active .app-shell.knockout-screen-active{
+    padding-top:10px!important;
+  }
+
+  body.knockout-layout-active .tabs{
+    min-height:52px!important;
+    height:52px!important;
+    margin-bottom:8px!important;
+    padding:8px 10px!important;
+  }
+
+  body.knockout-layout-active .tabs .tab{
+    min-height:34px!important;
+    height:34px!important;
+    padding:0 14px!important;
+    font-size:12px!important;
+  }
+
+  body.knockout-layout-active #knockoutTab.active{
+    height:calc(100dvh - 78px)!important;
+  }
+}
+
