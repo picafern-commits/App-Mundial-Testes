@@ -13482,3 +13482,253 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
   min-height:100dvh!important;
 }
 
+
+
+/* v276 — Calendário mobile: corrigir dimensões reais dos cards .match-row */
+@media (max-width: 760px){
+  #calendarTab .day-block{
+    border-radius:16px!important;
+    margin:12px 0!important;
+    padding:0!important;
+    overflow:hidden!important;
+  }
+
+  #calendarTab .day-block h3{
+    min-height:40px!important;
+    padding:10px 12px!important;
+    font-size:15px!important;
+    line-height:1.15!important;
+    display:flex!important;
+    align-items:center!important;
+  }
+
+  #calendarTab .match-row{
+    --stable-match-row-height-v273:auto!important;
+    min-height:0!important;
+    height:auto!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 42px minmax(0,1fr)!important;
+    grid-template-areas:
+      "group group time"
+      "home vs away"
+      "state note note"
+      "actions actions actions"!important;
+    gap:8px 9px!important;
+    align-items:center!important;
+    padding:11px 12px!important;
+    border-radius:14px!important;
+    margin:0!important;
+  }
+
+  #calendarTab .match-row .group-pill{
+    grid-area:group!important;
+    justify-self:start!important;
+    min-width:0!important;
+    min-height:28px!important;
+    width:auto!important;
+    max-width:100%!important;
+    padding:5px 10px!important;
+    border-radius:999px!important;
+    font-size:12px!important;
+    line-height:1!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+  }
+
+  #calendarTab .match-row .time{
+    grid-area:time!important;
+    justify-self:end!important;
+    align-self:center!important;
+    text-align:right!important;
+    font-size:17px!important;
+    line-height:1!important;
+    min-height:0!important;
+    font-weight:950!important;
+    white-space:nowrap!important;
+  }
+
+  #calendarTab .match-row .team{
+    min-width:0!important;
+    min-height:34px!important;
+    height:auto!important;
+    display:flex!important;
+    align-items:center!important;
+    gap:0!important;
+    font-size:18px!important;
+    line-height:1.12!important;
+    white-space:normal!important;
+  }
+
+  #calendarTab .match-row .team.home{
+    grid-area:home!important;
+    justify-content:flex-start!important;
+    text-align:left!important;
+  }
+
+  #calendarTab .match-row .team.away,
+  #calendarTab .match-row .away{
+    grid-area:away!important;
+    justify-content:flex-end!important;
+    text-align:right!important;
+  }
+
+  #calendarTab .match-row .team strong{
+    min-width:0!important;
+    white-space:normal!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    overflow-wrap:anywhere!important;
+    display:-webkit-box!important;
+    -webkit-line-clamp:2!important;
+    -webkit-box-orient:vertical!important;
+  }
+
+  #calendarTab .match-row .score-vs{
+    grid-area:vs!important;
+    justify-self:center!important;
+    align-self:center!important;
+    width:42px!important;
+    min-width:42px!important;
+    height:32px!important;
+    min-height:32px!important;
+    padding:0!important;
+    border-radius:999px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    font-size:14px!important;
+    line-height:1!important;
+    text-align:center!important;
+  }
+
+  #calendarTab .match-row .state{
+    grid-area:state!important;
+    justify-self:start!important;
+    min-width:0!important;
+    min-height:26px!important;
+    width:auto!important;
+    max-width:100%!important;
+    padding:5px 10px!important;
+    font-size:12px!important;
+    line-height:1!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    white-space:nowrap!important;
+  }
+
+  #calendarTab .match-row .bet-note{
+    grid-area:note!important;
+    min-width:0!important;
+    width:100%!important;
+    max-width:100%!important;
+    font-size:12px!important;
+    line-height:1.25!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    text-align:right!important;
+  }
+
+  #calendarTab .match-row .calendar-actions{
+    grid-area:actions!important;
+    min-width:0!important;
+    width:100%!important;
+    max-width:100%!important;
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:7px!important;
+    justify-content:stretch!important;
+    align-items:stretch!important;
+    margin-top:2px!important;
+  }
+
+  #calendarTab .match-row .calendar-actions button,
+  #calendarTab .match-row .calendar-actions .small{
+    width:100%!important;
+    min-width:0!important;
+    min-height:38px!important;
+    height:38px!important;
+    padding:6px 7px!important;
+    border-radius:11px!important;
+    font-size:12px!important;
+    line-height:1.05!important;
+    white-space:normal!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    text-align:center!important;
+  }
+
+  /* Se só existirem 2 botões, eles ocupam melhor o espaço. */
+  #calendarTab .match-row .calendar-actions button:first-child:nth-last-child(2),
+  #calendarTab .match-row .calendar-actions button:first-child:nth-last-child(2) ~ button{
+    grid-column:auto!important;
+  }
+
+  #calendarTab .match-row .calendar-actions:has(button:nth-child(2):last-child){
+    grid-template-columns:1fr 1fr!important;
+  }
+
+  #calendarTab .match-row > *{
+    margin:0!important;
+  }
+
+  #calendarTab .match-row + .match-row{
+    border-top:1px solid rgba(255,255,255,.08)!important;
+  }
+}
+
+@media (max-width: 430px){
+  #calendarTab .match-row{
+    grid-template-columns:minmax(0,1fr) 38px minmax(0,1fr)!important;
+    gap:7px!important;
+    padding:10px!important;
+  }
+
+  #calendarTab .match-row .team{
+    font-size:17px!important;
+    min-height:32px!important;
+  }
+
+  #calendarTab .match-row .score-vs{
+    width:38px!important;
+    min-width:38px!important;
+    height:30px!important;
+    min-height:30px!important;
+    font-size:13px!important;
+  }
+
+  #calendarTab .match-row .calendar-actions{
+    gap:6px!important;
+  }
+
+  #calendarTab .match-row .calendar-actions button,
+  #calendarTab .match-row .calendar-actions .small{
+    height:36px!important;
+    min-height:36px!important;
+    font-size:11.5px!important;
+    padding:5px 6px!important;
+  }
+}
+
+@media (max-width: 370px){
+  #calendarTab .match-row{
+    grid-template-areas:
+      "group group time"
+      "home vs away"
+      "state state note"
+      "actions actions actions"!important;
+  }
+
+  #calendarTab .match-row .calendar-actions{
+    grid-template-columns:1fr!important;
+  }
+
+  #calendarTab .match-row .calendar-actions button,
+  #calendarTab .match-row .calendar-actions .small{
+    height:38px!important;
+  }
+}
+

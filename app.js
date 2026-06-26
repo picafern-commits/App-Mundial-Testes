@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v275";
+const APP_VERSION_LABEL = "v276";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -19208,3 +19208,17 @@ const APP_VERSION_V273 = "274.0";
     };
   };
 })();
+
+
+/* v276 — Calendário mobile dimensões certas */
+const APP_VERSION_V276_CAL_MOBILE = "276.0";
+window.debugCalendarioMobileV276 = function debugCalendarioMobileV276() {
+  const card = document.querySelector("#calendarTab .match-row");
+  return {
+    version: APP_VERSION_V276_CAL_MOBILE,
+    width: window.innerWidth,
+    cardHeight: card ? Math.round(card.getBoundingClientRect().height) : null,
+    matchRows: document.querySelectorAll("#calendarTab .match-row").length,
+    activeTab: document.querySelector(".tab-panel.active")?.id || ""
+  };
+};
