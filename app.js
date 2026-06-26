@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v270";
+const APP_VERSION_LABEL = "v271";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -18921,3 +18921,30 @@ window.debugKnockoutRoadmapV270 = function debugKnockoutRoadmapV270() {
   ensureKnockoutSettings?.();
   return { version: APP_VERSION_V270, mode: koViewModeV270(), matches: knockoutMatches().map(match => ({ id: match.id, round: match.round, index: match.index, homeTeam: match.homeTeam, awayTeam: match.awayTeam, date: koV260MatchDate(match), result: koV260ScoreText(match), qualified: koV260Winner(match) })) };
 };
+
+
+// v271 — debug rápido para confirmar se a API está a preencher o enquadramento da Fase Final.
+const APP_VERSION_V271 = "271.0";
+function debugFaseFinalApiEnquadramentoV271() {
+  const matches = typeof knockoutMatches === "function" ? knockoutMatches() : (appSettings?.knockout?.matches || []);
+  return {
+    version: APP_VERSION_V271,
+    resumo: "A Function agora importa IDs/data/hora/status das eliminatórias da API para a página Fase Final mesmo com cards vazios.",
+    total: Array.isArray(matches) ? matches.length : 0,
+    comFootballDataId: (matches || []).filter(m => m.footballDataId).length,
+    comDataHora: (matches || []).filter(m => m.matchDate || m.footballDataUtcDate || m.date || m.kickoff || m.startAt || m.time).length,
+    comEquipas: (matches || []).filter(m => m.homeTeam && m.awayTeam).length,
+    jogos: (matches || []).map(m => ({
+      id: m.id,
+      ronda: typeof knockoutRoundLabel === "function" ? knockoutRoundLabel(m.round) : m.round,
+      index: m.index,
+      equipa1: m.homeTeam || "",
+      equipa2: m.awayTeam || "",
+      data: m.matchDate || m.footballDataUtcDate || m.date || "",
+      footballDataId: m.footballDataId || "",
+      stage: m.footballDataStage || "",
+      status: m.footballDataStatus || ""
+    }))
+  };
+}
+window.debugFaseFinalApiEnquadramentoV271 = debugFaseFinalApiEnquadramentoV271;

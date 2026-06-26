@@ -642,6 +642,189 @@ function footballFindLocalMatch(apiMatch, localMatches) {
   return footballApplyMatchOrientationV263(apiMatch, selected);
 }
 
+
+// v271 — a API também deve preencher o calendário/base da Fase Final mesmo antes de existirem equipas locais.
+// Antes só tentava casar eliminatórias por equipa/ID; com cards vazios/"A definir" isso nunca acontecia.
+function footballKnockoutRoundFromApiV271(apiMatch = {}) {
+  const raw = cleanString(apiMatch.stage || apiMatch.group || apiMatch.matchday || "").toUpperCase();
+  const value = raw.replace(/[\s-]+/g, "_");
+
+  if (["LAST_32", "ROUND_OF_32", "R32", "STAGE_LAST_32"].includes(value) || value.includes("32")) return "r32";
+  if (["LAST_16", "ROUND_OF_16", "R16", "STAGE_LAST_16"].includes(value) || value.includes("16")) return "r16";
+  if (["QUARTER_FINALS", "QUARTER_FINAL", "QUARTERFINALS", "QF"].includes(value) || value.includes("QUARTER")) return "qf";
+  if (["SEMI_FINALS", "SEMI_FINAL", "SEMIFINALS", "SF"].includes(value) || value.includes("SEMI")) return "sf";
+  if (["FINAL"].includes(value) || value === "FINAL_STAGE") return "final";
+
+  // Third place / bronze não faz parte da árvore principal da app.
+  if (value.includes("THIRD") || value.includes("BRONZE") || value.includes("PLACE")) return "";
+  if (value.includes("GROUP")) return "";
+  return "";
+}
+
+function footballApiTeamIsRealV271(name = "") {
+  const text = cleanString(name);
+  const key = footballTeamKey(text);
+  if (!key) return false;
+  return !(
+    key === "tbd" ||
+    key === "a determinar" ||
+    key === "a determ" ||
+    key.includes("determinar") ||
+    key.includes("a definir") ||
+    key.includes("winner") ||
+    key.includes("vencedor") ||
+    key.includes("runner") ||
+    key.includes("2nd") ||
+    key.includes("second") ||
+    key.includes("grupo") ||
+    key.includes("group") ||
+    key.includes("w") && /^w\d+/.test(key)
+  );
+}
+
+function footballSortApiMatchesV271(a = {}, b = {}) {
+  const da = footballMatchDateMillis(a.utcDate);
+  const db = footballMatchDateMillis(b.utcDate);
+  if (da && db && da !== db) return da - db;
+  if (da && !db) return -1;
+  if (!da && db) return 1;
+  return Number(a.id || 0) - Number(b.id || 0);
+}
+
+function footballApplyApiKnockoutScheduleV271(apiMatches = [], knockoutMatches = [], actor = {}) {
+  const byRound = new Map();
+  (Array.isArray(apiMatches) ? apiMatches : []).forEach(apiMatch => {
+    const round = footballKnockoutRoundFromApiV271(apiMatch);
+    if (!round) return;
+    if (!byRound.has(round)) byRound.set(round, []);
+    byRound.get(round).push(apiMatch);
+  });
+
+  const result = { checked: 0, updated: 0, withTeams: 0, withDate: 0, matched: [] };
+
+  byRound.forEach((apiList, round) => {
+    const sortedApi = [...apiList].sort(footballSortApiMatchesV271);
+    const localRound = (Array.isArray(knockoutMatches) ? knockoutMatches : [])
+      .filter(match => String(match.round || "") === round)
+      .sort((a, b) => Number(a.index || 0) - Number(b.index || 0));
+
+    const used = new Set();
+
+    sortedApi.forEach((apiMatch, idx) => {
+      result.checked += 1;
+      const apiId = String(apiMatch.id || "");
+      let target = null;
+      if (apiId) {
+        target = localRound.find(match => String(match.footballDataId || match.externalId || "") === apiId);
+      }
+      if (!target) {
+        target = localRound.find(match => !used.has(match.id) && !String(match.footballDataId || match.externalId || ""));
+      }
+      if (!target) {
+        target = localRound[idx] || null;
+      }
+      if (!target || used.has(target.id)) return;
+      used.add(target.id);
+
+      const before = JSON.stringify({
+        footballDataId: target.footballDataId || "",
+        matchDate: target.matchDate || target.date || target.kickoff || target.startAt || target.time || "",
+        homeTeam: target.homeTeam || "",
+        awayTeam: target.awayTeam || "",
+        status: target.footballDataStatus || ""
+      });
+
+      const apiUtcDate = cleanString(apiMatch.utcDate);
+      const apiHome = footballApiTeamName(apiMatch.homeTeam);
+      const apiAway = footballApiTeamName(apiMatch.awayTeam);
+      const homeIsReal = footballApiTeamIsRealV271(apiHome);
+      const awayIsReal = footballApiTeamIsRealV271(apiAway);
+
+      if (apiId) target.footballDataId = apiId;
+      target.externalId = target.externalId || apiId;
+      target.footballDataStatus = cleanString(apiMatch.status);
+      target.footballDataStage = cleanString(apiMatch.stage);
+      target.footballDataGroup = cleanString(apiMatch.group);
+      target.footballDataUtcDate = apiUtcDate;
+      target.footballDataLocked = footballShouldLockMatch(apiMatch);
+      target.footballDataUpdatedBy = actor.email || "api";
+      target.source = "football-data.org";
+      target.updatedAt = new Date().toISOString();
+      target.apiAutoMapped = true;
+
+      if (apiUtcDate) {
+        target.matchDate = apiUtcDate;
+        target.date = apiUtcDate;
+        target.kickoff = apiUtcDate;
+        target.startAt = apiUtcDate;
+        target.time = apiUtcDate;
+        result.withDate += 1;
+      }
+
+      // Só troca equipas quando a API já tem nomes reais. Assim não mete "TBD/Winner" nos cards.
+      if (homeIsReal) target.homeTeam = apiHome;
+      if (awayIsReal) target.awayTeam = apiAway;
+      if (homeIsReal || awayIsReal) result.withTeams += 1;
+
+      const after = JSON.stringify({
+        footballDataId: target.footballDataId || "",
+        matchDate: target.matchDate || target.date || target.kickoff || target.startAt || target.time || "",
+        homeTeam: target.homeTeam || "",
+        awayTeam: target.awayTeam || "",
+        status: target.footballDataStatus || ""
+      });
+
+      if (before !== after) result.updated += 1;
+      result.matched.push({
+        localId: target.id,
+        round,
+        index: target.index || "",
+        footballDataId: apiId,
+        utcDate: apiUtcDate,
+        apiHome,
+        apiAway,
+        localHome: target.homeTeam || "",
+        localAway: target.awayTeam || "",
+        status: target.footballDataStatus || ""
+      });
+    });
+  });
+
+  return result;
+}
+
+function footballKnockoutCalendarPayloadFromMatchV271(match = {}) {
+  const matchDate = cleanString(match.matchDate || match.footballDataUtcDate || match.date || match.kickoff || match.startAt || match.time);
+  const homeTeam = cleanString(match.homeTeam);
+  const awayTeam = cleanString(match.awayTeam);
+  if (!match.id || !matchDate || !homeTeam || !awayTeam) return null;
+  return {
+    id: String(match.id),
+    knockoutMatchId: String(match.id),
+    type: "knockout",
+    phase: "Fase Final",
+    group: match.roundLabel || match.round || "Fase Final",
+    round: match.round || "",
+    roundLabel: match.roundLabel || match.round || "Fase Final",
+    index: match.index || "",
+    homeTeam,
+    awayTeam,
+    matchDate,
+    date: matchDate,
+    kickoff: matchDate,
+    startAt: matchDate,
+    time: matchDate,
+    footballDataId: match.footballDataId || "",
+    footballDataStatus: match.footballDataStatus || "",
+    footballDataStage: match.footballDataStage || "",
+    footballDataGroup: match.footballDataGroup || "",
+    footballDataUtcDate: match.footballDataUtcDate || matchDate,
+    source: "FaseFinal",
+    updatedAt: match.updatedAt || new Date().toISOString(),
+    firebaseUpdatedAt: FieldValue.serverTimestamp()
+  };
+}
+
 async function assertFootballDataAdminV147(req) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
@@ -951,14 +1134,14 @@ function footballSmartGameReasonV201(game = {}, now = Date.now(), collection = "
   const justFinished = finished && Number.isFinite(finishedAt) && now - finishedAt <= SMART_SYNC_POST_FINISH_MS_V201;
   const nearStart = start && start - now <= SMART_SYNC_PRE_START_MS_V201 && now - start <= SMART_SYNC_LATE_CONFIRM_MS_V201 && !finalScore;
   const recentlyStartedWithoutFinal = start && now >= start && now - start <= SMART_SYNC_LATE_CONFIRM_MS_V201 && !finalScore;
-  const knockoutNeedsApiDate = collection === "knockout" && !start && game.homeTeam && game.awayTeam && !game.footballDataId;
+  const knockoutNeedsApiDate = collection === "knockout" && !game.footballDataId && (!start || !game.homeTeam || !game.awayTeam);
   const finishedMissingFinal = finished && !finalScore;
   const scoreNotConfirmed = finished && finalScore && game.scoreConfirmed !== true;
   const pointsNotConfirmed = finished && finalScore && game.pointsConfirmed !== true;
   const knockoutNotPropagated = collection === "knockout" && finished && finalScore && !footballSmartKnockoutPropagationOkV201(game, allKnockout);
 
   if (lastError) return { active: true, reason: `erro pendente: ${lastError}`, minutesToStart };
-  if (knockoutNeedsApiDate) return { active: true, reason: "fase final com equipas sem hora/id API", minutesToStart };
+  if (knockoutNeedsApiDate) return { active: true, reason: "fase final sem enquadramento da API", minutesToStart };
   if (live) return { active: true, reason: "jogo a decorrer", minutesToStart };
   if (nearStart) return { active: true, reason: "jogo perto de começar", minutesToStart };
   if (justFinished) return { active: true, reason: "jogo terminou há menos de 5 minutos", minutesToStart };
@@ -1187,6 +1370,10 @@ async function runFootballDataSyncCoreV151(options = {}) {
   let liveUpdated = 0;
   let knockoutPropagationChanged = false;
 
+  // v271: antes de tentar casar por equipas, preencher a própria árvore da Fase Final
+  // com os jogos eliminatórios que a API já conhece (ID, data/hora, status e equipas quando reais).
+  const knockoutApiScheduleV271 = footballApplyApiKnockoutScheduleV271(matches, knockoutMatches, actor);
+
   const matchedGamesStatusV153 = [];
   const unmatchedApiMatchesV269 = [];
   const diagnosticMatchesV269 = [];
@@ -1360,6 +1547,10 @@ async function runFootballDataSyncCoreV151(options = {}) {
     updatedGames: updatedGames.length,
     matchedGamesStatus: matchedGamesStatusV153.length,
     updatedKnockoutMatches: updatedKnockoutMatches.length,
+    knockoutApiScheduleUpdated: knockoutApiScheduleV271.updated,
+    knockoutApiScheduleChecked: knockoutApiScheduleV271.checked,
+    knockoutApiScheduleWithTeams: knockoutApiScheduleV271.withTeams,
+    knockoutApiScheduleWithDate: knockoutApiScheduleV271.withDate,
     finalConfirmed,
     liveUpdated,
     knockoutPropagationChanged,
@@ -1373,7 +1564,9 @@ async function runFootballDataSyncCoreV151(options = {}) {
   }, { merge: true });
   if (!dryRun) writes += 1;
 
-  if (!dryRun && (updatedKnockoutMatches.length || knockoutPropagationChanged)) {
+  // v271: se a API preencheu datas/equipas/IDs das eliminatórias, guardar a Fase Final
+  // mesmo que ainda não exista resultado. Antes só gravava se houvesse resultado/propagação.
+  if (!dryRun && (updatedKnockoutMatches.length || knockoutPropagationChanged || knockoutApiScheduleV271.updated)) {
     const nextSettings = {
       ...settings,
       knockout: {
@@ -1381,10 +1574,25 @@ async function runFootballDataSyncCoreV151(options = {}) {
         matches: knockoutMatches
       },
       footballDataLastSyncAt: FieldValue.serverTimestamp(),
-      footballDataLastSyncBy: actor.email
+      footballDataLastSyncBy: actor.email,
+      footballDataKnockoutScheduleV271: {
+        updated: knockoutApiScheduleV271.updated,
+        checked: knockoutApiScheduleV271.checked,
+        withDate: knockoutApiScheduleV271.withDate,
+        withTeams: knockoutApiScheduleV271.withTeams,
+        lastRunIso: new Date().toISOString()
+      }
     };
     batch.set(settingsRef, nextSettings, { merge: true });
     writes += 1;
+
+    // Também prepara os jogos da Fase Final no Calendário normal quando já houver equipas + data.
+    knockoutMatches.forEach(match => {
+      const gamePayload = footballKnockoutCalendarPayloadFromMatchV271(match);
+      if (!gamePayload) return;
+      batch.set(db.collection("games").doc(String(match.id)), gamePayload, { merge: true });
+      writes += 1;
+    });
   }
 
   if (!dryRun && writes > 0) await batch.commit();
@@ -1427,6 +1635,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
     finalConfirmed,
     liveUpdated,
     knockoutPropagationChanged,
+    knockoutApiSchedule: knockoutApiScheduleV271,
     upcoming,
     liveOrLocked,
     diagnostics: {
@@ -1436,6 +1645,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
       localKnockoutMatches: knockoutMatches.length,
       matchedCalendar: matchedGamesStatusV153.length,
       matchedKnockout: updatedKnockoutMatches.length,
+      knockoutApiSchedule: knockoutApiScheduleV271,
       unmatchedApiMatches: unmatchedApiMatchesV269,
       matches: diagnosticMatchesV269.slice(0, 120)
     },
