@@ -12605,3 +12605,23 @@ body.knockout-layout-active #knockoutBracket.ko-list-root-v260,
   color:#fff1f2!important;
   text-shadow:0 1px 0 rgba(0,0,0,.24)!important;
 }
+
+/* v265 - Limpar registo em cada jogo da Fase Final */
+#knockoutBracket .ko-list-actions-v260 .ko-clear-record-btn-v265{
+  min-width:130px!important;
+  border-color:rgba(239,68,68,.42)!important;
+  color:#ffd5d5!important;
+  background:rgba(239,68,68,.12)!important;
+}
+#knockoutBracket .ko-list-actions-v260 .ko-clear-record-btn-v265:hover{
+  border-color:rgba(239,68,68,.72)!important;
+  background:rgba(239,68,68,.20)!important;
+}
+@media(max-width:760px){
+  #knockoutBracket .ko-list-actions-v260{
+    justify-content:stretch!important;
+  }
+  #knockoutBracket .ko-list-actions-v260 button{
+    flex:1 1 140px!important;
+  }
+}

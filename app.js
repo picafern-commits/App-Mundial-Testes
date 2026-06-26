@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v264";
+const APP_VERSION_LABEL = "v265";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -17653,7 +17653,7 @@ setTimeout(() => {
 
 
 // v262 — cores progressivas também nas barras de data do Calendário quando o dia tem jogos da Fase Final.
-const APP_VERSION_V262 = "264.0";
+const APP_VERSION_V262 = "265.0";
 
 function koV262RoundPriority(key) {
   const order = { r32: 1, r16: 2, qf: 3, sf: 4, final: 5, ko: 0 };
@@ -17733,4 +17733,137 @@ setTimeout(() => {
 
 
 // v264 - Dono controla quais tipos de notificações globais podem ir para todos os users.
-const APP_VERSION_V264 = "264.0";
+const APP_VERSION_V264 = "265.0";
+
+
+// v265 — Botão para limpar o registo de cada jogo da Fase Final.
+const APP_VERSION_V265 = "265.0";
+
+async function clearKnockoutMatchRecordV265(matchId, button = null) {
+  if (!hasPermission?.("editKnockout")) { toast?.("Sem permissão para limpar jogos da Fase Final."); return false; }
+  try { ensureKnockoutSettings?.(); } catch {}
+
+  const match = knockoutMatchById?.(matchId);
+  if (!match) { toast?.("Jogo da Fase Final não encontrado."); return false; }
+
+  const label = `${knockoutRoundLabel?.(match.round) || match.roundLabel || "Fase Final"} · Jogo ${match.index || ""}`.trim();
+  const teams = `${match.homeTeam || "Equipa 1"} vs ${match.awayTeam || "Equipa 2"}`;
+  const ok = window.confirm(`Limpar o registo deste jogo?\n\n${label}\n${teams}\n\nIsto limpa equipas/data do jogo inicial, resultado, penáltis, qualificada, jogo no Calendário e apostas desse jogo.`);
+  if (!ok) return false;
+
+  if (button) {
+    button.disabled = true;
+    button.dataset.originalText = button.textContent || "Limpar registo";
+    button.textContent = "A limpar...";
+  }
+
+  try {
+    const before = {
+      homeTeam: match.homeTeam || "",
+      awayTeam: match.awayTeam || "",
+      matchDate: match.matchDate || match.date || match.kickoff || match.startAt || match.time || "",
+      homeScore: match.homeScore ?? null,
+      awayScore: match.awayScore ?? null,
+      homePenalties: match.homePenalties ?? null,
+      awayPenalties: match.awayPenalties ?? null,
+      qualified: match.qualified || match.winnerTeam || match.winner || ""
+    };
+
+    const removedBetIds = [];
+    if (Array.isArray(bets)) {
+      for (let index = bets.length - 1; index >= 0; index -= 1) {
+        if (String(bets[index]?.gameId || "") === String(matchId)) {
+          if (bets[index]?.id) removedBetIds.push(bets[index].id);
+          bets.splice(index, 1);
+        }
+      }
+    }
+    if (removedBetIds.length) {
+      try { markBetsForDelete?.(removedBetIds); } catch {}
+      try { clearPendingBets?.(removedBetIds); } catch {}
+    }
+
+    const gameIndex = Array.isArray(games) ? games.findIndex(game => String(game.id || "") === String(matchId) || String(game.knockoutMatchId || "") === String(matchId)) : -1;
+    if (gameIndex >= 0) {
+      const removedGame = games.splice(gameIndex, 1)[0];
+      try { markGamePending?.(removedGame?.id || matchId); } catch {}
+    }
+
+    const firstRound = isFirstKnockoutRound?.(match) || match.round === "r32";
+    if (firstRound) {
+      match.homeTeam = "";
+      match.awayTeam = "";
+    }
+
+    ["homeScore", "awayScore", "homePenalties", "awayPenalties"].forEach(key => { match[key] = null; });
+    ["winner", "winnerTeam", "qualified", "qualifiedTeam", "winnerName"].forEach(key => { match[key] = ""; });
+    ["matchDate", "date", "kickoff", "startAt", "time"].forEach(key => { match[key] = ""; });
+    ["footballDataId", "footballDataStatus", "footballDataUtcDate", "status", "apiStatus"].forEach(key => { match[key] = ""; });
+    match.updatedAt = new Date().toISOString();
+
+    try { clearInvalidDownstreamKnockoutResults?.(match); } catch {}
+    try { propagateKnockoutWinners?.(false); } catch {}
+
+    try { markSettingsPending?.(); } catch {}
+    try { addSystemLog?.("Registo Fase Final limpo", `${label}: ${teams}`, { matchId, before, removedBetIds }, { sync: true }); } catch {}
+    try { saveLocalData?.("limpar registo fase final v265"); } catch {}
+
+    try { renderKnockout?.(); } catch {}
+    try { renderKnockoutAdmin?.(); } catch {}
+    try { renderCalendar?.(); } catch {}
+
+    try {
+      const saved = await awaitMaybeV265(saveSettingsFastToFirebase?.("limpar registo fase final v265"));
+      if (!saved) scheduleFullSync?.("limpar registo fase final v265", 350);
+    } catch (error) {
+      console.warn("v265: falhou guardar limpeza da Fase Final", error);
+      try { scheduleFullSync?.("limpar registo fase final v265", 600); } catch {}
+    }
+
+    toast?.("Registo do jogo limpo.");
+    return true;
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = button.dataset.originalText || "Limpar registo";
+    }
+  }
+}
+
+function awaitMaybeV265(value) {
+  if (value && typeof value.then === "function") return value;
+  return Promise.resolve(value);
+}
+
+try {
+  const koV260RenderMatchCardOriginalV265 = typeof koV260RenderMatchCard === "function" ? koV260RenderMatchCard : null;
+  if (koV260RenderMatchCardOriginalV265 && !koV260RenderMatchCardOriginalV265.__clearRecordV265) {
+    koV260RenderMatchCard = function koV260RenderMatchCardWithClearV265(match) {
+      let html = koV260RenderMatchCardOriginalV265.apply(this, arguments);
+      if (!canEditKnockoutInline?.()) return html;
+      const clearButton = `<button class="danger small ko-clear-record-btn-v265" type="button" data-ko-clear-record-v265="${escapeHtml(String(match?.id || ""))}">Limpar registo</button>`;
+      if (html.includes('data-ko-clear-record-v265=')) return html;
+      if (html.includes('</div>`')) return html;
+      html = html.replace(/(<button class="secondary small ko-record-open-btn-v244"[^>]*>Editar jogo<\/button>)/, `$1${clearButton}`);
+      return html;
+    };
+    koV260RenderMatchCard.__clearRecordV265 = true;
+    try { renderKnockout = koV260RenderKnockoutList; window.renderKnockout = renderKnockout; } catch {}
+  }
+} catch (error) {
+  console.warn("v265: falhou preparar botão Limpar registo", error);
+}
+
+document.addEventListener("click", event => {
+  const button = event.target.closest?.("[data-ko-clear-record-v265]");
+  if (!button) return;
+  event.preventDefault();
+  event.stopPropagation();
+  clearKnockoutMatchRecordV265(button.dataset.koClearRecordV265, button);
+}, true);
+
+window.clearKnockoutMatchRecordV265 = clearKnockoutMatchRecordV265;
+
+setTimeout(() => {
+  try { if (document.querySelector(".tab-panel.active")?.id === "knockoutTab") renderKnockout?.(); } catch {}
+}, 900);
