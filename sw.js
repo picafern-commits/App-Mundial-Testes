@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v315-avisos-como-v302";
+const CACHE_NAME = "mundial-pontos-2026-v316-admin-abas-limpo-sem-flash";
 const APP_VERSION_SW_V298_USER_NOTIFICATIONS = "298.0";
 let userNotificationsEnabledSwV298 = true;
 

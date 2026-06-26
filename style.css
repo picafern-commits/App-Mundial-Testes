@@ -16878,3 +16878,55 @@ body.mandatory-notice-open-v295{
 #cleanNoticeAdminV314{
   display:none!important;
 }
+
+
+/* v316 — Admin sem flash: só details nativos iguais */
+#adminNoticeCardV316,
+#adminOwnerBetsCardV316{
+  margin:0!important;
+  opacity:1!important;
+  transform:none!important;
+  animation:none!important;
+  transition:none!important;
+}
+
+#adminNoticeCardV316 > summary,
+#adminOwnerBetsCardV316 > summary{
+  cursor:pointer!important;
+}
+
+#adminNoticeCardV316 .admin-v316-body,
+#adminOwnerBetsCardV316 .admin-v316-body{
+  margin-top:12px!important;
+}
+
+#adminNoticeCardV316 .admin-v316-inner,
+#adminOwnerBetsCardV316 .admin-v316-inner{
+  margin-left:0!important;
+  margin-right:0!important;
+}
+
+/* Enterra de vez restos das versões bugadas */
+#mandatoryNoticeCollapseV306,
+#ownerBetManagerPanelV310,
+#mandatoryNoticeNativeV313,
+#ownerBetManagerNativeV313,
+#cleanNoticeAdminV314,
+#cleanOwnerBetsAdminV314,
+.admin-custom-accordion-v312,
+.admin-collapse-normal-v311,
+.native-admin-details-v313,
+.clean-admin-card-v314,
+.notice-restored-v302-v315{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+
+/* Não aplicar cores especiais antigas às novas abas */
+#adminNoticeCardV316,
+#adminOwnerBetsCardV316{
+  border-color:rgba(59,130,246,.26)!important;
+  background:rgba(15,23,42,.72)!important;
+  box-shadow:none!important;
+}
