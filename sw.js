@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v308-lapis-direto-modal-ff";
+const CACHE_NAME = "mundial-pontos-2026-v309-calendario-marcador-live";
 const APP_VERSION_SW_V298_USER_NOTIFICATIONS = "298.0";
 let userNotificationsEnabledSwV298 = true;
 

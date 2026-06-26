@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v308";
+const APP_VERSION_LABEL = "v309";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -24034,5 +24034,189 @@ window.debugLapisDiretoV308 = function debugLapisDiretoV308(gameId = "") {
     ownerUnlockDebug: (() => {
       try { return debugDonoApostasEliminatoriasV306?.(); } catch { return null; }
     })()
+  };
+};
+
+
+/* v309 — Calendário mostra marcador live dos golos sem esperar pelo resultado final */
+const APP_VERSION_V309_CALENDAR_LIVE_SCORE = "309.0";
+
+function numberFromScoreKeysV309(source = {}, keys = []) {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (value === null || value === undefined || value === "") continue;
+    const number = Number(value);
+    if (Number.isFinite(number)) return number;
+  }
+  return null;
+}
+
+function finalScorePairV309(game = {}) {
+  const home = numberFromScoreKeysV309(game, ["homeScore", "homeResult", "resultHome", "finalHomeScore"]);
+  const away = numberFromScoreKeysV309(game, ["awayScore", "awayResult", "resultAway", "finalAwayScore"]);
+  if (home === null || away === null) return null;
+  return { home, away, final: true };
+}
+
+function liveScorePairV309(game = {}) {
+  const home = numberFromScoreKeysV309(game, [
+    "liveHomeScore",
+    "currentHomeScore",
+    "homeLiveScore",
+    "scoreHomeLive",
+    "goalsHomeLive",
+    "scoreHome",
+    "goalsHome"
+  ]);
+  const away = numberFromScoreKeysV309(game, [
+    "liveAwayScore",
+    "currentAwayScore",
+    "awayLiveScore",
+    "scoreAwayLive",
+    "goalsAwayLive",
+    "scoreAway",
+    "goalsAway"
+  ]);
+  if (home === null || away === null) return null;
+  return { home, away, final: false };
+}
+
+function visibleScorePairV309(game = {}) {
+  const finalScore = finalScorePairV309(game);
+  if (finalScore) return finalScore;
+  return liveScorePairV309(game);
+}
+
+function visibleScoreTextV309(game = {}) {
+  const score = visibleScorePairV309(game);
+  return score ? `${score.home}-${score.away}` : "";
+}
+
+function gameHasLiveScoreOnlyV309(game = {}) {
+  return !finalScorePairV309(game) && Boolean(liveScorePairV309(game));
+}
+
+function isFinishedStatusV309(game = {}) {
+  const status = String(game?.footballDataStatus || game?.statusApi || game?.status || "").toUpperCase();
+  return ["FINISHED", "AWARDED"].includes(status);
+}
+
+(function installCalendarLiveScoreV309() {
+  if (window.__calendarLiveScoreV309) return;
+  window.__calendarLiveScoreV309 = true;
+
+  const originalStatusOf = typeof statusOf === "function" ? statusOf : null;
+  if (originalStatusOf && !originalStatusOf.__liveScoreV309) {
+    statusOf = function statusOfLiveScoreV309(game) {
+      const original = originalStatusOf.apply(this, arguments);
+      if (gameHasLiveScoreOnlyV309(game) && !isFinishedStatusV309(game)) {
+        return { text: "A Decorrer", className: "live" };
+      }
+      return original;
+    };
+    statusOf.__liveScoreV309 = true;
+    window.statusOf = statusOf;
+  }
+
+  const originalRenderMatchRow = typeof renderMatchRow === "function" ? renderMatchRow : null;
+  if (originalRenderMatchRow && !originalRenderMatchRow.__liveScoreV309) {
+    renderMatchRow = function renderMatchRowLiveScoreV309(game) {
+      let html = originalRenderMatchRow.apply(this, arguments);
+      const scoreText = visibleScoreTextV309(game);
+      if (!scoreText) return html;
+
+      const liveOnly = gameHasLiveScoreOnlyV309(game);
+      const scoreClass = liveOnly ? "score-vs live-score-v309" : "score-vs";
+
+      // Substitui o VS por marcador live/final, sem mexer no cálculo de pontos.
+      html = html.replace(
+        /<div class="score-vs">(?:VS|Vs|vs)<\/div>/,
+        `<div class="${scoreClass}">${escapeHtml(scoreText)}</div>`
+      );
+
+      // Se o score veio apenas live, reforça a linha como live e melhora a nota.
+      if (liveOnly) {
+        html = html.replace(/<article class="match-row ([^"]*)"/, (match, classes) => {
+          const clean = String(classes || "").replace(/\bopen\b/g, "").replace(/\bplayed\b/g, "").trim();
+          return `<article class="match-row ${clean} live live-score-row-v309"`;
+        });
+
+        html = html.replace(/<div class="state [^"]*">[^<]*<\/div>/, `<div class="state live">A Decorrer</div>`);
+
+        if (html.includes("apostas importadas")) {
+          html = html.replace(/(<div class="bet-note[^"]*">)([^<]*)/, `$1${escapeHtml(scoreText)} ao vivo · $2`);
+        }
+      }
+
+      return html;
+    };
+    renderMatchRow.__liveScoreV309 = true;
+    window.renderMatchRow = renderMatchRow;
+  }
+
+  const originalShowGameBets = typeof showGameBets === "function" ? showGameBets : null;
+  if (originalShowGameBets && !originalShowGameBets.__liveScoreV309) {
+    showGameBets = function showGameBetsLiveScoreV309(gameId) {
+      const result = originalShowGameBets.apply(this, arguments);
+      try {
+        const game = (games || []).find(item => String(item.id || "") === String(gameId || ""));
+        const scoreText = visibleScoreTextV309(game);
+        if (game && scoreText && gameHasLiveScoreOnlyV309(game)) {
+          const summary = document.getElementById("betsGameSummary");
+          const first = summary?.querySelector(".bets-summary-card.main strong");
+          if (first && /Por colocar|VS|Vs|vs/i.test(first.textContent || "")) {
+            first.textContent = `${scoreText} ao vivo`;
+          }
+        }
+      } catch {}
+      return result;
+    };
+    showGameBets.__liveScoreV309 = true;
+    window.showGameBets = showGameBets;
+  }
+
+  const originalQueueRealtimeRender = typeof queueRealtimeRender === "function" ? queueRealtimeRender : null;
+  if (originalQueueRealtimeRender && !originalQueueRealtimeRender.__liveScoreV309) {
+    queueRealtimeRender = function queueRealtimeRenderLiveScoreV309(reason = "firebase realtime") {
+      const isGameRealtime = String(reason || "").includes("jogos");
+      if (isGameRealtime && document.querySelector(".tab-panel.active")?.id === "calendarTab") {
+        // Para golos, não esperar 1.2s. Atualiza o Calendário quase logo.
+        if (realtimeRenderTimer) clearTimeout(realtimeRenderTimer);
+        realtimeRenderTimer = setTimeout(() => {
+          realtimeRenderTimer = null;
+          ensureKnockoutSettings?.();
+          saveLocalData?.(reason);
+          renderCalendar?.();
+          renderCalendarFilterState?.();
+        }, 120);
+        return;
+      }
+      return originalQueueRealtimeRender.apply(this, arguments);
+    };
+    queueRealtimeRender.__liveScoreV309 = true;
+    window.queueRealtimeRender = queueRealtimeRender;
+  }
+})();
+
+window.debugMarcadorLiveV309 = function debugMarcadorLiveV309() {
+  return {
+    version: APP_VERSION_V309_CALENDAR_LIVE_SCORE,
+    calendarActive: document.querySelector(".tab-panel.active")?.id === "calendarTab",
+    visibleGames: [...document.querySelectorAll("#gamesList .match-row")].slice(0, 20).map(row => ({
+      teams: row.textContent?.replace(/\s+/g, " ").trim().slice(0, 120),
+      score: row.querySelector(".score-vs")?.textContent?.trim() || "",
+      state: row.querySelector(".state")?.textContent?.trim() || "",
+      classes: row.className
+    })),
+    liveData: (games || []).filter(game => visibleScorePairV309(game)).map(game => ({
+      id: game.id,
+      label: `${game.homeTeam} - ${game.awayTeam}`,
+      status: game.footballDataStatus || game.statusApi || game.status || "",
+      homeScore: game.homeScore ?? null,
+      awayScore: game.awayScore ?? null,
+      liveHomeScore: game.liveHomeScore ?? null,
+      liveAwayScore: game.liveAwayScore ?? null,
+      visible: visibleScoreTextV309(game)
+    })).slice(0, 30)
   };
 };
