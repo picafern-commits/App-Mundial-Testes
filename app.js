@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v277";
+const APP_VERSION_LABEL = "v278";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -19236,6 +19236,19 @@ window.debugCalendarioMobileV277 = function debugCalendarioMobileV277() {
     width: window.innerWidth,
     activeTab: document.querySelector(".tab-panel.active")?.id || "",
     calendarCards: document.querySelectorAll(".game-card,.match-card,.calendar-game-card").length,
+    mobile: window.matchMedia("(max-width: 760px)").matches
+  };
+};
+
+
+/* v278 — Fase Final mobile clean */
+const APP_VERSION_V278 = "278.0";
+window.debugFaseFinalMobileV278 = function debugFaseFinalMobileV278() {
+  return {
+    version: APP_VERSION_V278,
+    width: window.innerWidth,
+    activeTab: document.querySelector(".tab-panel.active")?.id || "",
+    knockoutCards: document.querySelectorAll("#knockoutTab .ko-mobile-card, #knockoutTab .knockout-list-card, #knockoutTab .knockout-match").length,
     mobile: window.matchMedia("(max-width: 760px)").matches
   };
 };
