@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v309";
+const APP_VERSION_LABEL = "v303";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -17149,79 +17149,18 @@ if (showGameBetsOriginalV259 && !showGameBetsOriginalV259.__koCalendarV259) {
     const summary = $("betsGameSummary");
     const body = $("betsModalBody");
     if (!modal || !title || !subtitle || !summary || !body) return showGameBetsOriginalV259.apply(this, arguments);
-
-    const rows = betsForGame(game.id).sort((a, b) =>
-      pointsForKnockoutBet(b, match) - pointsForKnockoutBet(a, match) ||
-      String(a.playerName || "").localeCompare(String(b.playerName || ""), "pt")
-    );
-
-    const resultReady = knockoutMatchHasResult(match);
-    const exactCount = rows.filter(bet => typeof isExactKnockoutBet === "function" && isExactKnockoutBet(bet, match)).length;
-    const winnerCount = rows.filter(bet => !(typeof isExactKnockoutBet === "function" && isExactKnockoutBet(bet, match)) && typeof isWinnerKnockoutBet === "function" && isWinnerKnockoutBet(bet, match)).length;
-    const qualifiedCount = rows.filter(bet => typeof koV267QualifiedCorrectOnDraw === "function" && koV267QualifiedCorrectOnDraw(bet, match)).length;
-    const totalPoints = rows.reduce((sum, bet) => sum + pointsForKnockoutBet(bet, match), 0);
-    const qualified = match.qualifiedTeam || match.qualified || match.winner || game.qualified || game.qualifiedTeam || "";
-
-    title.textContent = `${game.homeTeam} - ${game.awayTeam}`;
-    subtitle.textContent = `${game.group || match.roundLabel || "Fase Final"} · ${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}`;
-
-    summary.innerHTML = `
-      <div class="bets-summary-card main">
-        <span>Resultado</span>
-        <strong>${resultReady ? `${match.homeScore}-${match.awayScore}` : "Por colocar"}</strong>
-      </div>
-      <div class="bets-summary-card">
-        <span>Apostas</span>
-        <strong>${rows.length}</strong>
-      </div>
-      <div class="bets-summary-card">
-        <span>Exatos</span>
-        <strong>${resultReady ? exactCount : "-"}</strong>
-      </div>
-      <div class="bets-summary-card">
-        <span>Vitória/empate</span>
-        <strong>${resultReady ? winnerCount : "-"}</strong>
-      </div>
-      <div class="bets-summary-card">
-        <span>Qualificada</span>
-        <strong>${resultReady ? qualifiedCount : (qualified ? escapeHtml(qualified) : "-")}</strong>
-      </div>
-      <div class="bets-summary-card">
-        <span>Pontos</span>
-        <strong>${resultReady ? totalPoints : "-"}</strong>
-      </div>
-    `;
-
-    if (!rows.length) {
-      body.innerHTML = `<div class="empty">Ainda não existem apostas importadas para este jogo.</div>`;
-    } else {
-      body.innerHTML = `
-        <div class="bets-list-head">
-          <span>Jogador</span>
-          <span>Aposta</span>
-          <span>Tipo</span>
-          <span>Pontos</span>
-        </div>
-        <div class="bets-list">
-          ${rows.map((bet, index) => {
-            const points = pointsForKnockoutBet(bet, match);
-            const typeLabel = resultReady ? knockoutBetResultLabel(bet, match) : "Por jogar";
-            const typeClass = resultReady ? knockoutBetResultClass(bet, match) : "miss";
-            return `
-              <article class="bet-user-row ${typeClass}">
-                <div class="bet-user-main" data-label="Jogador">
-                  <span class="bet-position">${index + 1}</span>
-                  <strong title="${escapeHtml(bet.playerName || bet.playerId || "Jogador")}">${escapeHtml(bet.playerName || bet.playerId || "Jogador")}</strong>
-                </div>
-                <div class="bet-score-pill" data-label="Aposta">${escapeHtml(knockoutBetDisplay(bet))}</div>
-                <div class="bet-type-pill" data-label="Tipo">${escapeHtml(typeLabel)}</div>
-                <b data-label="Pontos">${resultReady ? points : "-"}</b>
-              </article>
-            `;
-          }).join("")}
-        </div>`;
+    const rows = betsForGame(game.id).sort((a, b) => String(a.playerName || "").localeCompare(String(b.playerName || ""), "pt"));
+    title.textContent = "Apostas da Fase Final";
+    subtitle.textContent = `${game.homeTeam} vs ${game.awayTeam} · ${game.group || "Fase Final"}`;
+    summary.innerHTML = `<div class="bets-summary-card main"><strong>${escapeHtml(game.homeTeam)} ${hasFinalResult(game) ? `${game.homeScore}-${game.awayScore}` : "vs"} ${escapeHtml(game.awayTeam)}</strong><span>${escapeHtml(dateHeader(game.matchDate))} · ${escapeHtml(timePortugal(game.matchDate))}${game.qualified || game.qualifiedTeam ? ` · Qualificada: ${escapeHtml(game.qualified || game.qualifiedTeam)}` : ""}</span></div>`;
+    if (!rows.length) body.innerHTML = `<div class="empty">Ainda não existem apostas para este jogo.</div>`;
+    else {
+      body.innerHTML = `<div class="bets-list">${rows.map(bet => {
+        const points = knockoutMatchHasResult(match) ? pointsForKnockoutBet(bet, match) : "-";
+        const label = knockoutMatchHasResult(match) ? knockoutBetResultLabel(bet, match) : "Por jogar";
+        return `<article class="bet-row"><strong>${escapeHtml(bet.playerName || bet.playerId || "Jogador")}</strong><div class="bet-score-pill">${escapeHtml(knockoutBetDisplay(bet))}</div><div class="bet-type-pill">${escapeHtml(label)}</div><b>${points}</b></article>`;
+      }).join("")}</div>`;
     }
-
     modal.classList.remove("hidden");
   };
   showGameBets.__koCalendarV259 = true;
@@ -19718,7 +19657,7 @@ function koV284EnsureModal() {
     <div class="modal-card ko-bet-hub-card-v284">
       <div class="modal-head ko-bet-hub-head-v284">
         <div>
-          <h2>⚽ Apostas Eliminatórias</h2>
+          <h2>⚽ Apostas Fase Final</h2>
           <p>Resultado aos 90 minutos + equipa que se qualifica.</p>
         </div>
         <button id="closeKnockoutBetHubV284" class="icon-button" type="button" aria-label="Fechar">×</button>
@@ -19914,7 +19853,7 @@ function koV284EntryButtonHtml() {
   const player = koV284Player();
   if (!player) return "";
   const counts = koV284Counts();
-  const label = counts.pending ? `Apostas Eliminatórias · ${counts.pending}` : counts.missed ? `Apostas Eliminatórias · ${counts.missed} a 0` : "Apostas Eliminatórias";
+  const label = counts.pending ? `Apostas FF · ${counts.pending}` : counts.missed ? `Apostas FF · ${counts.missed} a 0` : "Apostas FF";
   const tone = counts.pending ? "pending" : counts.missed ? "missed" : "ok";
   return `<button class="ko-bet-entry-btn-v284 ${tone}" type="button" data-open-ko-bet-hub-v284>⚽ ${escapeHtml(label)}</button>`;
 }
@@ -20347,7 +20286,7 @@ window.debugFaseFinalFiltroV286 = function debugFaseFinalFiltroV286() {
 };
 
 
-/* v287 — limpar banner Apostas Eliminatórias no Calendário e alinhar botão Fase Final */
+/* v287 — limpar banner Apostas FF no Calendário e alinhar botão Fase Final */
 const APP_VERSION_V287_UI_FILTER_CLEAN = "287.0";
 
 (function installApostasFFCleanV287() {
@@ -20628,7 +20567,7 @@ window.debugUsersOnlineJogadorV290 = function debugUsersOnlineJogadorV290() {
 };
 
 
-/* v291 — Apostas Eliminatórias no mobile em página fixa */
+/* v291 — Apostas Fase Final no mobile em página fixa */
 const APP_VERSION_V291_BETS_MOBILE_PAGE = "291.0";
 
 function koV291IsMobile() {
@@ -20657,7 +20596,7 @@ function koV291ApplyBetHubMode() {
         const title = modal?.querySelector(".ko-bet-hub-head-v284 h2");
         if (title && !title.dataset.v291) {
           title.dataset.v291 = "1";
-          title.textContent = "Apostas Eliminatórias";
+          title.textContent = "Apostas Fase Final";
         }
         const closeBtn = modal?.querySelector("#closeKnockoutBetHubV284");
         if (closeBtn) closeBtn.textContent = koV291IsMobile() ? "Voltar" : "×";
@@ -20749,7 +20688,7 @@ window.debugApostasFFMobilePageV291 = function debugApostasFFMobilePageV291() {
 };
 
 
-/* v292 — corrigir cards da página mobile Apostas Eliminatórias */
+/* v292 — corrigir cards da página mobile Apostas Fase Final */
 const APP_VERSION_V292_BETS_MOBILE_CARDS_FIX = "292.0";
 
 (function installBetHubMobileCardsFixV292() {
@@ -22802,929 +22741,261 @@ window.debugCalendarioEstavelV302 = function debugCalendarioEstavelV302() {
 };
 
 
-/* v303 — Admin limpo: Resumo e Resultados passam para Configurações só do Dono */
-const APP_VERSION_V303_ADMIN_CLEAN_OWNER_CONFIG = "303.0";
+/* v303 — Corrige users com nome/jogador atribuído a aparecer como "Jogador por ligar" */
+const APP_VERSION_V303_USER_PLAYER_LINK_FIX = "303.0";
 
-function ownerCanSeeMovedAdminBlocksV303() {
-  try {
-    const role = normalizeRole(currentProfile?.role || "");
-    return role === "owner" || Boolean(isOwnerProfileV264?.());
-  } catch {
-    return Boolean(isOwner);
-  }
+function normalizePlayerCompareV303(value = "") {
+  try { return normalizeComparable(value); } catch {}
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s.-]/g, "")
+    .replace(/\s+/g, " ");
 }
 
-function ownerSettingsHostV303() {
-  try { ensureSettingsSectionsV213?.(); } catch {}
-  const settingsTab = document.getElementById("settingsTab");
-  if (!settingsTab) return null;
+function playerObjectV303(player, fallbackProfile = null) {
+  if (!player) return null;
+  const name = String(player.name || player.playerName || player.linkedPlayerName || player.nome || fallbackProfile?.linkedPlayerName || fallbackProfile?.name || "").trim();
+  const id = String(player.id || player.playerId || player.linkedPlayerId || (name ? playerIdFromName(name) : "")).trim();
+  if (!id || !name) return null;
 
-  const content =
-    document.querySelector("#settingsSectionV213_admin .settings-section-content-v213") ||
-    document.querySelector("#settingsSectionV213_system .settings-section-content-v213") ||
-    settingsTab;
-
-  let host = document.getElementById("ownerAdminMovedBlocksV303");
-  if (!host && content) {
-    host = document.createElement("section");
-    host.id = "ownerAdminMovedBlocksV303";
-    host.className = "owner-admin-moved-v303";
-    host.innerHTML = `
-      <div class="owner-admin-moved-head-v303">
-        <div>
-          <strong>Área do Dono</strong>
-          <span>Resumo e Resultados foram movidos do Admin para aqui.</span>
-        </div>
-      </div>
-      <div id="ownerAdminOverviewSlotV303" class="owner-admin-slot-v303"></div>
-      <div id="ownerAdminResultsSlotV303" class="owner-admin-slot-v303"></div>
-    `;
-    content.prepend(host);
-  }
-  return host;
-}
-
-function ownerHiddenHostV303() {
-  let host = document.getElementById("ownerAdminHiddenBlocksV303");
-  if (!host) {
-    host = document.createElement("div");
-    host.id = "ownerAdminHiddenBlocksV303";
-    host.hidden = true;
-    host.style.display = "none";
-    document.body.appendChild(host);
-  }
-  return host;
-}
-
-function moveAdminOverviewToOwnerSettingsV303() {
-  const overview = document.getElementById("adminOverviewV162");
-  if (!overview) return;
-
-  if (!ownerCanSeeMovedAdminBlocksV303()) {
-    const hidden = ownerHiddenHostV303();
-    hidden.appendChild(overview);
-    overview.hidden = true;
-    overview.style.display = "none";
-    return;
-  }
-
-  const host = ownerSettingsHostV303();
-  const slot = document.getElementById("ownerAdminOverviewSlotV303");
-  if (!host || !slot) return;
-
-  slot.appendChild(overview);
-  overview.hidden = false;
-  overview.style.display = "";
-  overview.classList.add("owner-admin-overview-v303");
-}
-
-function moveResultCardsToOwnerSettingsV303() {
-  const hidden = ownerHiddenHostV303();
-  const host = ownerSettingsHostV303();
-  const slot = document.getElementById("ownerAdminResultsSlotV303");
-  const canOwnerSee = ownerCanSeeMovedAdminBlocksV303();
-
-  let cards = [];
-  try {
-    cards = typeof adminCardsV214 === "function" ? adminCardsV214() : Array.from(document.querySelectorAll(".admin-card"));
-  } catch {
-    cards = Array.from(document.querySelectorAll(".admin-card"));
-  }
-
-  cards.forEach(card => {
-    const section = (() => {
-      try { return adminSectionForCardV187?.(card) || ""; } catch { return ""; }
-    })();
-
-    if (section !== "results") return;
-
-    card.dataset.adminSectionV187 = "results";
-    card.classList.add("owner-results-card-v303");
-
-    if (!canOwnerSee) {
-      hidden.appendChild(card);
-      card.hidden = true;
-      card.style.display = "none";
-      return;
-    }
-
-    if (slot) {
-      slot.appendChild(card);
-      card.hidden = false;
-      card.style.display = "";
-      card.classList.remove("admin-section-hidden-v187", "admin-section-force-hidden-v202");
-      if (card.tagName?.toLowerCase() === "details") card.open = false;
-    }
-  });
-
-  if (host) {
-    host.hidden = !canOwnerSee;
-    host.style.display = canOwnerSee ? "" : "none";
-  }
-}
-
-function removeResultsTabFromAdminV303() {
-  document.querySelectorAll('#adminSectionTabsV187 [data-admin-section-v187="results"]').forEach(btn => {
-    btn.remove();
-  });
-
-  const active = localStorage.getItem(`${STORAGE_KEY}_admin_section_v187`);
-  if (active === "results" || active === "all") {
-    localStorage.setItem(`${STORAGE_KEY}_admin_section_v187`, "users");
-  }
-}
-
-function applyAdminCleanOwnerConfigV303() {
-  removeResultsTabFromAdminV303();
-  moveAdminOverviewToOwnerSettingsV303();
-  moveResultCardsToOwnerSettingsV303();
-
-  const overviewInAdmin = document.querySelector("#adminUnlocked > #adminOverviewV162");
-  if (overviewInAdmin) moveAdminOverviewToOwnerSettingsV303();
-
-  // Garante que o Admin fica limpo.
-  document.querySelectorAll("#adminUnlocked > .admin-card").forEach(card => {
-    try {
-      if (adminSectionForCardV187?.(card) === "results") moveResultCardsToOwnerSettingsV303();
-    } catch {}
-  });
-
-  try { updateSettingsSectionCountsV213?.(); } catch {}
-}
-
-(function installAdminCleanOwnerConfigV303() {
-  if (window.__adminCleanOwnerConfigV303) return;
-  window.__adminCleanOwnerConfigV303 = true;
-
-  const originalEnsureTabsV190 = typeof ensureAdminSectionTabsV190 === "function" ? ensureAdminSectionTabsV190 : null;
-  if (originalEnsureTabsV190 && !originalEnsureTabsV190.__v303) {
-    ensureAdminSectionTabsV190 = function ensureAdminSectionTabsCleanV303() {
-      const tabs = originalEnsureTabsV190.apply(this, arguments);
-      removeResultsTabFromAdminV303();
-      return tabs;
-    };
-    ensureAdminSectionTabsV190.__v303 = true;
-    window.ensureAdminSectionTabsV190 = ensureAdminSectionTabsV190;
-  }
-
-  const originalEnsureTabsV187 = typeof ensureAdminSectionTabsV187 === "function" ? ensureAdminSectionTabsV187 : null;
-  if (originalEnsureTabsV187 && !originalEnsureTabsV187.__v303) {
-    ensureAdminSectionTabsV187 = function ensureAdminSectionTabsCleanV303() {
-      const tabs = originalEnsureTabsV187.apply(this, arguments);
-      removeResultsTabFromAdminV303();
-      return tabs;
-    };
-    ensureAdminSectionTabsV187.__v303 = true;
-    window.ensureAdminSectionTabsV187 = ensureAdminSectionTabsV187;
-  }
-
-  const originalRoute = typeof routeAdminCardsV214 === "function" ? routeAdminCardsV214 : null;
-  if (originalRoute && !originalRoute.__v303) {
-    routeAdminCardsV214 = function routeAdminCardsCleanOwnerV303(settings = savedAdminLayoutSettingsV213?.()) {
-      const safeSettings = settings || {};
-      safeSettings.adminSections = { ...(safeSettings.adminSections || {}), results: "hidden" };
-      const result = originalRoute.call(this, safeSettings);
-      try { result?.delete?.("results"); } catch {}
-      setTimeout(applyAdminCleanOwnerConfigV303, 0);
-      return result;
-    };
-    routeAdminCardsV214.__v303 = true;
-    window.routeAdminCardsV214 = routeAdminCardsV214;
-  }
-
-  const originalApplyLayout = typeof applyAdminLayoutSettingsV213 === "function" ? applyAdminLayoutSettingsV213 : null;
-  if (originalApplyLayout && !originalApplyLayout.__v303) {
-    applyAdminLayoutSettingsV213 = function applyAdminLayoutSettingsCleanV303() {
-      const result = originalApplyLayout.apply(this, arguments);
-      applyAdminCleanOwnerConfigV303();
-      return result;
-    };
-    applyAdminLayoutSettingsV213.__v303 = true;
-    window.applyAdminLayoutSettingsV213 = applyAdminLayoutSettingsV213;
-  }
-
-  const originalSettingsLayout = typeof applySettingsLayoutV213 === "function" ? applySettingsLayoutV213 : null;
-  if (originalSettingsLayout && !originalSettingsLayout.__v303) {
-    applySettingsLayoutV213 = function applySettingsLayoutCleanV303() {
-      const result = originalSettingsLayout.apply(this, arguments);
-      applyAdminCleanOwnerConfigV303();
-      return result;
-    };
-    applySettingsLayoutV213.__v303 = true;
-    window.applySettingsLayoutV213 = applySettingsLayoutV213;
-  }
-
-  const originalRenderAdminOverview = typeof renderAdminOverviewV162 === "function" ? renderAdminOverviewV162 : null;
-  if (originalRenderAdminOverview && !originalRenderAdminOverview.__v303) {
-    renderAdminOverviewV162 = function renderAdminOverviewOwnerSettingsV303() {
-      if (!ownerCanSeeMovedAdminBlocksV303()) {
-        moveAdminOverviewToOwnerSettingsV303();
-        return;
-      }
-      const result = originalRenderAdminOverview.apply(this, arguments);
-      setTimeout(moveAdminOverviewToOwnerSettingsV303, 0);
-      return result;
-    };
-    renderAdminOverviewV162.__v303 = true;
-    window.renderAdminOverviewV162 = renderAdminOverviewV162;
-  }
-
-  const originalRenderActive = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
-  if (originalRenderActive && !originalRenderActive.__v303) {
-    renderActivePageV187 = function renderActivePageCleanAdminV303(tabId = document.querySelector(".tab-panel.active")?.id || "calendarTab") {
-      const result = originalRenderActive.apply(this, arguments);
-      setTimeout(applyAdminCleanOwnerConfigV303, 80);
-      setTimeout(applyAdminCleanOwnerConfigV303, 260);
-      return result;
-    };
-    renderActivePageV187.__v303 = true;
-    window.renderActivePageV187 = renderActivePageV187;
-  }
-
-  const originalRenderAll = typeof renderAll === "function" ? renderAll : null;
-  if (originalRenderAll && !originalRenderAll.__v303) {
-    renderAll = function renderAllCleanAdminV303() {
-      const result = originalRenderAll.apply(this, arguments);
-      setTimeout(applyAdminCleanOwnerConfigV303, 120);
-      setTimeout(applyAdminCleanOwnerConfigV303, 500);
-      return result;
-    };
-    renderAll.__v303 = true;
-    window.renderAll = renderAll;
-  }
-
-  document.addEventListener("click", event => {
-    if (event.target.closest?.('[data-tab="adminTab"],[data-tab="settingsTab"],[data-admin-section-v187]')) {
-      setTimeout(applyAdminCleanOwnerConfigV303, 120);
-      setTimeout(applyAdminCleanOwnerConfigV303, 400);
-    }
-  }, true);
-
-  setTimeout(applyAdminCleanOwnerConfigV303, 900);
-  setTimeout(applyAdminCleanOwnerConfigV303, 1800);
-})();
-
-window.debugAdminLimpoV303 = function debugAdminLimpoV303() {
   return {
-    version: APP_VERSION_V303_ADMIN_CLEAN_OWNER_CONFIG,
-    owner: ownerCanSeeMovedAdminBlocksV303(),
-    overviewParent: document.getElementById("adminOverviewV162")?.parentElement?.id || "",
-    resultsCards: [...document.querySelectorAll(".owner-results-card-v303")].map(card => ({
-      title: card.querySelector("h2,summary,strong")?.textContent?.trim() || card.textContent.trim().slice(0, 50),
-      parent: card.parentElement?.id || "",
-      hidden: card.hidden,
-      display: card.style.display
-    })),
-    adminTabs: [...document.querySelectorAll("#adminSectionTabsV187 [data-admin-section-v187]")].map(btn => btn.dataset.adminSectionV187)
+    ...player,
+    id,
+    playerId: id,
+    name,
+    playerName: name,
+    normalizedName: normalizePlayerCompareV303(name),
+    email: normalizeEmail(player.email || fallbackProfile?.email || ""),
+    linkedEmail: normalizeEmail(player.linkedEmail || player.email || fallbackProfile?.email || ""),
+    linkedUid: player.linkedUid || fallbackProfile?.uid || "",
+    active: player.active !== false
   };
-};
-
-
-/* v304 — Renomeia botão Apostas FF para Apostas Eliminatórias */
-const APP_VERSION_V304_APOSTAS_ELIMINATORIAS_LABEL = "304.0";
-
-function renameApostasFFButtonsV304() {
-  const selectors = [
-    "[data-open-ko-bet-hub-v284]",
-    "#openFaseFinalBetsV284",
-    "#calendarKoBetHubBtnV284",
-    "button",
-    "a"
-  ];
-
-  document.querySelectorAll(selectors.join(",")).forEach(el => {
-    const text = (el.textContent || "").trim();
-    if (!text) return;
-
-    if (text.includes("Apostas FF")) {
-      el.textContent = el.textContent.replace(/Apostas FF/g, "Apostas Eliminatórias");
-    }
-
-    if (text.includes("Apostas Fase Final")) {
-      el.textContent = el.textContent.replace(/Apostas Fase Final/g, "Apostas Eliminatórias");
-    }
-
-    const aria = el.getAttribute("aria-label") || "";
-    if (aria.includes("Apostas FF") || aria.includes("Apostas Fase Final")) {
-      el.setAttribute("aria-label", aria.replace(/Apostas FF/g, "Apostas Eliminatórias").replace(/Apostas Fase Final/g, "Apostas Eliminatórias"));
-    }
-
-    const title = el.getAttribute("title") || "";
-    if (title.includes("Apostas FF") || title.includes("Apostas Fase Final")) {
-      el.setAttribute("title", title.replace(/Apostas FF/g, "Apostas Eliminatórias").replace(/Apostas Fase Final/g, "Apostas Eliminatórias"));
-    }
-  });
 }
 
-(function installApostasEliminatoriasLabelV304() {
-  if (window.__apostasEliminatoriasLabelV304) return;
-  window.__apostasEliminatoriasLabelV304 = true;
+function playerCandidatesV303() {
+  const map = new Map();
 
-  const originalEntry = typeof koV284EntryButtonHtml === "function" ? koV284EntryButtonHtml : null;
-  if (originalEntry && !originalEntry.__v304) {
-    koV284EntryButtonHtml = function koV284EntryButtonHtmlLabelV304() {
-      return String(originalEntry.apply(this, arguments))
-        .replace(/Apostas FF/g, "Apostas Eliminatórias")
-        .replace(/Apostas Fase Final/g, "Apostas Eliminatórias");
-    };
-    koV284EntryButtonHtml.__v304 = true;
-    window.koV284EntryButtonHtml = koV284EntryButtonHtml;
+  function add(player, profile = null) {
+    const normalized = playerObjectV303(player, profile);
+    if (!normalized || normalized.active === false) return;
+    const existing = map.get(normalized.id) || {};
+    map.set(normalized.id, { ...existing, ...normalized });
   }
 
-  const originalRenderEntry = typeof koV284RenderEntryPoints === "function" ? koV284RenderEntryPoints : null;
-  if (originalRenderEntry && !originalRenderEntry.__v304) {
-    koV284RenderEntryPoints = function koV284RenderEntryPointsLabelV304() {
-      const result = originalRenderEntry.apply(this, arguments);
-      setTimeout(renameApostasFFButtonsV304, 0);
-      return result;
-    };
-    koV284RenderEntryPoints.__v304 = true;
-    window.koV284RenderEntryPoints = koV284RenderEntryPoints;
+  try { (playersCatalogV241?.() || []).forEach(add); } catch {}
+  try { (appSettings?.players || []).forEach(add); } catch {}
+  try { (appSettings?.users || []).forEach(name => add({ id: playerIdFromName(name), name })); } catch {}
+  try {
+    (bets || []).forEach(bet => {
+      const name = String(bet.playerName || "").trim();
+      if (name) add({ id: bet.playerId || playerIdFromName(name), name, playerName: name });
+    });
+  } catch {}
+  try { Object.keys(appSettings?.extraPredictions || {}).forEach(name => add({ id: playerIdFromName(name), name })); } catch {}
+  try { Object.keys(appSettings?.importedPoints || {}).forEach(name => add({ id: playerIdFromName(name), name })); } catch {}
+
+  return [...map.values()];
+}
+
+function permissionProfileForEmailV303(email = "") {
+  const normalized = normalizeEmail(email);
+  if (!normalized) return null;
+  try {
+    return (permissionsCache || []).find(profile => normalizeEmail(profile.email || profile.id || "") === normalized) || null;
+  } catch {
+    return null;
   }
+}
 
-  const originalRenderCalendar = typeof renderCalendar === "function" ? renderCalendar : null;
-  if (originalRenderCalendar && !originalRenderCalendar.__labelV304) {
-    renderCalendar = function renderCalendarApostasLabelV304() {
-      const result = originalRenderCalendar.apply(this, arguments);
-      setTimeout(renameApostasFFButtonsV304, 0);
-      return result;
-    };
-    renderCalendar.__labelV304 = true;
-    window.renderCalendar = renderCalendar;
-  }
+function resolveLinkedPlayerForProfileV303(profile = currentProfile) {
+  if (!profile) return null;
 
-  const originalRenderAll = typeof renderAll === "function" ? renderAll : null;
-  if (originalRenderAll && !originalRenderAll.__labelV304) {
-    renderAll = function renderAllApostasLabelV304() {
-      const result = originalRenderAll.apply(this, arguments);
-      setTimeout(renameApostasFFButtonsV304, 150);
-      return result;
-    };
-    renderAll.__labelV304 = true;
-    window.renderAll = renderAll;
-  }
+  const email = normalizeEmail(profile.email || profile.id || currentUser?.email || "");
+  const uid = String(profile.uid || currentUser?.uid || "").trim();
+  const permissionProfile = permissionProfileForEmailV303(email);
 
-  document.addEventListener("DOMContentLoaded", () => setTimeout(renameApostasFFButtonsV304, 500));
-  document.addEventListener("click", () => setTimeout(renameApostasFFButtonsV304, 80), true);
-  setTimeout(renameApostasFFButtonsV304, 900);
-})();
-
-window.debugApostasEliminatoriasLabelV304 = function debugApostasEliminatoriasLabelV304() {
-  return {
-    version: APP_VERSION_V304_APOSTAS_ELIMINATORIAS_LABEL,
-    matches: [...document.querySelectorAll("button,a")].filter(el => /Apostas/i.test(el.textContent || "")).map(el => el.textContent.trim())
+  const mergedProfile = {
+    ...(permissionProfile || {}),
+    ...(profile || {}),
+    email,
+    uid,
+    linkedPlayerId: profile.linkedPlayerId || permissionProfile?.linkedPlayerId || "",
+    linkedPlayerName: profile.linkedPlayerName || permissionProfile?.linkedPlayerName || ""
   };
-};
 
+  const players = playerCandidatesV303();
 
-/* v305 — Avisos obrigatórios ficam na página Admin */
-const APP_VERSION_V305_MANDATORY_NOTICE_IN_ADMIN = "305.0";
+  const directId = String(mergedProfile.linkedPlayerId || "").trim();
+  if (directId) {
+    const byId = players.find(player => String(player.id || player.playerId || "") === directId);
+    if (byId) return playerObjectV303(byId, mergedProfile);
 
-function mandatoryNoticeAdminHostV305() {
-  const adminUnlocked = document.getElementById("adminUnlocked");
-  if (!adminUnlocked) return null;
-  return adminUnlocked;
+    // Mesmo que o catálogo ainda não tenha este jogador, se o perfil tem nome atribuído, cria uma ligação válida.
+    if (mergedProfile.linkedPlayerName) {
+      return playerObjectV303({ id: directId, name: mergedProfile.linkedPlayerName }, mergedProfile);
+    }
+  }
+
+  const linkedName = String(mergedProfile.linkedPlayerName || "").trim();
+  if (linkedName) {
+    const linkedNameNorm = normalizePlayerCompareV303(linkedName);
+    const byLinkedName = players.find(player => normalizePlayerCompareV303(player.name || player.playerName) === linkedNameNorm);
+    if (byLinkedName) return playerObjectV303(byLinkedName, mergedProfile);
+
+    return playerObjectV303({ id: playerIdFromName(linkedName), name: linkedName }, mergedProfile);
+  }
+
+  if (uid) {
+    const byUid = players.find(player => String(player.linkedUid || "") === uid);
+    if (byUid) return playerObjectV303(byUid, mergedProfile);
+  }
+
+  if (email) {
+    const byEmail = players.find(player => normalizeEmail(player.linkedEmail || player.email || "") === email);
+    if (byEmail) return playerObjectV303(byEmail, mergedProfile);
+  }
+
+  // Muitos users antigos tinham apenas o "Nome visível" igual ao jogador.
+  const visibleName = String(mergedProfile.name || displayNameFromEmail(email) || "").trim();
+  if (visibleName) {
+    const visibleNorm = normalizePlayerCompareV303(visibleName);
+    const byExactName = players.find(player => normalizePlayerCompareV303(player.name || player.playerName) === visibleNorm);
+    if (byExactName) return playerObjectV303(byExactName, mergedProfile);
+  }
+
+  return null;
 }
 
-function moveMandatoryNoticePanelToAdminV305() {
-  if (typeof mandatoryNoticeCanManageV295 === "function" && !mandatoryNoticeCanManageV295()) return;
+function enrichProfileWithLinkedPlayerV303(profile, user = currentUser) {
+  if (!profile) return profile;
 
-  const host = mandatoryNoticeAdminHostV305();
-  const panel = document.getElementById("mandatoryNoticeAdminPanelV295");
-  if (!host || !panel) return;
+  const email = normalizeEmail(profile.email || user?.email || "");
+  const permissionProfile = permissionProfileForEmailV303(email);
 
-  panel.classList.add("mandatory-notice-admin-fixed-v305");
-  panel.classList.remove("admin-section-hidden-v187", "admin-section-force-hidden-v202");
-  panel.dataset.adminSectionV187 = "users";
-  panel.hidden = false;
-  panel.style.display = "";
+  const merged = {
+    ...(permissionProfile || {}),
+    ...(profile || {}),
+    uid: profile.uid || user?.uid || permissionProfile?.uid || "",
+    email,
+    name: String(profile.name || permissionProfile?.name || displayNameFromEmail(email) || "").trim(),
+    linkedPlayerId: profile.linkedPlayerId || permissionProfile?.linkedPlayerId || "",
+    linkedPlayerName: profile.linkedPlayerName || permissionProfile?.linkedPlayerName || ""
+  };
 
-  // Coloca logo depois das tabs do Admin, para ficar fácil de encontrar.
-  const tabs = document.getElementById("adminSectionTabsV187");
-  if (tabs && tabs.parentNode === host) {
-    if (tabs.nextSibling !== panel) host.insertBefore(panel, tabs.nextSibling);
-  } else {
-    const firstCard = host.querySelector(".admin-card");
-    if (firstCard && firstCard !== panel) host.insertBefore(panel, firstCard);
-    else if (panel.parentElement !== host) host.prepend(panel);
+  const player = resolveLinkedPlayerForProfileV303(merged);
+  if (player) {
+    merged.linkedPlayerId = player.id || player.playerId || merged.linkedPlayerId;
+    merged.linkedPlayerName = player.name || player.playerName || merged.linkedPlayerName;
+
+    // Não força o nome visível se o Admin definiu outro nome, mas garante que não fica vazio.
+    if (!String(merged.name || "").trim()) merged.name = merged.linkedPlayerName;
   }
+
+  return merged;
 }
 
-(function installMandatoryNoticeAdminPageV305() {
-  if (window.__mandatoryNoticeAdminPageV305) return;
-  window.__mandatoryNoticeAdminPageV305 = true;
+(function installUserPlayerLinkFixV303() {
+  if (window.__userPlayerLinkFixV303) return;
+  window.__userPlayerLinkFixV303 = true;
 
-  const originalRenderNoticePanel = typeof renderMandatoryNoticeAdminPanelV295 === "function" ? renderMandatoryNoticeAdminPanelV295 : null;
-  if (originalRenderNoticePanel && !originalRenderNoticePanel.__v305) {
-    renderMandatoryNoticeAdminPanelV295 = function renderMandatoryNoticeAdminPanelInAdminV305() {
-      const result = originalRenderNoticePanel.apply(this, arguments);
-      moveMandatoryNoticePanelToAdminV305();
-      setTimeout(moveMandatoryNoticePanelToAdminV305, 0);
-      setTimeout(moveMandatoryNoticePanelToAdminV305, 180);
-      return result;
+  const originalLinkedProfile = typeof linkedPlayerForProfileV241 === "function" ? linkedPlayerForProfileV241 : null;
+  if (originalLinkedProfile && !originalLinkedProfile.__v303) {
+    linkedPlayerForProfileV241 = function linkedPlayerForProfileFixedV303(profile = currentProfile) {
+      // Primeiro usa a lógica antiga. Se falhar, usa a nova mais tolerante.
+      const original = originalLinkedProfile.apply(this, arguments);
+      if (original) return original;
+      return resolveLinkedPlayerForProfileV303(profile);
     };
-    renderMandatoryNoticeAdminPanelV295.__v305 = true;
-    window.renderMandatoryNoticeAdminPanelV295 = renderMandatoryNoticeAdminPanelV295;
+    linkedPlayerForProfileV241.__v303 = true;
+    window.linkedPlayerForProfileV241 = linkedPlayerForProfileV241;
   }
 
-  const originalRouteCards = typeof routeAdminCardsV214 === "function" ? routeAdminCardsV214 : null;
-  if (originalRouteCards && !originalRouteCards.__noticeAdminV305) {
-    routeAdminCardsV214 = function routeAdminCardsKeepNoticeAdminV305() {
-      const result = originalRouteCards.apply(this, arguments);
-      moveMandatoryNoticePanelToAdminV305();
-      setTimeout(moveMandatoryNoticePanelToAdminV305, 0);
-      return result;
+  linkedPlayerForCurrentUserV241 = function linkedPlayerForCurrentUserFixedV303() {
+    return resolveLinkedPlayerForProfileV303(currentProfile);
+  };
+  window.linkedPlayerForCurrentUserV241 = linkedPlayerForCurrentUserV241;
+
+  const originalReadProfile = typeof readUserProfile === "function" ? readUserProfile : null;
+  if (originalReadProfile && !originalReadProfile.__v303) {
+    readUserProfile = async function readUserProfileLinkedFixedV303(user) {
+      const profile = await originalReadProfile.apply(this, arguments);
+      return enrichProfileWithLinkedPlayerV303(profile, user);
     };
-    routeAdminCardsV214.__noticeAdminV305 = true;
-    window.routeAdminCardsV214 = routeAdminCardsV214;
+    readUserProfile.__v303 = true;
+    window.readUserProfile = readUserProfile;
   }
 
-  const originalApplyLayout = typeof applyAdminLayoutSettingsV213 === "function" ? applyAdminLayoutSettingsV213 : null;
-  if (originalApplyLayout && !originalApplyLayout.__noticeAdminV305) {
-    applyAdminLayoutSettingsV213 = function applyAdminLayoutNoticeAdminV305() {
-      const result = originalApplyLayout.apply(this, arguments);
-      try { renderMandatoryNoticeAdminPanelV295?.(); } catch {}
-      moveMandatoryNoticePanelToAdminV305();
-      return result;
-    };
-    applyAdminLayoutSettingsV213.__noticeAdminV305 = true;
-    window.applyAdminLayoutSettingsV213 = applyAdminLayoutSettingsV213;
-  }
+  const originalUpdateSession = typeof updateSessionBox === "function" ? updateSessionBox : null;
+  if (originalUpdateSession && !originalUpdateSession.__v303) {
+    updateSessionBox = function updateSessionBoxLinkedFixedV303() {
+      if (currentProfile) currentProfile = enrichProfileWithLinkedPlayerV303(currentProfile, currentUser);
+      const result = originalUpdateSession.apply(this, arguments);
 
-  const originalRenderActive = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
-  if (originalRenderActive && !originalRenderActive.__noticeAdminV305) {
-    renderActivePageV187 = function renderActivePageNoticeAdminV305(tabId = document.querySelector(".tab-panel.active")?.id || "calendarTab") {
-      const result = originalRenderActive.apply(this, arguments);
-      if (tabId === "adminTab" || document.querySelector(".tab-panel.active")?.id === "adminTab") {
-        setTimeout(() => {
-          try { renderMandatoryNoticeAdminPanelV295?.(); } catch {}
-          moveMandatoryNoticePanelToAdminV305();
-        }, 120);
+      const label = document.getElementById("sessionUserLabel");
+      if (label && currentUser) {
+        const player = resolveLinkedPlayerForProfileV303(currentProfile);
+        const old = document.getElementById("sessionPlayerLinkV241");
+        if (old) {
+          old.className = `session-player-link-v241 ${player ? "linked" : "missing"}`;
+          old.textContent = player ? `Jogador: ${player.name}` : "Jogador por ligar";
+        }
       }
       return result;
     };
-    renderActivePageV187.__noticeAdminV305 = true;
-    window.renderActivePageV187 = renderActivePageV187;
+    updateSessionBox.__v303 = true;
+    window.updateSessionBox = updateSessionBox;
   }
 
   const originalRenderAll = typeof renderAll === "function" ? renderAll : null;
-  if (originalRenderAll && !originalRenderAll.__noticeAdminV305) {
-    renderAll = function renderAllNoticeAdminV305() {
+  if (originalRenderAll && !originalRenderAll.__userLinkV303) {
+    renderAll = function renderAllUserLinkFixedV303() {
+      if (currentProfile) currentProfile = enrichProfileWithLinkedPlayerV303(currentProfile, currentUser);
       const result = originalRenderAll.apply(this, arguments);
       setTimeout(() => {
-        try { renderMandatoryNoticeAdminPanelV295?.(); } catch {}
-        moveMandatoryNoticePanelToAdminV305();
-      }, 300);
+        try { updateSessionBox?.(); } catch {}
+        try { koV284RenderEntryPoints?.(); } catch {}
+      }, 80);
       return result;
     };
-    renderAll.__noticeAdminV305 = true;
+    renderAll.__userLinkV303 = true;
     window.renderAll = renderAll;
   }
 
-  document.addEventListener("click", event => {
-    if (event.target.closest?.('[data-tab="adminTab"],[data-admin-section-v187]')) {
-      setTimeout(() => {
-        try { renderMandatoryNoticeAdminPanelV295?.(); } catch {}
-        moveMandatoryNoticePanelToAdminV305();
-      }, 180);
-    }
-  }, true);
+  // Quando o Admin renderiza a lista, também recalcula os badges com a nova ligação.
+  const originalRenderPermissions = typeof renderPermissionsUsers === "function" ? renderPermissionsUsers : null;
+  if (originalRenderPermissions && !originalRenderPermissions.__userLinkV303) {
+    renderPermissionsUsers = function renderPermissionsUsersLinkFixedV303() {
+      try { (permissionsCache || []).forEach(profile => enrichProfileWithLinkedPlayerV303(profile)); } catch {}
+      return originalRenderPermissions.apply(this, arguments);
+    };
+    renderPermissionsUsers.__userLinkV303 = true;
+    window.renderPermissionsUsers = renderPermissionsUsers;
+  }
 
   setTimeout(() => {
-    try { renderMandatoryNoticeAdminPanelV295?.(); } catch {}
-    moveMandatoryNoticePanelToAdminV305();
-  }, 900);
-
-  setTimeout(() => {
-    try { renderMandatoryNoticeAdminPanelV295?.(); } catch {}
-    moveMandatoryNoticePanelToAdminV305();
-  }, 1800);
+    if (currentProfile) currentProfile = enrichProfileWithLinkedPlayerV303(currentProfile, currentUser);
+    try { updateSessionBox?.(); } catch {}
+    try { renderAll?.(); } catch {}
+  }, 1200);
 })();
 
-window.debugAvisosAdminV305 = function debugAvisosAdminV305() {
-  const panel = document.getElementById("mandatoryNoticeAdminPanelV295");
+window.debugUserJogadorV303 = function debugUserJogadorV303(email = "") {
+  const profile = email
+    ? (permissionProfileForEmailV303(email) || { email: normalizeEmail(email), name: displayNameFromEmail(email) })
+    : currentProfile;
+  const enriched = enrichProfileWithLinkedPlayerV303(profile, currentUser);
+  const player = resolveLinkedPlayerForProfileV303(enriched);
   return {
-    version: APP_VERSION_V305_MANDATORY_NOTICE_IN_ADMIN,
-    canManage: typeof mandatoryNoticeCanManageV295 === "function" ? mandatoryNoticeCanManageV295() : null,
-    panelExists: Boolean(panel),
-    parent: panel?.parentElement?.id || "",
-    hidden: Boolean(panel?.hidden),
-    display: panel?.style?.display || "",
-    activeTab: document.querySelector(".tab-panel.active")?.id || ""
-  };
-};
-
-
-/* v306 — Aviso obrigatório em aba/card colapsável no Admin */
-const APP_VERSION_V306_NOTICE_ADMIN_COLLAPSIBLE = "306.0";
-
-function makeMandatoryNoticeAdminCollapsibleV306() {
-  const panel = document.getElementById("mandatoryNoticeAdminPanelV295");
-  if (!panel) return;
-
-  panel.classList.add("mandatory-notice-collapsible-v306");
-
-  // Se já estiver embrulhado no details certo, só atualiza o contador.
-  let details = document.getElementById("mandatoryNoticeCollapseV306");
-  if (!details) {
-    details = document.createElement("details");
-    details.id = "mandatoryNoticeCollapseV306";
-    details.className = "admin-card admin-collapse mandatory-notice-collapse-v306";
-    details.dataset.adminSectionV187 = "users";
-  }
-
-  let summary = details.querySelector(":scope > summary");
-  if (!summary) {
-    summary = document.createElement("summary");
-    summary.innerHTML = `
-      <div>
-        <h2>Aviso obrigatório</h2>
-        <p data-notice-summary-v306>Enviar aviso que todos os users têm de confirmar.</p>
-      </div>
-      <span class="collapse-icon">+</span>
-    `;
-    details.prepend(summary);
-  }
-
-  const stats = (() => {
-    try { return mandatoryNoticeAdminStatsV295?.() || { read: 0, unread: 0, total: 0 }; }
-    catch { return { read: 0, unread: 0, total: 0 }; }
-  })();
-
-  const p = summary.querySelector("[data-notice-summary-v306]");
-  if (p) {
-    p.textContent = `${stats.read || 0} leram · ${stats.unread || 0} por ler`;
-  }
-
-  // Começa fechado por defeito; mantém aberto só se o admin já abriu nesta sessão.
-  const keepOpen = sessionStorage.getItem("mandatory_notice_admin_open_v306") === "1";
-  details.open = keepOpen;
-
-  if (panel.parentElement !== details) {
-    details.appendChild(panel);
-  }
-
-  const host = document.getElementById("adminUnlocked");
-  const tabs = document.getElementById("adminSectionTabsV187");
-  if (host && details.parentElement !== host) {
-    if (tabs && tabs.parentNode === host) host.insertBefore(details, tabs.nextSibling);
-    else host.prepend(details);
-  } else if (host && tabs && tabs.parentNode === host && tabs.nextSibling !== details) {
-    host.insertBefore(details, tabs.nextSibling);
-  }
-
-  if (!details.__noticeToggleV306) {
-    details.__noticeToggleV306 = true;
-    details.addEventListener("toggle", () => {
-      sessionStorage.setItem("mandatory_notice_admin_open_v306", details.open ? "1" : "0");
-    });
-  }
-}
-
-(function installMandatoryNoticeCollapsibleV306() {
-  if (window.__mandatoryNoticeCollapsibleV306) return;
-  window.__mandatoryNoticeCollapsibleV306 = true;
-
-  const originalMove = typeof moveMandatoryNoticePanelToAdminV305 === "function" ? moveMandatoryNoticePanelToAdminV305 : null;
-  if (originalMove && !originalMove.__v306) {
-    moveMandatoryNoticePanelToAdminV305 = function moveMandatoryNoticePanelToAdminCollapsibleV306() {
-      const result = originalMove.apply(this, arguments);
-      makeMandatoryNoticeAdminCollapsibleV306();
-      return result;
-    };
-    moveMandatoryNoticePanelToAdminV305.__v306 = true;
-    window.moveMandatoryNoticePanelToAdminV305 = moveMandatoryNoticePanelToAdminV305;
-  }
-
-  const originalRender = typeof renderMandatoryNoticeAdminPanelV295 === "function" ? renderMandatoryNoticeAdminPanelV295 : null;
-  if (originalRender && !originalRender.__v306) {
-    renderMandatoryNoticeAdminPanelV295 = function renderMandatoryNoticeAdminPanelCollapsibleV306() {
-      const result = originalRender.apply(this, arguments);
-      setTimeout(makeMandatoryNoticeAdminCollapsibleV306, 0);
-      setTimeout(makeMandatoryNoticeAdminCollapsibleV306, 160);
-      return result;
-    };
-    renderMandatoryNoticeAdminPanelV295.__v306 = true;
-    window.renderMandatoryNoticeAdminPanelV295 = renderMandatoryNoticeAdminPanelV295;
-  }
-
-  const originalApplyClean = typeof applyAdminCleanOwnerConfigV303 === "function" ? applyAdminCleanOwnerConfigV303 : null;
-  if (originalApplyClean && !originalApplyClean.__noticeCollapseV306) {
-    applyAdminCleanOwnerConfigV303 = function applyAdminCleanOwnerConfigNoticeCollapseV306() {
-      const result = originalApplyClean.apply(this, arguments);
-      setTimeout(makeMandatoryNoticeAdminCollapsibleV306, 0);
-      return result;
-    };
-    applyAdminCleanOwnerConfigV303.__noticeCollapseV306 = true;
-    window.applyAdminCleanOwnerConfigV303 = applyAdminCleanOwnerConfigV303;
-  }
-
-  document.addEventListener("click", event => {
-    if (event.target.closest?.('[data-tab="adminTab"],[data-admin-section-v187]')) {
-      setTimeout(makeMandatoryNoticeAdminCollapsibleV306, 180);
-    }
-  }, true);
-
-  setTimeout(makeMandatoryNoticeAdminCollapsibleV306, 900);
-  setTimeout(makeMandatoryNoticeAdminCollapsibleV306, 1800);
-})();
-
-window.debugAvisoColapsavelV306 = function debugAvisoColapsavelV306() {
-  const details = document.getElementById("mandatoryNoticeCollapseV306");
-  const panel = document.getElementById("mandatoryNoticeAdminPanelV295");
-  return {
-    version: APP_VERSION_V306_NOTICE_ADMIN_COLLAPSIBLE,
-    detailsExists: Boolean(details),
-    detailsOpen: Boolean(details?.open),
-    detailsParent: details?.parentElement?.id || "",
-    panelParent: panel?.parentElement?.id || "",
-    panelExists: Boolean(panel)
-  };
-};
-
-
-/* v307 — Fix: aba colapsável do Aviso obrigatório abre/fecha corretamente */
-const APP_VERSION_V307_NOTICE_COLLAPSE_OPEN_FIX = "307.0";
-
-function bindMandatoryNoticeCollapseOpenV307() {
-  const details = document.getElementById("mandatoryNoticeCollapseV306");
-  if (!details) return;
-
-  const summary = details.querySelector(":scope > summary");
-  if (!summary) return;
-
-  details.classList.add("mandatory-notice-collapse-open-fix-v307");
-  summary.setAttribute("role", "button");
-  summary.setAttribute("tabindex", "0");
-  summary.setAttribute("aria-expanded", details.open ? "true" : "false");
-
-  const setOpen = open => {
-    details.open = Boolean(open);
-    summary.setAttribute("aria-expanded", details.open ? "true" : "false");
-    sessionStorage.setItem("mandatory_notice_admin_open_v306", details.open ? "1" : "0");
-    const icon = summary.querySelector(".collapse-icon");
-    if (icon) icon.textContent = details.open ? "−" : "+";
-  };
-
-  const currentSaved = sessionStorage.getItem("mandatory_notice_admin_open_v306");
-  if (currentSaved === "1") setOpen(true);
-  if (currentSaved === "0") setOpen(false);
-
-  if (!summary.__noticeOpenFixV307) {
-    summary.__noticeOpenFixV307 = true;
-
-    summary.addEventListener("click", event => {
-      event.preventDefault();
-      event.stopPropagation();
-      setOpen(!details.open);
-    }, true);
-
-    summary.addEventListener("touchend", event => {
-      event.preventDefault();
-      event.stopPropagation();
-      setOpen(!details.open);
-    }, { capture: true, passive: false });
-
-    summary.addEventListener("keydown", event => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      event.preventDefault();
-      event.stopPropagation();
-      setOpen(!details.open);
-    }, true);
-  }
-
-  if (!details.__noticeToggleFixV307) {
-    details.__noticeToggleFixV307 = true;
-    details.addEventListener("toggle", () => {
-      summary.setAttribute("aria-expanded", details.open ? "true" : "false");
-      const icon = summary.querySelector(".collapse-icon");
-      if (icon) icon.textContent = details.open ? "−" : "+";
-    });
-  }
-}
-
-(function installMandatoryNoticeCollapseOpenFixV307() {
-  if (window.__noticeCollapseOpenFixV307) return;
-  window.__noticeCollapseOpenFixV307 = true;
-
-  const originalMake = typeof makeMandatoryNoticeAdminCollapsibleV306 === "function" ? makeMandatoryNoticeAdminCollapsibleV306 : null;
-  if (originalMake && !originalMake.__v307) {
-    makeMandatoryNoticeAdminCollapsibleV306 = function makeMandatoryNoticeAdminCollapsibleOpenFixV307() {
-      const result = originalMake.apply(this, arguments);
-      bindMandatoryNoticeCollapseOpenV307();
-      setTimeout(bindMandatoryNoticeCollapseOpenV307, 0);
-      return result;
-    };
-    makeMandatoryNoticeAdminCollapsibleV306.__v307 = true;
-    window.makeMandatoryNoticeAdminCollapsibleV306 = makeMandatoryNoticeAdminCollapsibleV306;
-  }
-
-  const originalMove = typeof moveMandatoryNoticePanelToAdminV305 === "function" ? moveMandatoryNoticePanelToAdminV305 : null;
-  if (originalMove && !originalMove.__openFixV307) {
-    moveMandatoryNoticePanelToAdminV305 = function moveMandatoryNoticePanelOpenFixV307() {
-      const result = originalMove.apply(this, arguments);
-      setTimeout(bindMandatoryNoticeCollapseOpenV307, 0);
-      setTimeout(bindMandatoryNoticeCollapseOpenV307, 120);
-      return result;
-    };
-    moveMandatoryNoticePanelToAdminV305.__openFixV307 = true;
-    window.moveMandatoryNoticePanelToAdminV305 = moveMandatoryNoticePanelToAdminV305;
-  }
-
-  const originalRender = typeof renderMandatoryNoticeAdminPanelV295 === "function" ? renderMandatoryNoticeAdminPanelV295 : null;
-  if (originalRender && !originalRender.__openFixV307) {
-    renderMandatoryNoticeAdminPanelV295 = function renderMandatoryNoticeAdminPanelOpenFixV307() {
-      const result = originalRender.apply(this, arguments);
-      setTimeout(bindMandatoryNoticeCollapseOpenV307, 0);
-      setTimeout(bindMandatoryNoticeCollapseOpenV307, 160);
-      return result;
-    };
-    renderMandatoryNoticeAdminPanelV295.__openFixV307 = true;
-    window.renderMandatoryNoticeAdminPanelV295 = renderMandatoryNoticeAdminPanelV295;
-  }
-
-  document.addEventListener("click", event => {
-    const summary = event.target.closest?.("#mandatoryNoticeCollapseV306 > summary");
-    if (!summary) return;
-    const details = document.getElementById("mandatoryNoticeCollapseV306");
-    if (!details) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const open = !details.open;
-    details.open = open;
-    summary.setAttribute("aria-expanded", open ? "true" : "false");
-    sessionStorage.setItem("mandatory_notice_admin_open_v306", open ? "1" : "0");
-    const icon = summary.querySelector(".collapse-icon");
-    if (icon) icon.textContent = open ? "−" : "+";
-  }, true);
-
-  setTimeout(bindMandatoryNoticeCollapseOpenV307, 700);
-  setTimeout(bindMandatoryNoticeCollapseOpenV307, 1500);
-  setTimeout(bindMandatoryNoticeCollapseOpenV307, 2600);
-})();
-
-window.debugAvisoColapsavelV307 = function debugAvisoColapsavelV307() {
-  const details = document.getElementById("mandatoryNoticeCollapseV306");
-  const summary = details?.querySelector(":scope > summary");
-  return {
-    version: APP_VERSION_V307_NOTICE_COLLAPSE_OPEN_FIX,
-    detailsExists: Boolean(details),
-    open: Boolean(details?.open),
-    summaryExists: Boolean(summary),
-    ariaExpanded: summary?.getAttribute("aria-expanded") || "",
-    parent: details?.parentElement?.id || "",
-    panelParent: document.getElementById("mandatoryNoticeAdminPanelV295")?.parentElement?.id || "",
-    saved: sessionStorage.getItem("mandatory_notice_admin_open_v306")
-  };
-};
-
-
-/* v309 — Ver apostas das Eliminatórias exatamente igual ao modal dos jogos normais */
-const APP_VERSION_V309_KO_BETS_MODAL_SAME_AS_GROUP = "309.0";
-
-function koBetsNormalModalRowsV309(game, match) {
-  return betsForGame(game.id).sort((a, b) =>
-    pointsForKnockoutBet(b, match) - pointsForKnockoutBet(a, match) ||
-    String(a.playerName || "").localeCompare(String(b.playerName || ""), "pt")
-  );
-}
-
-function koBetsNormalTypeLabelV309(bet, match) {
-  if (!knockoutMatchHasResult(match)) return "Por jogar";
-  try { return knockoutBetResultLabel(bet, match); } catch { return "Por jogar"; }
-}
-
-function koBetsNormalTypeClassV309(bet, match) {
-  if (!knockoutMatchHasResult(match)) return "miss";
-  try { return knockoutBetResultClass(bet, match); } catch { return "miss"; }
-}
-
-function koBetsNormalScoreV309(bet) {
-  const score = typeof knockoutBetScorePair === "function" ? knockoutBetScorePair(bet) : null;
-  if (score) return `${score.home}-${score.away}`;
-  const home = bet.homeGuess ?? bet.homeScore ?? bet.home ?? "";
-  const away = bet.awayGuess ?? bet.awayScore ?? bet.away ?? "";
-  if (home !== "" && away !== "") return `${home}-${away}`;
-  return "-";
-}
-
-function showKnockoutBetsLikeNormalV309(gameId) {
-  const game = games.find(item => String(item.id || "") === String(gameId));
-  const match = isKnockoutCalendarGameV259?.(game) ? knockoutMatchFromCalendarGameV259?.(game) : null;
-  if (!game || !match) return false;
-
-  const modal = $("betsModal");
-  const title = $("betsModalTitle");
-  const subtitle = $("betsModalSubtitle");
-  const summary = $("betsGameSummary");
-  const body = $("betsModalBody");
-  if (!modal || !title || !subtitle || !summary || !body) return false;
-
-  const rows = koBetsNormalModalRowsV309(game, match);
-  const resultReady = knockoutMatchHasResult(match);
-
-  const exactCount = rows.filter(bet => typeof isExactKnockoutBet === "function" && isExactKnockoutBet(bet, match)).length;
-  const winnerCount = rows.filter(bet =>
-    !(typeof isExactKnockoutBet === "function" && isExactKnockoutBet(bet, match)) &&
-    typeof isWinnerKnockoutBet === "function" &&
-    isWinnerKnockoutBet(bet, match)
-  ).length;
-  const totalPoints = rows.reduce((sum, bet) => sum + (resultReady ? pointsForKnockoutBet(bet, match) : 0), 0);
-
-  title.textContent = `${game.homeTeam} - ${game.awayTeam}`;
-  subtitle.textContent = `${game.group || match.roundLabel || "Fase Final"} · ${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}`;
-
-  // Igual ao modal antigo dos jogos normais: 5 cards, mesmos títulos.
-  summary.innerHTML = `
-    <div class="bets-summary-card main">
-      <span>Resultado</span>
-      <strong>${resultReady ? `${match.homeScore}-${match.awayScore}` : "Por colocar"}</strong>
-    </div>
-    <div class="bets-summary-card">
-      <span>Apostas</span>
-      <strong>${rows.length}</strong>
-    </div>
-    <div class="bets-summary-card">
-      <span>Exatos</span>
-      <strong>${resultReady ? exactCount : "-"}</strong>
-    </div>
-    <div class="bets-summary-card">
-      <span>Vencedor/empate</span>
-      <strong>${resultReady ? winnerCount : "-"}</strong>
-    </div>
-    <div class="bets-summary-card">
-      <span>Pontos</span>
-      <strong>${resultReady ? totalPoints : "-"}</strong>
-    </div>
-  `;
-
-  if (!rows.length) {
-    body.innerHTML = `<div class="empty">Ainda não existem apostas importadas para este jogo.</div>`;
-  } else {
-    body.innerHTML = `
-      <div class="bets-list-head">
-        <span>Jogador</span>
-        <span>Aposta</span>
-        <span>Tipo</span>
-        <span>Pontos</span>
-      </div>
-      <div class="bets-list">
-        ${rows.map((bet, index) => {
-          const points = resultReady ? pointsForKnockoutBet(bet, match) : "-";
-          const typeLabel = koBetsNormalTypeLabelV309(bet, match);
-          const typeClass = koBetsNormalTypeClassV309(bet, match);
-          const playerName = bet.playerName || bet.playerId || "Jogador";
-          return `
-            <article class="bet-user-row ${typeClass}">
-              <div class="bet-user-main" data-label="Jogador">
-                <span class="bet-position">${index + 1}</span>
-                <strong title="${escapeHtml(playerName)}">${escapeHtml(playerName)}</strong>
-              </div>
-              <div class="bet-score-pill" data-label="Aposta">${escapeHtml(koBetsNormalScoreV309(bet))}</div>
-              <div class="bet-type-pill" data-label="Tipo">${escapeHtml(typeLabel)}</div>
-              <b data-label="Pontos">${points}</b>
-            </article>
-          `;
-        }).join("")}
-      </div>`;
-  }
-
-  modal.classList.remove("hidden");
-  return true;
-}
-
-(function installKoBetsModalSameAsGroupV309() {
-  if (window.__koBetsModalSameAsGroupV309) return;
-  window.__koBetsModalSameAsGroupV309 = true;
-
-  const previousShowGameBets = typeof showGameBets === "function" ? showGameBets : null;
-  showGameBets = function showGameBetsKoSameAsGroupV309(gameId) {
-    if (showKnockoutBetsLikeNormalV309(gameId)) return;
-    return previousShowGameBets?.apply(this, arguments);
-  };
-  showGameBets.__v309 = true;
-  window.showGameBets = showGameBets;
-
-  // Garante que botões "Ver apostas" de eliminatórias usam sempre este modal.
-  document.addEventListener("click", event => {
-    const btn = event.target.closest?.("[data-bets-game]");
-    if (!btn) return;
-    const gameId = btn.getAttribute("data-bets-game") || "";
-    const game = games.find(item => String(item.id || "") === String(gameId));
-    if (!game || !isKnockoutCalendarGameV259?.(game)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    showKnockoutBetsLikeNormalV309(gameId);
-  }, true);
-})();
-
-window.debugVerApostasEliminatoriasV309 = function debugVerApostasEliminatoriasV309(gameId = "") {
-  const game = gameId ? games.find(item => String(item.id || "") === String(gameId)) : games.find(item => isKnockoutCalendarGameV259?.(item));
-  const match = game ? knockoutMatchFromCalendarGameV259?.(game) : null;
-  return {
-    version: APP_VERSION_V309_KO_BETS_MODAL_SAME_AS_GROUP,
-    game: game ? { id: game.id, homeTeam: game.homeTeam, awayTeam: game.awayTeam, group: game.group } : null,
-    match: match ? { id: match.id, round: match.round, result: knockoutMatchHasResult(match) ? `${match.homeScore}-${match.awayScore}` : "" } : null,
-    rows: game && match ? koBetsNormalModalRowsV309(game, match).length : 0
+    version: APP_VERSION_V303_USER_PLAYER_LINK_FIX,
+    email: enriched?.email || "",
+    uid: enriched?.uid || "",
+    name: enriched?.name || "",
+    linkedPlayerId: enriched?.linkedPlayerId || "",
+    linkedPlayerName: enriched?.linkedPlayerName || "",
+    resolvedPlayer: player ? { id: player.id, name: player.name, linkedEmail: player.linkedEmail || "", linkedUid: player.linkedUid || "" } : null,
+    candidates: playerCandidatesV303().map(p => ({ id: p.id, name: p.name, linkedEmail: p.linkedEmail || "", linkedUid: p.linkedUid || "" })).slice(0, 80)
   };
 };
