@@ -13163,3 +13163,156 @@ body > #onlineUsersList.online-users-portal-v220{
 .ko-road-card-v270.ko-round-qf-v261 { --ko-round-accent:#34d399; }
 .ko-road-card-v270.ko-round-sf-v261 { --ko-round-accent:#a78bfa; }
 .ko-road-card-v270.ko-round-final-v261 { --ko-round-accent:#facc15; }
+
+/* v273 — estabilidade visual: reduzir saltos dos cards ao abrir páginas */
+:root{
+  --stable-match-row-height-v273: 78px;
+  --stable-ko-road-card-height-v273: 104px;
+  --stable-ko-list-card-min-v273: 96px;
+}
+
+/* Durante o primeiro render de uma página, mantém o espaço reservado e só mostra quando assenta. */
+body.page-stabilizing-v273 .tab-panel.active .calendar-list,
+body.page-stabilizing-v273 .tab-panel.active #knockoutBracket,
+body.page-stabilizing-v273 .tab-panel.active .score-detail-list,
+body.page-stabilizing-v273 .tab-panel.active .admin-stack{
+  visibility:hidden!important;
+}
+
+body.page-rendering-v273 *,
+body.page-stabilizing-v273 *{
+  transition:none!important;
+  animation:none!important;
+  scroll-behavior:auto!important;
+}
+
+.calendar-list{
+  min-height:420px;
+  align-content:start;
+}
+.day-block{
+  contain:layout paint;
+}
+.day-block h3{
+  min-height:46px;
+  display:flex;
+  align-items:center;
+}
+.match-list{
+  align-content:start;
+}
+.match-row{
+  min-height:var(--stable-match-row-height-v273)!important;
+  grid-auto-rows:minmax(var(--stable-match-row-height-v273), auto);
+  align-items:center;
+}
+.match-row .team,
+.match-row .team strong,
+.match-row .team span{
+  min-height:24px;
+}
+.match-row .group-pill,
+.match-row .status-pill,
+.match-row .score-pill,
+.match-row .filter-count{
+  min-width:64px;
+  min-height:26px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.match-row button,
+.match-row .primary,
+.match-row .secondary{
+  min-height:38px;
+}
+.calendar-actions,
+.match-row > :last-child{
+  min-width:168px;
+}
+
+#knockoutBracket.knockout-bracket{
+  min-height:640px;
+  contain:layout paint;
+}
+#knockoutBracket .bracket-photo-shell,
+#knockoutBracket .ko-road-page-v270{
+  contain:layout paint;
+}
+#knockoutBracket .ko-road-board-v270{
+  min-height:680px!important;
+  align-items:start;
+}
+#knockoutBracket .ko-road-column-v270{
+  min-height:620px;
+}
+#knockoutBracket .ko-road-column-cards-v270{
+  align-content:start;
+}
+#knockoutBracket .ko-road-card-v270{
+  min-height:var(--stable-ko-road-card-height-v273)!important;
+  height:var(--stable-ko-road-card-height-v273)!important;
+  box-sizing:border-box;
+  overflow:hidden;
+}
+#knockoutBracket .ko-road-card-head-v270{
+  min-height:18px;
+}
+#knockoutBracket .ko-road-teams-v270{
+  min-height:40px;
+}
+#knockoutBracket .ko-road-teams-v270 span{
+  min-height:18px;
+  display:block;
+}
+#knockoutBracket .ko-road-card-foot-v270{
+  min-height:18px;
+}
+#knockoutBracket .ko-road-final-v270{
+  min-height:170px!important;
+  box-sizing:border-box;
+}
+#knockoutBracket .knockout-list-v260,
+#knockoutBracket .knockout-round-list-v260{
+  align-content:start;
+}
+#knockoutBracket .knockout-record-card,
+#knockoutBracket .knockout-match,
+#knockoutBracket .ko-list-card-v260{
+  min-height:var(--stable-ko-list-card-min-v273);
+  box-sizing:border-box;
+}
+
+/* Evita que badges/contadores carregados tarde empurrem cards e cabeçalhos. */
+.filter-count,
+.online-users-badge,
+.chat-unread-badge,
+.tab-badge-v164,
+.status-pill,
+.score-pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:28px;
+  min-height:22px;
+}
+.topbar,
+.tabs,
+.section-head{
+  contain:layout paint;
+}
+
+@media(max-width:760px){
+  body.page-stabilizing-v273 .tab-panel.active .calendar-list,
+  body.page-stabilizing-v273 .tab-panel.active #knockoutBracket,
+  body.page-stabilizing-v273 .tab-panel.active .score-detail-list,
+  body.page-stabilizing-v273 .tab-panel.active .admin-stack{
+    visibility:visible!important;
+  }
+  .match-row{
+    min-height:96px!important;
+  }
+  #knockoutBracket.knockout-bracket{
+    min-height:520px;
+  }
+}

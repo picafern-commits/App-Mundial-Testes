@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v271";
+const APP_VERSION_LABEL = "v273";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -18948,3 +18948,197 @@ function debugFaseFinalApiEnquadramentoV271() {
   };
 }
 window.debugFaseFinalApiEnquadramentoV271 = debugFaseFinalApiEnquadramentoV271;
+
+// v272 — Modo calmo: reduzir refreshs automáticos da app.
+const APP_VERSION_V272 = "272.0";
+(function installCalmRealtimeRenderingV272() {
+  if (window.__calmRealtimeRenderingV272) return;
+  window.__calmRealtimeRenderingV272 = true;
+
+  const MIN_RENDER_GAP_MS = 8000;
+  const INPUT_GRACE_MS = 2500;
+  let calmTimer = null;
+  let lastRealtimeRenderAt = 0;
+  let pendingReasons = new Set();
+
+  function focusedEditableV272() {
+    const el = document.activeElement;
+    if (!el) return false;
+    const tag = String(el.tagName || "").toLowerCase();
+    return tag === "input" || tag === "select" || tag === "textarea" || el.isContentEditable === true;
+  }
+
+  function modalOpenV272() {
+    return !!document.querySelector(".modal:not(.hidden), .modal-backdrop:not(.hidden), [role='dialog']:not(.hidden)");
+  }
+
+  function runCalmRenderV272() {
+    calmTimer = null;
+
+    if (document.hidden) {
+      try { saveLocalData?.("firebase realtime em segundo plano v272"); } catch {}
+      return;
+    }
+
+    if (focusedEditableV272() || modalOpenV272()) {
+      calmTimer = setTimeout(runCalmRenderV272, INPUT_GRACE_MS);
+      return;
+    }
+
+    const now = Date.now();
+    const wait = Math.max(0, MIN_RENDER_GAP_MS - (now - lastRealtimeRenderAt));
+    if (wait > 0) {
+      calmTimer = setTimeout(runCalmRenderV272, wait);
+      return;
+    }
+
+    const reason = [...pendingReasons].join(" + ") || "firebase realtime calmo v272";
+    pendingReasons.clear();
+    lastRealtimeRenderAt = Date.now();
+
+    try { ensureKnockoutSettings?.(); } catch {}
+    try { saveLocalData?.(reason); } catch {}
+    try { renderAll?.(); } catch (error) { console.warn("Render calmo v272 falhou:", error); }
+  }
+
+  const originalQueueRealtimeRenderV272 = typeof queueRealtimeRender === "function" ? queueRealtimeRender : null;
+  queueRealtimeRender = function queueRealtimeRenderCalmV272(reason = "firebase realtime") {
+    pendingReasons.add(reason);
+    if (calmTimer) return;
+    calmTimer = setTimeout(runCalmRenderV272, 1800);
+  };
+
+  window.debugRefreshCalmoV272 = function debugRefreshCalmoV272() {
+    return {
+      version: APP_VERSION_V272,
+      pendingReasons: [...pendingReasons],
+      hasTimer: !!calmTimer,
+      lastRealtimeRenderAt,
+      secondsSinceLastRealtimeRender: lastRealtimeRenderAt ? Math.round((Date.now() - lastRealtimeRenderAt) / 1000) : null,
+      focusedEditable: focusedEditableV272(),
+      modalOpen: modalOpenV272(),
+      originalQueueExists: !!originalQueueRealtimeRenderV272
+    };
+  };
+})();
+
+// v273 — estabilidade visual: evita cards a saltar quando uma página abre.
+const APP_VERSION_V273 = "273.0";
+(function installLayoutStabilityV273() {
+  if (window.__layoutStabilityV273) return;
+  window.__layoutStabilityV273 = true;
+
+  let stabilizingTimer = null;
+  let lastActiveTabV273 = "";
+  const stabilizedTabsV273 = new Set();
+
+  function activeTabV273() {
+    return document.querySelector(".tab-panel.active")?.id || "calendarTab";
+  }
+
+  function editableFocusedV273() {
+    const el = document.activeElement;
+    if (!el) return false;
+    const tag = String(el.tagName || "").toLowerCase();
+    return tag === "input" || tag === "select" || tag === "textarea" || el.isContentEditable === true;
+  }
+
+  function modalOpenV273() {
+    return !!document.querySelector(".modal:not(.hidden), .modal-backdrop:not(.hidden), [role='dialog']:not(.hidden)");
+  }
+
+  function panelMinHeightV273(tabId) {
+    const panel = document.getElementById(tabId);
+    if (!panel) return;
+    const rect = panel.getBoundingClientRect();
+    if (rect.height > 140) panel.style.setProperty("--stable-panel-height-v273", `${Math.ceil(rect.height)}px`);
+  }
+
+  function beginStabilizeV273(tabId = activeTabV273(), force = false) {
+    if (editableFocusedV273() || modalOpenV273()) return;
+
+    const isNewTab = tabId !== lastActiveTabV273;
+    lastActiveTabV273 = tabId;
+    if (!force && !isNewTab && stabilizedTabsV273.has(tabId)) return;
+
+    panelMinHeightV273(tabId);
+    document.body.classList.add("page-rendering-v273", "page-stabilizing-v273");
+
+    clearTimeout(stabilizingTimer);
+
+    const finish = () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          try { applyKnockoutLayoutFromSettings?.(); } catch {}
+          requestAnimationFrame(() => {
+            document.body.classList.remove("page-rendering-v273", "page-stabilizing-v273");
+            stabilizedTabsV273.add(tabId);
+          });
+        });
+      });
+    };
+
+    const fontsReady = document.fonts?.ready?.catch?.(() => null) || Promise.resolve();
+    stabilizingTimer = setTimeout(() => {
+      Promise.resolve(fontsReady).then(finish).catch(finish);
+    }, tabId === "knockoutTab" ? 120 : 80);
+  }
+
+  function markNextTabStableV273(tabId) {
+    if (!tabId) return;
+    stabilizedTabsV273.delete(tabId);
+    beginStabilizeV273(tabId, true);
+  }
+
+  document.addEventListener("click", event => {
+    const tab = event.target.closest?.("[data-tab]");
+    if (tab) markNextTabStableV273(tab.getAttribute("data-tab"));
+  }, true);
+
+  const originalRenderActivePageV273 = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+  if (originalRenderActivePageV273) {
+    renderActivePageV187 = function renderActivePageStableV273(tabId = activeTabV273()) {
+      beginStabilizeV273(tabId);
+      const result = originalRenderActivePageV273.apply(this, arguments);
+      beginStabilizeV273(tabId);
+      return result;
+    };
+  }
+
+  const originalShowAppScreenV273 = typeof showAppScreen === "function" ? showAppScreen : null;
+  if (originalShowAppScreenV273) {
+    showAppScreen = function showAppScreenStableV273() {
+      const result = originalShowAppScreenV273.apply(this, arguments);
+      setTimeout(() => beginStabilizeV273(activeTabV273(), true), 0);
+      setTimeout(() => beginStabilizeV273(activeTabV273(), true), 250);
+      return result;
+    };
+  }
+
+  const originalRenderKnockoutV273 = typeof renderKnockout === "function" ? renderKnockout : null;
+  if (originalRenderKnockoutV273) {
+    renderKnockout = function renderKnockoutStableV273() {
+      const shouldStabilize = activeTabV273() === "knockoutTab" && !editableFocusedV273() && !modalOpenV273();
+      if (shouldStabilize) beginStabilizeV273("knockoutTab");
+      const result = originalRenderKnockoutV273.apply(this, arguments);
+      if (shouldStabilize) {
+        requestAnimationFrame(() => {
+          try { applyKnockoutLayoutFromSettings?.(); } catch {}
+          requestAnimationFrame(() => document.body.classList.remove("page-rendering-v273"));
+        });
+      }
+      return result;
+    };
+  }
+
+  window.debugLayoutEstavelV273 = function debugLayoutEstavelV273() {
+    return {
+      version: APP_VERSION_V273,
+      activeTab: activeTabV273(),
+      bodyClass: document.body.className,
+      stabilizedTabs: [...stabilizedTabsV273],
+      editableFocused: editableFocusedV273(),
+      modalOpen: modalOpenV273()
+    };
+  };
+})();
