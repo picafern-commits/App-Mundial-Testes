@@ -15463,3 +15463,192 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
     box-sizing:border-box;
   }
 }
+
+
+/* v292 — Apostas Fase Final mobile: cards sem sobreposição */
+@media(max-width:760px){
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-hub-body-v284{
+    display:block!important;
+    height:auto!important;
+    min-height:0!important;
+    padding:12px!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-hub-summary-v284{
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:8px!important;
+    margin:0 0 14px!important;
+    height:auto!important;
+    min-height:0!important;
+    overflow:visible!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-hub-list-v284{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:12px!important;
+    width:100%!important;
+    max-width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    overflow:visible!important;
+    padding:0 0 18px!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-card-v284{
+    position:relative!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:10px!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    height:auto!important;
+    min-height:132px!important;
+    max-height:none!important;
+    overflow:visible!important;
+    padding:14px!important;
+    margin:0!important;
+    border-radius:16px!important;
+    transform:none!important;
+    box-sizing:border-box!important;
+    flex:0 0 auto!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-card-v284 header{
+    position:relative!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    overflow:visible!important;
+    padding:0!important;
+    margin:0!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-card-v284 header > div{
+    width:100%!important;
+    min-width:0!important;
+    height:auto!important;
+    overflow:visible!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-card-v284 header span,
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-card-v284 header small{
+    display:block!important;
+    height:auto!important;
+    min-height:0!important;
+    line-height:1.25!important;
+    white-space:normal!important;
+    overflow:visible!important;
+    text-overflow:clip!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-card-v284 header strong{
+    display:block!important;
+    height:auto!important;
+    min-height:0!important;
+    font-size:17px!important;
+    line-height:1.18!important;
+    white-space:normal!important;
+    overflow:visible!important;
+    text-overflow:clip!important;
+    overflow-wrap:anywhere!important;
+    margin:3px 0!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-card-v284 header b{
+    position:relative!important;
+    justify-self:start!important;
+    width:auto!important;
+    max-width:100%!important;
+    min-height:30px!important;
+    height:auto!important;
+    white-space:normal!important;
+    line-height:1.15!important;
+    padding:7px 10px!important;
+    overflow:visible!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-real-result-v284,
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-form-v284,
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-qualified-v284,
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-card-v284 footer{
+    position:relative!important;
+    width:100%!important;
+    max-width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    overflow:visible!important;
+    margin:0!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-form-v284{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-form-v284 label,
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-qualified-v284{
+    display:grid!important;
+    gap:6px!important;
+    height:auto!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-form-v284 em{
+    height:24px!important;
+    min-height:24px!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-card-v284 footer{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-saved-v284{
+    height:auto!important;
+    min-height:0!important;
+    line-height:1.25!important;
+    white-space:normal!important;
+    overflow:visible!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-actions-v284{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+    width:100%!important;
+    height:auto!important;
+    overflow:visible!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 input,
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 select{
+    width:100%!important;
+    min-height:44px!important;
+    height:44px!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 button{
+    max-width:100%!important;
+  }
+
+  /* Not ready: card vermelho legível, sem esmagar. */
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-card-v284.ko-bet-state-not-ready{
+    min-height:116px!important;
+    background:linear-gradient(180deg,rgba(127,29,29,.25),rgba(7,11,19,.96))!important;
+  }
+
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-card-v284.ko-bet-state-not-ready .ko-bet-form-v284,
+  #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-card-v284.ko-bet-state-not-ready .ko-bet-qualified-v284{
+    display:none!important;
+  }
+}
+
