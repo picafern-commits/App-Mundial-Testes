@@ -16855,3 +16855,26 @@ body.mandatory-notice-open-v295{
 #cleanNoticeAdminV314 .mandatory-notice-admin-head-v295{
   display:none!important;
 }
+
+
+/* v315 — Aviso obrigatório restaurado ao estilo v302 */
+#mandatoryNoticeAdminPanelV295.notice-restored-v302-v315{
+  display:grid!important;
+  gap:14px!important;
+  margin:0 0 14px!important;
+  padding:16px!important;
+  border-radius:18px!important;
+  border:1px solid rgba(250,204,21,.22)!important;
+  background:linear-gradient(135deg,rgba(250,204,21,.07),rgba(15,23,42,.72))!important;
+  box-shadow:none!important;
+}
+
+#mandatoryNoticeAdminPanelV295.notice-restored-v302-v315 .mandatory-notice-admin-head-v295{
+  display:flex!important;
+}
+
+#mandatoryNoticeCollapseV306,
+#mandatoryNoticeNativeV313,
+#cleanNoticeAdminV314{
+  display:none!important;
+}
