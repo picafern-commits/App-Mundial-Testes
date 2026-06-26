@@ -511,21 +511,45 @@ function footballApiTeamName(team) {
   return cleanString(team?.name || team?.shortName || team?.tla || "");
 }
 
+function footballApiQualifiedSideV268(match) {
+  const score = match?.score || {};
+  const directWinner = cleanString(score.winner || match?.winner || "").toUpperCase();
+  if (["HOME_TEAM", "HOME", "HOME_TEAM_WIN"].includes(directWinner)) return "HOME_TEAM";
+  if (["AWAY_TEAM", "AWAY", "AWAY_TEAM_WIN"].includes(directWinner)) return "AWAY_TEAM";
+
+  const full = score.fullTime || {};
+  const penalties = score.penalties || {};
+  const fullHome = Number(full.home);
+  const fullAway = Number(full.away);
+  if (Number.isFinite(fullHome) && Number.isFinite(fullAway) && fullHome !== fullAway) {
+    return fullHome > fullAway ? "HOME_TEAM" : "AWAY_TEAM";
+  }
+
+  const penHome = Number(penalties.home);
+  const penAway = Number(penalties.away);
+  if (Number.isFinite(penHome) && Number.isFinite(penAway) && penHome !== penAway) {
+    return penHome > penAway ? "HOME_TEAM" : "AWAY_TEAM";
+  }
+
+  return "";
+}
+
 function footballApiScore(match) {
   const full = match?.score?.fullTime || {};
   const regular = match?.score?.regularTime || {};
-  const penalties = match?.score?.penalties || {};
 
-  const home = full.home ?? regular.home;
-  const away = full.away ?? regular.away;
+  // v268: para a pontuação da Fase Final, o resultado guardado é sempre o dos
+  // 90 minutos + compensação. A equipa qualificada é calculada à parte pela API
+  // usando vencedor final, prolongamento ou penáltis.
+  const home = regular.home ?? full.home;
+  const away = regular.away ?? full.away;
 
   if (home === null || home === undefined || away === null || away === undefined) return null;
 
   return {
     homeScore: Number(home),
     awayScore: Number(away),
-    homePenalties: penalties.home === null || penalties.home === undefined ? null : Number(penalties.home),
-    awayPenalties: penalties.away === null || penalties.away === undefined ? null : Number(penalties.away)
+    qualifiedSide: footballApiQualifiedSideV268(match)
   };
 }
 
@@ -564,9 +588,36 @@ function footballScoreForLocalMatchV263(apiScore, localMatch) {
   return {
     homeScore: apiScore.awayScore,
     awayScore: apiScore.homeScore,
-    homePenalties: apiScore.awayPenalties,
-    awayPenalties: apiScore.homePenalties
+    qualifiedSide: apiScore.qualifiedSide === "HOME_TEAM" ? "AWAY_TEAM" : apiScore.qualifiedSide === "AWAY_TEAM" ? "HOME_TEAM" : ""
   };
+}
+
+function footballQualifiedTeamFromScoreV268(localMatch = {}, localScore = {}) {
+  const side = cleanString(localScore.qualifiedSide || "").toUpperCase();
+  if (side === "HOME_TEAM") return cleanString(localMatch.homeTeam || "");
+  if (side === "AWAY_TEAM") return cleanString(localMatch.awayTeam || "");
+
+  // Fallback apenas para jogos decididos aos 90 minutos + compensação.
+  const home = Number(localScore.homeScore);
+  const away = Number(localScore.awayScore);
+  if (Number.isFinite(home) && Number.isFinite(away)) {
+    if (home > away) return cleanString(localMatch.homeTeam || "");
+    if (away > home) return cleanString(localMatch.awayTeam || "");
+  }
+  return "";
+}
+
+function footballApplyQualifiedFieldsV268(target = {}, qualifiedTeam = "") {
+  const winner = cleanString(qualifiedTeam);
+  if (!winner) return false;
+  let changed = false;
+  ["winner", "winnerTeam", "qualified", "qualifiedTeam"].forEach(key => {
+    if (target[key] !== winner) {
+      target[key] = winner;
+      changed = true;
+    }
+  });
+  return changed;
 }
 
 function footballFindLocalMatch(apiMatch, localMatches) {
@@ -672,8 +723,7 @@ function footballMatchSummary(match) {
     awayTeam: footballApiTeamName(match.awayTeam),
     homeScore: score?.homeScore ?? null,
     awayScore: score?.awayScore ?? null,
-    homePenalties: score?.homePenalties ?? null,
-    awayPenalties: score?.awayPenalties ?? null
+    qualifiedSide: score?.qualifiedSide || ""
   };
 }
 
@@ -691,25 +741,19 @@ function footballReadableSyncMode(mode) {
 
 
 function footballApiAnyScoreV153(match) {
-  const score = match?.score || {};
-  const candidates = [
-    score.fullTime,
-    score.regularTime,
-    score.halfTime
-  ].filter(Boolean);
+  const finalScore = footballApiScore(match);
+  if (finalScore) return finalScore;
 
-  for (const item of candidates) {
-    const home = item.home;
-    const away = item.away;
-    if (home !== null && home !== undefined && away !== null && away !== undefined) {
-      const penalties = score.penalties || {};
-      return {
-        homeScore: Number(home),
-        awayScore: Number(away),
-        homePenalties: penalties.home === null || penalties.home === undefined ? null : Number(penalties.home),
-        awayPenalties: penalties.away === null || penalties.away === undefined ? null : Number(penalties.away)
-      };
-    }
+  const score = match?.score || {};
+  const half = score.halfTime || {};
+  const home = half.home;
+  const away = half.away;
+  if (home !== null && home !== undefined && away !== null && away !== undefined) {
+    return {
+      homeScore: Number(home),
+      awayScore: Number(away),
+      qualifiedSide: footballApiQualifiedSideV268(match)
+    };
   }
 
   return null;
@@ -736,8 +780,6 @@ function footballMatchPayloadV153(apiMatch, actor, score = null) {
   if (score) {
     payload.homeScore = score.homeScore;
     payload.awayScore = score.awayScore;
-    if (score.homePenalties !== null && score.homePenalties !== undefined) payload.homePenalties = score.homePenalties;
-    if (score.awayPenalties !== null && score.awayPenalties !== undefined) payload.awayPenalties = score.awayPenalties;
   }
 
   return payload;
@@ -773,8 +815,6 @@ function footballMatchPayloadV158(apiMatch, actor, score = null) {
     payload.awayScore = score.awayScore;
     payload.liveHomeScore = FieldValue.delete();
     payload.liveAwayScore = FieldValue.delete();
-    if (score.homePenalties !== null && score.homePenalties !== undefined) payload.homePenalties = score.homePenalties;
-    if (score.awayPenalties !== null && score.awayPenalties !== undefined) payload.awayPenalties = score.awayPenalties;
   } else if (score) {
     payload.liveHomeScore = score.homeScore;
     payload.liveAwayScore = score.awayScore;
@@ -841,14 +881,15 @@ function footballSmartWinnerV201(match = {}) {
   if (home > away) return match.homeTeam;
   if (away > home) return match.awayTeam;
 
-  const hp = match.homePenalties;
-  const ap = match.awayPenalties;
-  if (hp === null || hp === undefined || hp === "" || ap === null || ap === undefined || ap === "") return "";
-  const homePens = Number(hp);
-  const awayPens = Number(ap);
-  if (!Number.isFinite(homePens) || !Number.isFinite(awayPens)) return "";
-  if (homePens > awayPens) return match.homeTeam;
-  if (awayPens > homePens) return match.awayTeam;
+  // v268: nos empates aos 90+compensação, a equipa que avança vem da API
+  // (prolongamento ou penáltis) e fica guardada em qualified/winnerTeam.
+  const direct = cleanString(match.qualified || match.qualifiedTeam || match.winnerTeam || match.winner || "");
+  if (direct) {
+    const normalized = footballTeamKey(direct);
+    if (normalized === footballTeamKey(match.homeTeam)) return match.homeTeam;
+    if (normalized === footballTeamKey(match.awayTeam)) return match.awayTeam;
+  }
+
   return "";
 }
 
@@ -1172,13 +1213,11 @@ async function runFootballDataSyncCoreV151(options = {}) {
         payload.syncConfirmedAt = new Date().toISOString();
         payload.syncActive = false;
         if (footballIsKnockoutCalendarDocV261(groupTarget)) {
-          const winnerDraft = { ...groupTarget, ...payload };
-          const winner = footballSmartWinnerV201(winnerDraft);
-          if (winner) {
-            payload.winner = winner;
-            payload.winnerTeam = winner;
-            payload.qualified = winner;
-            payload.qualifiedTeam = winner;
+          payload.homePenalties = FieldValue.delete();
+          payload.awayPenalties = FieldValue.delete();
+          const qualified = footballQualifiedTeamFromScoreV268(groupTarget, score);
+          if (qualified) {
+            footballApplyQualifiedFieldsV268(payload, qualified);
           }
         }
         finalConfirmed += 1;
@@ -1232,14 +1271,15 @@ async function runFootballDataSyncCoreV151(options = {}) {
         knockoutTarget.awayScore = score.awayScore;
         knockoutTarget.liveHomeScore = null;
         knockoutTarget.liveAwayScore = null;
-        knockoutTarget.homePenalties = score.homePenalties;
-        knockoutTarget.awayPenalties = score.awayPenalties;
+        knockoutTarget.homePenalties = null;
+        knockoutTarget.awayPenalties = null;
+        const qualified = footballQualifiedTeamFromScoreV268(knockoutTarget, score);
+        if (qualified) footballApplyQualifiedFieldsV268(knockoutTarget, qualified);
         knockoutTarget.scoreConfirmed = true;
         knockoutTarget.pointsConfirmed = true;
         knockoutTarget.syncEndedAt = knockoutTarget.syncEndedAt || new Date().toISOString();
         knockoutTarget.syncConfirmedAt = new Date().toISOString();
         knockoutTarget.syncActive = false;
-        footballApplyWinnerFieldsV261(knockoutTarget);
         finalConfirmed += 1;
       } else if (score) {
         knockoutTarget.liveHomeScore = score.homeScore;
@@ -1267,8 +1307,6 @@ async function runFootballDataSyncCoreV151(options = {}) {
         awayScore: knockoutTarget.awayScore ?? null,
         liveHomeScore: knockoutTarget.liveHomeScore ?? null,
         liveAwayScore: knockoutTarget.liveAwayScore ?? null,
-        homePenalties: knockoutTarget.homePenalties ?? null,
-        awayPenalties: knockoutTarget.awayPenalties ?? null,
         scoreConfirmed: knockoutTarget.scoreConfirmed === true,
         pointsConfirmed: knockoutTarget.pointsConfirmed === true,
         updatedAt: knockoutTarget.updatedAt,
