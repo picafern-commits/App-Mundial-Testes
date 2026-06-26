@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v307";
+const APP_VERSION_LABEL = "v308";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -23851,5 +23851,188 @@ window.debugLapisApostasV307 = function debugLapisApostasV307(gameId = "") {
     modalOpen: !document.getElementById("betsModal")?.classList.contains("hidden"),
     pencilButtons: document.querySelectorAll(".ko-pencil-edit-v307").length,
     editBox: Boolean(document.getElementById("koModalEditBoxV307"))
+  };
+};
+
+
+/* v308 — Lápis direto no HTML do modal Ver apostas da Fase Final */
+const APP_VERSION_V308_DIRECT_PENCIL_KO_MODAL = "308.0";
+
+function ownerCanSeePencilV308() {
+  try {
+    return typeof ownerKoModalCanEditV307 === "function" && ownerKoModalCanEditV307();
+  } catch {
+    return false;
+  }
+}
+
+function koModalGameAndMatchV308(gameId) {
+  const game = (games || []).find(item => String(item.id || "") === String(gameId || ""));
+  let match = null;
+
+  try {
+    if (game && typeof isKnockoutCalendarGameV259 === "function" && isKnockoutCalendarGameV259(game) && typeof knockoutMatchFromCalendarGameV259 === "function") {
+      match = knockoutMatchFromCalendarGameV259(game);
+    }
+  } catch {}
+
+  try {
+    if (!match && typeof knockoutMatchById === "function") match = knockoutMatchById(gameId);
+  } catch {}
+
+  try {
+    if (!match && appSettings?.knockout?.matches) {
+      match = appSettings.knockout.matches.find(item => String(item.id || "") === String(gameId || "")) || null;
+    }
+  } catch {}
+
+  return { game, match };
+}
+
+function koBetIdForModalV308(bet, gameId) {
+  try {
+    if (typeof koModalBetIdV307 === "function") return koModalBetIdV307(bet, gameId);
+  } catch {}
+  return String(bet?.id || `${bet?.playerId || playerIdFromName?.(bet?.playerName || "jogador") || "jogador"}_${gameId}`);
+}
+
+function showKnockoutBetsModalDirectPencilV308(gameId) {
+  const { game, match } = koModalGameAndMatchV308(gameId);
+  if (!game || !match) return false;
+
+  const modal = $("betsModal");
+  const title = $("betsModalTitle");
+  const subtitle = $("betsModalSubtitle");
+  const summary = $("betsGameSummary");
+  const body = $("betsModalBody");
+  if (!modal || !title || !subtitle || !summary || !body) return false;
+
+  const canEdit = ownerCanSeePencilV308();
+
+  const rows = betsForGame(game.id).sort((a, b) =>
+    pointsForKnockoutBet(b, match) - pointsForKnockoutBet(a, match) ||
+    String(a.playerName || "").localeCompare(String(b.playerName || ""), "pt")
+  );
+
+  const hasKoResult = knockoutMatchHasResult(match);
+  const exactCount = rows.filter(bet => typeof isExactKnockoutBet === "function" && isExactKnockoutBet(bet, match)).length;
+  const winnerCount = rows.filter(bet => !(typeof isExactKnockoutBet === "function" && isExactKnockoutBet(bet, match)) && typeof isWinnerKnockoutBet === "function" && isWinnerKnockoutBet(bet, match)).length;
+  const totalPoints = rows.reduce((sum, bet) => sum + pointsForKnockoutBet(bet, match), 0);
+  const qualified = game.qualified || game.qualifiedTeam || match.qualified || match.winnerTeam || match.winner || "";
+
+  title.textContent = `${game.homeTeam} - ${game.awayTeam}`;
+  subtitle.textContent = `${game.group || match.roundLabel || "Fase Final"} · ${dateHeader(game.matchDate || match.matchDate || match.date)} · ${timePortugal(game.matchDate || match.matchDate || match.date)}`;
+
+  summary.innerHTML = `
+    <div class="bets-summary-card main">
+      <span>Resultado</span>
+      <strong>${hasFinalResult(game) || hasKoResult ? `${game.homeScore ?? match.homeScore}-${game.awayScore ?? match.awayScore}` : "Por colocar"}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Apostas</span>
+      <strong>${rows.length}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Exatos</span>
+      <strong>${hasKoResult ? exactCount : "-"}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Vencedor/empate</span>
+      <strong>${hasKoResult ? winnerCount : "-"}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Pontos</span>
+      <strong>${hasKoResult ? totalPoints : "-"}</strong>
+    </div>
+  `;
+
+  if (!rows.length) {
+    body.innerHTML = `
+      ${canEdit ? `<div class="ko-modal-owner-hint-v307">Modo Dono desbloqueado: ainda não existem apostas neste jogo.</div>` : ""}
+      <div class="empty">Ainda não existem apostas para este jogo.</div>
+    `;
+  } else {
+    body.innerHTML = `
+      ${canEdit ? `<div id="koModalOwnerHintV307" class="ko-modal-owner-hint-v307">Modo Dono desbloqueado: usa ✏️ para editar ou limpar apostas.</div>` : ""}
+      <div class="bets-list-head ${canEdit ? "ko-list-head-edit-v308" : ""}">
+        <span>Jogador</span>
+        <span>Aposta</span>
+        <span>Tipo</span>
+        <span>Pontos</span>
+        ${canEdit ? `<span>Editar</span>` : ""}
+      </div>
+      <div class="bets-list">
+        ${rows.map((bet, index) => {
+          const points = pointsForKnockoutBet(bet, match);
+          const typeLabel = hasKoResult ? knockoutBetResultLabel(bet, match) : "Por jogar";
+          const typeClass = hasKoResult ? knockoutBetResultClass(bet, match) : "pending";
+          const betId = koBetIdForModalV308(bet, game.id);
+          return `
+            <article class="bet-user-row ${typeClass} ${canEdit ? "ko-editable-row-v307 ko-direct-edit-row-v308" : ""}">
+              <div class="bet-user-main" data-label="Jogador">
+                <span class="bet-position">${index + 1}</span>
+                <strong title="${escapeHtml(bet.playerName || bet.playerId || "Jogador")}">${escapeHtml(bet.playerName || bet.playerId || "Jogador")}</strong>
+              </div>
+              <div class="bet-score-pill" data-label="Aposta">${escapeHtml(knockoutBetDisplay(bet))}</div>
+              <div class="bet-type-pill" data-label="Tipo">${escapeHtml(typeLabel)}</div>
+              <b data-label="Pontos">${hasKoResult ? points : "-"}</b>
+              ${canEdit ? `
+                <button
+                  type="button"
+                  class="ko-pencil-edit-v307 ko-pencil-direct-v308"
+                  title="Editar ou limpar aposta"
+                  data-game-id="${escapeHtml(game.id)}"
+                  data-bet-id="${escapeHtml(betId)}"
+                >✏️</button>
+              ` : ""}
+            </article>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  modal.classList.remove("hidden");
+  return true;
+}
+
+(function installDirectPencilKoModalV308() {
+  if (window.__directPencilKoModalV308) return;
+  window.__directPencilKoModalV308 = true;
+
+  const previousShowGameBets = typeof showGameBets === "function" ? showGameBets : null;
+  if (previousShowGameBets && !previousShowGameBets.__directPencilV308) {
+    showGameBets = function showGameBetsDirectPencilV308(gameId) {
+      if (showKnockoutBetsModalDirectPencilV308(gameId)) return;
+      return previousShowGameBets.apply(this, arguments);
+    };
+    showGameBets.__directPencilV308 = true;
+    window.showGameBets = showGameBets;
+  }
+
+  // Segurança: se o botão antigo abrir o modal antes, volta a renderizar pelo sistema novo.
+  document.addEventListener("click", event => {
+    const btn = event.target.closest?.("[data-bets-game]");
+    if (!btn) return;
+    const gameId = btn.dataset.betsGame || "";
+    const { match } = koModalGameAndMatchV308(gameId);
+    if (!match) return;
+    setTimeout(() => showKnockoutBetsModalDirectPencilV308(gameId), 0);
+  }, true);
+})();
+
+window.debugLapisDiretoV308 = function debugLapisDiretoV308(gameId = "") {
+  const { game, match } = koModalGameAndMatchV308(gameId);
+  return {
+    version: APP_VERSION_V308_DIRECT_PENCIL_KO_MODAL,
+    ownerCanSeePencil: ownerCanSeePencilV308(),
+    gameId,
+    hasGame: Boolean(game),
+    hasMatch: Boolean(match),
+    modalOpen: !document.getElementById("betsModal")?.classList.contains("hidden"),
+    pencilButtons: document.querySelectorAll(".ko-pencil-edit-v307").length,
+    ownerUnlockDebug: (() => {
+      try { return debugDonoApostasEliminatoriasV306?.(); } catch { return null; }
+    })()
   };
 };

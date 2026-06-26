@@ -16597,3 +16597,50 @@ body.mandatory-notice-open-v295{
     width:100%;
   }
 }
+
+
+/* v308 — modal Fase Final com lápis direto e coluna de aposta maior */
+.bets-list-head.ko-list-head-edit-v308{
+  grid-template-columns:minmax(180px,1fr) minmax(230px,1.35fr) minmax(120px,.75fr) 56px 54px!important;
+}
+
+.bet-user-row.ko-direct-edit-row-v308{
+  grid-template-columns:minmax(180px,1fr) minmax(230px,1.35fr) minmax(120px,.75fr) 56px 54px!important;
+  align-items:center!important;
+}
+
+.ko-pencil-direct-v308{
+  justify-self:end;
+}
+
+.bets-modal-card .bet-score-pill{
+  max-width:none!important;
+  width:auto!important;
+  min-width:190px!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  line-height:1.18!important;
+  padding-left:10px!important;
+  padding-right:10px!important;
+}
+
+@media(max-width:760px){
+  .bets-list-head.ko-list-head-edit-v308{
+    display:none!important;
+  }
+
+  .bet-user-row.ko-direct-edit-row-v308{
+    grid-template-columns:1fr!important;
+  }
+
+  .ko-pencil-direct-v308{
+    width:100%;
+    justify-self:stretch;
+  }
+
+  .bets-modal-card .bet-score-pill{
+    min-width:0!important;
+    width:100%!important;
+  }
+}
