@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v274";
+const APP_VERSION_LABEL = "v275";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -1719,19 +1719,79 @@ function setLoginStatus(message, type = "info") {
   box.textContent = message;
 }
 
+// v275 — Login estável + loading de arranque pós-login.
+// Mantém o login visível sem flicker e só revela a app quando o primeiro load/render assentou.
+let appBootLoadingV275 = false;
+let appBootLoadingTimerV275 = null;
+
+function setLoginBusyV275(isBusy, message = "") {
+  const login = $("loginScreen");
+  const card = login?.querySelector(".login-card");
+  const buttons = login?.querySelectorAll("button");
+  login?.classList.toggle("login-busy-v275", Boolean(isBusy));
+  card?.classList.toggle("is-busy-v275", Boolean(isBusy));
+  buttons?.forEach(btn => {
+    if (btn.id === "loginBtn" || btn.id === "createAccountBtn") btn.disabled = Boolean(isBusy);
+  });
+  if (message) setLoginStatus(message, isBusy ? "loading" : "info");
+}
+
+function setAppBootLoadingV275(isLoading, message = "A carregar a app...") {
+  appBootLoadingV275 = Boolean(isLoading);
+  document.body.classList.toggle("app-boot-loading-v275", appBootLoadingV275);
+  const shell = $("appShell");
+  shell?.classList.toggle("app-boot-hidden-v275", appBootLoadingV275);
+  const overlay = $("appBootLoaderV275");
+  if (overlay) {
+    overlay.classList.toggle("hidden", !appBootLoadingV275);
+    const text = overlay.querySelector("[data-boot-loader-text]");
+    if (text && message) text.textContent = message;
+  }
+}
+
+function scheduleAppReadyV275(message = "A preparar dimensões...") {
+  clearTimeout(appBootLoadingTimerV275);
+  setAppBootLoadingV275(true, message);
+  appBootLoadingTimerV275 = setTimeout(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.body.classList.add("app-boot-ready-v275");
+        setAppBootLoadingV275(false);
+      });
+    });
+  }, 650);
+}
+
+function finishAppReadyV275(delay = 520) {
+  clearTimeout(appBootLoadingTimerV275);
+  appBootLoadingTimerV275 = setTimeout(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.body.classList.add("app-boot-ready-v275");
+        setAppBootLoadingV275(false);
+      });
+    });
+  }, delay);
+}
+
+
 function showLoginScreen() {
   try { cleanupRealtimeSync(); } catch (error) { console.warn("cleanupRealtimeSync falhou:", error); }
 
   const login = $("loginScreen");
   const shell = $("appShell");
 
-  login?.classList.remove("hidden");
+  setAppBootLoadingV275?.(false);
+  setLoginBusyV275?.(false);
+
+  login?.classList.remove("hidden", "login-leaving-v275");
   if (login) login.style.display = "";
 
   shell?.classList.add("auth-hidden");
+  shell?.classList.remove("app-boot-hidden-v275");
   if (shell) shell.style.display = "";
 
-  document.body.classList.remove("knockout-layout-active", "app-authenticated-v213", "app-authenticated-v212");
+  document.body.classList.remove("knockout-layout-active", "app-authenticated-v213", "app-authenticated-v212", "app-boot-loading-v275", "app-boot-ready-v275");
   shell?.classList.remove("knockout-screen-active");
 }
 
@@ -1739,12 +1799,14 @@ function showAppScreen() {
   const login = $("loginScreen");
   const shell = $("appShell");
 
-  login?.classList.add("hidden");
-  if (login) login.style.display = "none";
+  // v275: não mostrar a app “meia montada”. Primeiro mostra loading, depois revela.
+  login?.classList.add("login-leaving-v275");
+  if (login) login.style.display = "";
 
   shell?.classList.remove("auth-hidden");
   if (shell) shell.style.display = "";
 
+  setAppBootLoadingV275?.(true, "A carregar a app...");
   document.body.classList.add("app-authenticated-v213");
   updateActiveAppSection();
 }
@@ -2115,11 +2177,12 @@ async function handleLogin() {
   }
 
   try {
-    setLoginStatus("A entrar...", "loading");
+    setLoginBusyV275?.(true, "A entrar...");
     saveRememberedAccount(email);
     await firebaseAuthApi.signInWithEmailAndPassword(firebaseAuth, email, password);
   } catch (error) {
     console.error(error);
+    setLoginBusyV275?.(false);
     setLoginStatus(authFriendlyError(error), "error");
   }
 }
@@ -2137,11 +2200,12 @@ async function handleCreateAccount() {
   }
 
   try {
-    setLoginStatus("A criar conta...", "loading");
+    setLoginBusyV275?.(true, "A criar conta...");
     saveRememberedAccount(email);
     await firebaseAuthApi.createUserWithEmailAndPassword(firebaseAuth, email, password);
   } catch (error) {
     console.error(error);
+    setLoginBusyV275?.(false);
     setLoginStatus(authFriendlyError(error), "error");
   }
 }
@@ -3635,7 +3699,7 @@ function setupAuthGate() {
     }
 
     try { showAppScreen(); } catch (screenError) { console.warn("showAppScreen falhou; a forçar ecrã da app:", screenError); }
-    try { forceShowAppAfterLoginV213(); } catch (forceError) { console.warn("Forçar ecrã da app falhou:", forceError); }
+    scheduleAppReadyV275?.("A carregar dados...");
     try { updateSessionBox(); } catch (error) { console.warn("updateSessionBox falhou:", error); }
 
     loadPermissionsUsers()
@@ -3652,6 +3716,8 @@ function setupAuthGate() {
     try { applyPermissionsToUi(); } catch (error) { console.warn("applyPermissionsToUi falhou sem derrubar login:", error); }
     try { renderAll(); } catch (error) { console.warn("renderAll pós-login falhou sem derrubar login:", error); }
     try { forceShowAppAfterLoginV213(); } catch {}
+    finishAppReadyV275?.(720);
+    setLoginBusyV275?.(false);
 
     setLoginStatus("Login efetuado.", "success");
 

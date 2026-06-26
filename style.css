@@ -13347,3 +13347,138 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right .knockout-match
 body.knockout-layout-active #knockoutBracket .bracket-side-right .knockout-match .ko-team.winner{
   justify-items: stretch !important;
 }
+
+
+/* v275 — Login estável + loading pós-login */
+#loginScreen.login-screen{
+  min-height:100dvh!important;
+  display:grid!important;
+  place-items:center!important;
+  contain:layout paint style!important;
+}
+
+#loginScreen .login-card{
+  min-height:430px!important;
+  transform:translateZ(0)!important;
+  backface-visibility:hidden!important;
+  will-change:auto!important;
+}
+
+#loginScreen.login-busy-v275 .login-card{
+  pointer-events:auto!important;
+}
+
+#loginScreen.login-busy-v275 #loginBtn,
+#loginScreen.login-busy-v275 #createAccountBtn{
+  opacity:.72!important;
+  cursor:wait!important;
+}
+
+#loginScreen.login-leaving-v275{
+  opacity:0!important;
+  pointer-events:none!important;
+  transition:opacity .16s ease!important;
+}
+
+.app-boot-loader-v275{
+  position:fixed!important;
+  inset:0!important;
+  z-index:99999!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:24px!important;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255,212,90,.13), transparent 32%),
+    radial-gradient(circle at 78% 18%, rgba(34,184,207,.13), transparent 34%),
+    rgba(4,8,16,.94)!important;
+  backdrop-filter:blur(10px)!important;
+}
+
+.app-boot-loader-v275.hidden{
+  display:none!important;
+}
+
+.app-boot-loader-card-v275{
+  width:min(430px, calc(100vw - 36px))!important;
+  border:1px solid rgba(255,255,255,.12)!important;
+  border-radius:20px!important;
+  padding:20px!important;
+  background:linear-gradient(180deg,rgba(13,21,34,.98),rgba(7,11,19,.99))!important;
+  box-shadow:0 28px 90px rgba(0,0,0,.45)!important;
+}
+
+.app-boot-loader-top-v275{
+  display:flex!important;
+  align-items:center!important;
+  gap:14px!important;
+}
+
+.app-boot-loader-top-v275 img{
+  width:48px!important;
+  height:48px!important;
+  border-radius:14px!important;
+  background:#fff!important;
+  padding:4px!important;
+  flex:0 0 auto!important;
+}
+
+.app-boot-loader-top-v275 span{
+  display:block!important;
+  color:#ffd84d!important;
+  font-size:12px!important;
+  font-weight:1000!important;
+  text-transform:uppercase!important;
+}
+
+.app-boot-loader-top-v275 strong{
+  display:block!important;
+  color:#f8fbff!important;
+  font-size:22px!important;
+  line-height:1.15!important;
+  margin-top:2px!important;
+}
+
+.app-boot-progress-v275{
+  height:10px!important;
+  margin:18px 0 10px!important;
+  border-radius:999px!important;
+  overflow:hidden!important;
+  background:rgba(255,255,255,.08)!important;
+  border:1px solid rgba(255,255,255,.10)!important;
+}
+
+.app-boot-progress-v275 i{
+  display:block!important;
+  height:100%!important;
+  width:42%!important;
+  border-radius:inherit!important;
+  background:linear-gradient(90deg,#23d7bd,#ffd84d,#fb5b56)!important;
+  animation:appBootProgressV275 1.15s ease-in-out infinite!important;
+}
+
+.app-boot-loader-card-v275 small{
+  color:#b9c7dc!important;
+  font-weight:800!important;
+}
+
+@keyframes appBootProgressV275{
+  0%{ transform:translateX(-110%); }
+  55%{ transform:translateX(75%); }
+  100%{ transform:translateX(250%); }
+}
+
+body.app-boot-loading-v275 #appShell.app-boot-hidden-v275{
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+
+body.app-boot-loading-v275{
+  overflow:hidden!important;
+}
+
+/* Evita que o shell apareça “a saltar” logo após login antes das dimensões assentarem. */
+body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden){
+  min-height:100dvh!important;
+}
+
