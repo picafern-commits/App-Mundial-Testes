@@ -20,6 +20,37 @@ const FOOTBALL_SYSTEM_ACTOR_V151 = { uid: "scheduler", email: "sistema@app-mundi
 const QUIET_TZ = "Europe/Lisbon";
 const DEFAULT_QUIET_START_HOUR = 23;
 const DEFAULT_QUIET_END_HOUR = 9;
+
+function defaultGlobalNotificationSettingsV264() {
+  return {
+    gameStart: true,
+    goals: true,
+    gameEnd: true,
+    results: true,
+    knockout: true,
+    chatGeneral: true,
+    chatAdmin: true,
+    mentions: true
+  };
+}
+
+let globalNotificationCacheV264 = { loadedAt: 0, settings: defaultGlobalNotificationSettingsV264() };
+
+async function globalNotificationSettingsV264(force = false) {
+  const now = Date.now();
+  if (!force && now - globalNotificationCacheV264.loadedAt < 15000) return globalNotificationCacheV264.settings;
+  try {
+    const snap = await db.collection("settings").doc("main").get();
+    const data = snap.exists ? (snap.data() || {}) : {};
+    const settings = { ...defaultGlobalNotificationSettingsV264(), ...(data.globalNotifications || {}) };
+    globalNotificationCacheV264 = { loadedAt: now, settings };
+    return settings;
+  } catch (error) {
+    logger.warn("Nao consegui ler notificacoes globais; vou usar defaults", error);
+    return globalNotificationCacheV264.settings || defaultGlobalNotificationSettingsV264();
+  }
+}
+
 function cleanString(value, fallback = "") {
   return String(value || fallback).trim();
 }
@@ -129,7 +160,9 @@ function tokenInQuietHours(tokenData) {
   return isHourInRange(lisbonHourNow(), start, end);
 }
 
-async function loadEnabledTokens({ room = "", pref = "", adminOnly = false, excludeUid = "", onlyUid = "", ignoreQuietHours = false } = {}) {
+async function loadEnabledTokens({ room = "", pref = "", adminOnly = false, excludeUid = "", onlyUid = "", ignoreQuietHours = false, ignoreGlobal = false } = {}) {
+  const globalSettings = ignoreGlobal ? defaultGlobalNotificationSettingsV264() : await globalNotificationSettingsV264();
+  if (pref && globalSettings[pref] === false) return [];
   const snap = await db.collection("notificationTokens").where("enabled", "==", true).get();
   return snap.docs
     .map(doc => ({ id: doc.id, ref: doc.ref, data: doc.data() || {} }))

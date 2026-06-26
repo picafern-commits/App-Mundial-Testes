@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v262";
+const APP_VERSION_LABEL = "v264";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -233,6 +233,19 @@ function defaultKnockoutPointSettings() {
   return { ...defaultPointSettings(), penalties: 2 };
 }
 
+function defaultGlobalNotificationSettingsV264() {
+  return {
+    gameStart: true,
+    goals: true,
+    gameEnd: true,
+    results: true,
+    knockout: true,
+    chatGeneral: true,
+    chatAdmin: true,
+    mentions: true
+  };
+}
+
 function defaultSettings() {
   return {
     points: defaultPointSettings(),
@@ -241,6 +254,7 @@ function defaultSettings() {
     extraPredictions: {},
     importedPoints: {},
     users: [],
+    globalNotifications: defaultGlobalNotificationSettingsV264(),
     knockout: { adminUnlocked: false, matches: [] },
     logs: [],
     lastImport: null
@@ -330,6 +344,7 @@ function mergeSettings(input = {}) {
     points: { ...base.points, ...(input.points || {}) },
     knockoutPoints: { ...base.knockoutPoints, ...(input.knockoutPoints || {}) },
     extraResults: { ...base.extraResults, ...(input.extraResults || {}) },
+    globalNotifications: { ...base.globalNotifications, ...(input.globalNotifications || {}) },
     extraPredictions: { ...(input.extraPredictions || {}) },
     importedPoints: { ...(input.importedPoints || {}) },
     logs: Array.isArray(input.logs) ? input.logs.slice(-MAX_SYSTEM_LOGS) : [],
@@ -10255,6 +10270,52 @@ async function callPushFunctionV181(functionName, payload = {}) {
   return data;
 }
 
+
+function isOwnerProfileV264() {
+  try { return normalizeRole(currentProfile?.role) === "owner"; } catch { return false; }
+}
+
+function globalNotificationSettingsV264() {
+  return { ...defaultGlobalNotificationSettingsV264(), ...(appSettings?.globalNotifications || {}) };
+}
+
+function globalNotificationLabelV264(key) {
+  return {
+    gameStart: "Jogo começou",
+    goals: "Golos / alteração no marcador",
+    gameEnd: "Jogo acabou",
+    results: "Resultado guardado/atualizado",
+    knockout: "Alterações da Fase Final",
+    chatGeneral: "Chat geral",
+    chatAdmin: "Chat admin",
+    mentions: "Menções no chat"
+  }[key] || key;
+}
+
+function currentGlobalNotificationSettingsV264() {
+  const saved = globalNotificationSettingsV264();
+  return Object.fromEntries(Object.keys(defaultGlobalNotificationSettingsV264()).map(key => {
+    const input = $(`globalPush_${key}_V264`);
+    return [key, input ? Boolean(input.checked) : saved[key] !== false];
+  }));
+}
+
+async function saveGlobalNotificationSettingsV264() {
+  if (!isOwnerProfileV264()) return toast("Só o Dono pode alterar notificações globais.");
+  const settings = currentGlobalNotificationSettingsV264();
+  appSettings.globalNotifications = settings;
+  markSettingsPending();
+  saveLocalData("notificações globais");
+  try {
+    await saveSettingsFastToFirebase("notificações globais");
+    toast("Notificações globais guardadas.");
+  } catch (error) {
+    console.error("saveGlobalNotificationSettingsV264 falhou:", error);
+    toast("Preferências guardadas localmente. Sincroniza quando o Firebase responder.");
+  }
+  renderPushNotificationsPanelV165();
+}
+
 function defaultPushPreferencesV181() {
   return {
     gameStart: true,
@@ -10528,6 +10589,19 @@ function renderPushNotificationsPanelV165() {
 
   const support = pushSupportV181();
   const preferences = savedPushPreferencesV181();
+  const globalPreferences = globalNotificationSettingsV264();
+  const ownerGlobalBlock = isOwnerProfileV264() ? `
+    <div class="push-options-v165 push-options-v200 global-push-options-v264">
+      <div class="push-options-title-v200">
+        <strong>Notificações globais — Dono</strong>
+        <span>Escolhe que tipos podem ser enviados para todos os users. Isto manda nas Functions e fica guardado no Firebase.</span>
+      </div>
+      ${Object.keys(defaultGlobalNotificationSettingsV264()).map(key => `
+        <label><input id="globalPush_${key}_V264" type="checkbox" ${globalPreferences[key] !== false ? "checked" : ""} /> ${escapeHtml(globalNotificationLabelV264(key))}</label>
+      `).join("")}
+      <button id="saveGlobalPushPrefsBtnV264" class="primary" type="button">Guardar notificações globais</button>
+    </div>
+  ` : "";
   const hasToken = Boolean(localStorage.getItem(pushLastTokenStorageKeyV181()));
   const permissionText = support.permission === "granted" ? "Permitidas" : support.permission === "denied" ? "Bloqueadas" : support.permission === "unsupported" ? "Não suportadas" : "Por ativar";
   const deviceText = support.ios ? (support.standalone ? "iPhone PWA instalada" : "iPhone: instalar no Ecra Principal") : /android/i.test(navigator.userAgent) ? "Android" : "PC / Browser";
@@ -10551,6 +10625,7 @@ function renderPushNotificationsPanelV165() {
       <span>${escapeHtml(vapidText)}</span>
       <span>${hasToken ? "Token guardado" : "Token por ativar"}</span>
     </div>
+    ${ownerGlobalBlock}
     <div class="push-options-v165 push-options-v200">
       <div class="push-options-title-v200">
         <strong>Notificações</strong>
@@ -10595,6 +10670,7 @@ function renderPushNotificationsPanelV165() {
   `;
 
   $("savePushPrefsBtnV181")?.addEventListener("click", savePushPreferencesV181);
+  $("saveGlobalPushPrefsBtnV264")?.addEventListener("click", saveGlobalNotificationSettingsV264);
   $("enablePushBtnV165")?.addEventListener("click", () => enablePushNotificationsV181());
   $("testPushBtnV165")?.addEventListener("click", sendTestPushV181);
 }
@@ -17577,7 +17653,7 @@ setTimeout(() => {
 
 
 // v262 — cores progressivas também nas barras de data do Calendário quando o dia tem jogos da Fase Final.
-const APP_VERSION_V262 = "263.0";
+const APP_VERSION_V262 = "264.0";
 
 function koV262RoundPriority(key) {
   const order = { r32: 1, r16: 2, qf: 3, sf: 4, final: 5, ko: 0 };
@@ -17654,3 +17730,7 @@ window.debugFaseFinalCalendarColorsV262 = function debugFaseFinalCalendarColorsV
 setTimeout(() => {
   try { koV262ApplyCalendarDayRoundColors(); } catch {}
 }, 1300);
+
+
+// v264 - Dono controla quais tipos de notificações globais podem ir para todos os users.
+const APP_VERSION_V264 = "264.0";
