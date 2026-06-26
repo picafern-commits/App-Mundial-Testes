@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v279";
+const APP_VERSION_LABEL = "v275";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -19208,60 +19208,3 @@ const APP_VERSION_V273 = "274.0";
     };
   };
 })();
-
-
-/* v276 — Base Mobile Clean */
-const APP_VERSION_V276 = "276.0";
-window.debugMobileBaseV276 = function debugMobileBaseV276() {
-  return {
-    version: APP_VERSION_V276,
-    width: window.innerWidth,
-    height: window.innerHeight,
-    visualViewport: window.visualViewport ? {
-      width: Math.round(window.visualViewport.width),
-      height: Math.round(window.visualViewport.height),
-      scale: window.visualViewport.scale
-    } : null,
-    activeTab: document.querySelector(".tab-panel.active")?.id || "",
-    mobile: window.matchMedia("(max-width: 760px)").matches
-  };
-};
-
-
-/* v277 — Calendário mobile clean */
-const APP_VERSION_V277 = "277.0";
-window.debugCalendarioMobileV277 = function debugCalendarioMobileV277() {
-  return {
-    version: APP_VERSION_V277,
-    width: window.innerWidth,
-    activeTab: document.querySelector(".tab-panel.active")?.id || "",
-    calendarCards: document.querySelectorAll(".game-card,.match-card,.calendar-game-card").length,
-    mobile: window.matchMedia("(max-width: 760px)").matches
-  };
-};
-
-
-/* v278 — Fase Final mobile clean */
-const APP_VERSION_V278 = "278.0";
-window.debugFaseFinalMobileV278 = function debugFaseFinalMobileV278() {
-  return {
-    version: APP_VERSION_V278,
-    width: window.innerWidth,
-    activeTab: document.querySelector(".tab-panel.active")?.id || "",
-    knockoutCards: document.querySelectorAll("#knockoutTab .ko-mobile-card, #knockoutTab .knockout-list-card, #knockoutTab .knockout-match").length,
-    mobile: window.matchMedia("(max-width: 760px)").matches
-  };
-};
-
-
-/* v279 — Calendário mobile compacto */
-const APP_VERSION_V279 = "279.0";
-window.debugCalendarioMobileCompactoV279 = function debugCalendarioMobileCompactoV279() {
-  const firstCard = document.querySelector("#calendarTab .game-card, #calendarTab .match-card, #calendarTab .calendar-game-card, #calendarTab [data-game-id]");
-  return {
-    version: APP_VERSION_V279,
-    width: window.innerWidth,
-    firstCardHeight: firstCard ? Math.round(firstCard.getBoundingClientRect().height) : null,
-    mobile: window.matchMedia("(max-width: 760px)").matches
-  };
-};
