@@ -13482,3 +13482,359 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
   min-height:100dvh!important;
 }
 
+
+
+/* v276 — Base Mobile Clean: estrutura geral mobile/iPhone sem mexer na lógica */
+:root{
+  --safe-top-v276: env(safe-area-inset-top, 0px);
+  --safe-right-v276: env(safe-area-inset-right, 0px);
+  --safe-bottom-v276: env(safe-area-inset-bottom, 0px);
+  --safe-left-v276: env(safe-area-inset-left, 0px);
+}
+
+html{
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
+
+body{
+  overscroll-behavior-y:auto;
+}
+
+input,
+select,
+textarea,
+button{
+  -webkit-tap-highlight-color:rgba(255,255,255,.08);
+}
+
+@media (max-width: 760px){
+  html,
+  body{
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:hidden!important;
+  }
+
+  body{
+    min-height:100dvh!important;
+    padding-left:0!important;
+    padding-right:0!important;
+    touch-action:pan-y!important;
+  }
+
+  .app-shell{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:
+      calc(10px + var(--safe-top-v276))
+      max(10px, var(--safe-right-v276))
+      calc(80px + var(--safe-bottom-v276))
+      max(10px, var(--safe-left-v276))!important;
+    box-sizing:border-box!important;
+    overflow-x:hidden!important;
+  }
+
+  .topbar{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    gap:12px!important;
+    padding:12px!important;
+    border-radius:18px!important;
+  }
+
+  .topbar h1{
+    font-size:clamp(28px, 9vw, 42px)!important;
+    line-height:1.02!important;
+    letter-spacing:-1.2px!important;
+    overflow-wrap:anywhere!important;
+  }
+
+  .topbar .eyebrow{
+    font-size:11px!important;
+  }
+
+  .session-box,
+  .topbar-actions,
+  .stats-row,
+  .summary-row,
+  .dashboard-stats{
+    width:100%!important;
+    max-width:100%!important;
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:8px!important;
+    justify-content:flex-start!important;
+  }
+
+  .topbar button,
+  .topbar .topbar-btn,
+  .stat-card,
+  .summary-card{
+    min-height:44px!important;
+    max-width:100%!important;
+  }
+
+  .tabs,
+  .nav-tabs,
+  .tab-nav{
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    display:flex!important;
+    gap:8px!important;
+    padding:8px 2px!important;
+    -webkit-overflow-scrolling:touch!important;
+    scroll-snap-type:x proximity!important;
+  }
+
+  .tabs button,
+  .nav-tabs button,
+  .tab-nav button{
+    flex:0 0 auto!important;
+    min-height:44px!important;
+    padding:0 14px!important;
+    scroll-snap-align:start!important;
+    white-space:nowrap!important;
+  }
+
+  main,
+  .tab-panel,
+  .panel,
+  .card,
+  .calendar-section,
+  .calendar-day-card,
+  .game-card,
+  .ko-list-card,
+  .knockout-list-card,
+  .settings-card,
+  .admin-card{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+  }
+
+  .tab-panel{
+    overflow-x:hidden!important;
+  }
+
+  .card,
+  .calendar-day-card,
+  .game-card,
+  .settings-card,
+  .admin-card,
+  .ko-list-card,
+  .knockout-list-card{
+    border-radius:16px!important;
+  }
+
+  .calendar-day-header,
+  .day-header{
+    min-height:42px!important;
+    padding:10px 12px!important;
+    border-radius:12px!important;
+    display:flex!important;
+    align-items:center!important;
+  }
+
+  .game-card,
+  .match-card,
+  .calendar-game-card{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+    padding:14px!important;
+    min-height:auto!important;
+  }
+
+  .game-card > *,
+  .match-card > *,
+  .calendar-game-card > *{
+    min-width:0!important;
+    max-width:100%!important;
+  }
+
+  .game-card .teams,
+  .match-teams,
+  .game-teams,
+  .calendar-teams{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+    text-align:left!important;
+  }
+
+  .game-card .actions,
+  .match-actions,
+  .calendar-actions,
+  .card-actions{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+  }
+
+  button,
+  .btn,
+  .primary,
+  .secondary,
+  .danger,
+  input[type="button"],
+  input[type="submit"]{
+    min-height:44px!important;
+    touch-action:manipulation!important;
+  }
+
+  input,
+  select,
+  textarea{
+    width:100%!important;
+    max-width:100%!important;
+    min-height:44px!important;
+    font-size:16px!important;
+    line-height:1.25!important;
+    box-sizing:border-box!important;
+  }
+
+  textarea{
+    min-height:96px!important;
+  }
+
+  .modal,
+  .modal-backdrop,
+  .dialog-backdrop{
+    padding:
+      max(10px, var(--safe-top-v276))
+      max(10px, var(--safe-right-v276))
+      max(10px, var(--safe-bottom-v276))
+      max(10px, var(--safe-left-v276))!important;
+    align-items:center!important;
+    justify-content:center!important;
+    overflow:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+
+  .modal-card,
+  .dialog,
+  .modal-content,
+  .knockout-record-card{
+    width:100%!important;
+    max-width:calc(100vw - 20px - var(--safe-left-v276) - var(--safe-right-v276))!important;
+    max-height:calc(100dvh - 24px - var(--safe-top-v276) - var(--safe-bottom-v276))!important;
+    overflow:auto!important;
+    box-sizing:border-box!important;
+    border-radius:18px!important;
+  }
+
+  .modal-card form,
+  .dialog form,
+  .modal-content form{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:12px!important;
+  }
+
+  table{
+    max-width:100%!important;
+  }
+
+  .table-wrap,
+  .table-scroll,
+  .ranking-table-wrap{
+    width:100%!important;
+    overflow-x:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+
+  .hide-mobile-v276,
+  .desktop-only{
+    display:none!important;
+  }
+
+  .login-screen{
+    padding:
+      calc(18px + var(--safe-top-v276))
+      max(14px, var(--safe-right-v276))
+      calc(18px + var(--safe-bottom-v276))
+      max(14px, var(--safe-left-v276))!important;
+  }
+
+  .login-card{
+    width:100%!important;
+    max-width:440px!important;
+    min-height:auto!important;
+    padding:18px!important;
+    box-sizing:border-box!important;
+  }
+
+  .login-brand{
+    align-items:center!important;
+  }
+
+  .login-brand h1{
+    font-size:clamp(26px, 8vw, 36px)!important;
+  }
+
+  .login-actions,
+  .form-actions{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+  }
+
+  /* No mobile, mapa oficial da fase final fica contido e com scroll horizontal natural, sem cortar a página toda. */
+  #knockoutBracket,
+  .bracket-photo-shell{
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:visible!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+
+  body.knockout-layout-active{
+    overflow-y:auto!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .bracket-photo-grid-split{
+    min-width:1080px!important;
+  }
+
+  .knockout-mobile-v121,
+  .ko-mobile-card{
+    width:100%!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+}
+
+@media (max-width: 420px){
+  .topbar h1{
+    font-size:32px!important;
+  }
+
+  .app-shell{
+    padding-left:max(8px, var(--safe-left-v276))!important;
+    padding-right:max(8px, var(--safe-right-v276))!important;
+  }
+
+  .topbar,
+  .card,
+  .game-card,
+  .match-card,
+  .calendar-game-card{
+    border-radius:14px!important;
+  }
+
+  .stat-card,
+  .summary-card{
+    flex:1 1 calc(50% - 8px)!important;
+    min-width:0!important;
+  }
+}
+

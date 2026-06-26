@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v275";
+const APP_VERSION_LABEL = "v276";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -19208,3 +19208,21 @@ const APP_VERSION_V273 = "274.0";
     };
   };
 })();
+
+
+/* v276 — Base Mobile Clean */
+const APP_VERSION_V276 = "276.0";
+window.debugMobileBaseV276 = function debugMobileBaseV276() {
+  return {
+    version: APP_VERSION_V276,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    visualViewport: window.visualViewport ? {
+      width: Math.round(window.visualViewport.width),
+      height: Math.round(window.visualViewport.height),
+      scale: window.visualViewport.scale
+    } : null,
+    activeTab: document.querySelector(".tab-panel.active")?.id || "",
+    mobile: window.matchMedia("(max-width: 760px)").matches
+  };
+};
