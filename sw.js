@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v293-bloqueio-apostas-config";
+const CACHE_NAME = "mundial-pontos-2026-v294-aposta-bloqueia-ao-guardar";
 const APP_SHELL = [
   "./",
   "./index.html",

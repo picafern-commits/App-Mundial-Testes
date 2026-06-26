@@ -15729,3 +15729,32 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
   }
 }
 
+
+
+/* v294 — aposta guardada fica bloqueada imediatamente */
+.ko-bet-card-v284.ko-bet-saved-locked-v294,
+.ko-bet-saved-locked-v294 .knockout-bet-card-v241{
+  border-color:rgba(34,197,94,.32)!important;
+  background:linear-gradient(180deg,rgba(22,101,52,.14),rgba(7,11,19,.96))!important;
+}
+
+.ko-bet-card-v284.ko-bet-saved-locked-v294 header b{
+  background:rgba(22,101,52,.30)!important;
+  border-color:rgba(34,197,94,.32)!important;
+  color:#bbf7d0!important;
+}
+
+.ko-bet-card-v284.ko-bet-saved-locked-v294 input,
+.ko-bet-card-v284.ko-bet-saved-locked-v294 select,
+.ko-bet-saved-locked-v294 input,
+.ko-bet-saved-locked-v294 select{
+  opacity:.72!important;
+  cursor:not-allowed!important;
+}
+
+.ko-bet-card-v284.ko-bet-saved-locked-v294 button[disabled],
+.ko-bet-saved-locked-v294 button[disabled]{
+  opacity:.82!important;
+  cursor:not-allowed!important;
+}
+

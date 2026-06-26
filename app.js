@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v293";
+const APP_VERSION_LABEL = "v294";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -20970,5 +20970,216 @@ window.debugBloqueioApostasV293 = function debugBloqueioApostasV293(matchId = ""
       deadline: knockoutBetDeadlineLabelV243?.(match),
       locked: isKnockoutBetLockedV241?.(match)
     } : null
+  };
+};
+
+
+/* v294 — Aposta da Fase Final bloqueia assim que é guardada */
+const APP_VERSION_V294_BET_LOCK_AFTER_SAVE = "294.0";
+
+function koV294PlayerForBetLock() {
+  try { return linkedPlayerForCurrentUserV241?.() || koV284Player?.() || null; } catch { return null; }
+}
+
+function koV294ExistingBetFor(matchId, player = koV294PlayerForBetLock()) {
+  if (!matchId || !player) return null;
+  try { return knockoutBetForPlayerMatchV241?.(player.id || player.playerId, matchId) || null; } catch {}
+  return (bets || []).find(bet =>
+    String(bet.gameId || "") === String(matchId || "") &&
+    String(bet.playerId || "") === String(player.id || player.playerId || "")
+  ) || null;
+}
+
+function koV294BetSavedLocked(matchId, player = koV294PlayerForBetLock()) {
+  return Boolean(koV294ExistingBetFor(matchId, player));
+}
+
+function koV294SavedLockedLabel() {
+  return "Aposta guardada · bloqueada";
+}
+
+(function installBetLockAfterSaveV294() {
+  if (window.__betLockAfterSaveV294) return;
+  window.__betLockAfterSaveV294 = true;
+
+  const originalKoV284Status = typeof koV284Status === "function" ? koV284Status : null;
+  if (originalKoV284Status && !originalKoV284Status.__v294) {
+    koV284Status = function koV284StatusLockedAfterSaveV294(match, player = koV284Player?.()) {
+      const bet = koV284BetFor?.(match, player) || koV294ExistingBetFor(match?.id, player);
+      if (bet) {
+        const hasResult = Boolean(knockoutMatchHasResult?.(match));
+        return {
+          key: "locked-done",
+          label: koV294SavedLockedLabel(),
+          bet,
+          locked: true,
+          hasResult,
+          savedLocked: true
+        };
+      }
+      return originalKoV284Status.apply(this, arguments);
+    };
+    koV284Status.__v294 = true;
+    window.koV284Status = koV284Status;
+  }
+
+  const originalCalendarBetState = typeof knockoutCalendarBetStateV259 === "function" ? knockoutCalendarBetStateV259 : null;
+  if (originalCalendarBetState && !originalCalendarBetState.__v294) {
+    knockoutCalendarBetStateV259 = function knockoutCalendarBetStateLockedAfterSaveV294(game) {
+      const state = originalCalendarBetState.apply(this, arguments);
+      const match = typeof koV286MatchForGame === "function" ? koV286MatchForGame(game) : knockoutMatchById?.(game?.id);
+      const player = koV294PlayerForBetLock();
+      const bet = match ? koV294ExistingBetFor(match.id, player) : null;
+      if (bet) {
+        return {
+          ...state,
+          key: "locked-done",
+          label: koV294SavedLockedLabel(),
+          bet,
+          locked: true,
+          savedLocked: true
+        };
+      }
+      return state;
+    };
+    knockoutCalendarBetStateV259.__v294 = true;
+    window.knockoutCalendarBetStateV259 = knockoutCalendarBetStateV259;
+  }
+
+  const originalButtonLabel = typeof knockoutBetButtonLabelV241 === "function" ? knockoutBetButtonLabelV241 : null;
+  if (originalButtonLabel && !originalButtonLabel.__v294) {
+    knockoutBetButtonLabelV241 = function knockoutBetButtonLabelLockedAfterSaveV294(match) {
+      const player = koV294PlayerForBetLock();
+      if (!player) return "Ligar jogador";
+      if (koV294ExistingBetFor(match?.id, player)) return "Aposta guardada";
+      return originalButtonLabel.apply(this, arguments);
+    };
+    knockoutBetButtonLabelV241.__v294 = true;
+    window.knockoutBetButtonLabelV241 = knockoutBetButtonLabelV241;
+  }
+
+  const originalCentralSave = typeof koV284SaveBet === "function" ? koV284SaveBet : null;
+  if (originalCentralSave && !originalCentralSave.__v294) {
+    koV284SaveBet = async function koV284SaveBetLockedAfterSaveV294(matchId) {
+      const player = koV294PlayerForBetLock();
+      if (koV294ExistingBetFor(matchId, player)) {
+        toast?.("A aposta já está guardada e bloqueada.");
+        try { koV284RenderHub?.(); } catch {}
+        return;
+      }
+      return originalCentralSave.apply(this, arguments);
+    };
+    koV284SaveBet.__v294 = true;
+    window.koV284SaveBet = koV284SaveBet;
+  }
+
+  const originalCentralDelete = typeof koV284DeleteBet === "function" ? koV284DeleteBet : null;
+  if (originalCentralDelete && !originalCentralDelete.__v294) {
+    koV284DeleteBet = async function koV284DeleteBetLockedAfterSaveV294(matchId) {
+      if (koV294ExistingBetFor(matchId)) {
+        toast?.("A aposta já está guardada e bloqueada.");
+        try { koV284RenderHub?.(); } catch {}
+        return;
+      }
+      return originalCentralDelete.apply(this, arguments);
+    };
+    koV284DeleteBet.__v294 = true;
+    window.koV284DeleteBet = koV284DeleteBet;
+  }
+
+  const originalModalSave = typeof saveKnockoutBetFromModalV241 === "function" ? saveKnockoutBetFromModalV241 : null;
+  if (originalModalSave && !originalModalSave.__v294) {
+    saveKnockoutBetFromModalV241 = async function saveKnockoutBetFromModalLockedAfterSaveV294() {
+      const matchId = typeof activeKnockoutBetMatchIdV241 !== "undefined" ? activeKnockoutBetMatchIdV241 : "";
+      if (koV294ExistingBetFor(matchId)) {
+        toast?.("A aposta já está guardada e bloqueada.");
+        return;
+      }
+      return originalModalSave.apply(this, arguments);
+    };
+    saveKnockoutBetFromModalV241.__v294 = true;
+    window.saveKnockoutBetFromModalV241 = saveKnockoutBetFromModalV241;
+  }
+
+  const originalModalDelete = typeof deleteKnockoutBetFromModalV241 === "function" ? deleteKnockoutBetFromModalV241 : null;
+  if (originalModalDelete && !originalModalDelete.__v294) {
+    deleteKnockoutBetFromModalV241 = async function deleteKnockoutBetFromModalLockedAfterSaveV294() {
+      const matchId = typeof activeKnockoutBetMatchIdV241 !== "undefined" ? activeKnockoutBetMatchIdV241 : "";
+      if (koV294ExistingBetFor(matchId)) {
+        toast?.("A aposta já está guardada e bloqueada.");
+        return;
+      }
+      return originalModalDelete.apply(this, arguments);
+    };
+    deleteKnockoutBetFromModalV241.__v294 = true;
+    window.deleteKnockoutBetFromModalV241 = deleteKnockoutBetFromModalV241;
+  }
+
+  const originalOpenModal = typeof openKnockoutBetModalV241 === "function" ? openKnockoutBetModalV241 : null;
+  if (originalOpenModal && !originalOpenModal.__v294) {
+    openKnockoutBetModalV241 = function openKnockoutBetModalLockedAfterSaveV294(matchId) {
+      const result = originalOpenModal.apply(this, arguments);
+      setTimeout(() => {
+        const existing = koV294ExistingBetFor(matchId);
+        const modal = document.getElementById("knockoutBetModalV241");
+        if (!existing || !modal) return;
+
+        modal.classList.add("ko-bet-saved-locked-v294");
+        modal.querySelectorAll("input,select,textarea").forEach(input => input.disabled = true);
+
+        const saveBtn = document.getElementById("saveKnockoutBetV241");
+        if (saveBtn) {
+          saveBtn.disabled = true;
+          saveBtn.textContent = "Aposta guardada";
+        }
+
+        const deleteBtn = document.getElementById("deleteKnockoutBetV241");
+        if (deleteBtn) {
+          deleteBtn.disabled = true;
+          deleteBtn.textContent = "Bloqueada";
+        }
+
+        const subtitle = document.getElementById("knockoutBetSubtitleV241");
+        if (subtitle) subtitle.textContent = "Esta aposta já foi guardada e não pode ser alterada.";
+      }, 0);
+      return result;
+    };
+    openKnockoutBetModalV241.__v294 = true;
+    window.openKnockoutBetModalV241 = openKnockoutBetModalV241;
+  }
+
+  const originalRenderHub = typeof koV284RenderHub === "function" ? koV284RenderHub : null;
+  if (originalRenderHub && !originalRenderHub.__v294) {
+    koV284RenderHub = function koV284RenderHubLockedAfterSaveV294() {
+      const result = originalRenderHub.apply(this, arguments);
+      setTimeout(() => {
+        document.querySelectorAll("#knockoutBetHubV284 .ko-bet-card-v284").forEach(card => {
+          const matchId = card.getAttribute("data-ko-v284-match") || "";
+          if (!koV294ExistingBetFor(matchId)) return;
+          card.classList.add("ko-bet-saved-locked-v294");
+          card.querySelectorAll("input,select,textarea").forEach(input => input.disabled = true);
+          card.querySelectorAll("[data-ko-v284-save],[data-ko-v284-delete]").forEach(button => {
+            button.disabled = true;
+            if (button.matches("[data-ko-v284-save]")) button.textContent = "Aposta guardada";
+            if (button.matches("[data-ko-v284-delete]")) button.textContent = "Bloqueada";
+          });
+        });
+      }, 0);
+      return result;
+    };
+    koV284RenderHub.__v294 = true;
+    window.koV284RenderHub = koV284RenderHub;
+  }
+})();
+
+window.debugApostaBloqueiaAoGuardarV294 = function debugApostaBloqueiaAoGuardarV294(matchId = "") {
+  const player = koV294PlayerForBetLock();
+  const match = matchId ? knockoutMatchById?.(matchId) : (appSettings?.knockout?.matches || [])[0];
+  return {
+    version: APP_VERSION_V294_BET_LOCK_AFTER_SAVE,
+    player: player ? { id: player.id || player.playerId, name: player.name || player.playerName } : null,
+    match: match ? { id: match.id, jogo: `${match.homeTeam || ""} vs ${match.awayTeam || ""}` } : null,
+    existingBet: match ? Boolean(koV294ExistingBetFor(match.id, player)) : false,
+    label: match ? knockoutBetButtonLabelV241?.(match) : ""
   };
 };
