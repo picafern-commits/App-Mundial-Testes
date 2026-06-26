@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v265";
+const APP_VERSION_LABEL = "v266";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -17867,3 +17867,152 @@ window.clearKnockoutMatchRecordV265 = clearKnockoutMatchRecordV265;
 setTimeout(() => {
   try { if (document.querySelector(".tab-panel.active")?.id === "knockoutTab") renderKnockout?.(); } catch {}
 }, 900);
+
+
+// v266 — Janela Users Online redesenhada, mais limpa e legível.
+const APP_VERSION_V266 = "266.0";
+
+function onlineUserProfileV266(user) {
+  try {
+    const email = normalizeEmail(user?.email || user?.id || "");
+    return (permissionsCache || []).find(profile => normalizeEmail(profile.email || profile.id || "") === email) || null;
+  } catch {
+    return null;
+  }
+}
+
+function onlineUserPlayerLabelV266(user) {
+  try {
+    const profile = onlineUserProfileV266(user) || {};
+    const direct = String(profile.linkedPlayerName || profile.playerName || profile.jogadorName || "").trim();
+    if (direct) return direct;
+    if (typeof linkedPlayerForProfileV241 === "function" && profile) {
+      const linked = linkedPlayerForProfileV241(profile);
+      if (linked?.name) return linked.name;
+    }
+  } catch {}
+  return "Sem jogador ligado";
+}
+
+function onlineUserRoleLabelV266(user) {
+  try {
+    const profile = onlineUserProfileV266(user);
+    const role = normalizeRole(profile?.role || user?.role || "user");
+    return typeof roleLabel === "function" ? roleLabel(role) : role;
+  } catch {
+    return "User";
+  }
+}
+
+function onlineUserStatusV266(user) {
+  const time = presenceTimestampMs(user?.lastActiveAt);
+  const explicitOffline = user?.online === false;
+  const age = Number.isFinite(time) && time > 0 ? Date.now() - time : Number.POSITIVE_INFINITY;
+  const onlineLimit = typeof ONLINE_WINDOW_MS === "number" ? ONLINE_WINDOW_MS : 90000;
+
+  if (!explicitOffline && age <= onlineLimit) {
+    return { key: "online", label: "Online", section: "Online", dot: "🟢" };
+  }
+  if (!explicitOffline && age <= 15 * 60 * 1000) {
+    return { key: "away", label: "Ausente", section: "Ausentes", dot: "🟠" };
+  }
+  return { key: "offline", label: "Offline", section: "Offline", dot: "⚫" };
+}
+
+function onlineUsersPopupHeaderV266() {
+  const total = onlineUsersCache.length;
+  const online = onlineUsersCache.filter(user => onlineUserStatusV266(user).key === "online").length;
+  const away = onlineUsersCache.filter(user => onlineUserStatusV266(user).key === "away").length;
+  return `
+    <div class="online-users-popup-head online-users-popup-head-v266">
+      <div>
+        <strong>Users online</strong>
+        <span>${online} online · ${away} ausente${away === 1 ? "" : "s"} · ${total} registado${total === 1 ? "" : "s"}</span>
+      </div>
+      <button id="closeOnlineUsersBtn" class="online-users-close" type="button" aria-label="Fechar users online" onclick="return window.closeOnlineUsersPanelNow(event)">×</button>
+    </div>`;
+}
+
+function renderOnlineUserCardV266(user) {
+  const email = normalizeEmail(user?.email || user?.id || "");
+  const profile = onlineUserProfileV266(user) || {};
+  const name = String(profile.name || user?.name || displayNameFromEmail(email) || "User").trim();
+  const status = onlineUserStatusV266(user);
+  const player = onlineUserPlayerLabelV266(user);
+  const role = onlineUserRoleLabelV266(user);
+  const device = String(user?.device || "Dispositivo não identificado").trim();
+  const last = timeAgoLabel(user?.lastActiveAt);
+  const initial = (name || email || "U").trim().charAt(0).toUpperCase() || "U";
+
+  return `
+    <article class="online-user-card-v266 is-${escapeHtml(status.key)}">
+      <div class="online-user-avatar-v266">${escapeHtml(initial)}</div>
+      <div class="online-user-info-v266">
+        <div class="online-user-main-v266">
+          <strong>${escapeHtml(name)}</strong>
+          <span class="online-user-status-v266 ${escapeHtml(status.key)}">${status.dot} ${escapeHtml(status.label)}</span>
+        </div>
+        <div class="online-user-meta-v266">
+          <span>${escapeHtml(role)}</span>
+          <span>${escapeHtml(player)}</span>
+        </div>
+        <div class="online-user-sub-v266">
+          <span>${escapeHtml(device)}</span>
+          <span>Última atividade ${escapeHtml(last)}</span>
+        </div>
+      </div>
+    </article>`;
+}
+
+function renderOnlineUsersV266() {
+  const list = $("onlineUsersList");
+  const badge = $("onlineUsersBadge");
+  if (!list) return;
+
+  const groups = { online: [], away: [], offline: [] };
+  (onlineUsersCache || []).forEach(user => {
+    const status = onlineUserStatusV266(user).key;
+    (groups[status] || groups.offline).push(user);
+  });
+
+  const onlineCount = groups.online.length;
+  if (badge) badge.textContent = `${onlineCount} online`;
+
+  if (!onlineUsersCache.length) {
+    list.innerHTML = `${onlineUsersPopupHeaderV266()}<div class="empty small-empty online-empty-v266">Ainda não existem users com presença registada.</div>`;
+    return;
+  }
+
+  const section = (key, title) => {
+    const items = groups[key] || [];
+    if (!items.length) return "";
+    return `
+      <section class="online-users-section-v266 online-users-section-${key}-v266">
+        <div class="online-users-section-title-v266"><span>${escapeHtml(title)}</span><b>${items.length}</b></div>
+        <div class="online-users-cards-v266">
+          ${items.map(renderOnlineUserCardV266).join("")}
+        </div>
+      </section>`;
+  };
+
+  list.innerHTML = `${onlineUsersPopupHeaderV266()}
+    <div class="online-users-content-v266">
+      ${section("online", "Online agora")}
+      ${section("away", "Ausentes há pouco")}
+      ${section("offline", "Offline")}
+    </div>`;
+
+  try { bindOnlineUsersPortalV220?.(); } catch {}
+  try { setTimeout(positionOnlineUsersPopupV220, 0); } catch {}
+}
+
+try {
+  renderOnlineUsers = renderOnlineUsersV266;
+  window.renderOnlineUsers = renderOnlineUsersV266;
+} catch (error) {
+  console.warn("v266: não foi possível aplicar nova janela users online", error);
+}
+
+setTimeout(() => {
+  try { renderOnlineUsersV266(); } catch {}
+}, 1000);

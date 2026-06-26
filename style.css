@@ -12625,3 +12625,237 @@ body.knockout-layout-active #knockoutBracket.ko-list-root-v260,
     flex:1 1 140px!important;
   }
 }
+
+
+/* v266 - Users online redesenhado */
+.topbar .topbar-online-users summary{
+  border-radius:999px!important;
+  padding:9px 14px!important;
+  background:linear-gradient(135deg, rgba(34,184,207,.18), rgba(99,102,241,.16))!important;
+  border-color:rgba(148,163,184,.24)!important;
+  box-shadow:0 10px 26px rgba(0,0,0,.22)!important;
+}
+
+.topbar .topbar-online-users[open] summary{
+  border-color:rgba(34,197,94,.42)!important;
+  background:linear-gradient(135deg, rgba(34,197,94,.18), rgba(34,184,207,.14))!important;
+}
+
+.topbar .topbar-online-users .online-users-list,
+body > #onlineUsersList.online-users-portal-v220{
+  width:min(560px, calc(100vw - 24px))!important;
+  padding:0!important;
+  border-radius:22px!important;
+  border:1px solid rgba(148,163,184,.24)!important;
+  background:rgba(8,13,24,.985)!important;
+  box-shadow:0 34px 110px rgba(0,0,0,.72)!important;
+  overflow:hidden auto!important;
+}
+
+.online-users-popup-head-v266{
+  margin:0!important;
+  padding:15px 16px!important;
+  border-bottom:1px solid rgba(148,163,184,.16)!important;
+  background:linear-gradient(135deg, rgba(15,23,42,.98), rgba(8,13,24,.98))!important;
+  position:sticky!important;
+  top:0!important;
+  z-index:10!important;
+}
+
+.online-users-popup-head-v266 > div{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:3px!important;
+  min-width:0!important;
+}
+
+.online-users-popup-head-v266 strong{
+  font-size:17px!important;
+  letter-spacing:-.02em!important;
+  color:#f8fafc!important;
+}
+
+.online-users-popup-head-v266 span{
+  color:#94a3b8!important;
+  font-size:12px!important;
+  font-weight:750!important;
+}
+
+.online-users-content-v266{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:14px!important;
+  padding:14px!important;
+}
+
+.online-users-section-title-v266{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  margin:0 2px 8px!important;
+  color:#cbd5e1!important;
+  font-size:12px!important;
+  font-weight:950!important;
+  text-transform:uppercase!important;
+  letter-spacing:.08em!important;
+}
+
+.online-users-section-title-v266 b{
+  min-width:24px!important;
+  height:24px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border-radius:999px!important;
+  background:rgba(148,163,184,.14)!important;
+  color:#e2e8f0!important;
+  font-size:11px!important;
+}
+
+.online-users-cards-v266{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:8px!important;
+}
+
+.online-user-card-v266{
+  display:grid!important;
+  grid-template-columns:42px minmax(0,1fr)!important;
+  gap:11px!important;
+  align-items:center!important;
+  padding:11px!important;
+  border:1px solid rgba(148,163,184,.14)!important;
+  border-radius:16px!important;
+  background:rgba(15,23,42,.62)!important;
+  box-shadow:0 10px 26px rgba(0,0,0,.18)!important;
+}
+
+.online-user-card-v266.is-online{
+  border-color:rgba(34,197,94,.28)!important;
+  background:linear-gradient(135deg, rgba(34,197,94,.12), rgba(15,23,42,.62))!important;
+}
+
+.online-user-card-v266.is-away{
+  border-color:rgba(245,158,11,.24)!important;
+  background:linear-gradient(135deg, rgba(245,158,11,.10), rgba(15,23,42,.62))!important;
+}
+
+.online-user-avatar-v266{
+  width:42px!important;
+  height:42px!important;
+  border-radius:14px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-weight:1000!important;
+  font-size:16px!important;
+  color:#fff!important;
+  background:linear-gradient(135deg, rgba(34,184,207,.85), rgba(99,102,241,.85))!important;
+}
+
+.online-user-info-v266{
+  min-width:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:5px!important;
+}
+
+.online-user-main-v266,
+.online-user-meta-v266,
+.online-user-sub-v266{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  min-width:0!important;
+}
+
+.online-user-main-v266{
+  justify-content:space-between!important;
+}
+
+.online-user-main-v266 strong{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  color:#f8fafc!important;
+  font-size:14px!important;
+  font-weight:1000!important;
+}
+
+.online-user-status-v266{
+  flex:0 0 auto!important;
+  border-radius:999px!important;
+  padding:4px 8px!important;
+  font-size:11px!important;
+  font-weight:950!important;
+  border:1px solid rgba(148,163,184,.16)!important;
+  color:#e2e8f0!important;
+  background:rgba(148,163,184,.12)!important;
+}
+.online-user-status-v266.online{ background:rgba(34,197,94,.16)!important; border-color:rgba(34,197,94,.24)!important; color:#bbf7d0!important; }
+.online-user-status-v266.away{ background:rgba(245,158,11,.14)!important; border-color:rgba(245,158,11,.22)!important; color:#fde68a!important; }
+.online-user-status-v266.offline{ background:rgba(100,116,139,.14)!important; border-color:rgba(100,116,139,.22)!important; color:#cbd5e1!important; }
+
+.online-user-meta-v266 span,
+.online-user-sub-v266 span{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  color:#94a3b8!important;
+  font-size:12px!important;
+  font-weight:750!important;
+}
+
+.online-user-meta-v266 span:first-child{
+  color:#cbd5e1!important;
+}
+
+.online-users-close{
+  border-radius:999px!important;
+}
+
+.online-empty-v266{
+  margin:14px!important;
+}
+
+@media(max-width:760px){
+  body > #onlineUsersList.online-users-portal-v220,
+  .topbar .topbar-online-users .online-users-list{
+    left:10px!important;
+    right:10px!important;
+    top:max(70px, env(safe-area-inset-top))!important;
+    width:auto!important;
+    max-height:calc(100dvh - 86px)!important;
+    border-radius:20px!important;
+  }
+
+  .online-users-content-v266{
+    padding:12px!important;
+    gap:12px!important;
+  }
+
+  .online-user-card-v266{
+    grid-template-columns:38px minmax(0,1fr)!important;
+    padding:10px!important;
+    border-radius:15px!important;
+  }
+
+  .online-user-avatar-v266{
+    width:38px!important;
+    height:38px!important;
+    border-radius:13px!important;
+  }
+
+  .online-user-main-v266{
+    align-items:flex-start!important;
+  }
+
+  .online-user-meta-v266,
+  .online-user-sub-v266{
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    gap:2px!important;
+  }
+}
