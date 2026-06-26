@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v295-aviso-obrigatorio";
+const CACHE_NAME = "mundial-pontos-2026-v296-aviso-checkbox-fix";
 const APP_SHELL = [
   "./",
   "./index.html",

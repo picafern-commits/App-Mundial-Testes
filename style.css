@@ -16033,3 +16033,22 @@ body.mandatory-notice-open-v295{
   }
 }
 
+
+
+/* v296 — checkbox do aviso obrigatório clicável */
+.mandatory-notice-check-v295,
+.mandatory-notice-check-v295 *,
+#mandatoryNoticeReadCheckV295,
+#mandatoryNoticeConfirmBtnV295{
+  pointer-events:auto!important;
+}
+
+.mandatory-notice-check-v295{
+  cursor:pointer!important;
+  user-select:none;
+}
+
+#mandatoryNoticeReadCheckV295{
+  cursor:pointer!important;
+  accent-color:#facc15;
+}

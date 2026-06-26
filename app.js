@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v295";
+const APP_VERSION_LABEL = "v296";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -21644,5 +21644,91 @@ window.debugAvisoObrigatorioV295 = function debugAvisoObrigatorioV295() {
     needsAck: mandatoryNoticeNeedsAckV295(),
     ack: mandatoryNoticeAckForCurrentUserV295(),
     stats: { total: stats.total, read: stats.read, unread: stats.unread }
+  };
+};
+
+
+/* v296 — Fix checkbox do aviso obrigatório */
+const APP_VERSION_V296_NOTICE_CHECKBOX_FIX = "296.0";
+
+function bindMandatoryNoticeCheckboxFixV296() {
+  const modal = document.getElementById("mandatoryNoticeModalV295");
+  if (!modal || modal.__checkboxFixV296) return;
+  modal.__checkboxFixV296 = true;
+
+  const allowClickInside = event => {
+    event.stopPropagation();
+  };
+
+  modal.querySelectorAll(
+    ".mandatory-notice-check-v295, #mandatoryNoticeReadCheckV295, #mandatoryNoticeConfirmBtnV295, .mandatory-notice-body-v295"
+  ).forEach(el => {
+    el.addEventListener("click", allowClickInside);
+    el.addEventListener("touchstart", allowClickInside, { passive: true });
+    el.addEventListener("touchend", allowClickInside, { passive: true });
+  });
+
+  const checkbox = document.getElementById("mandatoryNoticeReadCheckV295");
+  const button = document.getElementById("mandatoryNoticeConfirmBtnV295");
+
+  if (checkbox && !checkbox.__directToggleV296) {
+    checkbox.__directToggleV296 = true;
+    checkbox.addEventListener("change", () => {
+      if (button) button.disabled = !checkbox.checked;
+    });
+  }
+
+  const label = modal.querySelector(".mandatory-notice-check-v295");
+  if (label && checkbox && !label.__labelToggleV296) {
+    label.__labelToggleV296 = true;
+    label.addEventListener("click", event => {
+      if (event.target === checkbox) return;
+      event.preventDefault();
+      event.stopPropagation();
+      checkbox.checked = !checkbox.checked;
+      checkbox.dispatchEvent(new Event("change", { bubbles: false }));
+    });
+  }
+}
+
+(function installMandatoryNoticeCheckboxFixV296() {
+  if (window.__mandatoryNoticeCheckboxFixV296) return;
+  window.__mandatoryNoticeCheckboxFixV296 = true;
+
+  const originalEnsure = typeof mandatoryNoticeEnsureModalV295 === "function" ? mandatoryNoticeEnsureModalV295 : null;
+  if (originalEnsure && !originalEnsure.__v296) {
+    mandatoryNoticeEnsureModalV295 = function mandatoryNoticeEnsureModalCheckboxFixV296() {
+      const modal = originalEnsure.apply(this, arguments);
+      setTimeout(bindMandatoryNoticeCheckboxFixV296, 0);
+      return modal;
+    };
+    mandatoryNoticeEnsureModalV295.__v296 = true;
+    window.mandatoryNoticeEnsureModalV295 = mandatoryNoticeEnsureModalV295;
+  }
+
+  const originalShow = typeof showMandatoryNoticeIfNeededV295 === "function" ? showMandatoryNoticeIfNeededV295 : null;
+  if (originalShow && !originalShow.__v296) {
+    showMandatoryNoticeIfNeededV295 = function showMandatoryNoticeIfNeededCheckboxFixV296() {
+      const result = originalShow.apply(this, arguments);
+      setTimeout(bindMandatoryNoticeCheckboxFixV296, 0);
+      setTimeout(bindMandatoryNoticeCheckboxFixV296, 120);
+      return result;
+    };
+    showMandatoryNoticeIfNeededV295.__v296 = true;
+    window.showMandatoryNoticeIfNeededV295 = showMandatoryNoticeIfNeededV295;
+  }
+
+  setTimeout(bindMandatoryNoticeCheckboxFixV296, 800);
+})();
+
+window.debugAvisoCheckboxV296 = function debugAvisoCheckboxV296() {
+  const checkbox = document.getElementById("mandatoryNoticeReadCheckV295");
+  const button = document.getElementById("mandatoryNoticeConfirmBtnV295");
+  return {
+    version: APP_VERSION_V296_NOTICE_CHECKBOX_FIX,
+    exists: Boolean(checkbox),
+    checked: Boolean(checkbox?.checked),
+    buttonDisabled: Boolean(button?.disabled),
+    modalHidden: document.getElementById("mandatoryNoticeModalV295")?.classList.contains("hidden")
   };
 };
