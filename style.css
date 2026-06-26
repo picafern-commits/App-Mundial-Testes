@@ -16325,3 +16325,37 @@ body.mandatory-notice-open-v295{
   border-color:rgba(34,197,94,.30)!important;
   background:rgba(34,197,94,.12)!important;
 }
+
+
+/* v305 — só no Calendário > filtro Fase Final: impedir flash amarelo */
+#gamesList.calendar-ko-filter-active-v305 .day-block.calendar-ko-filter-day-v305 > h3{
+  color:#eaf6ff!important;
+  box-shadow:none!important;
+}
+
+#gamesList.calendar-ko-filter-active-v305 .day-block.calendar-ko-filter-day-v305:not(.ko-calendar-day-round-qf-v262):not(.ko-calendar-day-round-sf-v262):not(.ko-calendar-day-round-final-v262) > h3{
+  background:linear-gradient(90deg,#2563eb,#38bdf8)!important;
+  border-color:rgba(96,165,250,.35)!important;
+}
+
+#gamesList.calendar-ko-filter-active-v305 .day-block.ko-calendar-day-round-r32-v262 > h3,
+#gamesList.calendar-ko-filter-active-v305 .day-block.ko-calendar-day-round-r16-v262 > h3,
+#gamesList.calendar-ko-filter-active-v305 .day-block.ko-calendar-day-round-ko-v262 > h3{
+  background:linear-gradient(90deg,#2563eb,#38bdf8)!important;
+  border-color:rgba(96,165,250,.35)!important;
+}
+
+#gamesList.calendar-ko-filter-active-v305 .day-block.ko-calendar-day-round-qf-v262 > h3{
+  background:linear-gradient(90deg,#4f46e5,#22d3ee)!important;
+  border-color:rgba(129,140,248,.35)!important;
+}
+
+#gamesList.calendar-ko-filter-active-v305 .day-block.ko-calendar-day-round-sf-v262 > h3{
+  background:linear-gradient(90deg,#7c3aed,#38bdf8)!important;
+  border-color:rgba(167,139,250,.35)!important;
+}
+
+#gamesList.calendar-ko-filter-active-v305 .day-block.ko-calendar-day-round-final-v262 > h3{
+  background:linear-gradient(90deg,#0f766e,#38bdf8)!important;
+  border-color:rgba(45,212,191,.35)!important;
+}

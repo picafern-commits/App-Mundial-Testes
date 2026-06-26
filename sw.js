@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v304-modal-apostas-igual";
+const CACHE_NAME = "mundial-pontos-2026-v305-calendario-fase-final-sem-flash";
 const APP_VERSION_SW_V298_USER_NOTIFICATIONS = "298.0";
 let userNotificationsEnabledSwV298 = true;
 
