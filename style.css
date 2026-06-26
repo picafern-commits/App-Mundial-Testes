@@ -13972,3 +13972,324 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
   }
 }
 
+
+
+/* v278 — Calendário mobile: formato compacto igual ao pretendido */
+@media (max-width: 760px){
+  #calendarTab .calendar-list{
+    gap:12px!important;
+  }
+
+  #calendarTab .day-block{
+    padding:0!important;
+    margin:12px 0!important;
+    border-radius:16px!important;
+    overflow:hidden!important;
+  }
+
+  #calendarTab .day-block h3{
+    min-height:38px!important;
+    height:auto!important;
+    padding:9px 12px!important;
+    font-size:15px!important;
+    line-height:1.15!important;
+    display:flex!important;
+    align-items:center!important;
+  }
+
+  /* A regra principal: o card real é .match-row */
+  #calendarTab .match-row{
+    --stable-match-row-height-v273:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    min-height:0!important;
+    height:auto!important;
+
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    grid-template-areas:
+      "group group"
+      "home time"
+      "vs time"
+      "away time"
+      "state state"
+      "note note"
+      "actions actions"!important;
+
+    gap:7px 10px!important;
+    align-items:center!important;
+    align-content:start!important;
+    padding:12px!important;
+    margin:0!important;
+    border-radius:15px!important;
+    box-sizing:border-box!important;
+  }
+
+  #calendarTab .match-row + .match-row{
+    margin-top:10px!important;
+  }
+
+  #calendarTab .match-row > *{
+    min-width:0!important;
+    max-width:100%!important;
+    margin:0!important;
+  }
+
+  #calendarTab .match-row .group-pill{
+    grid-area:group!important;
+    justify-self:start!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:fit-content!important;
+    height:30px!important;
+    min-height:30px!important;
+    padding:0 12px!important;
+    border-radius:999px!important;
+    font-size:13px!important;
+    line-height:1!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    white-space:nowrap!important;
+  }
+
+  #calendarTab .match-row .team{
+    min-width:0!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:28px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:0!important;
+    color:var(--text)!important;
+    font-size:18px!important;
+    line-height:1.15!important;
+    text-align:left!important;
+  }
+
+  #calendarTab .match-row .team.home{
+    grid-area:home!important;
+  }
+
+  #calendarTab .match-row .team.away,
+  #calendarTab .match-row .away{
+    grid-area:away!important;
+    justify-content:flex-start!important;
+    text-align:left!important;
+  }
+
+  #calendarTab .match-row .team strong{
+    display:block!important;
+    min-width:0!important;
+    max-width:100%!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    font-size:18px!important;
+    line-height:1.15!important;
+  }
+
+  #calendarTab .match-row .team span{
+    display:none!important;
+  }
+
+  #calendarTab .match-row .score-vs{
+    grid-area:vs!important;
+    justify-self:start!important;
+    align-self:center!important;
+    width:48px!important;
+    min-width:48px!important;
+    max-width:48px!important;
+    height:26px!important;
+    min-height:26px!important;
+    padding:0!important;
+    border-radius:999px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    text-align:center!important;
+    color:var(--gold)!important;
+    font-size:16px!important;
+    line-height:1!important;
+    font-weight:1000!important;
+  }
+
+  #calendarTab .match-row .time{
+    grid-area:time!important;
+    justify-self:end!important;
+    align-self:center!important;
+    width:auto!important;
+    min-width:54px!important;
+    max-width:82px!important;
+    min-height:0!important;
+    height:auto!important;
+    padding:0!important;
+    color:#d7deea!important;
+    font-size:18px!important;
+    line-height:1!important;
+    font-weight:1000!important;
+    text-align:right!important;
+    white-space:nowrap!important;
+  }
+
+  #calendarTab .match-row .state{
+    grid-area:state!important;
+    justify-self:start!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:fit-content!important;
+    height:30px!important;
+    min-height:30px!important;
+    padding:0 12px!important;
+    border-radius:999px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    font-size:13px!important;
+    line-height:1!important;
+    font-weight:1000!important;
+    white-space:nowrap!important;
+  }
+
+  #calendarTab .match-row .bet-note{
+    grid-area:note!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:auto!important;
+    min-height:20px!important;
+    color:var(--muted)!important;
+    font-size:14px!important;
+    line-height:1.2!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    text-align:left!important;
+  }
+
+  #calendarTab .match-row .calendar-actions{
+    grid-area:actions!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    grid-auto-rows:auto!important;
+    gap:8px!important;
+    justify-content:stretch!important;
+    align-items:stretch!important;
+    margin-top:2px!important;
+  }
+
+  #calendarTab .match-row .calendar-actions button,
+  #calendarTab .match-row .calendar-actions .small,
+  #calendarTab .match-row button.search-game-result-btn{
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:42px!important;
+    min-height:42px!important;
+    padding:7px 10px!important;
+    border-radius:12px!important;
+    font-size:14px!important;
+    line-height:1.05!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    text-align:center!important;
+    white-space:nowrap!important;
+  }
+
+  /* Ordem visual: Pesquisar + Adicionar na primeira linha; Ver apostas na segunda linha inteira */
+  #calendarTab .match-row .calendar-actions .search-game-result-btn{
+    order:1!important;
+  }
+
+  #calendarTab .match-row .calendar-actions [data-result-game],
+  #calendarTab .match-row .calendar-actions [data-ko-calendar-bet-v259]{
+    order:2!important;
+  }
+
+  #calendarTab .match-row .calendar-actions [data-bets-game]{
+    order:3!important;
+    grid-column:1 / -1!important;
+  }
+
+  /* Remove qualquer altura antiga que venha da estabilidade v273 */
+  #calendarTab .match-row .group-pill,
+  #calendarTab .match-row .status-pill,
+  #calendarTab .match-row .score-pill,
+  #calendarTab .match-row .filter-count{
+    min-width:0!important;
+  }
+
+  #calendarTab .calendar-actions,
+  #calendarTab .match-row > :last-child{
+    min-width:0!important;
+  }
+}
+
+@media (max-width: 430px){
+  #calendarTab .match-row{
+    padding:10px!important;
+    gap:6px 8px!important;
+  }
+
+  #calendarTab .match-row .group-pill{
+    height:28px!important;
+    min-height:28px!important;
+    font-size:12px!important;
+    padding:0 10px!important;
+  }
+
+  #calendarTab .match-row .team,
+  #calendarTab .match-row .team strong{
+    font-size:17px!important;
+  }
+
+  #calendarTab .match-row .score-vs{
+    width:44px!important;
+    min-width:44px!important;
+    max-width:44px!important;
+    height:24px!important;
+    min-height:24px!important;
+    font-size:15px!important;
+  }
+
+  #calendarTab .match-row .time{
+    font-size:17px!important;
+    min-width:50px!important;
+  }
+
+  #calendarTab .match-row .state{
+    height:28px!important;
+    min-height:28px!important;
+    font-size:12px!important;
+  }
+
+  #calendarTab .match-row .bet-note{
+    font-size:13px!important;
+  }
+
+  #calendarTab .match-row .calendar-actions button,
+  #calendarTab .match-row .calendar-actions .small,
+  #calendarTab .match-row button.search-game-result-btn{
+    height:40px!important;
+    min-height:40px!important;
+    font-size:13px!important;
+    padding:6px 8px!important;
+  }
+}
+
+@media (max-width: 360px){
+  #calendarTab .match-row .calendar-actions{
+    grid-template-columns:1fr!important;
+  }
+
+  #calendarTab .match-row .calendar-actions [data-bets-game]{
+    grid-column:auto!important;
+  }
+}
+

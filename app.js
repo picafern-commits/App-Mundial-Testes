@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v277";
+const APP_VERSION_LABEL = "v278";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -19242,6 +19242,19 @@ window.debugFaseFinalWebFitV277 = function debugFaseFinalWebFitV277() {
       height: Math.round(shell.getBoundingClientRect().height),
       bottom: Math.round(shell.getBoundingClientRect().bottom)
     } : null,
+    activeTab: document.querySelector(".tab-panel.active")?.id || ""
+  };
+};
+
+
+/* v278 — Calendário mobile compacto real */
+const APP_VERSION_V278_CALENDAR_REAL_COMPACT = "278.0";
+window.debugCalendarioMobileCompactoRealV278 = function debugCalendarioMobileCompactoRealV278() {
+  const rows = [...document.querySelectorAll("#calendarTab .match-row")].slice(0, 5);
+  return {
+    version: APP_VERSION_V278_CALENDAR_REAL_COMPACT,
+    width: window.innerWidth,
+    rows: rows.map(row => Math.round(row.getBoundingClientRect().height)),
     activeTab: document.querySelector(".tab-panel.active")?.id || ""
   };
 };
