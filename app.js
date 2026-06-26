@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v296";
+const APP_VERSION_LABEL = "v297";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -768,15 +768,20 @@ async function showForegroundPushNotificationV183(payload = {}) {
     if (!("serviceWorker" in navigator)) return;
     const title = payload?.notification?.title || payload?.data?.title || "Mundial Pontos 2026";
     const body = payload?.notification?.body || payload?.data?.body || "";
+    const stableId = notificationStableIdV297(payload, title, body, "foreground");
+    if (notificationAlreadySeenV297(stableId)) return;
+    markNotificationSeenV297(stableId);
     const registration = await navigator.serviceWorker.ready;
     await registration.showNotification(title, {
       body,
-      tag: payload?.data?.tag || payload?.messageId || `mundial-foreground-${Date.now()}`,
+      tag: stableId,
+      renotify: false,
       icon: "./icons/icon-192.png",
       badge: "./icons/icon-192.png",
       data: {
         url: payload?.data?.url || "./index.html?open=notifications",
-        type: payload?.data?.type || "foreground"
+        type: payload?.data?.type || "foreground",
+        stableId
       }
     });
   } catch (error) {
@@ -21730,5 +21735,131 @@ window.debugAvisoCheckboxV296 = function debugAvisoCheckboxV296() {
     checked: Boolean(checkbox?.checked),
     buttonDisabled: Boolean(button?.disabled),
     modalHidden: document.getElementById("mandatoryNoticeModalV295")?.classList.contains("hidden")
+  };
+};
+
+
+/* v297 — Notificações sem repetir no mesmo dispositivo */
+const APP_VERSION_V297_NOTIF_DEDUP = "297.0";
+const NOTIFICATION_SEEN_KEY_V297 = `${STORAGE_KEY || "mundial"}_notification_seen_v297`;
+const NOTIFICATION_SEEN_MAX_V297 = 140;
+
+function notificationSeenListV297() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(NOTIFICATION_SEEN_KEY_V297) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveNotificationSeenListV297(list) {
+  try {
+    localStorage.setItem(NOTIFICATION_SEEN_KEY_V297, JSON.stringify(list.slice(-NOTIFICATION_SEEN_MAX_V297)));
+  } catch {}
+}
+
+function notificationTextHashV297(text = "") {
+  let hash = 0;
+  const value = String(text || "");
+  for (let i = 0; i < value.length; i += 1) {
+    hash = ((hash << 5) - hash) + value.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+function notificationStableIdV297(payload = {}, title = "", body = "", fallbackType = "push") {
+  const data = payload?.data || {};
+  const notification = payload?.notification || {};
+  const raw = [
+    data.notificationId,
+    data.eventId,
+    data.pushId,
+    data.tag,
+    data.collapseKey,
+    payload.messageId,
+    payload.fcmMessageId,
+    notification.tag
+  ].find(Boolean);
+
+  if (raw) return `mundial-${String(raw).trim()}`;
+
+  const type = data.type || fallbackType || "push";
+  const gameId = data.gameId || data.matchId || data.chatMessageId || "";
+  const stamp = data.createdAt || data.updatedAt || data.sentAt || "";
+  const text = `${type}|${gameId}|${title}|${body}|${stamp}`;
+  return `mundial-${type}-${notificationTextHashV297(text)}`;
+}
+
+function notificationAlreadySeenV297(id) {
+  if (!id) return false;
+  return notificationSeenListV297().some(item => item?.id === id);
+}
+
+function markNotificationSeenV297(id) {
+  if (!id) return;
+  const now = Date.now();
+  const fresh = notificationSeenListV297()
+    .filter(item => item && item.id && item.id !== id)
+    .filter(item => now - Number(item.at || 0) < 7 * 24 * 60 * 60 * 1000);
+  fresh.push({ id, at: now });
+  saveNotificationSeenListV297(fresh);
+}
+
+(function installNotificationDedupV297() {
+  if (window.__notificationDedupV297) return;
+  window.__notificationDedupV297 = true;
+
+  const originalShowForeground = typeof showForegroundPushNotificationV183 === "function" ? showForegroundPushNotificationV183 : null;
+  if (originalShowForeground && !originalShowForeground.__v297) {
+    showForegroundPushNotificationV183 = async function showForegroundPushNotificationDedupV297(payload = {}) {
+      const title = payload?.notification?.title || payload?.data?.title || "Mundial Pontos 2026";
+      const body = payload?.notification?.body || payload?.data?.body || "";
+      const id = notificationStableIdV297(payload, title, body, "foreground");
+      if (notificationAlreadySeenV297(id)) return;
+      // A função patched marca; se não tiver sido patched, marca aqui antes.
+      return originalShowForeground.apply(this, arguments);
+    };
+    showForegroundPushNotificationV183.__v297 = true;
+    window.showForegroundPushNotificationV183 = showForegroundPushNotificationV183;
+  }
+
+  // Evita múltiplas inicializações silenciosas a disparar listeners/foreground handlers em cadeia.
+  const originalSetupPush = typeof setupPushForCurrentUserV182 === "function" ? setupPushForCurrentUserV182 : null;
+  if (originalSetupPush && !originalSetupPush.__v297) {
+    let running = false;
+    let lastRun = 0;
+    setupPushForCurrentUserV182 = async function setupPushForCurrentUserDedupV297() {
+      const now = Date.now();
+      if (running) return false;
+      if (now - lastRun < 8000) return false;
+      running = true;
+      lastRun = now;
+      try {
+        return await originalSetupPush.apply(this, arguments);
+      } finally {
+        running = false;
+      }
+    };
+    setupPushForCurrentUserV182.__v297 = true;
+    window.setupPushForCurrentUserV182 = setupPushForCurrentUserV182;
+  }
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.addEventListener("message", event => {
+      if (event?.data?.type === "PUSH_SEEN_V297" && event.data.id) {
+        markNotificationSeenV297(event.data.id);
+      }
+    });
+  }
+})();
+
+window.debugNotificacoesV297 = function debugNotificacoesV297() {
+  return {
+    version: APP_VERSION_V297_NOTIF_DEDUP,
+    seen: notificationSeenListV297(),
+    permission: typeof Notification !== "undefined" ? Notification.permission : "unsupported",
+    sw: "serviceWorker" in navigator
   };
 };
