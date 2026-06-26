@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v309";
+const APP_VERSION_LABEL = "v312";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -23727,4 +23727,864 @@ window.debugVerApostasEliminatoriasV309 = function debugVerApostasEliminatoriasV
     match: match ? { id: match.id, round: match.round, result: knockoutMatchHasResult(match) ? `${match.homeScore}-${match.awayScore}` : "" } : null,
     rows: game && match ? koBetsNormalModalRowsV309(game, match).length : 0
   };
+};
+
+
+/* v310 — Dono pode editar e limpar apostas */
+const APP_VERSION_V310_OWNER_BET_MANAGER = "310.0";
+let ownerBetManagerGameIdV310 = "";
+let ownerBetManagerPlayerIdV310 = "";
+
+function ownerCanManageBetsV310() {
+  try {
+    const role = normalizeRole(currentProfile?.role || "");
+    return role === "owner" || Boolean(isOwnerProfileV264?.());
+  } catch {
+    return Boolean(isOwner);
+  }
+}
+
+function allBetGamesV310() {
+  const groupGames = (games || []).map(game => ({
+    id: game.id,
+    label: `${game.homeTeam || ""} - ${game.awayTeam || ""}`,
+    sub: `${game.group || "Grupo"} · ${game.matchDate ? `${dateHeader(game.matchDate)} ${timePortugal(game.matchDate)}` : ""}`,
+    type: "group",
+    game
+  }));
+
+  const knockoutGames = (appSettings?.knockout?.matches || [])
+    .filter(match => match?.id && (match.homeTeam || match.awayTeam))
+    .map(match => {
+      const calGame = (games || []).find(game => String(game.id || "") === String(match.id || ""));
+      return {
+        id: match.id,
+        label: `${match.homeTeam || "Equipa A"} - ${match.awayTeam || "Equipa B"}`,
+        sub: `${match.roundLabel || knockoutRoundLabel?.(match.round) || "Eliminatórias"} · ${match.matchDate || match.date ? `${dateHeader(match.matchDate || match.date)} ${timePortugal(match.matchDate || match.date)}` : "sem data"}`,
+        type: "knockout",
+        game: calGame || match,
+        match
+      };
+    });
+
+  const byId = new Map();
+  [...groupGames, ...knockoutGames].forEach(item => {
+    if (item.id && !byId.has(item.id)) byId.set(item.id, item);
+  });
+
+  return [...byId.values()].sort((a, b) => String(a.sub || "").localeCompare(String(b.sub || ""), "pt") || String(a.label || "").localeCompare(String(b.label || ""), "pt"));
+}
+
+function allBetPlayersV310() {
+  const byId = new Map();
+
+  try {
+    (appSettings?.players || []).forEach(player => {
+      if (!player) return;
+      const id = String(player.id || player.playerId || playerIdFromName?.(player.name || player.playerName || "") || "").trim();
+      const name = String(player.name || player.playerName || player.displayName || id || "").trim();
+      if (id || name) byId.set(id || playerIdFromName(name), { id: id || playerIdFromName(name), name });
+    });
+  } catch {}
+
+  try {
+    (appSettings?.users || []).forEach(name => {
+      const id = playerIdFromName(name);
+      if (!byId.has(id)) byId.set(id, { id, name });
+    });
+  } catch {}
+
+  (bets || []).forEach(bet => {
+    const id = String(bet.playerId || playerIdFromName?.(bet.playerName || "") || "").trim();
+    const name = String(bet.playerName || id || "").trim();
+    if (id && !byId.has(id)) byId.set(id, { id, name });
+  });
+
+  return [...byId.values()].filter(p => p.id).sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "pt"));
+}
+
+function ownerBetForV310(playerId, gameId) {
+  return (bets || []).find(bet => String(bet.playerId || "") === String(playerId || "") && String(bet.gameId || "") === String(gameId || "")) || null;
+}
+
+function ownerSelectedGameV310() {
+  const list = allBetGamesV310();
+  if (!ownerBetManagerGameIdV310 || !list.some(item => item.id === ownerBetManagerGameIdV310)) {
+    ownerBetManagerGameIdV310 = list[0]?.id || "";
+  }
+  return list.find(item => item.id === ownerBetManagerGameIdV310) || null;
+}
+
+function ownerSelectedPlayerV310() {
+  const list = allBetPlayersV310();
+  if (!ownerBetManagerPlayerIdV310 || !list.some(item => item.id === ownerBetManagerPlayerIdV310)) {
+    ownerBetManagerPlayerIdV310 = list[0]?.id || "";
+  }
+  return list.find(item => item.id === ownerBetManagerPlayerIdV310) || null;
+}
+
+function ownerBetQualifiedOptionsV310(gameItem, selected = "") {
+  if (gameItem?.type !== "knockout") return "";
+  const match = gameItem.match || knockoutMatchById?.(gameItem.id) || {};
+  const teams = [match.homeTeam, match.awayTeam].filter(Boolean);
+  return `
+    <label>Equipa qualificada
+      <select id="ownerBetQualifiedV310">
+        <option value="">Sem equipa</option>
+        ${teams.map(team => `<option value="${escapeHtml(team)}" ${String(selected || "") === String(team) ? "selected" : ""}>${escapeHtml(team)}</option>`).join("")}
+      </select>
+    </label>
+  `;
+}
+
+function ownerBetManagerHostV310() {
+  const adminUnlocked = document.getElementById("adminUnlocked");
+  if (!adminUnlocked) return null;
+
+  let panel = document.getElementById("ownerBetManagerPanelV310");
+  if (!panel) {
+    panel = document.createElement("details");
+    panel.id = "ownerBetManagerPanelV310";
+    panel.className = "admin-card admin-collapse owner-bet-manager-v310";
+    panel.dataset.adminSectionV187 = "users";
+    panel.innerHTML = `
+      <summary>
+        <div>
+          <h2>Editar / limpar apostas</h2>
+          <p data-owner-bet-manager-summary-v310>Gestão total das apostas pelo Dono.</p>
+        </div>
+        <span class="collapse-icon">+</span>
+      </summary>
+      <div id="ownerBetManagerBodyV310" class="owner-bet-manager-body-v310"></div>
+    `;
+  }
+
+  if (panel.parentElement !== adminUnlocked) {
+    const tabs = document.getElementById("adminSectionTabsV187");
+    if (tabs?.parentNode === adminUnlocked) adminUnlocked.insertBefore(panel, tabs.nextSibling);
+    else adminUnlocked.prepend(panel);
+  }
+
+  if (!panel.__ownerBetToggleV310) {
+    panel.__ownerBetToggleV310 = true;
+    panel.addEventListener("toggle", () => sessionStorage.setItem("owner_bet_manager_open_v310", panel.open ? "1" : "0"));
+  }
+  panel.open = sessionStorage.getItem("owner_bet_manager_open_v310") === "1";
+
+  return panel;
+}
+
+function renderOwnerBetManagerV310() {
+  if (!ownerCanManageBetsV310()) {
+    document.getElementById("ownerBetManagerPanelV310")?.remove();
+    return;
+  }
+
+  const panel = ownerBetManagerHostV310();
+  const body = document.getElementById("ownerBetManagerBodyV310");
+  if (!panel || !body) return;
+
+  const gameList = allBetGamesV310();
+  const playerList = allBetPlayersV310();
+  const selectedGame = ownerSelectedGameV310();
+  const selectedPlayer = ownerSelectedPlayerV310();
+  const existing = selectedGame && selectedPlayer ? ownerBetForV310(selectedPlayer.id, selectedGame.id) : null;
+  const gameBets = selectedGame ? betsForGame(selectedGame.id) : [];
+
+  const homeGuess = existing?.homeGuess ?? existing?.homeScore ?? existing?.home ?? "";
+  const awayGuess = existing?.awayGuess ?? existing?.awayScore ?? existing?.away ?? "";
+  const qualified = existing?.qualifiedTeam || existing?.qualified || existing?.winner || "";
+
+  const summary = panel.querySelector("[data-owner-bet-manager-summary-v310]");
+  if (summary) summary.textContent = `${bets.length} apostas guardadas · ${gameBets.length} neste jogo`;
+
+  body.innerHTML = `
+    <div class="owner-bet-toolbar-v310">
+      <label>Jogo
+        <select id="ownerBetGameSelectV310">
+          ${gameList.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === ownerBetManagerGameIdV310 ? "selected" : ""}>${escapeHtml(item.label)} · ${escapeHtml(item.sub)}</option>`).join("")}
+        </select>
+      </label>
+      <label>Jogador
+        <select id="ownerBetPlayerSelectV310">
+          ${playerList.map(player => `<option value="${escapeHtml(player.id)}" ${player.id === ownerBetManagerPlayerIdV310 ? "selected" : ""}>${escapeHtml(player.name || player.id)}</option>`).join("")}
+        </select>
+      </label>
+    </div>
+
+    ${!selectedGame || !selectedPlayer ? `<div class="empty small-empty">Escolhe um jogo e um jogador.</div>` : `
+      <div class="owner-bet-edit-card-v310">
+        <div>
+          <strong>${escapeHtml(selectedPlayer.name || selectedPlayer.id)}</strong>
+          <span>${escapeHtml(selectedGame.label)} · ${escapeHtml(selectedGame.sub)}</span>
+          <small>${existing ? `Aposta existente: ${escapeHtml(knockoutBetDisplay?.(existing) || `${homeGuess}-${awayGuess}`)}` : "Sem aposta guardada para este user neste jogo."}</small>
+        </div>
+        <div class="owner-bet-fields-v310">
+          <label>Casa
+            <input id="ownerBetHomeV310" type="number" inputmode="numeric" min="0" value="${escapeHtml(homeGuess)}" />
+          </label>
+          <label>Fora
+            <input id="ownerBetAwayV310" type="number" inputmode="numeric" min="0" value="${escapeHtml(awayGuess)}" />
+          </label>
+          ${ownerBetQualifiedOptionsV310(selectedGame, qualified)}
+        </div>
+        <div class="owner-bet-actions-v310">
+          <button id="ownerSaveBetBtnV310" class="primary" type="button">${existing ? "Guardar alteração" : "Criar aposta"}</button>
+          <button id="ownerClearBetBtnV310" class="secondary danger-soft-v299" type="button" ${existing ? "" : "disabled"}>Limpar esta aposta</button>
+        </div>
+      </div>
+
+      <div class="owner-bet-danger-v310">
+        <div>
+          <strong>Limpeza rápida</strong>
+          <span>Estas ações removem apostas e sincronizam com Firebase.</span>
+        </div>
+        <button id="ownerClearGameBetsBtnV310" class="secondary danger-soft-v299" type="button" ${gameBets.length ? "" : "disabled"}>Limpar apostas deste jogo (${gameBets.length})</button>
+        <button id="ownerClearAllBetsBtnV310" class="secondary danger-soft-v299" type="button" ${bets.length ? "" : "disabled"}>Limpar TODAS as apostas (${bets.length})</button>
+      </div>
+
+      <div class="owner-bet-game-list-v310">
+        <h3>Apostas deste jogo</h3>
+        ${gameBets.length ? gameBets.sort((a,b)=>String(a.playerName||"").localeCompare(String(b.playerName||""),"pt")).map(bet => `
+          <article>
+            <strong>${escapeHtml(bet.playerName || bet.playerId || "Jogador")}</strong>
+            <span>${escapeHtml(knockoutBetDisplay?.(bet) || `${bet.homeGuess ?? ""}-${bet.awayGuess ?? ""}`)}</span>
+            <button class="secondary small danger-soft-v299" type="button" data-owner-delete-bet-v310="${escapeHtml(bet.id)}">Limpar</button>
+          </article>
+        `).join("") : `<div class="empty small-empty">Sem apostas neste jogo.</div>`}
+      </div>
+    `}
+  `;
+
+  bindOwnerBetManagerControlsV310();
+}
+
+function bindOwnerBetManagerControlsV310() {
+  const gameSelect = document.getElementById("ownerBetGameSelectV310");
+  if (gameSelect && !gameSelect.__v310) {
+    gameSelect.__v310 = true;
+    gameSelect.addEventListener("change", () => {
+      ownerBetManagerGameIdV310 = gameSelect.value;
+      renderOwnerBetManagerV310();
+    });
+  }
+
+  const playerSelect = document.getElementById("ownerBetPlayerSelectV310");
+  if (playerSelect && !playerSelect.__v310) {
+    playerSelect.__v310 = true;
+    playerSelect.addEventListener("change", () => {
+      ownerBetManagerPlayerIdV310 = playerSelect.value;
+      renderOwnerBetManagerV310();
+    });
+  }
+
+  document.getElementById("ownerSaveBetBtnV310")?.addEventListener("click", ownerSaveSelectedBetV310, { once: true });
+  document.getElementById("ownerClearBetBtnV310")?.addEventListener("click", ownerClearSelectedBetV310, { once: true });
+  document.getElementById("ownerClearGameBetsBtnV310")?.addEventListener("click", ownerClearGameBetsV310, { once: true });
+  document.getElementById("ownerClearAllBetsBtnV310")?.addEventListener("click", ownerClearAllBetsV310, { once: true });
+
+  document.querySelectorAll("[data-owner-delete-bet-v310]").forEach(btn => {
+    if (btn.__v310) return;
+    btn.__v310 = true;
+    btn.addEventListener("click", () => ownerDeleteBetByIdV310(btn.dataset.ownerDeleteBetV310));
+  });
+}
+
+async function ownerPersistBetsChangeV310(reason, deletedIds = [], savedIds = []) {
+  if (deletedIds.length) markBetsForDelete(deletedIds);
+  if (savedIds.length) markBetsPending(savedIds);
+  saveLocalData(reason);
+  try { addSystemLog?.("Gestão de apostas", reason, { deleted: deletedIds.length, saved: savedIds.length }, { sync: true }); } catch {}
+
+  renderOwnerBetManagerV310();
+  try { renderCalendar?.(); } catch {}
+  try { renderScore?.(); } catch {}
+  try { koV284RenderHub?.(); } catch {}
+
+  try {
+    if (db && firebaseApi && storageMode === "firebase") {
+      await syncFirebaseFull(reason);
+      clearFullSyncPending?.();
+      setFirebaseStatus?.("success", `Firebase: ${reason}`);
+    } else {
+      scheduleFullSync(reason, 400);
+      setFirebaseStatus?.("error", "Firebase: alterações guardadas localmente; sync pendente");
+    }
+  } catch (error) {
+    console.error("v310: falhou sincronizar apostas", error);
+    scheduleFullSync(reason, 700);
+    setFirebaseStatus?.("error", `Firebase: sync pendente (${shortFirebaseError?.(error) || error?.message || "erro"})`);
+  }
+}
+
+async function ownerSaveSelectedBetV310() {
+  if (!ownerCanManageBetsV310()) return toast?.("Só o Dono pode editar apostas.");
+
+  const selectedGame = ownerSelectedGameV310();
+  const selectedPlayer = ownerSelectedPlayerV310();
+  if (!selectedGame || !selectedPlayer) return toast?.("Escolhe jogo e jogador.");
+
+  const home = document.getElementById("ownerBetHomeV310")?.value ?? "";
+  const away = document.getElementById("ownerBetAwayV310")?.value ?? "";
+  if (home === "" || away === "") return toast?.("Preenche o resultado da aposta.");
+
+  const existing = ownerBetForV310(selectedPlayer.id, selectedGame.id);
+  const qualified = document.getElementById("ownerBetQualifiedV310")?.value || "";
+  const now = new Date().toISOString();
+
+  const bet = {
+    ...(existing || {}),
+    id: existing?.id || `${selectedPlayer.id}_${selectedGame.id}`,
+    playerId: selectedPlayer.id,
+    playerName: selectedPlayer.name || selectedPlayer.id,
+    gameId: selectedGame.id,
+    homeGuess: Number(home),
+    awayGuess: Number(away),
+    source: existing?.source || "Editado pelo Dono",
+    updatedAt: now,
+    editedByOwner: true,
+    editedBy: currentUser?.email || currentProfile?.email || ""
+  };
+
+  if (selectedGame.type === "knockout") {
+    bet.phase = "knockout";
+    bet.qualifiedTeam = qualified;
+    bet.qualified = qualified;
+  }
+
+  bets = bets.filter(item => !(String(item.gameId || "") === String(bet.gameId) && String(item.playerId || "") === String(bet.playerId)));
+  bets.push(bet);
+
+  await ownerPersistBetsChangeV310("dono editou aposta", [], [bet.id]);
+  toast?.("Aposta guardada pelo Dono.");
+}
+
+async function ownerClearSelectedBetV310() {
+  if (!ownerCanManageBetsV310()) return toast?.("Só o Dono pode limpar apostas.");
+  const selectedGame = ownerSelectedGameV310();
+  const selectedPlayer = ownerSelectedPlayerV310();
+  const existing = selectedGame && selectedPlayer ? ownerBetForV310(selectedPlayer.id, selectedGame.id) : null;
+  if (!existing) return toast?.("Não existe aposta para limpar.");
+  if (!confirm(`Limpar a aposta de ${selectedPlayer.name} neste jogo?`)) return;
+
+  bets = bets.filter(item => item.id !== existing.id);
+  await ownerPersistBetsChangeV310("dono limpou aposta individual", [existing.id], []);
+  toast?.("Aposta limpa.");
+}
+
+async function ownerDeleteBetByIdV310(betId) {
+  if (!ownerCanManageBetsV310()) return toast?.("Só o Dono pode limpar apostas.");
+  const bet = bets.find(item => String(item.id || "") === String(betId || ""));
+  if (!bet) return;
+  if (!confirm(`Limpar a aposta de ${bet.playerName || bet.playerId || "Jogador"}?`)) return;
+  bets = bets.filter(item => String(item.id || "") !== String(betId || ""));
+  await ownerPersistBetsChangeV310("dono limpou aposta na lista", [bet.id], []);
+  toast?.("Aposta limpa.");
+}
+
+async function ownerClearGameBetsV310() {
+  if (!ownerCanManageBetsV310()) return toast?.("Só o Dono pode limpar apostas.");
+  const selectedGame = ownerSelectedGameV310();
+  if (!selectedGame) return;
+  const ids = betsForGame(selectedGame.id).map(bet => bet.id);
+  if (!ids.length) return toast?.("Este jogo não tem apostas.");
+  if (!confirm(`Limpar TODAS as ${ids.length} apostas deste jogo?`)) return;
+
+  bets = bets.filter(bet => String(bet.gameId || "") !== String(selectedGame.id || ""));
+  await ownerPersistBetsChangeV310("dono limpou apostas de um jogo", ids, []);
+  toast?.("Apostas deste jogo limpas.");
+}
+
+async function ownerClearAllBetsV310() {
+  if (!ownerCanManageBetsV310()) return toast?.("Só o Dono pode limpar apostas.");
+  const total = bets.length;
+  if (!total) return toast?.("Não existem apostas para limpar.");
+  const text = prompt(`Isto vai apagar TODAS as ${total} apostas. Escreve APAGAR para confirmar.`);
+  if (String(text || "").trim().toUpperCase() !== "APAGAR") return toast?.("Limpeza cancelada.");
+
+  const ids = bets.map(bet => bet.id).filter(Boolean);
+  bets = [];
+  await ownerPersistBetsChangeV310("dono limpou todas as apostas", ids, []);
+  toast?.("Todas as apostas foram limpas.");
+}
+
+(function installOwnerBetManagerV310() {
+  if (window.__ownerBetManagerV310) return;
+  window.__ownerBetManagerV310 = true;
+
+  const originalRenderActive = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+  if (originalRenderActive && !originalRenderActive.__ownerBetsV310) {
+    renderActivePageV187 = function renderActivePageOwnerBetsV310(tabId = document.querySelector(".tab-panel.active")?.id || "calendarTab") {
+      const result = originalRenderActive.apply(this, arguments);
+      if (tabId === "adminTab" || document.querySelector(".tab-panel.active")?.id === "adminTab") {
+        setTimeout(renderOwnerBetManagerV310, 160);
+      }
+      return result;
+    };
+    renderActivePageV187.__ownerBetsV310 = true;
+    window.renderActivePageV187 = renderActivePageV187;
+  }
+
+  const originalRenderAll = typeof renderAll === "function" ? renderAll : null;
+  if (originalRenderAll && !originalRenderAll.__ownerBetsV310) {
+    renderAll = function renderAllOwnerBetsV310() {
+      const result = originalRenderAll.apply(this, arguments);
+      setTimeout(renderOwnerBetManagerV310, 400);
+      return result;
+    };
+    renderAll.__ownerBetsV310 = true;
+    window.renderAll = renderAll;
+  }
+
+  document.addEventListener("click", event => {
+    if (event.target.closest?.('[data-tab="adminTab"],[data-admin-section-v187]')) {
+      setTimeout(renderOwnerBetManagerV310, 180);
+    }
+  }, true);
+
+  setTimeout(renderOwnerBetManagerV310, 1100);
+})();
+
+window.debugGestaoApostasDonoV310 = function debugGestaoApostasDonoV310() {
+  return {
+    version: APP_VERSION_V310_OWNER_BET_MANAGER,
+    owner: ownerCanManageBetsV310(),
+    panel: Boolean(document.getElementById("ownerBetManagerPanelV310")),
+    bets: bets.length,
+    games: allBetGamesV310().length,
+    players: allBetPlayersV310().length,
+    selectedGame: ownerBetManagerGameIdV310,
+    selectedPlayer: ownerBetManagerPlayerIdV310
+  };
+};
+
+
+/* v311 — Admin: abas novas com estilo igual e sem fechar sozinhas */
+const APP_VERSION_V311_ADMIN_COLLAPSE_STYLE_FIX = "311.0";
+
+function adminCollapseStateKeyV311(id) {
+  return `${STORAGE_KEY || "mundial"}_admin_collapse_${id}_v311`;
+}
+
+function desiredAdminCollapseOpenV311(details) {
+  if (!details?.id) return false;
+  return localStorage.getItem(adminCollapseStateKeyV311(details.id)) === "1";
+}
+
+function setAdminCollapseOpenV311(details, open) {
+  if (!details?.id) return;
+  details.open = Boolean(open);
+  localStorage.setItem(adminCollapseStateKeyV311(details.id), details.open ? "1" : "0");
+  const summary = details.querySelector(":scope > summary");
+  if (summary) summary.setAttribute("aria-expanded", details.open ? "true" : "false");
+  const icon = details.querySelector(":scope > summary .collapse-icon");
+  if (icon) icon.textContent = details.open ? "−" : "+";
+}
+
+function normalizeCustomAdminCollapseV311(details) {
+  if (!details) return;
+
+  details.classList.add("admin-card", "admin-collapse", "admin-collapse-normal-v311");
+  details.classList.remove("mandatory-notice-collapse-v306", "mandatory-notice-collapse-open-fix-v307");
+
+  const summary = details.querySelector(":scope > summary");
+  if (!summary) return;
+
+  summary.classList.add("admin-collapse-summary-v311");
+  summary.setAttribute("role", "button");
+  summary.setAttribute("tabindex", "0");
+  summary.setAttribute("aria-expanded", details.open ? "true" : "false");
+
+  let icon = summary.querySelector(".collapse-icon");
+  if (!icon) {
+    icon = document.createElement("span");
+    icon.className = "collapse-icon";
+    summary.appendChild(icon);
+  }
+  icon.textContent = details.open ? "−" : "+";
+
+  if (!details.__adminCollapseFixedV311) {
+    details.__adminCollapseFixedV311 = true;
+
+    const toggle = event => {
+      event.preventDefault();
+      event.stopPropagation();
+      setAdminCollapseOpenV311(details, !details.open);
+    };
+
+    summary.addEventListener("click", toggle, true);
+    summary.addEventListener("touchend", toggle, { capture: true, passive: false });
+    summary.addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      toggle(event);
+    }, true);
+
+    details.addEventListener("toggle", () => {
+      setAdminCollapseOpenV311(details, details.open);
+    });
+  }
+
+  // Reaplica o estado guardado depois de renders antigos que forçavam fechado.
+  setAdminCollapseOpenV311(details, desiredAdminCollapseOpenV311(details));
+}
+
+function fixAdminCustomCollapsesV311() {
+  const notice = document.getElementById("mandatoryNoticeCollapseV306");
+  const ownerBets = document.getElementById("ownerBetManagerPanelV310");
+
+  [notice, ownerBets].filter(Boolean).forEach(details => {
+    normalizeCustomAdminCollapseV311(details);
+    details.hidden = false;
+    details.style.display = "";
+  });
+}
+
+(function installAdminCollapseStyleFixV311() {
+  if (window.__adminCollapseStyleFixV311) return;
+  window.__adminCollapseStyleFixV311 = true;
+
+  const originalMakeNotice = typeof makeMandatoryNoticeAdminCollapsibleV306 === "function" ? makeMandatoryNoticeAdminCollapsibleV306 : null;
+  if (originalMakeNotice && !originalMakeNotice.__v311) {
+    makeMandatoryNoticeAdminCollapsibleV306 = function makeMandatoryNoticeAdminCollapsibleStyleFixV311() {
+      const result = originalMakeNotice.apply(this, arguments);
+      setTimeout(fixAdminCustomCollapsesV311, 0);
+      return result;
+    };
+    makeMandatoryNoticeAdminCollapsibleV306.__v311 = true;
+    window.makeMandatoryNoticeAdminCollapsibleV306 = makeMandatoryNoticeAdminCollapsibleV306;
+  }
+
+  const originalBindNotice = typeof bindMandatoryNoticeCollapseOpenV307 === "function" ? bindMandatoryNoticeCollapseOpenV307 : null;
+  if (originalBindNotice && !originalBindNotice.__v311) {
+    bindMandatoryNoticeCollapseOpenV307 = function bindMandatoryNoticeCollapseOpenStyleFixV311() {
+      const result = originalBindNotice.apply(this, arguments);
+      setTimeout(fixAdminCustomCollapsesV311, 0);
+      return result;
+    };
+    bindMandatoryNoticeCollapseOpenV307.__v311 = true;
+    window.bindMandatoryNoticeCollapseOpenV307 = bindMandatoryNoticeCollapseOpenV307;
+  }
+
+  const originalRenderOwnerBets = typeof renderOwnerBetManagerV310 === "function" ? renderOwnerBetManagerV310 : null;
+  if (originalRenderOwnerBets && !originalRenderOwnerBets.__v311) {
+    renderOwnerBetManagerV310 = function renderOwnerBetManagerStyleFixV311() {
+      const panel = document.getElementById("ownerBetManagerPanelV310");
+      const wasOpen = panel ? desiredAdminCollapseOpenV311(panel) : false;
+      const result = originalRenderOwnerBets.apply(this, arguments);
+      const nextPanel = document.getElementById("ownerBetManagerPanelV310");
+      if (nextPanel) setAdminCollapseOpenV311(nextPanel, wasOpen);
+      setTimeout(fixAdminCustomCollapsesV311, 0);
+      return result;
+    };
+    renderOwnerBetManagerV310.__v311 = true;
+    window.renderOwnerBetManagerV310 = renderOwnerBetManagerV310;
+  }
+
+  const originalMoveNotice = typeof moveMandatoryNoticePanelToAdminV305 === "function" ? moveMandatoryNoticePanelToAdminV305 : null;
+  if (originalMoveNotice && !originalMoveNotice.__v311) {
+    moveMandatoryNoticePanelToAdminV305 = function moveMandatoryNoticePanelStyleFixV311() {
+      const details = document.getElementById("mandatoryNoticeCollapseV306");
+      const wasOpen = details ? desiredAdminCollapseOpenV311(details) : false;
+      const result = originalMoveNotice.apply(this, arguments);
+      const nextDetails = document.getElementById("mandatoryNoticeCollapseV306");
+      if (nextDetails) setAdminCollapseOpenV311(nextDetails, wasOpen);
+      setTimeout(fixAdminCustomCollapsesV311, 0);
+      return result;
+    };
+    moveMandatoryNoticePanelToAdminV305.__v311 = true;
+    window.moveMandatoryNoticePanelToAdminV305 = moveMandatoryNoticePanelToAdminV305;
+  }
+
+  const originalRenderActive = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+  if (originalRenderActive && !originalRenderActive.__collapseStyleV311) {
+    renderActivePageV187 = function renderActivePageCollapseStyleV311() {
+      const states = {};
+      ["mandatoryNoticeCollapseV306", "ownerBetManagerPanelV310"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) states[id] = desiredAdminCollapseOpenV311(el);
+      });
+
+      const result = originalRenderActive.apply(this, arguments);
+
+      setTimeout(() => {
+        Object.entries(states).forEach(([id, open]) => {
+          const el = document.getElementById(id);
+          if (el) setAdminCollapseOpenV311(el, open);
+        });
+        fixAdminCustomCollapsesV311();
+      }, 50);
+
+      return result;
+    };
+    renderActivePageV187.__collapseStyleV311 = true;
+    window.renderActivePageV187 = renderActivePageV187;
+  }
+
+  document.addEventListener("click", event => {
+    const summary = event.target.closest?.("#mandatoryNoticeCollapseV306 > summary, #ownerBetManagerPanelV310 > summary");
+    if (!summary) return;
+    const details = summary.parentElement;
+    if (!details) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setAdminCollapseOpenV311(details, !details.open);
+  }, true);
+
+  setTimeout(fixAdminCustomCollapsesV311, 600);
+  setTimeout(fixAdminCustomCollapsesV311, 1400);
+  setTimeout(fixAdminCustomCollapsesV311, 2600);
+})();
+
+window.debugAdminAbasV311 = function debugAdminAbasV311() {
+  return ["mandatoryNoticeCollapseV306", "ownerBetManagerPanelV310"].map(id => {
+    const el = document.getElementById(id);
+    return {
+      version: APP_VERSION_V311_ADMIN_COLLAPSE_STYLE_FIX,
+      id,
+      exists: Boolean(el),
+      open: Boolean(el?.open),
+      saved: el ? localStorage.getItem(adminCollapseStateKeyV311(id)) : null,
+      classes: el?.className || "",
+      parent: el?.parentElement?.id || ""
+    };
+  });
+};
+
+
+/* v312 — Admin: acordeão próprio, sem <details>, para não bugar/fechar sozinho */
+const APP_VERSION_V312_ADMIN_CUSTOM_ACCORDION = "312.0";
+
+function adminAccordionStateKeyV312(id) {
+  return `${STORAGE_KEY || "mundial"}_admin_custom_accordion_${id}_v312`;
+}
+
+function adminAccordionIsOpenV312(id) {
+  return localStorage.getItem(adminAccordionStateKeyV312(id)) === "1";
+}
+
+function setAdminAccordionOpenV312(card, open) {
+  if (!card) return;
+  const isOpen = Boolean(open);
+  card.classList.toggle("is-open-v312", isOpen);
+  card.classList.toggle("is-closed-v312", !isOpen);
+  card.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  localStorage.setItem(adminAccordionStateKeyV312(card.id), isOpen ? "1" : "0");
+
+  const body = card.querySelector(":scope > .admin-custom-accordion-body-v312");
+  if (body) {
+    body.hidden = !isOpen;
+    body.style.display = isOpen ? "" : "none";
+  }
+
+  const icon = card.querySelector(":scope > .admin-custom-accordion-head-v312 .collapse-icon");
+  if (icon) icon.textContent = isOpen ? "−" : "+";
+}
+
+function makeAdminCustomAccordionV312({ oldId, title, summary, contentSelector, order = 0 }) {
+  const content = document.querySelector(contentSelector);
+  const host = document.getElementById("adminUnlocked");
+  if (!content || !host) return null;
+
+  let old = document.getElementById(oldId);
+  let card = old;
+
+  // Se ainda for <details>, substitui por <section> para matar os handlers nativos/antigos.
+  if (!card || card.tagName?.toLowerCase() === "details") {
+    const section = document.createElement("section");
+    section.id = oldId;
+    section.className = "admin-card admin-custom-accordion-v312 is-closed-v312";
+    section.dataset.adminSectionV187 = "users";
+    section.style.order = String(order);
+
+    section.innerHTML = `
+      <button class="admin-custom-accordion-head-v312" type="button" data-admin-custom-accordion-toggle-v312="${escapeHtml(oldId)}" aria-expanded="false">
+        <div>
+          <h2>${escapeHtml(title)}</h2>
+          <p>${escapeHtml(summary)}</p>
+        </div>
+        <span class="collapse-icon">+</span>
+      </button>
+      <div class="admin-custom-accordion-body-v312" hidden></div>
+    `;
+
+    if (old?.parentNode) old.replaceWith(section);
+    else {
+      const tabs = document.getElementById("adminSectionTabsV187");
+      if (tabs?.parentNode === host) host.insertBefore(section, tabs.nextSibling);
+      else host.prepend(section);
+    }
+    card = section;
+  }
+
+  card.classList.add("admin-card", "admin-custom-accordion-v312");
+  card.classList.remove(
+    "mandatory-notice-collapse-v306",
+    "mandatory-notice-collapse-open-fix-v307",
+    "admin-collapse-normal-v311",
+    "owner-bet-manager-v310"
+  );
+
+  let head = card.querySelector(":scope > .admin-custom-accordion-head-v312");
+  if (!head) {
+    const oldSummary = card.querySelector(":scope > summary");
+    if (oldSummary) oldSummary.remove();
+
+    head = document.createElement("button");
+    head.className = "admin-custom-accordion-head-v312";
+    head.type = "button";
+    head.dataset.adminCustomAccordionToggleV312 = oldId;
+    head.innerHTML = `
+      <div>
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(summary)}</p>
+      </div>
+      <span class="collapse-icon">+</span>
+    `;
+    card.prepend(head);
+  }
+
+  let body = card.querySelector(":scope > .admin-custom-accordion-body-v312");
+  if (!body) {
+    body = document.createElement("div");
+    body.className = "admin-custom-accordion-body-v312";
+    card.appendChild(body);
+  }
+
+  if (content.parentElement !== body) {
+    body.appendChild(content);
+  }
+
+  card.hidden = false;
+  card.style.display = "";
+  card.style.order = String(order);
+
+  setAdminAccordionOpenV312(card, adminAccordionIsOpenV312(oldId));
+  return card;
+}
+
+function rebuildAdminAccordionsV312() {
+  // Garante que os painéis existem primeiro.
+  try { renderMandatoryNoticeAdminPanelV295?.(); } catch {}
+  try { renderOwnerBetManagerV310?.(); } catch {}
+
+  const noticeStats = (() => {
+    try {
+      const stats = mandatoryNoticeAdminStatsV295?.() || {};
+      return `${stats.read || 0} leram · ${stats.unread || 0} por ler`;
+    } catch {
+      return "Aviso obrigatório";
+    }
+  })();
+
+  makeAdminCustomAccordionV312({
+    oldId: "mandatoryNoticeCollapseV306",
+    title: "Aviso obrigatório",
+    summary: noticeStats,
+    contentSelector: "#mandatoryNoticeAdminPanelV295",
+    order: -20
+  });
+
+  const betsCount = (() => {
+    try {
+      const gameId = ownerBetManagerGameIdV310 || ownerSelectedGameV310?.()?.id || "";
+      const gameBets = gameId ? betsForGame(gameId).length : 0;
+      return `${bets.length} apostas guardadas · ${gameBets} neste jogo`;
+    } catch {
+      return "Gestão total das apostas pelo Dono.";
+    }
+  })();
+
+  makeAdminCustomAccordionV312({
+    oldId: "ownerBetManagerPanelV310",
+    title: "Editar / limpar apostas",
+    summary: betsCount,
+    contentSelector: "#ownerBetManagerBodyV310",
+    order: -19
+  });
+}
+
+(function installAdminCustomAccordionV312() {
+  if (window.__adminCustomAccordionV312) return;
+  window.__adminCustomAccordionV312 = true;
+
+  const originalRenderNotice = typeof renderMandatoryNoticeAdminPanelV295 === "function" ? renderMandatoryNoticeAdminPanelV295 : null;
+  if (originalRenderNotice && !originalRenderNotice.__customAccordionV312) {
+    renderMandatoryNoticeAdminPanelV295 = function renderMandatoryNoticeAdminCustomAccordionV312() {
+      const result = originalRenderNotice.apply(this, arguments);
+      setTimeout(rebuildAdminAccordionsV312, 0);
+      return result;
+    };
+    renderMandatoryNoticeAdminPanelV295.__customAccordionV312 = true;
+    window.renderMandatoryNoticeAdminPanelV295 = renderMandatoryNoticeAdminPanelV295;
+  }
+
+  const originalRenderOwner = typeof renderOwnerBetManagerV310 === "function" ? renderOwnerBetManagerV310 : null;
+  if (originalRenderOwner && !originalRenderOwner.__customAccordionV312) {
+    renderOwnerBetManagerV310 = function renderOwnerBetManagerCustomAccordionV312() {
+      const result = originalRenderOwner.apply(this, arguments);
+      setTimeout(rebuildAdminAccordionsV312, 0);
+      return result;
+    };
+    renderOwnerBetManagerV310.__customAccordionV312 = true;
+    window.renderOwnerBetManagerV310 = renderOwnerBetManagerV310;
+  }
+
+  const originalRenderActive = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+  if (originalRenderActive && !originalRenderActive.__customAccordionV312) {
+    renderActivePageV187 = function renderActivePageCustomAccordionV312() {
+      const result = originalRenderActive.apply(this, arguments);
+      if (document.querySelector(".tab-panel.active")?.id === "adminTab") {
+        setTimeout(rebuildAdminAccordionsV312, 180);
+        setTimeout(rebuildAdminAccordionsV312, 500);
+      }
+      return result;
+    };
+    renderActivePageV187.__customAccordionV312 = true;
+    window.renderActivePageV187 = renderActivePageV187;
+  }
+
+  document.addEventListener("click", event => {
+    const toggle = event.target.closest?.("[data-admin-custom-accordion-toggle-v312]");
+    if (!toggle) return;
+
+    const id = toggle.dataset.adminCustomAccordionToggleV312 || "";
+    const card = document.getElementById(id);
+    if (!card) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const isOpen = card.classList.contains("is-open-v312");
+    setAdminAccordionOpenV312(card, !isOpen);
+  }, true);
+
+  // Bloqueia os cliques antigos em summary dos details antigos, caso algum seja recriado por render.
+  document.addEventListener("click", event => {
+    const oldSummary = event.target.closest?.("#mandatoryNoticeCollapseV306 > summary, #ownerBetManagerPanelV310 > summary");
+    if (!oldSummary) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setTimeout(rebuildAdminAccordionsV312, 0);
+  }, true);
+
+  setTimeout(rebuildAdminAccordionsV312, 900);
+  setTimeout(rebuildAdminAccordionsV312, 1800);
+})();
+
+window.debugAdminAcordeaoV312 = function debugAdminAcordeaoV312() {
+  return ["mandatoryNoticeCollapseV306", "ownerBetManagerPanelV310"].map(id => {
+    const card = document.getElementById(id);
+    return {
+      version: APP_VERSION_V312_ADMIN_CUSTOM_ACCORDION,
+      id,
+      exists: Boolean(card),
+      tag: card?.tagName || "",
+      open: card?.classList.contains("is-open-v312"),
+      bodyHidden: card?.querySelector(":scope > .admin-custom-accordion-body-v312")?.hidden,
+      parent: card?.parentElement?.id || "",
+      content: id === "mandatoryNoticeCollapseV306"
+        ? document.getElementById("mandatoryNoticeAdminPanelV295")?.parentElement?.className || ""
+        : document.getElementById("ownerBetManagerBodyV310")?.parentElement?.className || ""
+    };
+  });
 };
