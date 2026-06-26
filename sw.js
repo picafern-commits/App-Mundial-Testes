@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v279-fase-final-mapa-full";
+const CACHE_NAME = "mundial-pontos-2026-v280-fase-final-mobile-lista";
 const APP_SHELL = [
   "./",
   "./index.html",

@@ -14448,3 +14448,49 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
   }
 }
 
+
+
+/* v280 — Fase Final mobile abre sempre em lista */
+@media (max-width: 760px){
+  #knockoutTab .ko-view-toggle-v270{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+    padding:12px!important;
+    margin:10px 0!important;
+    border-radius:16px!important;
+  }
+
+  #knockoutTab .ko-view-toggle-v270 .ko-view-toggle-actions-v270{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+  }
+
+  #knockoutTab .ko-view-toggle-v270 [data-ko-view-mode-v270="roadmap"]{
+    display:none!important;
+  }
+
+  #knockoutTab .ko-view-toggle-v270 [data-ko-view-mode-v270="list"]{
+    width:100%!important;
+    min-height:44px!important;
+  }
+
+  #knockoutTab.ko-road-root-v270,
+  #knockoutBracket.ko-road-root-v270{
+    overflow-x:hidden!important;
+  }
+
+  /* segurança extra: se o mapa ficar no DOM em mobile, não aparece. */
+  #knockoutTab .ko-road-page-v270,
+  #knockoutTab .bracket-photo-shell{
+    display:none!important;
+  }
+
+  #knockoutTab .ko-list-page-v260,
+  #knockoutTab .ko-list-root-v260{
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+  }
+}

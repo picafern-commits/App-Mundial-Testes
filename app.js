@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v279";
+const APP_VERSION_LABEL = "v280";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -19279,5 +19279,80 @@ window.debugFaseFinalMapaFullV279 = function debugFaseFinalMapaFullV279() {
       height: Math.round(shell.getBoundingClientRect().height),
       bottom: Math.round(shell.getBoundingClientRect().bottom)
     } : null
+  };
+};
+
+
+/* v280 — Fase Final mobile: lista automática */
+const APP_VERSION_V280_MOBILE_KO_LIST = "280.0";
+
+function koIsMobileV280() {
+  try { return window.matchMedia("(max-width: 760px)").matches; }
+  catch { return window.innerWidth <= 760; }
+}
+
+(function installKnockoutMobileAutoListV280() {
+  if (window.__koMobileAutoListV280) return;
+  window.__koMobileAutoListV280 = true;
+
+  const originalKoViewModeV270 = typeof koViewModeV270 === "function" ? koViewModeV270 : null;
+  if (originalKoViewModeV270) {
+    koViewModeV270 = function koViewModeMobileListV280() {
+      if (koIsMobileV280()) return "list";
+      return originalKoViewModeV270.apply(this, arguments);
+    };
+    window.koViewModeV270 = koViewModeV270;
+  }
+
+  const originalSetKoViewModeV270 = typeof setKoViewModeV270 === "function" ? setKoViewModeV270 : null;
+  if (originalSetKoViewModeV270) {
+    setKoViewModeV270 = function setKoViewModeMobileSafeV280(mode) {
+      if (koIsMobileV280()) {
+        try { localStorage.setItem(KO_VIEW_MODE_KEY_V270, "list"); } catch {}
+        try { renderKnockout?.(); } catch {}
+        return;
+      }
+      return originalSetKoViewModeV270.apply(this, arguments);
+    };
+    window.setKoViewModeV270 = setKoViewModeV270;
+  }
+
+  const originalKoV270ModeToggleHtml = typeof koV270ModeToggleHtml === "function" ? koV270ModeToggleHtml : null;
+  if (originalKoV270ModeToggleHtml) {
+    koV270ModeToggleHtml = function koV270ModeToggleMobileListV280() {
+      if (koIsMobileV280()) {
+        return `
+          <div class="ko-view-toggle-v270 ko-view-toggle-mobile-list-v280" role="group" aria-label="Modo da Fase Final">
+            <div>
+              <strong>Vista da Fase Final</strong>
+              <span>No telemóvel a fase final abre em lista para ficar mais simples.</span>
+            </div>
+            <div class="ko-view-toggle-actions-v270">
+              <button type="button" class="active" data-ko-view-mode-v270="list">Lista atual</button>
+            </div>
+          </div>`;
+      }
+      return originalKoV270ModeToggleHtml.apply(this, arguments);
+    };
+    window.koV270ModeToggleHtml = koV270ModeToggleHtml;
+  }
+
+  window.addEventListener("resize", () => {
+    try {
+      if (document.querySelector(".tab-panel.active")?.id === "knockoutTab" && koIsMobileV280()) {
+        localStorage.setItem(KO_VIEW_MODE_KEY_V270, "list");
+        renderKnockout?.();
+      }
+    } catch {}
+  }, { passive: true });
+})();
+
+window.debugFaseFinalMobileListaV280 = function debugFaseFinalMobileListaV280() {
+  return {
+    version: APP_VERSION_V280_MOBILE_KO_LIST,
+    mobile: koIsMobileV280(),
+    mode: typeof koViewModeV270 === "function" ? koViewModeV270() : "",
+    stored: (() => { try { return localStorage.getItem(KO_VIEW_MODE_KEY_V270); } catch { return ""; } })(),
+    activeTab: document.querySelector(".tab-panel.active")?.id || ""
   };
 };
