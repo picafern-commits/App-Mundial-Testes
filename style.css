@@ -14626,3 +14626,368 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
   }
 }
 
+
+
+/* v283 — Fase Final: sem aposta obrigatória = 0 pontos */
+.player-game-row.ko-mandatory-zero-v283,
+.player-game-row.miss.ko-mandatory-zero-v283{
+  border-color:rgba(251,113,133,.24)!important;
+  background:linear-gradient(90deg,rgba(251,113,133,.10),rgba(15,23,42,.35))!important;
+}
+
+.player-game-row.ko-mandatory-zero-v283 em{
+  color:#fecdd3!important;
+}
+
+.knockout-calendar-row-v259 .ko-calendar-note-v259{
+  white-space:normal!important;
+}
+
+.knockout-calendar-row-v259 .calendar-actions button[disabled]{
+  opacity:.72!important;
+  cursor:not-allowed!important;
+}
+
+
+
+/* v284 — Central de Apostas Fase Final */
+.ko-bet-entry-mount-v284{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.ko-bet-entry-btn-v284{
+  border:1px solid rgba(34,184,207,.34);
+  background:linear-gradient(135deg,rgba(34,184,207,.18),rgba(59,130,246,.16));
+  color:#e0f7ff;
+  border-radius:12px;
+  min-height:38px;
+  padding:0 14px;
+  font-weight:1000;
+  cursor:pointer;
+  box-shadow:0 0 22px rgba(34,184,207,.08);
+}
+
+.ko-bet-entry-btn-v284.pending{
+  border-color:rgba(250,204,21,.55);
+  background:linear-gradient(135deg,#f97316,#ef4444);
+  color:#fff;
+  box-shadow:0 0 26px rgba(239,68,68,.20);
+}
+
+.ko-bet-entry-btn-v284.missed{
+  border-color:rgba(251,113,133,.45);
+  background:rgba(127,29,29,.35);
+  color:#fecdd3;
+}
+
+.ko-bet-calendar-banner-v284{
+  margin:12px 0;
+  padding:12px;
+  border:1px solid rgba(250,204,21,.20);
+  border-radius:16px;
+  background:linear-gradient(135deg,rgba(250,204,21,.10),rgba(34,184,207,.06));
+  justify-content:space-between;
+}
+
+.ko-bet-hub-v284{
+  z-index:99990!important;
+}
+
+.ko-bet-hub-card-v284{
+  width:min(980px,calc(100vw - 28px));
+  max-height:calc(100dvh - 28px);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+
+.ko-bet-hub-head-v284{
+  flex:0 0 auto;
+}
+
+.ko-bet-hub-body-v284{
+  overflow:auto;
+  padding-right:4px;
+  display:grid;
+  gap:14px;
+}
+
+.ko-bet-hub-summary-v284{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+
+.ko-bet-hub-summary-v284 div{
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:14px;
+  padding:12px;
+  background:rgba(255,255,255,.04);
+}
+
+.ko-bet-hub-summary-v284 span{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:900;
+}
+
+.ko-bet-hub-summary-v284 strong{
+  display:block;
+  color:var(--gold);
+  font-size:26px;
+  line-height:1;
+  margin-top:4px;
+}
+
+.ko-bet-hub-list-v284{
+  display:grid;
+  gap:12px;
+}
+
+.ko-bet-card-v284{
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:18px;
+  padding:14px;
+  background:linear-gradient(180deg,rgba(13,21,34,.96),rgba(7,11,19,.96));
+  display:grid;
+  gap:12px;
+}
+
+.ko-bet-card-v284 header{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  align-items:flex-start;
+}
+
+.ko-bet-card-v284 header span,
+.ko-bet-card-v284 header small{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:800;
+}
+
+.ko-bet-card-v284 header strong{
+  display:block;
+  color:#fff;
+  font-size:19px;
+  line-height:1.15;
+  margin:3px 0;
+}
+
+.ko-bet-card-v284 header b{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  min-height:30px;
+  border-radius:999px;
+  padding:0 11px;
+  color:#dff7ff;
+  background:rgba(34,184,207,.16);
+  border:1px solid rgba(34,184,207,.28);
+  font-size:12px;
+  white-space:nowrap;
+}
+
+.ko-bet-state-pending header b{
+  color:#fff;
+  background:linear-gradient(135deg,#f97316,#ef4444);
+  border-color:rgba(250,204,21,.28);
+}
+
+.ko-bet-state-missed header b{
+  color:#fecdd3;
+  background:rgba(127,29,29,.35);
+  border-color:rgba(251,113,133,.28);
+}
+
+.ko-bet-real-result-v284{
+  color:#dbeafe;
+  font-weight:900;
+  padding:8px 10px;
+  border-radius:12px;
+  background:rgba(59,130,246,.10);
+  border:1px solid rgba(59,130,246,.18);
+}
+
+.ko-bet-form-v284{
+  display:grid;
+  grid-template-columns:1fr 44px 1fr;
+  align-items:end;
+  gap:10px;
+}
+
+.ko-bet-form-v284 label,
+.ko-bet-qualified-v284{
+  display:grid;
+  gap:6px;
+}
+
+.ko-bet-form-v284 label span,
+.ko-bet-qualified-v284 span{
+  color:#cbd5e1;
+  font-size:12px;
+  font-weight:900;
+}
+
+.ko-bet-form-v284 input,
+.ko-bet-qualified-v284 select{
+  min-height:44px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;
+  background:#07111d;
+  color:#fff;
+  font-weight:1000;
+  padding:8px 10px;
+  outline:none;
+}
+
+.ko-bet-form-v284 input{
+  text-align:center;
+  font-size:18px;
+}
+
+.ko-bet-form-v284 em{
+  height:44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--gold);
+  font-style:normal;
+  font-weight:1000;
+}
+
+.ko-bet-card-v284 footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.ko-bet-saved-v284{
+  color:#cbd5e1;
+  font-weight:900;
+}
+
+.ko-bet-saved-v284.muted{
+  color:var(--muted);
+}
+
+.ko-bet-actions-v284{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+.ko-bet-actions-v284 button{
+  min-height:40px;
+}
+
+.ko-bet-empty-v284{
+  border:1px dashed rgba(255,255,255,.16);
+  border-radius:18px;
+  padding:18px;
+  display:grid;
+  gap:6px;
+  color:#cbd5e1;
+}
+
+.ko-bet-empty-v284 strong{
+  color:#fff;
+  font-size:20px;
+}
+
+@media(max-width:760px){
+  .ko-bet-entry-topbar-v284{
+    width:100%;
+  }
+
+  .ko-bet-entry-btn-v284{
+    width:100%;
+    min-height:44px;
+  }
+
+  .ko-bet-hub-card-v284{
+    width:calc(100vw - 20px);
+    max-height:calc(100dvh - 20px);
+  }
+
+  .ko-bet-hub-summary-v284{
+    grid-template-columns:1fr 1fr 1fr;
+    gap:8px;
+  }
+
+  .ko-bet-hub-summary-v284 div{
+    padding:10px 8px;
+  }
+
+  .ko-bet-hub-summary-v284 strong{
+    font-size:22px;
+  }
+
+  .ko-bet-card-v284{
+    padding:12px;
+    border-radius:16px;
+  }
+
+  .ko-bet-card-v284 header{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+
+  .ko-bet-card-v284 header strong{
+    font-size:17px;
+  }
+
+  .ko-bet-card-v284 header b{
+    justify-self:start;
+  }
+
+  .ko-bet-form-v284{
+    grid-template-columns:1fr 38px 1fr;
+    gap:8px;
+  }
+
+  .ko-bet-form-v284 input,
+  .ko-bet-qualified-v284 select{
+    font-size:16px;
+    min-height:44px;
+  }
+
+  .ko-bet-card-v284 footer{
+    display:grid;
+    grid-template-columns:1fr;
+  }
+
+  .ko-bet-actions-v284{
+    display:grid;
+    grid-template-columns:1fr;
+    justify-content:stretch;
+  }
+
+  .ko-bet-actions-v284 button{
+    width:100%;
+  }
+}
+
+@media(max-width:420px){
+  .ko-bet-hub-summary-v284 span{
+    font-size:10px;
+  }
+
+  .ko-bet-form-v284{
+    grid-template-columns:1fr;
+  }
+
+  .ko-bet-form-v284 em{
+    height:26px;
+  }
+}
+
