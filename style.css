@@ -16714,3 +16714,128 @@ body.mandatory-notice-open-v295{
     overflow:visible!important;
   }
 }
+
+
+/* v311 — limpeza visual global segura */
+html.app-clean-v311,
+html.app-clean-v311 body{
+  overflow-x:hidden!important;
+}
+
+.app-clean-v311 .top-card,
+.app-clean-v311 .admin-card,
+.app-clean-v311 .match-row,
+.app-clean-v311 .modal-card,
+.app-clean-v311 .settings-card,
+.app-clean-v311 .score-card{
+  box-shadow:0 14px 38px rgba(0,0,0,.18)!important;
+}
+
+.app-clean-v311 button,
+.app-clean-v311 .tab,
+.app-clean-v311 input,
+.app-clean-v311 select,
+.app-clean-v311 textarea{
+  -webkit-tap-highlight-color:transparent;
+}
+
+.app-clean-v311 .modal-card{
+  backdrop-filter:blur(14px);
+}
+
+.app-clean-v311 .bets-list,
+.app-clean-v311 .chat-messages,
+.app-clean-v311 .notifications-list,
+.app-clean-v311 .admin-stack{
+  scrollbar-width:thin;
+}
+
+/* v311 — Ver apostas: coluna Aposta larga em TODOS os modos, com ou sem lápis */
+#betsModal .bets-modal-card{
+  width:min(1180px, calc(100vw - 32px))!important;
+  max-width:1180px!important;
+}
+
+#betsModal .bets-list-head:not(.ko-list-head-edit-v308){
+  grid-template-columns:minmax(170px,.9fr) minmax(360px,1.9fr) minmax(150px,.8fr) 64px!important;
+  gap:12px!important;
+}
+
+#betsModal .bet-user-row:not(.ko-direct-edit-row-v308){
+  grid-template-columns:minmax(170px,.9fr) minmax(360px,1.9fr) minmax(150px,.8fr) 64px!important;
+  gap:12px!important;
+}
+
+#betsModal .bets-list-head.ko-list-head-edit-v308{
+  grid-template-columns:minmax(160px,.8fr) minmax(410px,2.05fr) minmax(135px,.7fr) 58px 52px!important;
+  gap:12px!important;
+}
+
+#betsModal .bet-user-row.ko-direct-edit-row-v308{
+  grid-template-columns:minmax(160px,.8fr) minmax(410px,2.05fr) minmax(135px,.7fr) 58px 52px!important;
+  gap:12px!important;
+}
+
+#betsModal .bet-score-pill{
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  justify-content:flex-start!important;
+  text-align:left!important;
+  padding:8px 14px!important;
+  border-radius:14px!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  line-height:1.18!important;
+}
+
+#betsModal .bet-type-pill{
+  min-width:0!important;
+  width:100%!important;
+}
+
+#betsModal .bet-user-main{
+  min-width:0!important;
+}
+
+#betsModal .ko-pencil-direct-v308,
+#betsModal .ko-pencil-edit-v307{
+  justify-self:end!important;
+}
+
+@media(max-width:1100px){
+  #betsModal .bets-list-head:not(.ko-list-head-edit-v308),
+  #betsModal .bet-user-row:not(.ko-direct-edit-row-v308){
+    grid-template-columns:minmax(150px,.85fr) minmax(300px,1.65fr) minmax(125px,.75fr) 58px!important;
+  }
+
+  #betsModal .bets-list-head.ko-list-head-edit-v308,
+  #betsModal .bet-user-row.ko-direct-edit-row-v308{
+    grid-template-columns:minmax(145px,.8fr) minmax(310px,1.7fr) minmax(120px,.7fr) 54px 48px!important;
+  }
+}
+
+@media(max-width:760px){
+  #betsModal .bets-list-head,
+  #betsModal .bets-list-head.ko-list-head-edit-v308{
+    display:none!important;
+  }
+
+  #betsModal .bet-user-row,
+  #betsModal .bet-user-row.ko-direct-edit-row-v308{
+    grid-template-columns:1fr!important;
+  }
+
+  #betsModal .bet-score-pill{
+    white-space:normal!important;
+    overflow:visible!important;
+    width:100%!important;
+  }
+
+  #betsModal .ko-pencil-direct-v308,
+  #betsModal .ko-pencil-edit-v307{
+    justify-self:stretch!important;
+    width:100%!important;
+  }
+}

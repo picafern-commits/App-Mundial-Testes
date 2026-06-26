@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v310";
+const APP_VERSION_LABEL = "v311";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -24235,3 +24235,95 @@ window.debugKoBetColumnWideV310 = function debugKoBetColumnWideV310() {
     }))
   };
 };
+
+
+/* v311 — Revisão geral: diagnóstico, limpeza visual e estabilidade segura */
+const APP_VERSION_V311_GERAL_CLEAN_AUDIT = "311.0";
+
+function appHealthCheckV311() {
+  const checks = [];
+
+  function add(name, ok, detail = "", level = "info") {
+    checks.push({ name, ok: Boolean(ok), detail: String(detail || ""), level: ok ? "ok" : level });
+  }
+
+  const gameIds = new Set();
+  const duplicateGames = [];
+  (games || []).forEach(game => {
+    if (!game?.id) return;
+    if (gameIds.has(game.id)) duplicateGames.push(game.id);
+    gameIds.add(game.id);
+  });
+
+  const betIds = new Set();
+  const duplicateBets = [];
+  (bets || []).forEach(bet => {
+    const id = bet?.id || `${bet?.playerId || ""}_${bet?.gameId || ""}`;
+    if (!id) return;
+    if (betIds.has(id)) duplicateBets.push(id);
+    betIds.add(id);
+  });
+
+  const knockoutMatches = appSettings?.knockout?.matches || [];
+  const koReady = Array.isArray(knockoutMatches);
+  const linkedPlayer = (() => {
+    try { return linkedPlayerForCurrentUserV241?.() || null; } catch { return null; }
+  })();
+
+  add("DOM principal", Boolean(document.getElementById("calendarTab") && document.getElementById("gamesList")), "Calendário e lista de jogos existem.", "error");
+  add("Jogos carregados", Array.isArray(games) && games.length > 0, `${(games || []).length} jogos`, "error");
+  add("Apostas carregadas", Array.isArray(bets), `${(bets || []).length} apostas`, "error");
+  add("Configurações", Boolean(appSettings && typeof appSettings === "object"), "appSettings ativo", "error");
+  add("Fase Final", koReady, `${knockoutMatches.length} jogos eliminatórios`, "error");
+  add("IDs de jogos", duplicateGames.length === 0, duplicateGames.length ? `Duplicados: ${duplicateGames.slice(0, 8).join(", ")}` : "Sem duplicados", "warn");
+  add("IDs de apostas", duplicateBets.length === 0, duplicateBets.length ? `Duplicadas: ${duplicateBets.slice(0, 8).join(", ")}` : "Sem duplicados", "warn");
+  add("Firebase", storageMode === "firebase" && Boolean(db && firebaseApi), storageMode === "firebase" ? "Ligado" : `Modo ${storageMode || "local"}`, "warn");
+  add("Perfil atual", Boolean(currentProfile), currentProfile ? `${currentProfile.name || currentProfile.email || "sem nome"} · ${currentProfile.role || "sem cargo"}` : "Sem perfil carregado", "warn");
+  add("Jogador ligado", Boolean(linkedPlayer || normalizeRole?.(currentProfile?.role || "") === "owner" || normalizeRole?.(currentProfile?.role || "") === "admin"), linkedPlayer ? `${linkedPlayer.name || linkedPlayer.playerName}` : "Sem jogador ligado", "warn");
+  add("Pendentes Firebase", pendingGameIds().length + pendingBetIds().length + pendingDeleteBetIds().length === 0 && !hasFullSyncPending?.(), `jogos:${pendingGameIds().length} apostas:${pendingBetIds().length} apagar:${pendingDeleteBetIds().length} full:${hasFullSyncPending?.() ? "sim" : "não"}`, "warn");
+  add("Push/Service Worker", "serviceWorker" in navigator, "Suporte do browser", "warn");
+
+  const errors = checks.filter(item => item.level === "error" && !item.ok).length;
+  const warnings = checks.filter(item => item.level === "warn" && !item.ok).length;
+
+  return {
+    version: APP_VERSION_V311_GERAL_CLEAN_AUDIT,
+    appVersion: typeof APP_VERSION_LABEL !== "undefined" ? APP_VERSION_LABEL : "",
+    at: new Date().toISOString(),
+    errors,
+    warnings,
+    ok: errors === 0,
+    counts: {
+      games: (games || []).length,
+      bets: (bets || []).length,
+      knockoutMatches: knockoutMatches.length,
+      users: (appSettings?.users || []).length,
+      permissions: (permissionsCache || []).length
+    },
+    checks
+  };
+}
+
+function appQuickFixSafeV311() {
+  // Correções seguras: não apaga dados. Só normaliza estruturas mínimas e força render.
+  try { ensureKnockoutSettings?.(); } catch {}
+  try { appSettings = mergeSettings?.(appSettings) || appSettings; } catch {}
+  try { games = normalizeGames?.(games) || games; } catch {}
+  try { bets = normalizeBets?.(bets) || bets; } catch {}
+  try { saveLocalData?.("quick fix seguro v311"); } catch {}
+  try { renderAll?.(); } catch {}
+  return appHealthCheckV311();
+}
+
+(function installGeneralCleanAuditV311() {
+  if (window.__geralCleanAuditV311) return;
+  window.__geralCleanAuditV311 = true;
+
+  window.debugAppSaudeV311 = appHealthCheckV311;
+  window.corrigirAppSeguroV311 = appQuickFixSafeV311;
+
+  // Pequena proteção contra scroll horizontal acidental em modais/cards.
+  requestAnimationFrame(() => {
+    try { document.documentElement.classList.add("app-clean-v311"); } catch {}
+  });
+})();
