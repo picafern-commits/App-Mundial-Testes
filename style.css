@@ -15147,3 +15147,123 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
   margin:0!important;
   border:0!important;
 }
+
+
+/* v289 — Fase Final mobile sem scroll lateral */
+@media (max-width: 760px){
+  html,
+  body{
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:hidden!important;
+  }
+
+  body.ko-mobile-no-x-v289,
+  body.ko-mobile-no-x-v289 #appShell,
+  body.ko-mobile-no-x-v289 main,
+  body.ko-mobile-no-x-v289 #knockoutTab{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow-x:hidden!important;
+    box-sizing:border-box!important;
+  }
+
+  body.ko-mobile-no-x-v289 #appShell{
+    padding-left:max(10px, env(safe-area-inset-left, 0px))!important;
+    padding-right:max(10px, env(safe-area-inset-right, 0px))!important;
+  }
+
+  body.ko-mobile-no-x-v289 #knockoutTab{
+    position:relative!important;
+    left:auto!important;
+    right:auto!important;
+    transform:none!important;
+    padding-left:0!important;
+    padding-right:0!important;
+  }
+
+  body.ko-mobile-no-x-v289 #knockoutBracket,
+  body.ko-mobile-no-x-v289 #knockoutBracket.knockout-bracket{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow-x:hidden!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Elementos antigos do mapa/roadmap não podem criar largura no mobile. */
+  body.ko-mobile-no-x-v289 #knockoutTab .bracket-photo-shell,
+  body.ko-mobile-no-x-v289 #knockoutTab .bracket-photo-grid,
+  body.ko-mobile-no-x-v289 #knockoutTab .bracket-photo-grid-split,
+  body.ko-mobile-no-x-v289 #knockoutTab .ko-road-root-v270,
+  body.ko-mobile-no-x-v289 #knockoutTab .ko-road-page-v270,
+  body.ko-mobile-no-x-v289 #knockoutTab .ko-road-board-v270{
+    display:none!important;
+    width:0!important;
+    max-width:0!important;
+    min-width:0!important;
+    overflow:hidden!important;
+  }
+
+  /* Lista mobile sempre presa ao ecrã. */
+  body.ko-mobile-no-x-v289 #knockoutTab .ko-list-root-v260,
+  body.ko-mobile-no-x-v289 #knockoutTab .ko-list-page-v260,
+  body.ko-mobile-no-x-v289 #knockoutTab .ko-list-grid-v260,
+  body.ko-mobile-no-x-v289 #knockoutTab .ko-list-card-v260,
+  body.ko-mobile-no-x-v289 #knockoutTab .ko-mobile-card,
+  body.ko-mobile-no-x-v289 #knockoutTab .knockout-mobile-v121,
+  body.ko-mobile-no-x-v289 #knockoutTab [class*="ko-mobile"],
+  body.ko-mobile-no-x-v289 #knockoutTab [class*="knockout-list"]{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+    overflow-x:hidden!important;
+  }
+
+  body.ko-mobile-no-x-v289 #knockoutTab *{
+    max-width:100%;
+    box-sizing:border-box;
+  }
+
+  body.ko-mobile-no-x-v289 #knockoutTab button,
+  body.ko-mobile-no-x-v289 #knockoutTab input,
+  body.ko-mobile-no-x-v289 #knockoutTab select,
+  body.ko-mobile-no-x-v289 #knockoutTab textarea{
+    max-width:100%!important;
+  }
+}
+
+
+
+/* v290 — Users online: scroll próprio e sem mexer a página atrás */
+#onlineUsersList,
+.online-users-popup-v266,
+.online-users-content-v266{
+  overscroll-behavior:contain!important;
+}
+
+#onlineUsersList{
+  max-height:min(78dvh, 720px)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  touch-action:pan-y!important;
+  -webkit-overflow-scrolling:touch!important;
+}
+
+.online-users-content-v266{
+  max-height:calc(min(78dvh, 720px) - 58px)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding-right:4px!important;
+}
+
+.online-user-meta-v266 span:nth-child(2){
+  color:#cbd5e1!important;
+}
+
+.online-user-meta-v266 span:nth-child(2):empty::after{
+  content:"Jogador por ligar";
+  color:#fca5a5;
+}

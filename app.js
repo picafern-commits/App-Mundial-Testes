@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v288";
+const APP_VERSION_LABEL = "v290";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -20339,3 +20339,224 @@ const APP_VERSION_V287_UI_FILTER_CLEAN = "287.0";
     document.querySelectorAll(".ko-bet-calendar-banner-v284").forEach(el => el.remove());
   }, 500);
 })();
+
+
+/* v289 — Fase Final mobile sem scroll lateral */
+const APP_VERSION_V289_KO_MOBILE_NO_X = "289.0";
+
+(function installKnockoutMobileNoHorizontalScrollV289() {
+  if (window.__koMobileNoHorizontalScrollV289) return;
+  window.__koMobileNoHorizontalScrollV289 = true;
+
+  function fixKnockoutMobileOverflowV289() {
+    const isMobile = window.matchMedia?.("(max-width: 760px)")?.matches || window.innerWidth <= 760;
+    const isKnockout = document.querySelector(".tab-panel.active")?.id === "knockoutTab";
+    document.body.classList.toggle("ko-mobile-no-x-v289", Boolean(isMobile && isKnockout));
+
+    if (!isMobile || !isKnockout) return;
+
+    const tab = document.getElementById("knockoutTab");
+    const bracket = document.getElementById("knockoutBracket");
+    [tab, bracket].forEach(el => {
+      if (!el) return;
+      el.style.maxWidth = "100%";
+      el.style.overflowX = "hidden";
+    });
+
+    tab?.querySelectorAll?.(".bracket-photo-shell,.ko-road-root-v270,.ko-road-page-v270,.ko-road-board-v270,.ko-list-root-v260,.ko-list-page-v260,.ko-mobile-card,.ko-list-card-v260,.knockout-mobile-v121").forEach(el => {
+      el.style.maxWidth = "100%";
+      el.style.overflowX = "hidden";
+    });
+  }
+
+  const originalUpdateActiveAppSection = typeof updateActiveAppSection === "function" ? updateActiveAppSection : null;
+  if (originalUpdateActiveAppSection && !originalUpdateActiveAppSection.__koNoXV289) {
+    updateActiveAppSection = function updateActiveAppSectionNoXV289() {
+      const result = originalUpdateActiveAppSection.apply(this, arguments);
+      setTimeout(fixKnockoutMobileOverflowV289, 0);
+      return result;
+    };
+    updateActiveAppSection.__koNoXV289 = true;
+    window.updateActiveAppSection = updateActiveAppSection;
+  }
+
+  const originalRenderKnockout = typeof renderKnockout === "function" ? renderKnockout : null;
+  if (originalRenderKnockout && !originalRenderKnockout.__koNoXV289) {
+    renderKnockout = function renderKnockoutNoXV289() {
+      const result = originalRenderKnockout.apply(this, arguments);
+      setTimeout(fixKnockoutMobileOverflowV289, 0);
+      setTimeout(fixKnockoutMobileOverflowV289, 160);
+      return result;
+    };
+    renderKnockout.__koNoXV289 = true;
+    window.renderKnockout = renderKnockout;
+  }
+
+  document.addEventListener("click", event => {
+    if (event.target.closest?.(".tabs [data-tab]")) {
+      setTimeout(fixKnockoutMobileOverflowV289, 80);
+      setTimeout(fixKnockoutMobileOverflowV289, 260);
+    }
+  }, true);
+
+  window.addEventListener("resize", () => setTimeout(fixKnockoutMobileOverflowV289, 80), { passive: true });
+  window.addEventListener("orientationchange", () => setTimeout(fixKnockoutMobileOverflowV289, 220), { passive: true });
+
+  setTimeout(fixKnockoutMobileOverflowV289, 800);
+})();
+
+window.debugFaseFinalMobileOverflowV289 = function debugFaseFinalMobileOverflowV289() {
+  const offenders = [];
+  const vw = window.innerWidth;
+  document.querySelectorAll("#knockoutTab *").forEach(el => {
+    const rect = el.getBoundingClientRect();
+    if (rect.width > vw + 2 || rect.right > vw + 2 || rect.left < -2) {
+      offenders.push({
+        tag: el.tagName,
+        className: String(el.className || "").slice(0, 120),
+        width: Math.round(rect.width),
+        left: Math.round(rect.left),
+        right: Math.round(rect.right)
+      });
+    }
+  });
+  return {
+    version: APP_VERSION_V289_KO_MOBILE_NO_X,
+    width: window.innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    bodyScrollWidth: document.body.scrollWidth,
+    activeTab: document.querySelector(".tab-panel.active")?.id || "",
+    offenders: offenders.slice(0, 20)
+  };
+};
+
+
+/* v290 — Users online: jogador certo por user + scroll isolado */
+const APP_VERSION_V290_ONLINE_USERS_FIX = "290.0";
+
+function onlineUserProfileV290(user) {
+  const email = normalizeEmail(user?.email || user?.id || user?.uid || "");
+  const uid = String(user?.uid || user?.userId || "").trim();
+  const candidates = Array.isArray(permissionsCache) ? permissionsCache : [];
+
+  return candidates.find(profile => {
+    const profileEmail = normalizeEmail(profile?.email || profile?.id || "");
+    const profileUid = String(profile?.uid || profile?.userId || profile?.authUid || "").trim();
+    return (email && profileEmail === email) || (uid && profileUid && profileUid === uid);
+  }) || null;
+}
+
+function onlineUserPlayerLabelV290(user) {
+  try {
+    const directUser =
+      String(user?.linkedPlayerName || user?.playerName || user?.jogadorName || user?.linkedPlayer || "").trim();
+    if (directUser) return directUser;
+
+    const directUserId = String(user?.linkedPlayerId || user?.playerId || user?.jogadorId || "").trim();
+    if (directUserId && typeof playerByIdV241 === "function") {
+      const player = playerByIdV241(directUserId);
+      if (player?.name) return player.name;
+    }
+
+    const profile = onlineUserProfileV290(user);
+    if (!profile) return "Jogador por ligar";
+
+    const directProfile =
+      String(profile.linkedPlayerName || profile.playerName || profile.jogadorName || profile.linkedPlayer || "").trim();
+    if (directProfile) return directProfile;
+
+    const directProfileId = String(profile.linkedPlayerId || profile.playerId || profile.jogadorId || "").trim();
+    if (directProfileId && typeof playerByIdV241 === "function") {
+      const player = playerByIdV241(directProfileId);
+      if (player?.name) return player.name;
+    }
+
+    // Só usar procura por email se houver email real; evita apanhar o primeiro jogador sem email.
+    const profileEmail = normalizeEmail(profile.email || profile.id || user?.email || user?.id || "");
+    if (profileEmail && typeof playersCatalogV241 === "function") {
+      const linked = playersCatalogV241().find(player =>
+        normalizeEmail(player.linkedEmail || player.email || "") === profileEmail
+      );
+      if (linked?.name) return linked.name;
+    }
+  } catch (error) {
+    console.warn("v290: falhou obter jogador do user online", error);
+  }
+
+  return "Jogador por ligar";
+}
+
+function bindOnlineUsersScrollLockV290() {
+  const panel = document.getElementById("onlineUsersList");
+  if (!panel || panel.__scrollLockV290) return;
+  panel.__scrollLockV290 = true;
+
+  const stopWheel = event => {
+    if (!panel.classList.contains("hidden")) event.stopPropagation();
+  };
+
+  const stopTouch = event => {
+    if (!panel.classList.contains("hidden")) event.stopPropagation();
+  };
+
+  panel.addEventListener("wheel", stopWheel, { passive: true });
+  panel.addEventListener("touchstart", stopTouch, { passive: true });
+  panel.addEventListener("touchmove", stopTouch, { passive: true });
+  panel.addEventListener("scroll", event => event.stopPropagation(), { passive: true });
+}
+
+(function installOnlineUsersFixV290() {
+  if (window.__onlineUsersFixV290) return;
+  window.__onlineUsersFixV290 = true;
+
+  // Corrige as funções usadas pelo render v266.
+  try {
+    onlineUserProfileV266 = onlineUserProfileV290;
+    onlineUserPlayerLabelV266 = onlineUserPlayerLabelV290;
+    window.onlineUserProfileV266 = onlineUserProfileV290;
+    window.onlineUserPlayerLabelV266 = onlineUserPlayerLabelV290;
+  } catch {}
+
+  const originalRenderOnlineUsers = typeof renderOnlineUsers === "function" ? renderOnlineUsers : null;
+  if (originalRenderOnlineUsers && !originalRenderOnlineUsers.__v290) {
+    renderOnlineUsers = function renderOnlineUsersFixV290() {
+      const result = originalRenderOnlineUsers.apply(this, arguments);
+      bindOnlineUsersScrollLockV290();
+      return result;
+    };
+    renderOnlineUsers.__v290 = true;
+    window.renderOnlineUsers = renderOnlineUsers;
+  }
+
+  const originalRenderOnlineUsersV266 = typeof renderOnlineUsersV266 === "function" ? renderOnlineUsersV266 : null;
+  if (originalRenderOnlineUsersV266 && !originalRenderOnlineUsersV266.__v290) {
+    renderOnlineUsersV266 = function renderOnlineUsersV266FixV290() {
+      const result = originalRenderOnlineUsersV266.apply(this, arguments);
+      bindOnlineUsersScrollLockV290();
+      return result;
+    };
+    renderOnlineUsersV266.__v290 = true;
+    window.renderOnlineUsersV266 = renderOnlineUsersV266;
+    try { renderOnlineUsers = renderOnlineUsersV266FixV290; window.renderOnlineUsers = renderOnlineUsersV266FixV290; } catch {}
+  }
+
+  document.addEventListener("click", event => {
+    if (event.target.closest?.("#onlineUsersBtn,#onlineUsersSummary,.topbar-online-users")) {
+      setTimeout(bindOnlineUsersScrollLockV290, 50);
+      setTimeout(() => { try { renderOnlineUsers?.(); } catch {} }, 120);
+    }
+  }, true);
+
+  setTimeout(() => { try { renderOnlineUsers?.(); bindOnlineUsersScrollLockV290(); } catch {} }, 900);
+})();
+
+window.debugUsersOnlineJogadorV290 = function debugUsersOnlineJogadorV290() {
+  return {
+    version: APP_VERSION_V290_ONLINE_USERS_FIX,
+    users: (onlineUsersCache || []).map(user => ({
+      email: user.email || user.id || "",
+      nome: onlineUserProfileV290(user)?.name || user.name || "",
+      jogador: onlineUserPlayerLabelV290(user)
+    }))
+  };
+};
