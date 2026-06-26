@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v297";
+const APP_VERSION_LABEL = "v298";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -21861,5 +21861,209 @@ window.debugNotificacoesV297 = function debugNotificacoesV297() {
     seen: notificationSeenListV297(),
     permission: typeof Notification !== "undefined" ? Notification.permission : "unsupported",
     sw: "serviceWorker" in navigator
+  };
+};
+
+
+/* v298 — Cada user pode ativar/desativar notificações */
+const APP_VERSION_V298_USER_NOTIFICATIONS_TOGGLE = "298.0";
+
+function userNotificationSettingsKeyV298() {
+  const email = normalizeEmail(currentUser?.email || currentProfile?.email || currentProfile?.id || "anon");
+  const uid = String(currentUser?.uid || currentProfile?.uid || "").trim();
+  return `${STORAGE_KEY || "mundial"}_user_notifications_v298_${uid || email || "anon"}`;
+}
+
+function userNotificationsEnabledV298() {
+  try {
+    const raw = localStorage.getItem(userNotificationSettingsKeyV298());
+    if (!raw) return true;
+    const parsed = JSON.parse(raw);
+    return parsed.enabled !== false;
+  } catch {
+    return true;
+  }
+}
+
+function saveUserNotificationsEnabledV298(enabled) {
+  try {
+    localStorage.setItem(userNotificationSettingsKeyV298(), JSON.stringify({
+      enabled: Boolean(enabled),
+      updatedAt: new Date().toISOString(),
+      uid: currentUser?.uid || "",
+      email: normalizeEmail(currentUser?.email || currentProfile?.email || currentProfile?.id || "")
+    }));
+  } catch {}
+}
+
+function userNotificationsLabelV298() {
+  return userNotificationsEnabledV298() ? "Notificações ativas" : "Notificações desligadas";
+}
+
+function renderUserNotificationsToggleV298() {
+  if (!currentUser && !firebaseAuth?.currentUser) return;
+
+  const targets = [
+    document.getElementById("notificationsTab"),
+    document.getElementById("settingsTab")
+  ].filter(Boolean);
+
+  targets.forEach(target => {
+    let card = target.querySelector(".user-notifications-toggle-v298");
+    if (!card) {
+      card = document.createElement("section");
+      card.className = "user-notifications-toggle-v298";
+    }
+
+    const enabled = userNotificationsEnabledV298();
+    card.innerHTML = `
+      <div>
+        <strong>Notificações deste user</strong>
+        <span>${enabled ? "Este user/dispositivo pode receber alertas." : "Este user/dispositivo não recebe alertas."}</span>
+      </div>
+      <button class="${enabled ? "secondary" : "primary"}" type="button" data-toggle-user-notifications-v298>
+        ${enabled ? "Desativar notificações" : "Ativar notificações"}
+      </button>
+      <em>${escapeHtml(userNotificationsLabelV298())}</em>
+    `;
+
+    const firstPanel = target.querySelector("#pushNotificationsPanelV165, .settings-grid-v162, .section-head");
+    if (!card.parentNode) {
+      if (firstPanel?.parentNode === target) target.insertBefore(card, firstPanel.nextSibling);
+      else target.prepend(card);
+    }
+  });
+}
+
+function toggleUserNotificationsV298() {
+  const next = !userNotificationsEnabledV298();
+  saveUserNotificationsEnabledV298(next);
+
+  // Ao reativar, tenta garantir token/permissão se ainda for preciso.
+  if (next) {
+    try { setupPushForCurrentUserV182?.(); } catch {}
+  }
+
+  renderUserNotificationsToggleV298();
+  try { renderPushNotificationsPanelV165?.(); } catch {}
+  toast?.(next ? "Notificações ativadas para este user." : "Notificações desativadas para este user.");
+}
+
+(function installUserNotificationsToggleV298() {
+  if (window.__userNotificationsToggleV298) return;
+  window.__userNotificationsToggleV298 = true;
+
+  document.addEventListener("click", event => {
+    const btn = event.target.closest?.("[data-toggle-user-notifications-v298]");
+    if (!btn) return;
+    event.preventDefault();
+    event.stopPropagation();
+    toggleUserNotificationsV298();
+  }, true);
+
+  const originalForeground = typeof showForegroundPushNotificationV183 === "function" ? showForegroundPushNotificationV183 : null;
+  if (originalForeground && !originalForeground.__userToggleV298) {
+    showForegroundPushNotificationV183 = async function showForegroundPushNotificationUserToggleV298(payload = {}) {
+      if (!userNotificationsEnabledV298()) return;
+      return originalForeground.apply(this, arguments);
+    };
+    showForegroundPushNotificationV183.__userToggleV298 = true;
+    window.showForegroundPushNotificationV183 = showForegroundPushNotificationV183;
+  }
+
+  const originalSetupPush = typeof setupPushForCurrentUserV182 === "function" ? setupPushForCurrentUserV182 : null;
+  if (originalSetupPush && !originalSetupPush.__userToggleV298) {
+    setupPushForCurrentUserV182 = async function setupPushForCurrentUserUserToggleV298() {
+      renderUserNotificationsToggleV298();
+      if (!userNotificationsEnabledV298()) {
+        try { renderPushOptInPromptV182?.(); } catch {}
+        return false;
+      }
+      return originalSetupPush.apply(this, arguments);
+    };
+    setupPushForCurrentUserV182.__userToggleV298 = true;
+    window.setupPushForCurrentUserV182 = setupPushForCurrentUserV182;
+  }
+
+  const originalShouldShowOptIn = typeof shouldShowPushOptInV182 === "function" ? shouldShowPushOptInV182 : null;
+  if (originalShouldShowOptIn && !originalShouldShowOptIn.__userToggleV298) {
+    shouldShowPushOptInV182 = function shouldShowPushOptInUserToggleV298() {
+      if (!userNotificationsEnabledV298()) return false;
+      return originalShouldShowOptIn.apply(this, arguments);
+    };
+    shouldShowPushOptInV182.__userToggleV298 = true;
+    window.shouldShowPushOptInV182 = shouldShowPushOptInV182;
+  }
+
+  const originalRenderPushPanel = typeof renderPushNotificationsPanelV165 === "function" ? renderPushNotificationsPanelV165 : null;
+  if (originalRenderPushPanel && !originalRenderPushPanel.__userToggleV298) {
+    renderPushNotificationsPanelV165 = function renderPushNotificationsPanelUserToggleV298() {
+      const result = originalRenderPushPanel.apply(this, arguments);
+      setTimeout(renderUserNotificationsToggleV298, 0);
+      return result;
+    };
+    renderPushNotificationsPanelV165.__userToggleV298 = true;
+    window.renderPushNotificationsPanelV165 = renderPushNotificationsPanelV165;
+  }
+
+  const originalRenderActive = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+  if (originalRenderActive && !originalRenderActive.__userToggleV298) {
+    renderActivePageV187 = function renderActivePageUserNotificationsV298() {
+      const result = originalRenderActive.apply(this, arguments);
+      setTimeout(renderUserNotificationsToggleV298, 150);
+      return result;
+    };
+    renderActivePageV187.__userToggleV298 = true;
+    window.renderActivePageV187 = renderActivePageV187;
+  }
+
+  const originalRenderAll = typeof renderAll === "function" ? renderAll : null;
+  if (originalRenderAll && !originalRenderAll.__userToggleV298) {
+    renderAll = function renderAllUserNotificationsV298() {
+      const result = originalRenderAll.apply(this, arguments);
+      setTimeout(renderUserNotificationsToggleV298, 300);
+      return result;
+    };
+    renderAll.__userToggleV298 = true;
+    window.renderAll = renderAll;
+  }
+
+  // Comunica ao service worker o estado deste dispositivo.
+  function syncUserNotificationStateToSwV298() {
+    try {
+      if (!("serviceWorker" in navigator)) return;
+      navigator.serviceWorker.ready.then(reg => {
+        if (reg?.active) {
+          reg.active.postMessage({
+            type: "USER_NOTIFICATIONS_STATE_V298",
+            enabled: userNotificationsEnabledV298(),
+            key: userNotificationSettingsKeyV298()
+          });
+        }
+      }).catch(() => {});
+    } catch {}
+  }
+
+  window.syncUserNotificationStateToSwV298 = syncUserNotificationStateToSwV298;
+  window.addEventListener("storage", event => {
+    if (event.key === userNotificationSettingsKeyV298()) {
+      renderUserNotificationsToggleV298();
+      syncUserNotificationStateToSwV298();
+    }
+  });
+
+  setTimeout(() => {
+    renderUserNotificationsToggleV298();
+    syncUserNotificationStateToSwV298();
+  }, 900);
+})();
+
+window.debugNotificacoesUserV298 = function debugNotificacoesUserV298() {
+  return {
+    version: APP_VERSION_V298_USER_NOTIFICATIONS_TOGGLE,
+    key: userNotificationSettingsKeyV298(),
+    enabled: userNotificationsEnabledV298(),
+    permission: typeof Notification !== "undefined" ? Notification.permission : "unsupported",
+    hasToken: Boolean(localStorage.getItem(typeof pushLastTokenStorageKeyV181 === "function" ? pushLastTokenStorageKeyV181() : ""))
   };
 };

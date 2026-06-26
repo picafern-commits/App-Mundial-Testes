@@ -1,4 +1,7 @@
-const CACHE_NAME = "mundial-pontos-2026-v297-notificacoes-sem-repetir";
+const CACHE_NAME = "mundial-pontos-2026-v298-notificacoes-por-user";
+const APP_VERSION_SW_V298_USER_NOTIFICATIONS = "298.0";
+let userNotificationsEnabledSwV298 = true;
+
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -33,6 +36,9 @@ self.addEventListener("activate", event => {
 self.addEventListener("message", event => {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
+  }
+  if (event.data && event.data.type === "USER_NOTIFICATIONS_STATE_V298") {
+    userNotificationsEnabledSwV298 = event.data.enabled !== false;
   }
 });
 
@@ -96,6 +102,8 @@ self.addEventListener("push", event => {
     } catch {
       payload = { notification: { title: "Mundial Pontos 2026", body: event.data?.text() || "" } };
     }
+
+    if (userNotificationsEnabledSwV298 === false) return;
 
     const data = payload.data || {};
     const notification = payload.notification || {};
