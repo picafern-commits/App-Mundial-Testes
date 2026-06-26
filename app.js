@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v269";
+const APP_VERSION_LABEL = "v270";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -18672,3 +18672,252 @@ if (renderAppSettingsPanelOriginalV269) {
 document.addEventListener("DOMContentLoaded", () => setTimeout(ensureFootballApiDiagnosticControlsV269, 800));
 document.addEventListener("click", () => setTimeout(ensureFootballApiDiagnosticControlsV269, 150));
 window.testFootballApiWithoutApplyingV269 = testFootballApiWithoutApplyingV269;
+
+// v270 — Fase Final: alternar entre lista atual e mapa/bracket estilo oficial no PC.
+const APP_VERSION_V270 = "270.0";
+const KO_VIEW_MODE_KEY_V270 = "mundial_ko_view_mode_v270";
+
+function koViewModeV270() {
+  const stored = localStorage.getItem(KO_VIEW_MODE_KEY_V270) || "list";
+  return stored === "roadmap" ? "roadmap" : "list";
+}
+
+function setKoViewModeV270(mode) {
+  const safe = mode === "roadmap" ? "roadmap" : "list";
+  localStorage.setItem(KO_VIEW_MODE_KEY_V270, safe);
+  try { renderKnockout?.(); } catch {}
+}
+
+function koV270ModeToggleHtml() {
+  const mode = koViewModeV270();
+  return `
+    <div class="ko-view-toggle-v270" role="group" aria-label="Modo da Fase Final">
+      <div>
+        <strong>Vista da Fase Final</strong>
+        <span>Alterna entre lista simples e mapa visual.</span>
+      </div>
+      <div class="ko-view-toggle-actions-v270">
+        <button type="button" class="${mode === "list" ? "active" : ""}" data-ko-view-mode-v270="list">Lista atual</button>
+        <button type="button" class="${mode === "roadmap" ? "active" : ""}" data-ko-view-mode-v270="roadmap">Mapa oficial</button>
+      </div>
+    </div>`;
+}
+
+function koV270BindModeToggle(root = document) {
+  root.querySelectorAll?.("[data-ko-view-mode-v270]").forEach(btn => {
+    if (btn.__koV270Bound) return;
+    btn.__koV270Bound = true;
+    btn.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      setKoViewModeV270(btn.dataset.koViewModeV270 || "list");
+    });
+  });
+}
+
+function koV270InjectToggleIntoList() {
+  const container = $("knockoutBracket");
+  if (!container) return;
+  if (container.querySelector(".ko-view-toggle-v270")) {
+    koV270BindModeToggle(container);
+    return;
+  }
+  const page = container.querySelector(".ko-list-page-v260") || container.firstElementChild || container;
+  page.insertAdjacentHTML("afterbegin", koV270ModeToggleHtml());
+  koV270BindModeToggle(page);
+}
+
+function koV270RoundColorClass(roundKey) {
+  return `ko-round-${escapeHtml(String(roundKey || "ko"))}-v261`;
+}
+
+function koV270ShortRoundLabel(roundKey) {
+  const key = String(roundKey || "").toLowerCase();
+  if (key === "r32") return "16 avos";
+  if (key === "r16") return "Oitavos";
+  if (key === "qf") return "Quartos";
+  if (key === "sf") return "Meias";
+  if (key === "final") return "Final";
+  return knockoutRoundLabel(roundKey);
+}
+
+function koV270MatchNumber(match) {
+  const base = { r32: 61, r16: 77, qf: 85, sf: 89, final: 93 }[String(match?.round || "")] || 0;
+  return base ? `M${base + Number(match?.index || 1) - 1}` : `J${match?.index || ""}`;
+}
+
+function koV270TeamSeed(match, side) {
+  const team = koV260Team(match, side);
+  if (!team || team === "A definir" || team === "Equipa por definir") return side === "home" ? "A definir" : "A definir";
+  return team;
+}
+
+function koV270DateText(match) {
+  const date = koV260MatchDate(match);
+  if (!date) return "Sem hora";
+  try {
+    return dateTimePortugal(date).replace(",", " ·");
+  } catch {
+    return String(date);
+  }
+}
+
+function koV270ResultText(match) {
+  const score = koV260ScoreText(match);
+  const qualified = koV260Winner(match);
+  if (score && score !== "VS") return qualified ? `${score} · ${qualified}` : score;
+  return "VS";
+}
+
+function koV270RenderRoadCard(match) {
+  const editable = canEditKnockoutInline?.();
+  const home = koV270TeamSeed(match, "home");
+  const away = koV270TeamSeed(match, "away");
+  const winner = koV260Winner(match);
+  const status = koV260Status(match);
+  const roundClass = koV270RoundColorClass(match.round);
+  const score = koV270ResultText(match);
+  return `
+    <article class="ko-road-card-v270 ${roundClass} ko-status-${escapeHtml(status.key)} ${editable ? "is-editable" : ""}" data-ko-road-match-v270="${escapeHtml(match.id)}" ${editable ? `role="button" tabindex="0" aria-label="Editar ${escapeHtml(knockoutRoundLabel(match.round))} jogo ${escapeHtml(String(match.index))}"` : ""}>
+      <div class="ko-road-card-head-v270">
+        <b>${escapeHtml(koV270MatchNumber(match))}</b>
+        <span>${escapeHtml(koV270ShortRoundLabel(match.round))}</span>
+      </div>
+      <div class="ko-road-teams-v270">
+        <span class="${winner && normalizeComparable(winner) === normalizeComparable(home) ? "winner" : ""}">${escapeHtml(home)}</span>
+        <span class="${winner && normalizeComparable(winner) === normalizeComparable(away) ? "winner" : ""}">${escapeHtml(away)}</span>
+      </div>
+      <div class="ko-road-card-foot-v270">
+        <strong>${escapeHtml(score)}</strong>
+        <small>${escapeHtml(koV270DateText(match))}</small>
+      </div>
+      ${editable ? `<em>Selecionar</em>` : ""}
+    </article>`;
+}
+
+function koV270Column(label, roundKey, matches, side = "left") {
+  return `
+    <section class="ko-road-column-v270 ko-road-${escapeHtml(side)}-v270" data-ko-road-round-v270="${escapeHtml(roundKey)}">
+      <h3>${escapeHtml(label)}</h3>
+      <div class="ko-road-column-cards-v270">
+        ${matches.map(koV270RenderRoadCard).join("") || `<div class="ko-road-empty-v270">Sem jogos</div>`}
+      </div>
+    </section>`;
+}
+
+function koV270SplitMatches(roundKey) {
+  const list = knockoutMatches().filter(match => match.round === roundKey);
+  const half = Math.ceil(list.length / 2);
+  return [list.slice(0, half), list.slice(half)];
+}
+
+function koV270RenderRoadmap() {
+  ensureKnockoutSettings?.();
+  const notice = $("knockoutLockNotice");
+  const container = $("knockoutBracket");
+  if (!container) return;
+
+  document.getElementById("knockoutMobileV121")?.remove();
+  container.classList.remove("ko-list-root-v260");
+  container.classList.add("ko-road-root-v270");
+
+  if (!knockoutAvailable?.()) {
+    const missing = games.filter(needsFinalResult).length;
+    if (notice) notice.innerHTML = `<strong>Fase Final bloqueada</strong><span>Faltam ${missing} resultado(s) da fase de grupos. O Admin pode ativar no painel Admin.</span>`;
+    container.innerHTML = koV270ModeToggleHtml();
+    koV270BindModeToggle(container);
+    return;
+  }
+
+  if (notice) notice.innerHTML = "";
+  const [r32Left, r32Right] = koV270SplitMatches("r32");
+  const [r16Left, r16Right] = koV270SplitMatches("r16");
+  const [qfLeft, qfRight] = koV270SplitMatches("qf");
+  const [sfLeft, sfRight] = koV270SplitMatches("sf");
+  const finalMatch = knockoutMatches().find(match => match.round === "final");
+  const champion = finalMatch ? koV260Winner(finalMatch) : "";
+  const finalTeams = finalMatch ? `${koV260Team(finalMatch, "home")} vs ${koV260Team(finalMatch, "away")}` : "Final por definir";
+
+  container.innerHTML = `
+    <div class="ko-road-page-v270">
+      ${koV270ModeToggleHtml()}
+      <header class="ko-road-hero-v270">
+        <div>
+          <span>Mundial Pontos 2026</span>
+          <strong>Mapa da Fase Final</strong>
+          <small>Vista inspirada no quadro oficial. Cada card é selecionável para editar o jogo.</small>
+        </div>
+        <div class="ko-road-champion-v270 ${champion ? "has-champion" : ""}">
+          <span>Campeão</span>
+          <strong>${escapeHtml(champion || "Por decidir")}</strong>
+        </div>
+      </header>
+
+      <div class="ko-road-board-v270">
+        <div class="ko-road-path-label-v270 left">PATHWAY 1</div>
+        <div class="ko-road-path-label-v270 right">PATHWAY 2</div>
+        <div class="ko-road-side-v270 left">
+          ${koV270Column("16 avos", "r32", r32Left, "left")}
+          ${koV270Column("Oitavos", "r16", r16Left, "left")}
+          ${koV270Column("Quartos", "qf", qfLeft, "left")}
+          ${koV270Column("Meias", "sf", sfLeft, "left")}
+        </div>
+
+        <section class="ko-road-center-v270">
+          <div class="ko-road-trophy-v270">🏆</div>
+          <article class="ko-road-final-v270 ${canEditKnockoutInline?.() ? "is-editable" : ""}" data-ko-road-match-v270="${escapeHtml(finalMatch?.id || "")}" ${canEditKnockoutInline?.() && finalMatch ? "role=\"button\" tabindex=\"0\"" : ""}>
+            <span>${escapeHtml(koV270MatchNumber(finalMatch || { round: "final", index: 1 }))}</span>
+            <strong>FINAL</strong>
+            <small>${escapeHtml(finalTeams)}</small>
+            <b>${escapeHtml(finalMatch ? koV270DateText(finalMatch) : "")}</b>
+          </article>
+        </section>
+
+        <div class="ko-road-side-v270 right">
+          ${koV270Column("Meias", "sf", sfRight, "right")}
+          ${koV270Column("Quartos", "qf", qfRight, "right")}
+          ${koV270Column("Oitavos", "r16", r16Right, "right")}
+          ${koV270Column("16 avos", "r32", r32Right, "right")}
+        </div>
+      </div>
+    </div>`;
+
+  koV270BindModeToggle(container);
+  koV270BindRoadmapCards(container);
+}
+
+function koV270BindRoadmapCards(root = document) {
+  root.querySelectorAll?.("[data-ko-road-match-v270]").forEach(card => {
+    if (card.__koV270Bound) return;
+    card.__koV270Bound = true;
+    const open = event => {
+      const id = card.getAttribute("data-ko-road-match-v270") || "";
+      if (!id || !canEditKnockoutInline?.()) return;
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      openKnockoutRecordModal?.(id);
+    };
+    card.addEventListener("click", open);
+    card.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") open(event);
+    });
+  });
+}
+
+const renderKnockoutOriginalV270 = typeof renderKnockout === "function" ? renderKnockout : null;
+if (renderKnockoutOriginalV270 && !renderKnockoutOriginalV270.__koV270) {
+  renderKnockout = function renderKnockoutV270() {
+    if (koViewModeV270() === "roadmap") return koV270RenderRoadmap();
+    const result = renderKnockoutOriginalV270.apply(this, arguments);
+    koV270InjectToggleIntoList();
+    return result;
+  };
+  renderKnockout.__koV270 = true;
+  window.renderKnockout = renderKnockout;
+}
+
+window.setKoViewModeV270 = setKoViewModeV270;
+window.debugKnockoutRoadmapV270 = function debugKnockoutRoadmapV270() {
+  ensureKnockoutSettings?.();
+  return { version: APP_VERSION_V270, mode: koViewModeV270(), matches: knockoutMatches().map(match => ({ id: match.id, round: match.round, index: match.index, homeTeam: match.homeTeam, awayTeam: match.awayTeam, date: koV260MatchDate(match), result: koV260ScoreText(match), qualified: koV260Winner(match) })) };
+};
