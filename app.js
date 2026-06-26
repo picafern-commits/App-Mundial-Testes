@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v276";
+const APP_VERSION_LABEL = "v277";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -19219,6 +19219,29 @@ window.debugCalendarioMobileV276 = function debugCalendarioMobileV276() {
     width: window.innerWidth,
     cardHeight: card ? Math.round(card.getBoundingClientRect().height) : null,
     matchRows: document.querySelectorAll("#calendarTab .match-row").length,
+    activeTab: document.querySelector(".tab-panel.active")?.id || ""
+  };
+};
+
+
+/* v277 — Fase Final web fit */
+const APP_VERSION_V277_WEB_KO_FIT = "277.0";
+window.debugFaseFinalWebFitV277 = function debugFaseFinalWebFitV277() {
+  const bracket = document.querySelector("#knockoutBracket");
+  const shell = document.querySelector("#appShell");
+  return {
+    version: APP_VERSION_V277_WEB_KO_FIT,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    bracket: bracket ? {
+      top: Math.round(bracket.getBoundingClientRect().top),
+      height: Math.round(bracket.getBoundingClientRect().height),
+      bottom: Math.round(bracket.getBoundingClientRect().bottom)
+    } : null,
+    shell: shell ? {
+      height: Math.round(shell.getBoundingClientRect().height),
+      bottom: Math.round(shell.getBoundingClientRect().bottom)
+    } : null,
     activeTab: document.querySelector(".tab-panel.active")?.id || ""
   };
 };
