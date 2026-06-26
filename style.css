@@ -13316,3 +13316,34 @@ body.page-stabilizing-v273 *{
     min-height:520px;
   }
 }
+
+
+/* v274 — mapa oficial: esconder etiqueta Mxx e espelhar/alinhar o lado direito */
+body.knockout-layout-active #knockoutBracket .bracket-photo-grid-split .knockout-match-title{
+  color: transparent !important;
+  user-select: none !important;
+}
+body.knockout-layout-active #knockoutBracket .bracket-side-right .bracket-photo-matches{
+  align-items: flex-end !important;
+}
+body.knockout-layout-active #knockoutBracket .bracket-side-right .knockout-match{
+  margin-left: auto !important;
+  text-align: right !important;
+}
+body.knockout-layout-active #knockoutBracket .bracket-side-right .knockout-match .ko-team{
+  grid-template-columns: 18px minmax(0,1fr) !important;
+}
+body.knockout-layout-active #knockoutBracket .bracket-side-right .knockout-match .ko-team span{
+  order: 2 !important;
+  text-align: right !important;
+}
+body.knockout-layout-active #knockoutBracket .bracket-side-right .knockout-match .ko-team b{
+  order: 1 !important;
+  text-align: left !important;
+}
+body.knockout-layout-active #knockoutBracket .bracket-side-right .knockout-match .ko-status-line{
+  text-align: right !important;
+}
+body.knockout-layout-active #knockoutBracket .bracket-side-right .knockout-match .ko-team.winner{
+  justify-items: stretch !important;
+}

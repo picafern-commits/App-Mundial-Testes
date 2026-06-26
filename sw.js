@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v273-layout-estavel";
+const CACHE_NAME = "mundial-pontos-2026-v274-mapa-oficial-ajustes";
 const APP_SHELL = [
   "./",
   "./index.html",
