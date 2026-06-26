@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v306";
+const APP_VERSION_LABEL = "v307";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -23548,5 +23548,308 @@ window.debugDonoApostasEliminatoriasV306 = function debugDonoApostasEliminatoria
     players: ownerKoPlayerListV306().length,
     selectedGame: ownerKoBetGameIdV306,
     selectedPlayer: ownerKoBetPlayerIdV306
+  };
+};
+
+
+/* v307 — Dono edita/limpa apostas direto no "Ver apostas" do Calendário */
+const APP_VERSION_V307_PENCIL_EDIT_BETS_MODAL = "307.0";
+let ownerKoEditGameIdV307 = "";
+let ownerKoEditBetIdV307 = "";
+
+function ownerKoModalCanEditV307() {
+  try { return typeof ownerKoUnlockedV306 === "function" && ownerKoUnlockedV306() === true; }
+  catch { return false; }
+}
+
+function koModalGameMatchV307(gameId) {
+  try {
+    const game = (games || []).find(item => String(item.id || "") === String(gameId || ""));
+    const match = typeof knockoutMatchFromCalendarGameV259 === "function" ? knockoutMatchFromCalendarGameV259(game) : null;
+    if (match) return { game, match };
+    const byId = typeof knockoutMatchById === "function" ? knockoutMatchById(gameId) : null;
+    return { game, match: byId };
+  } catch {
+    return { game: null, match: null };
+  }
+}
+
+function koModalBetByIdV307(betId) {
+  return (bets || []).find(bet => String(bet.id || "") === String(betId || "")) || null;
+}
+
+function koModalBetIdV307(bet, gameId) {
+  if (bet?.id) return String(bet.id);
+  return `${bet?.playerId || playerIdFromName?.(bet?.playerName || "jogador") || "jogador"}_${gameId}`;
+}
+
+function koModalTeamOptionsV307(match, selected = "") {
+  const teams = [match?.homeTeam, match?.awayTeam].filter(Boolean);
+  return `<option value="">Escolher equipa qualificada</option>` + teams.map(team => `
+    <option value="${escapeHtml(team)}" ${normalizeComparable(team) === normalizeComparable(selected) ? "selected" : ""}>${escapeHtml(team)}</option>
+  `).join("");
+}
+
+function koModalRenderEditBoxV307(gameId, betId) {
+  const body = document.getElementById("betsModalBody");
+  if (!body) return;
+
+  let box = document.getElementById("koModalEditBoxV307");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "koModalEditBoxV307";
+    box.className = "ko-modal-edit-box-v307";
+    body.prepend(box);
+  }
+
+  if (!ownerKoModalCanEditV307()) {
+    box.remove();
+    return;
+  }
+
+  const { match } = koModalGameMatchV307(gameId);
+  const bet = koModalBetByIdV307(betId);
+  if (!match || !bet) {
+    box.innerHTML = `<div class="empty small-empty">Aposta não encontrada.</div>`;
+    return;
+  }
+
+  const homeGuess = bet.homeGuess ?? bet.homeScore ?? bet.home ?? "";
+  const awayGuess = bet.awayGuess ?? bet.awayScore ?? bet.away ?? "";
+  const qualified = bet.qualifiedTeam || bet.qualified || bet.winner || "";
+
+  box.dataset.gameId = gameId;
+  box.dataset.betId = koModalBetIdV307(bet, gameId);
+  box.innerHTML = `
+    <div class="ko-modal-edit-head-v307">
+      <div>
+        <strong>✏️ Editar aposta</strong>
+        <span>${escapeHtml(bet.playerName || bet.playerId || "Jogador")} · ${escapeHtml(match.homeTeam || "")} vs ${escapeHtml(match.awayTeam || "")}</span>
+      </div>
+      <button class="icon-button" type="button" id="koModalCloseEditV307" aria-label="Fechar edição">x</button>
+    </div>
+
+    <div class="ko-modal-edit-fields-v307">
+      <label>Casa
+        <input id="koModalEditHomeV307" type="number" min="0" inputmode="numeric" value="${escapeHtml(homeGuess)}" />
+      </label>
+      <label>Fora
+        <input id="koModalEditAwayV307" type="number" min="0" inputmode="numeric" value="${escapeHtml(awayGuess)}" />
+      </label>
+      <label>Qualificada
+        <select id="koModalEditQualifiedV307">
+          ${koModalTeamOptionsV307(match, qualified)}
+        </select>
+      </label>
+    </div>
+
+    <div class="ko-modal-edit-actions-v307">
+      <button id="koModalSaveEditV307" class="primary" type="button">Guardar alteração</button>
+      <button id="koModalClearEditV307" class="secondary danger-soft" type="button">Limpar aposta</button>
+    </div>
+  `;
+}
+
+function koModalCloseEditBoxV307() {
+  document.getElementById("koModalEditBoxV307")?.remove();
+  ownerKoEditGameIdV307 = "";
+  ownerKoEditBetIdV307 = "";
+}
+
+async function koModalPersistChangeV307(reason, deletedIds = [], savedIds = []) {
+  try {
+    if (deletedIds.length && typeof markBetsForDelete === "function") markBetsForDelete(deletedIds);
+    if (savedIds.length && typeof markBetsPending === "function") markBetsPending(savedIds);
+    saveLocalData?.(reason);
+    scheduleFullSync?.(reason, 250);
+    addSystemLog?.("Dono editou apostas", reason, { deleted: deletedIds.length, saved: savedIds.length }, { sync: true });
+  } catch (error) {
+    console.warn("v307 persist modal aposta", error);
+  }
+
+  try { renderCalendar?.(); } catch {}
+  try { renderScore?.(); } catch {}
+
+  const gameId = ownerKoEditGameIdV307 || document.getElementById("koModalEditBoxV307")?.dataset?.gameId || "";
+  if (gameId) {
+    setTimeout(() => {
+      try { showGameBets?.(gameId); } catch {}
+    }, 80);
+  }
+}
+
+async function koModalSaveEditV307() {
+  if (!ownerKoModalCanEditV307()) return toast?.("Tens de desbloquear o modo Dono primeiro.");
+
+  const box = document.getElementById("koModalEditBoxV307");
+  const gameId = box?.dataset?.gameId || ownerKoEditGameIdV307;
+  const betId = box?.dataset?.betId || ownerKoEditBetIdV307;
+
+  const { match } = koModalGameMatchV307(gameId);
+  const bet = koModalBetByIdV307(betId);
+  if (!match || !bet) return toast?.("Aposta não encontrada.");
+
+  const home = document.getElementById("koModalEditHomeV307")?.value ?? "";
+  const away = document.getElementById("koModalEditAwayV307")?.value ?? "";
+  const qualified = document.getElementById("koModalEditQualifiedV307")?.value || "";
+
+  if (home === "" || away === "") return toast?.("Preenche o resultado.");
+  if (!qualified) return toast?.("Escolhe a equipa qualificada.");
+
+  const h = Number(home);
+  const a = Number(away);
+  if (!Number.isFinite(h) || !Number.isFinite(a) || h < 0 || a < 0) return toast?.("Resultado inválido.");
+
+  if (![normalizeComparable(match.homeTeam), normalizeComparable(match.awayTeam)].includes(normalizeComparable(qualified))) {
+    return toast?.("A qualificada tem de ser uma das equipas do jogo.");
+  }
+  if (h > a && normalizeComparable(qualified) !== normalizeComparable(match.homeTeam)) return toast?.("A qualificada não bate certo com o resultado.");
+  if (a > h && normalizeComparable(qualified) !== normalizeComparable(match.awayTeam)) return toast?.("A qualificada não bate certo com o resultado.");
+
+  const updated = {
+    ...bet,
+    id: koModalBetIdV307(bet, gameId),
+    gameId,
+    homeGuess: h,
+    awayGuess: a,
+    winner: qualified,
+    qualifiedTeam: qualified,
+    qualified,
+    phase: "knockout",
+    editedByOwner: true,
+    editedBy: currentUser?.email || currentProfile?.email || "",
+    updatedAt: new Date().toISOString()
+  };
+
+  bets = (bets || []).filter(item => koModalBetIdV307(item, item.gameId) !== updated.id);
+  bets.push(updated);
+
+  ownerKoEditGameIdV307 = gameId;
+  ownerKoEditBetIdV307 = updated.id;
+  await koModalPersistChangeV307("dono editou aposta no modal Ver apostas", [], [updated.id]);
+  toast?.("Aposta atualizada.");
+}
+
+async function koModalClearEditV307() {
+  if (!ownerKoModalCanEditV307()) return toast?.("Tens de desbloquear o modo Dono primeiro.");
+
+  const box = document.getElementById("koModalEditBoxV307");
+  const gameId = box?.dataset?.gameId || ownerKoEditGameIdV307;
+  const betId = box?.dataset?.betId || ownerKoEditBetIdV307;
+  const bet = koModalBetByIdV307(betId);
+  if (!bet) return toast?.("Aposta não encontrada.");
+
+  if (!confirm(`Limpar a aposta de ${bet.playerName || bet.playerId || "Jogador"}?`)) return;
+
+  bets = (bets || []).filter(item => koModalBetIdV307(item, item.gameId) !== koModalBetIdV307(bet, gameId));
+
+  ownerKoEditGameIdV307 = gameId;
+  ownerKoEditBetIdV307 = "";
+  await koModalPersistChangeV307("dono limpou aposta no modal Ver apostas", [koModalBetIdV307(bet, gameId)], []);
+  koModalCloseEditBoxV307();
+  toast?.("Aposta limpa.");
+}
+
+function koModalInjectPencilButtonsV307(gameId) {
+  if (!ownerKoModalCanEditV307()) return;
+  const modal = document.getElementById("betsModal");
+  const body = document.getElementById("betsModalBody");
+  if (!modal || modal.classList.contains("hidden") || !body) return;
+
+  const { match } = koModalGameMatchV307(gameId);
+  if (!match) return;
+
+  const rows = [...body.querySelectorAll(".bet-user-row")];
+  const gameBets = betsForGame(gameId);
+
+  rows.forEach((row, index) => {
+    if (row.querySelector(".ko-pencil-edit-v307")) return;
+    const bet = gameBets[index];
+    if (!bet) return;
+
+    row.classList.add("ko-editable-row-v307");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "ko-pencil-edit-v307";
+    btn.textContent = "✏️";
+    btn.title = "Editar ou limpar aposta";
+    btn.dataset.gameId = gameId;
+    btn.dataset.betId = koModalBetIdV307(bet, gameId);
+
+    const pointsCell = row.querySelector('b[data-label="Pontos"]') || row.querySelector("b") || row;
+    pointsCell.insertAdjacentElement("afterend", btn);
+  });
+}
+
+function koModalPatchAfterShowV307(gameId) {
+  requestAnimationFrame(() => {
+    koModalInjectPencilButtonsV307(gameId);
+    const body = document.getElementById("betsModalBody");
+    if (body && ownerKoModalCanEditV307() && !document.getElementById("koModalOwnerHintV307")) {
+      const hint = document.createElement("div");
+      hint.id = "koModalOwnerHintV307";
+      hint.className = "ko-modal-owner-hint-v307";
+      hint.textContent = "Modo Dono desbloqueado: usa ✏️ para editar ou limpar apostas.";
+      body.prepend(hint);
+    }
+  });
+}
+
+(function installPencilEditBetsModalV307() {
+  if (window.__pencilEditBetsModalV307) return;
+  window.__pencilEditBetsModalV307 = true;
+
+  const originalShowGameBets = typeof showGameBets === "function" ? showGameBets : null;
+  if (originalShowGameBets && !originalShowGameBets.__pencilV307) {
+    showGameBets = function showGameBetsPencilEditV307(gameId) {
+      const result = originalShowGameBets.apply(this, arguments);
+      const { match } = koModalGameMatchV307(gameId);
+      if (match) koModalPatchAfterShowV307(gameId);
+      return result;
+    };
+    showGameBets.__pencilV307 = true;
+    window.showGameBets = showGameBets;
+  }
+
+  document.addEventListener("click", event => {
+    const editBtn = event.target.closest?.(".ko-pencil-edit-v307");
+    if (editBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!ownerKoModalCanEditV307()) return toast?.("Tens de desbloquear o modo Dono primeiro.");
+      ownerKoEditGameIdV307 = editBtn.dataset.gameId || "";
+      ownerKoEditBetIdV307 = editBtn.dataset.betId || "";
+      koModalRenderEditBoxV307(ownerKoEditGameIdV307, ownerKoEditBetIdV307);
+      return;
+    }
+
+    if (event.target.closest?.("#koModalCloseEditV307")) {
+      event.preventDefault();
+      koModalCloseEditBoxV307();
+      return;
+    }
+
+    if (event.target.closest?.("#koModalSaveEditV307")) {
+      event.preventDefault();
+      koModalSaveEditV307();
+      return;
+    }
+
+    if (event.target.closest?.("#koModalClearEditV307")) {
+      event.preventDefault();
+      koModalClearEditV307();
+    }
+  }, true);
+})();
+
+window.debugLapisApostasV307 = function debugLapisApostasV307(gameId = "") {
+  return {
+    version: APP_VERSION_V307_PENCIL_EDIT_BETS_MODAL,
+    ownerUnlocked: ownerKoModalCanEditV307(),
+    requestedGame: gameId,
+    hasMatch: Boolean(koModalGameMatchV307(gameId).match),
+    modalOpen: !document.getElementById("betsModal")?.classList.contains("hidden"),
+    pencilButtons: document.querySelectorAll(".ko-pencil-edit-v307").length,
+    editBox: Boolean(document.getElementById("koModalEditBoxV307"))
   };
 };

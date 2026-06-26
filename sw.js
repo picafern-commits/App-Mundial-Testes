@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v306-dono-desbloquear-apostas-ff";
+const CACHE_NAME = "mundial-pontos-2026-v307-lapis-editar-apostas";
 const APP_VERSION_SW_V298_USER_NOTIFICATIONS = "298.0";
 let userNotificationsEnabledSwV298 = true;
 

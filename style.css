@@ -16467,3 +16467,133 @@ body.mandatory-notice-open-v295{
     width:100%;
   }
 }
+
+
+/* v307 — lápis de edição no Ver apostas da Fase Final */
+.bet-user-row.ko-editable-row-v307{
+  grid-template-columns:minmax(180px,1fr) minmax(190px,1.15fr) minmax(120px,.7fr) 54px 42px!important;
+  gap:8px!important;
+}
+
+.ko-pencil-edit-v307{
+  width:34px;
+  height:30px;
+  border-radius:10px;
+  border:1px solid rgba(59,130,246,.35);
+  background:rgba(59,130,246,.12);
+  color:#eaf6ff;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:14px;
+  box-shadow:0 8px 24px rgba(59,130,246,.14);
+}
+
+.ko-pencil-edit-v307:hover{
+  background:rgba(59,130,246,.22);
+  transform:translateY(-1px);
+}
+
+.ko-modal-owner-hint-v307{
+  margin:0 0 10px;
+  padding:9px 11px;
+  border-radius:12px;
+  border:1px solid rgba(45,212,191,.24);
+  background:rgba(20,184,166,.10);
+  color:#c8fff6;
+  font-size:12px;
+  font-weight:900;
+}
+
+.ko-modal-edit-box-v307{
+  display:grid;
+  gap:12px;
+  margin:0 0 12px;
+  padding:12px;
+  border-radius:16px;
+  border:1px solid rgba(45,212,191,.28);
+  background:linear-gradient(135deg,rgba(20,184,166,.12),rgba(15,23,42,.86));
+}
+
+.ko-modal-edit-head-v307{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:flex-start;
+}
+
+.ko-modal-edit-head-v307 strong{
+  display:block;
+  color:#fff;
+  font-size:15px;
+}
+
+.ko-modal-edit-head-v307 span{
+  display:block;
+  color:#aab8ce;
+  font-size:12px;
+  font-weight:800;
+  margin-top:3px;
+}
+
+.ko-modal-edit-fields-v307{
+  display:grid;
+  grid-template-columns:90px 90px minmax(0,1fr);
+  gap:10px;
+}
+
+.ko-modal-edit-fields-v307 label{
+  display:grid;
+  gap:6px;
+  color:#cbd5e1;
+  font-size:12px;
+  font-weight:1000;
+}
+
+.ko-modal-edit-fields-v307 input,
+.ko-modal-edit-fields-v307 select{
+  width:100%;
+  min-height:38px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.14);
+  background:#07111d;
+  color:#fff;
+  padding:8px 10px;
+  font-weight:900;
+  box-sizing:border-box;
+}
+
+.ko-modal-edit-actions-v307{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.bets-modal-card .bet-score-pill{
+  max-width:none!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  line-height:1.2!important;
+  min-width:150px;
+}
+
+@media(max-width:760px){
+  .bet-user-row.ko-editable-row-v307{
+    grid-template-columns:1fr!important;
+  }
+
+  .ko-pencil-edit-v307{
+    width:100%;
+    justify-content:center;
+  }
+
+  .ko-modal-edit-fields-v307{
+    grid-template-columns:1fr;
+  }
+
+  .ko-modal-edit-actions-v307 button{
+    width:100%;
+  }
+}
