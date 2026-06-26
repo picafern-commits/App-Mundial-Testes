@@ -16812,3 +16812,46 @@ body.mandatory-notice-open-v295{
 #ownerBetManagerPanelV310{
   display:none!important;
 }
+
+
+/* v314 — limpeza final Admin: só cards nativos iguais */
+#cleanNoticeAdminV314,
+#cleanOwnerBetsAdminV314{
+  margin:0!important;
+}
+
+#cleanNoticeAdminV314 > summary,
+#cleanOwnerBetsAdminV314 > summary{
+  cursor:pointer!important;
+}
+
+#cleanNoticeAdminV314 .clean-admin-card-body-v314,
+#cleanOwnerBetsAdminV314 .clean-admin-card-body-v314{
+  padding:0!important;
+  margin-top:12px!important;
+}
+
+/* Esconde/remata todos os wrappers bugados antigos */
+#mandatoryNoticeCollapseV306,
+#ownerBetManagerPanelV310,
+#mandatoryNoticeNativeV313,
+#ownerBetManagerNativeV313,
+.admin-custom-accordion-v312,
+.admin-collapse-normal-v311{
+  display:none!important;
+}
+
+/* Conteúdo interno fica limpo dentro do card nativo */
+#cleanNoticeAdminV314 #mandatoryNoticeAdminPanelV295,
+#cleanOwnerBetsAdminV314 #ownerBetManagerBodyV310{
+  display:grid!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+
+#cleanNoticeAdminV314 .mandatory-notice-admin-head-v295{
+  display:none!important;
+}
