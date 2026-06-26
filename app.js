@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v303";
+const APP_VERSION_LABEL = "v304";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -17149,17 +17149,72 @@ if (showGameBetsOriginalV259 && !showGameBetsOriginalV259.__koCalendarV259) {
     const summary = $("betsGameSummary");
     const body = $("betsModalBody");
     if (!modal || !title || !subtitle || !summary || !body) return showGameBetsOriginalV259.apply(this, arguments);
-    const rows = betsForGame(game.id).sort((a, b) => String(a.playerName || "").localeCompare(String(b.playerName || ""), "pt"));
-    title.textContent = "Apostas da Fase Final";
-    subtitle.textContent = `${game.homeTeam} vs ${game.awayTeam} · ${game.group || "Fase Final"}`;
-    summary.innerHTML = `<div class="bets-summary-card main"><strong>${escapeHtml(game.homeTeam)} ${hasFinalResult(game) ? `${game.homeScore}-${game.awayScore}` : "vs"} ${escapeHtml(game.awayTeam)}</strong><span>${escapeHtml(dateHeader(game.matchDate))} · ${escapeHtml(timePortugal(game.matchDate))}${game.qualified || game.qualifiedTeam ? ` · Qualificada: ${escapeHtml(game.qualified || game.qualifiedTeam)}` : ""}</span></div>`;
-    if (!rows.length) body.innerHTML = `<div class="empty">Ainda não existem apostas para este jogo.</div>`;
-    else {
-      body.innerHTML = `<div class="bets-list">${rows.map(bet => {
-        const points = knockoutMatchHasResult(match) ? pointsForKnockoutBet(bet, match) : "-";
-        const label = knockoutMatchHasResult(match) ? knockoutBetResultLabel(bet, match) : "Por jogar";
-        return `<article class="bet-row"><strong>${escapeHtml(bet.playerName || bet.playerId || "Jogador")}</strong><div class="bet-score-pill">${escapeHtml(knockoutBetDisplay(bet))}</div><div class="bet-type-pill">${escapeHtml(label)}</div><b>${points}</b></article>`;
-      }).join("")}</div>`;
+
+    const rows = betsForGame(game.id).sort((a, b) =>
+      pointsForKnockoutBet(b, match) - pointsForKnockoutBet(a, match) ||
+      String(a.playerName || "").localeCompare(String(b.playerName || ""), "pt")
+    );
+
+    const exactCount = rows.filter(bet => typeof isExactKnockoutBet === "function" && isExactKnockoutBet(bet, match)).length;
+    const winnerCount = rows.filter(bet => !(typeof isExactKnockoutBet === "function" && isExactKnockoutBet(bet, match)) && typeof isWinnerKnockoutBet === "function" && isWinnerKnockoutBet(bet, match)).length;
+    const totalPoints = rows.reduce((sum, bet) => sum + pointsForKnockoutBet(bet, match), 0);
+    const qualified = game.qualified || game.qualifiedTeam || match.qualified || match.winnerTeam || match.winner || "";
+
+    title.textContent = `${game.homeTeam} - ${game.awayTeam}`;
+    subtitle.textContent = `${game.group || "Fase Final"} · ${dateHeader(game.matchDate)} · ${timePortugal(game.matchDate)}`;
+
+    summary.innerHTML = `
+      <div class="bets-summary-card main">
+        <span>Resultado</span>
+        <strong>${hasFinalResult(game) ? `${game.homeScore}-${game.awayScore}` : "Por colocar"}</strong>
+      </div>
+      <div class="bets-summary-card">
+        <span>Apostas</span>
+        <strong>${rows.length}</strong>
+      </div>
+      <div class="bets-summary-card">
+        <span>Exatos</span>
+        <strong>${knockoutMatchHasResult(match) ? exactCount : "-"}</strong>
+      </div>
+      <div class="bets-summary-card">
+        <span>Vencedor/empate</span>
+        <strong>${knockoutMatchHasResult(match) ? winnerCount : "-"}</strong>
+      </div>
+      <div class="bets-summary-card">
+        <span>Pontos</span>
+        <strong>${knockoutMatchHasResult(match) ? totalPoints : "-"}</strong>
+      </div>
+      ${qualified ? `<div class="bets-summary-card"><span>Qualificada</span><strong>${escapeHtml(qualified)}</strong></div>` : ""}
+    `;
+
+    if (!rows.length) {
+      body.innerHTML = `<div class="empty">Ainda não existem apostas para este jogo.</div>`;
+    } else {
+      body.innerHTML = `
+        <div class="bets-list-head">
+          <span>Jogador</span>
+          <span>Aposta</span>
+          <span>Tipo</span>
+          <span>Pontos</span>
+        </div>
+        <div class="bets-list">
+          ${rows.map((bet, index) => {
+            const points = pointsForKnockoutBet(bet, match);
+            const typeLabel = knockoutMatchHasResult(match) ? knockoutBetResultLabel(bet, match) : "Por jogar";
+            const typeClass = knockoutMatchHasResult(match) ? knockoutBetResultClass(bet, match) : "pending";
+            return `
+              <article class="bet-user-row ${typeClass}">
+                <div class="bet-user-main" data-label="Jogador">
+                  <span class="bet-position">${index + 1}</span>
+                  <strong title="${escapeHtml(bet.playerName || bet.playerId || "Jogador")}">${escapeHtml(bet.playerName || bet.playerId || "Jogador")}</strong>
+                </div>
+                <div class="bet-score-pill" data-label="Aposta">${escapeHtml(knockoutBetDisplay(bet))}</div>
+                <div class="bet-type-pill" data-label="Tipo">${escapeHtml(typeLabel)}</div>
+                <b data-label="Pontos">${knockoutMatchHasResult(match) ? points : "-"}</b>
+              </article>
+            `;
+          }).join("")}
+        </div>`;
     }
     modal.classList.remove("hidden");
   };
