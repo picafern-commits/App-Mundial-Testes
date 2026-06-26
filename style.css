@@ -12859,3 +12859,53 @@ body > #onlineUsersList.online-users-portal-v220{
     gap:2px!important;
   }
 }
+
+/* v269 — Diagnóstico API sem aplicar alterações */
+.football-api-diagnostic-v269 {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  background: rgba(15, 23, 42, .52);
+  color: inherit;
+}
+.football-api-diag-head-v269 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.football-api-diag-head-v269 span {
+  font-size: .78rem;
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(148,163,184,.16);
+  color: rgba(226,232,240,.88);
+}
+.football-api-diag-head-v269 span.ok { background: rgba(34,197,94,.16); color: #86efac; }
+.football-api-diag-head-v269 span.bad { background: rgba(239,68,68,.16); color: #fca5a5; }
+.football-api-diag-grid-v269 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 10px 0 12px;
+}
+.football-api-diag-grid-v269 > div {
+  border-radius: 14px;
+  padding: 10px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.08);
+}
+.football-api-diag-grid-v269 b { display:block; font-size:1.25rem; }
+.football-api-diag-grid-v269 span { display:block; font-size:.76rem; opacity:.75; margin-top:2px; }
+.football-api-diag-note-v269 { font-size:.82rem; opacity:.78; margin-bottom: 10px; }
+.football-api-diagnostic-v269 details {
+  border-top: 1px solid rgba(255,255,255,.1);
+  padding-top: 9px;
+  margin-top: 9px;
+}
+.football-api-diagnostic-v269 summary { cursor: pointer; font-weight: 700; }
+.football-api-diagnostic-v269 ul { margin: 8px 0 0; padding-left: 18px; }
+.football-api-diagnostic-v269 li { margin: 7px 0; }
+.football-api-diagnostic-v269 li small { display:block; opacity:.72; margin-top:2px; }

@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v268";
+const APP_VERSION_LABEL = "v269";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -18501,3 +18501,174 @@ window.debugKnockoutPointsV267 = function debugKnockoutPointsV267(playerName = "
   const names = playerName ? [playerName] : playerNames();
   return names.map(name => ({ player: name, stats: playerStats(name) }));
 };
+
+// v269 — Painel de diagnóstico da API sem aplicar alterações.
+function footballApiDiagnosticSummaryV269(data = {}) {
+  const diag = data.diagnostics || {};
+  const apiMatches = Number(diag.apiMatches ?? data.apiMatches ?? 0);
+  const matchedCalendar = Number(diag.matchedCalendar ?? data.matchedGamesStatus?.length ?? 0);
+  const matchedKnockout = Number(diag.matchedKnockout ?? data.updatedKnockoutMatches?.length ?? 0);
+  const unmatched = Array.isArray(diag.unmatchedApiMatches) ? diag.unmatchedApiMatches : [];
+  const finished = Number(data.finished ?? 0);
+  return { apiMatches, matchedCalendar, matchedKnockout, unmatched, finished };
+}
+
+function formatFootballApiDiagMatchV269(match = {}) {
+  const home = match.homeTeam || match.home || "Casa";
+  const away = match.awayTeam || match.away || "Fora";
+  const status = match.status || "";
+  const stage = match.stage || match.group || "";
+  const score = (match.homeScore !== null && match.homeScore !== undefined && match.awayScore !== null && match.awayScore !== undefined)
+    ? ` · ${match.homeScore}-${match.awayScore}`
+    : "";
+  return `${home} vs ${away}${score}${status ? ` · ${status}` : ""}${stage ? ` · ${stage}` : ""}`;
+}
+
+function renderFootballApiDiagnosticPanelV269(data = null, error = null) {
+  const box = $("footballDataSettingsBoxV213");
+  if (!box) return;
+  let panel = $("footballApiDiagnosticPanelV269");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "footballApiDiagnosticPanelV269";
+    panel.className = "football-api-diagnostic-v269";
+    box.appendChild(panel);
+  }
+
+  if (error) {
+    panel.innerHTML = `
+      <div class="football-api-diag-head-v269"><strong>Diagnóstico API</strong><span class="bad">Erro</span></div>
+      <p>${escapeHtml(error.message || String(error))}</p>
+    `;
+    return;
+  }
+
+  if (!data) {
+    panel.innerHTML = `
+      <div class="football-api-diag-head-v269"><strong>Diagnóstico API</strong><span>Sem teste ainda</span></div>
+      <p>Usa “Testar API sem aplicar” para ver o que a API encontra antes de mexer nos jogos.</p>
+    `;
+    return;
+  }
+
+  const { apiMatches, matchedCalendar, matchedKnockout, unmatched, finished } = footballApiDiagnosticSummaryV269(data);
+  const diag = data.diagnostics || {};
+  const matches = Array.isArray(diag.matches) ? diag.matches : [];
+  const matchedRows = matches
+    .filter(item => item.matchedCalendar || item.matchedKnockout)
+    .slice(0, 12)
+    .map(item => {
+      const api = item.api || {};
+      const target = item.matchedCalendar || item.matchedKnockout || {};
+      const kind = item.matchedCalendar ? "Calendário" : "Fase Final";
+      return `<li><b>${escapeHtml(kind)}</b> — ${escapeHtml(formatFootballApiDiagMatchV269(api))}<small> → ${escapeHtml(target.homeTeam || "")} vs ${escapeHtml(target.awayTeam || "")} ${target.orientation ? `(${escapeHtml(target.orientation)})` : ""}</small></li>`;
+    }).join("");
+  const unmatchedRows = unmatched.slice(0, 12).map(match => `<li>${escapeHtml(formatFootballApiDiagMatchV269(match))}</li>`).join("");
+
+  panel.innerHTML = `
+    <div class="football-api-diag-head-v269">
+      <strong>Diagnóstico API</strong>
+      <span class="ok">Teste concluído</span>
+    </div>
+    <div class="football-api-diag-grid-v269">
+      <div><b>${apiMatches}</b><span>Jogos vindos da API</span></div>
+      <div><b>${finished}</b><span>Terminados</span></div>
+      <div><b>${matchedCalendar}</b><span>Casados no Calendário</span></div>
+      <div><b>${matchedKnockout}</b><span>Casados na Fase Final</span></div>
+      <div><b>${unmatched.length}</b><span>Sem correspondência</span></div>
+    </div>
+    <div class="football-api-diag-note-v269">Este teste não grava resultados, não muda equipas e não mexe na pontuação.</div>
+    ${matchedRows ? `<details open><summary>Jogos que a app conseguiu casar</summary><ul>${matchedRows}</ul></details>` : ""}
+    ${unmatchedRows ? `<details><summary>Jogos da API sem correspondência</summary><ul>${unmatchedRows}</ul></details>` : ""}
+  `;
+}
+
+async function testFootballApiWithoutApplyingV269() {
+  if (!hasPermission("editResults")) return toast("Sem permissão para testar a API.");
+  if (!currentUser) return toast("Tens de estar com login feito.");
+  const url = footballDataFunctionUrlV139?.();
+  if (!url) return toast("Projeto Firebase em falta no config.js.");
+
+  const btn = $("testFootballApiDryRunBtnV269");
+  const oldText = btn?.textContent || "";
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A testar...";
+  }
+  renderFootballApiDiagnosticPanelV269({ diagnostics: { apiMatches: 0, unmatchedApiMatches: [], matches: [] }, finished: 0 });
+
+  try {
+    const token = await currentUser.getIdToken(true);
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      body: JSON.stringify({
+        competition: "WC",
+        season: "2026",
+        mode: "diagnostic",
+        dryRun: true,
+        force: true,
+        daysBefore: 10,
+        daysAfter: 45
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) throw new Error(data.error || `HTTP ${response.status}`);
+    renderFootballApiDiagnosticPanelV269(data);
+    const summary = footballApiDiagnosticSummaryV269(data);
+    toast(`API teste: ${summary.apiMatches} jogo(s), ${summary.matchedCalendar + summary.matchedKnockout} encontrado(s) na app.`);
+  } catch (error) {
+    console.error("Diagnóstico API v269 falhou:", error);
+    renderFootballApiDiagnosticPanelV269(null, error);
+    toast(`Diagnóstico API falhou: ${error.message || "erro"}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = oldText || "Testar API sem aplicar";
+    }
+  }
+}
+
+function ensureFootballApiDiagnosticControlsV269() {
+  const box = typeof ensureFootballDataSettingsBoxOriginalV269 === "function" ? ensureFootballDataSettingsBoxOriginalV269() : $("footballDataSettingsBoxV213");
+  const actions = $("footballDataSettingsActionsV213");
+  if (!box || !actions) return;
+  let btn = $("testFootballApiDryRunBtnV269");
+  if (!btn) {
+    btn = document.createElement("button");
+    btn.id = "testFootballApiDryRunBtnV269";
+    btn.type = "button";
+    btn.className = "secondary";
+    btn.textContent = "Testar API sem aplicar";
+    btn.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      testFootballApiWithoutApplyingV269();
+    });
+    actions.appendChild(btn);
+  }
+  btn.classList.toggle("hidden", !hasPermission("editResults"));
+  btn.hidden = !hasPermission("editResults");
+  renderFootballApiDiagnosticPanelV269();
+}
+
+const ensureFootballDataSettingsBoxOriginalV269 = typeof ensureFootballDataSettingsBoxV213 === "function" ? ensureFootballDataSettingsBoxV213 : null;
+if (ensureFootballDataSettingsBoxOriginalV269) {
+  ensureFootballDataSettingsBoxV213 = function ensureFootballDataSettingsBoxWithDiagnosticV269() {
+    const box = ensureFootballDataSettingsBoxOriginalV269();
+    setTimeout(ensureFootballApiDiagnosticControlsV269, 0);
+    return box;
+  };
+}
+
+const renderAppSettingsPanelOriginalV269 = typeof renderAppSettingsPanelV162 === "function" ? renderAppSettingsPanelV162 : null;
+if (renderAppSettingsPanelOriginalV269) {
+  renderAppSettingsPanelV162 = function renderAppSettingsPanelWithApiDiagnosticV269() {
+    renderAppSettingsPanelOriginalV269();
+    setTimeout(ensureFootballApiDiagnosticControlsV269, 0);
+  };
+}
+
+document.addEventListener("DOMContentLoaded", () => setTimeout(ensureFootballApiDiagnosticControlsV269, 800));
+document.addEventListener("click", () => setTimeout(ensureFootballApiDiagnosticControlsV269, 150));
+window.testFootballApiWithoutApplyingV269 = testFootballApiWithoutApplyingV269;

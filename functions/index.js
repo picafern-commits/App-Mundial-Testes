@@ -1077,7 +1077,8 @@ async function runFootballDataSyncCoreV151(options = {}) {
   const syncMode = cleanString(options.mode || "smart");
   const windowDaysBefore = Number(options.daysBefore ?? 1);
   const windowDaysAfter = Number(options.daysAfter ?? 7);
-  const forceSync = options.force === true || syncMode === "manual";
+  const dryRun = options.dryRun === true || options.preview === true || ["diagnostic", "diagnostico", "dry-run", "preview"].includes(syncMode);
+  const forceSync = options.force === true || syncMode === "manual" || dryRun;
 
   const precheck = await footballSmartPrecheckV201({ actor, mode: syncMode, competition, season });
 
@@ -1187,6 +1188,8 @@ async function runFootballDataSyncCoreV151(options = {}) {
   let knockoutPropagationChanged = false;
 
   const matchedGamesStatusV153 = [];
+  const unmatchedApiMatchesV269 = [];
+  const diagnosticMatchesV269 = [];
 
   matches.forEach(apiMatch => {
     const apiScore = footballApiAnyScoreV153(apiMatch);
@@ -1195,6 +1198,16 @@ async function runFootballDataSyncCoreV151(options = {}) {
     const isGroupStage = String(apiMatch.stage || "").toUpperCase() === "GROUP_STAGE";
     const groupTarget = footballFindLocalMatch(apiMatch, localGames);
     const knockoutTarget = !isGroupStage ? footballFindLocalMatch(apiMatch, knockoutMatches) : null;
+
+    diagnosticMatchesV269.push({
+      api: footballMatchSummary(apiMatch),
+      matchedCalendar: groupTarget ? { id: groupTarget.id, homeTeam: groupTarget.homeTeam || "", awayTeam: groupTarget.awayTeam || "", orientation: groupTarget.__footballDataOrientation || "direct" } : null,
+      matchedKnockout: knockoutTarget ? { id: knockoutTarget.id, round: knockoutTarget.round || knockoutTarget.phase || knockoutTarget.stage || "", homeTeam: knockoutTarget.homeTeam || "", awayTeam: knockoutTarget.awayTeam || "", orientation: knockoutTarget.__footballDataOrientation || "direct" } : null
+    });
+
+    if (!groupTarget && !knockoutTarget && unmatchedApiMatchesV269.length < 80) {
+      unmatchedApiMatchesV269.push(footballMatchSummary(apiMatch));
+    }
 
     if (groupTarget) {
       const score = footballScoreForLocalMatchV263(apiScore, groupTarget);
@@ -1227,8 +1240,10 @@ async function runFootballDataSyncCoreV151(options = {}) {
         liveUpdated += 1;
       }
 
-      batch.set(db.collection("games").doc(groupTarget.id), payload, { merge: true });
-      writes += 1;
+      if (!dryRun) {
+        batch.set(db.collection("games").doc(groupTarget.id), payload, { merge: true });
+        writes += 1;
+      }
 
       const updatePayload = {
         id: groupTarget.id,
@@ -1321,7 +1336,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
   }
 
   const syncMetaRef = db.collection("settings").doc("footballData");
-  batch.set(syncMetaRef, {
+  if (!dryRun) batch.set(syncMetaRef, {
     syncMode: "smart",
     provider: "football-data",
     mode: "Inteligente",
@@ -1356,9 +1371,9 @@ async function runFootballDataSyncCoreV151(options = {}) {
     liveOrLocked,
     lastError: FieldValue.delete()
   }, { merge: true });
-  writes += 1;
+  if (!dryRun) writes += 1;
 
-  if (updatedKnockoutMatches.length || knockoutPropagationChanged) {
+  if (!dryRun && (updatedKnockoutMatches.length || knockoutPropagationChanged)) {
     const nextSettings = {
       ...settings,
       knockout: {
@@ -1372,9 +1387,9 @@ async function runFootballDataSyncCoreV151(options = {}) {
     writes += 1;
   }
 
-  if (writes > 0) await batch.commit();
+  if (!dryRun && writes > 0) await batch.commit();
 
-  await db.collection("systemLogs").add({
+  if (!dryRun) await db.collection("systemLogs").add({
     action: "Football-data smart sync",
     detail: `Sync inteligente: ${updatedGames.length} grupo(s), ${updatedKnockoutMatches.length} fase final, ${liveUpdated} live, ${finalConfirmed} final confirmado.`,
     createdAt: FieldValue.serverTimestamp(),
@@ -1397,9 +1412,10 @@ async function runFootballDataSyncCoreV151(options = {}) {
 
   return {
     ok: true,
+    dryRun,
     competition,
     season,
-    mode: "smart",
+    mode: dryRun ? "diagnostic" : "smart",
     provider: "football-data",
     status: "active",
     reason: precheck.meta.lastActiveReason,
@@ -1413,6 +1429,16 @@ async function runFootballDataSyncCoreV151(options = {}) {
     knockoutPropagationChanged,
     upcoming,
     liveOrLocked,
+    diagnostics: {
+      dryRun,
+      apiMatches: matches.length,
+      localCalendarGames: localGames.length,
+      localKnockoutMatches: knockoutMatches.length,
+      matchedCalendar: matchedGamesStatusV153.length,
+      matchedKnockout: updatedKnockoutMatches.length,
+      unmatchedApiMatches: unmatchedApiMatchesV269,
+      matches: diagnosticMatchesV269.slice(0, 120)
+    },
     lastSyncIso: new Date().toISOString()
   };
 }
@@ -1444,7 +1470,9 @@ exports.syncFootballDataWorldCup = onRequest({
       season: req.body?.season || "2026",
       mode: req.body?.mode || "manual",
       daysBefore: req.body?.daysBefore ?? 1,
-      daysAfter: req.body?.daysAfter ?? 7
+      daysAfter: req.body?.daysAfter ?? 7,
+      force: req.body?.force === true,
+      dryRun: req.body?.dryRun === true || req.body?.preview === true
     });
     res.json(result);
   } catch (error) {
