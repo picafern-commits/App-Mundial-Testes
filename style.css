@@ -13838,3 +13838,260 @@ button{
   }
 }
 
+
+
+/* v277 — Calendário mobile clean */
+@media (max-width: 760px){
+  /* Cabeçalho da página Calendário/Fase de Grupos */
+  #calendarTab .section-header,
+  #calendarTab .calendar-header,
+  #calendarTab .filters-card,
+  #calendarTab .panel-header{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+    padding:14px!important;
+    border-radius:16px!important;
+  }
+
+  #calendarTab .section-header h2,
+  #calendarTab .calendar-header h2,
+  #calendarTab h2{
+    font-size:22px!important;
+    line-height:1.1!important;
+  }
+
+  #calendarTab .section-header p,
+  #calendarTab .calendar-header p{
+    font-size:14px!important;
+    line-height:1.35!important;
+  }
+
+  #calendarTab .search-row,
+  #calendarTab .filter-row,
+  #calendarTab .filters-row{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+  }
+
+  #calendarTab .search-row input,
+  #calendarTab .filter-row input,
+  #calendarTab .filters-row input,
+  #calendarTab input[type="search"]{
+    min-height:46px!important;
+    border-radius:999px!important;
+    padding-inline:16px!important;
+  }
+
+  /* Bloco de apostas/fase final no topo */
+  #calendarTab .knockout-required-card,
+  #calendarTab .calendar-knockout-card,
+  #calendarTab .fase-final-card,
+  #calendarTab [class*="knockout"][class*="card"]{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+    padding:14px!important;
+  }
+
+  #calendarTab .knockout-required-card button,
+  #calendarTab .calendar-knockout-card button,
+  #calendarTab .fase-final-card button{
+    width:100%!important;
+    min-height:46px!important;
+  }
+
+  /* Cada dia fica mais compacto e limpo */
+  #calendarTab .calendar-day,
+  #calendarTab .day-group,
+  #calendarTab .calendar-day-card{
+    margin:14px 0!important;
+    border-radius:18px!important;
+    overflow:hidden!important;
+  }
+
+  #calendarTab .calendar-day-header,
+  #calendarTab .day-header,
+  #calendarTab [class*="day-title"]{
+    min-height:46px!important;
+    padding:12px 14px!important;
+    font-size:15px!important;
+    font-weight:1000!important;
+    line-height:1.1!important;
+    letter-spacing:-.1px!important;
+  }
+
+  /* Cards de jogos: sempre em coluna e sem esmagar equipas */
+  #calendarTab .game-card,
+  #calendarTab .match-card,
+  #calendarTab .calendar-game-card,
+  #calendarTab [data-game-id],
+  #calendarTab article[class*="game"],
+  #calendarTab article[class*="match"]{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:12px!important;
+    padding:14px!important;
+    border-radius:16px!important;
+    box-sizing:border-box!important;
+    align-items:stretch!important;
+  }
+
+  #calendarTab .game-card + .game-card,
+  #calendarTab .match-card + .match-card,
+  #calendarTab .calendar-game-card + .calendar-game-card{
+    margin-top:10px!important;
+  }
+
+  /* Metadados do jogo */
+  #calendarTab .game-meta,
+  #calendarTab .match-meta,
+  #calendarTab .calendar-meta,
+  #calendarTab .game-info{
+    width:100%!important;
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:7px!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    font-size:13px!important;
+  }
+
+  #calendarTab .badge,
+  #calendarTab .pill,
+  #calendarTab [class*="badge"],
+  #calendarTab [class*="pill"]{
+    min-height:28px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    max-width:100%!important;
+    white-space:nowrap!important;
+  }
+
+  /* Equipas e marcador */
+  #calendarTab .teams,
+  #calendarTab .match-teams,
+  #calendarTab .game-teams,
+  #calendarTab .calendar-teams,
+  #calendarTab [class*="teams"]{
+    width:100%!important;
+    min-width:0!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+    align-items:stretch!important;
+    text-align:left!important;
+  }
+
+  #calendarTab .team,
+  #calendarTab .team-name,
+  #calendarTab [class*="team"]{
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+  }
+
+  #calendarTab .vs,
+  #calendarTab [class*="vs"]{
+    justify-self:start!important;
+    min-width:44px!important;
+    min-height:30px!important;
+    padding:5px 12px!important;
+    border-radius:999px!important;
+  }
+
+  #calendarTab .score,
+  #calendarTab .result,
+  #calendarTab [class*="score"],
+  #calendarTab [class*="result"]{
+    font-size:16px!important;
+    font-weight:1000!important;
+  }
+
+  /* Botões do jogo */
+  #calendarTab .game-actions,
+  #calendarTab .match-actions,
+  #calendarTab .calendar-actions,
+  #calendarTab .actions,
+  #calendarTab [class*="actions"]{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+    justify-items:stretch!important;
+    align-items:stretch!important;
+  }
+
+  #calendarTab .game-actions button,
+  #calendarTab .match-actions button,
+  #calendarTab .calendar-actions button,
+  #calendarTab .actions button,
+  #calendarTab [class*="actions"] button{
+    width:100%!important;
+    min-height:46px!important;
+    border-radius:12px!important;
+    font-size:15px!important;
+    justify-content:center!important;
+  }
+
+  /* Para cards que tenham botões fora da zona actions */
+  #calendarTab article button,
+  #calendarTab .game-card button,
+  #calendarTab .match-card button,
+  #calendarTab .calendar-game-card button{
+    min-height:44px!important;
+  }
+
+  /* Informação menos importante fica menos pesada */
+  #calendarTab small,
+  #calendarTab .muted,
+  #calendarTab [class*="muted"],
+  #calendarTab [class*="secondary"]{
+    font-size:12px!important;
+    line-height:1.3!important;
+  }
+
+  /* Evita que a linha dos botões do admin fique a rebentar o card */
+  #calendarTab .admin-actions,
+  #calendarTab .owner-actions{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+  }
+}
+
+@media (max-width: 420px){
+  #calendarTab .game-card,
+  #calendarTab .match-card,
+  #calendarTab .calendar-game-card,
+  #calendarTab [data-game-id],
+  #calendarTab article[class*="game"],
+  #calendarTab article[class*="match"]{
+    padding:12px!important;
+    gap:10px!important;
+  }
+
+  #calendarTab .calendar-day-header,
+  #calendarTab .day-header,
+  #calendarTab [class*="day-title"]{
+    font-size:14px!important;
+    padding:11px 12px!important;
+  }
+
+  #calendarTab .game-actions button,
+  #calendarTab .match-actions button,
+  #calendarTab .calendar-actions button,
+  #calendarTab .actions button,
+  #calendarTab [class*="actions"] button{
+    font-size:14px!important;
+  }
+}
+

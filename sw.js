@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v276-mobile-clean";
+const CACHE_NAME = "mundial-pontos-2026-v277-calendario-mobile";
 const APP_SHELL = [
   "./",
   "./index.html",
