@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v312-admin-acordeao-sem-details";
+const CACHE_NAME = "mundial-pontos-2026-v313-admin-abas-nativas";
 const APP_VERSION_SW_V298_USER_NOTIFICATIONS = "298.0";
 let userNotificationsEnabledSwV298 = true;
 

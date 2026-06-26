@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v312";
+const APP_VERSION_LABEL = "v313";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -24585,6 +24585,284 @@ window.debugAdminAcordeaoV312 = function debugAdminAcordeaoV312() {
       content: id === "mandatoryNoticeCollapseV306"
         ? document.getElementById("mandatoryNoticeAdminPanelV295")?.parentElement?.className || ""
         : document.getElementById("ownerBetManagerBodyV310")?.parentElement?.className || ""
+    };
+  });
+};
+
+
+/* v313 — Admin: abas novas exatamente iguais às outras, sem acordeões especiais */
+const APP_VERSION_V313_NATIVE_ADMIN_DETAILS = "313.0";
+
+function nativeAdminCanShowV313() {
+  try { return normalizeRole(currentProfile?.role || "") === "owner" || normalizeRole(currentProfile?.role || "") === "admin" || Boolean(isAdmin || isOwner); }
+  catch { return Boolean(isAdmin || isOwner); }
+}
+
+function nativeAdminOwnerOnlyV313() {
+  try { return normalizeRole(currentProfile?.role || "") === "owner" || Boolean(isOwnerProfileV264?.()); }
+  catch { return Boolean(isOwner); }
+}
+
+function nativeAdminDetailsV313(id, title, desc, order) {
+  const host = document.getElementById("adminUnlocked");
+  if (!host) return null;
+
+  let details = document.getElementById(id);
+  if (!details || details.tagName?.toLowerCase() !== "details") {
+    const old = details;
+    details = document.createElement("details");
+    details.id = id;
+    if (old?.parentNode) old.replaceWith(details);
+  }
+
+  details.className = "admin-card admin-collapse native-admin-details-v313";
+  details.dataset.adminSectionV187 = "users";
+  details.style.order = String(order);
+  details.hidden = false;
+  details.style.display = "";
+
+  let summary = details.querySelector(":scope > summary");
+  if (!summary) {
+    summary = document.createElement("summary");
+    details.prepend(summary);
+  }
+
+  summary.innerHTML = `
+    <div>
+      <h2>${escapeHtml(title)}</h2>
+      <p>${escapeHtml(desc)}</p>
+    </div>
+    <span class="collapse-icon">+</span>
+  `;
+
+  let body = details.querySelector(":scope > .native-admin-details-body-v313");
+  if (!body) {
+    body = document.createElement("div");
+    body.className = "native-admin-details-body-v313";
+    details.appendChild(body);
+  }
+
+  if (!details.parentNode || details.parentElement !== host) {
+    const tabs = document.getElementById("adminSectionTabsV187");
+    if (tabs?.parentNode === host) host.insertBefore(details, tabs.nextSibling);
+    else host.prepend(details);
+  }
+
+  return details;
+}
+
+function removeBrokenAdminAccordionsV313() {
+  // Remove wrappers/classes da tentativa anterior sem apagar o conteúdo real.
+  document.querySelectorAll(".admin-custom-accordion-v312, .admin-collapse-normal-v311").forEach(el => {
+    if (el.id === "mandatoryNoticeCollapseV306" || el.id === "ownerBetManagerPanelV310") return;
+    el.remove();
+  });
+}
+
+function buildNativeNoticeAdminV313() {
+  if (!nativeAdminCanShowV313()) return;
+
+  let panel = document.getElementById("mandatoryNoticeAdminPanelV295");
+  if (!panel) {
+    try { renderMandatoryNoticeAdminPanelV295?.(); } catch {}
+    panel = document.getElementById("mandatoryNoticeAdminPanelV295");
+  }
+  if (!panel) return;
+
+  const stats = (() => {
+    try {
+      const s = mandatoryNoticeAdminStatsV295?.() || {};
+      return `${s.read || 0} leram · ${s.unread || 0} por ler`;
+    } catch {
+      return "Gerir avisos obrigatórios.";
+    }
+  })();
+
+  const details = nativeAdminDetailsV313("mandatoryNoticeNativeV313", "Aviso obrigatório", stats, -30);
+  const body = details?.querySelector(":scope > .native-admin-details-body-v313");
+  if (!details || !body) return;
+
+  panel.classList.remove(
+    "mandatory-notice-admin-fixed-v305",
+    "mandatory-notice-collapsible-v306",
+    "admin-section-hidden-v187",
+    "admin-section-force-hidden-v202"
+  );
+  panel.classList.add("native-admin-panel-content-v313");
+  panel.hidden = false;
+  panel.style.display = "";
+
+  body.appendChild(panel);
+}
+
+function buildNativeOwnerBetsAdminV313() {
+  if (!nativeAdminOwnerOnlyV313()) {
+    document.getElementById("ownerBetManagerNativeV313")?.remove();
+    return;
+  }
+
+  // Garante body real do gestor.
+  let bodyContent = document.getElementById("ownerBetManagerBodyV310");
+  if (!bodyContent) {
+    try { renderOwnerBetManagerV310?.(); } catch {}
+    bodyContent = document.getElementById("ownerBetManagerBodyV310");
+  }
+  if (!bodyContent) return;
+
+  const desc = (() => {
+    try {
+      const gameId = ownerBetManagerGameIdV310 || ownerSelectedGameV310?.()?.id || "";
+      const gameBets = gameId ? betsForGame(gameId).length : 0;
+      return `${bets.length} apostas guardadas · ${gameBets} neste jogo`;
+    } catch {
+      return "Gestão total das apostas pelo Dono.";
+    }
+  })();
+
+  const details = nativeAdminDetailsV313("ownerBetManagerNativeV313", "Editar / limpar apostas", desc, -29);
+  const body = details?.querySelector(":scope > .native-admin-details-body-v313");
+  if (!details || !body) return;
+
+  bodyContent.classList.add("native-admin-panel-content-v313");
+  bodyContent.hidden = false;
+  bodyContent.style.display = "";
+  body.appendChild(bodyContent);
+}
+
+function hideOldBrokenAdminPanelsV313() {
+  // Esconde/remover os wrappers antigos que estavam a bugar.
+  [
+    "mandatoryNoticeCollapseV306",
+    "ownerBetManagerPanelV310"
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    // Não apagar conteúdo interno se ainda lá estiver.
+    const notice = el.querySelector?.("#mandatoryNoticeAdminPanelV295");
+    const betsBody = el.querySelector?.("#ownerBetManagerBodyV310");
+    if (notice) document.getElementById("mandatoryNoticeNativeV313")?.querySelector(".native-admin-details-body-v313")?.appendChild(notice);
+    if (betsBody) document.getElementById("ownerBetManagerNativeV313")?.querySelector(".native-admin-details-body-v313")?.appendChild(betsBody);
+
+    el.remove();
+  });
+}
+
+function rebuildNativeAdminDetailsV313() {
+  if (document.querySelector(".tab-panel.active")?.id !== "adminTab") return;
+
+  removeBrokenAdminAccordionsV313();
+  buildNativeNoticeAdminV313();
+  buildNativeOwnerBetsAdminV313();
+  hideOldBrokenAdminPanelsV313();
+
+  // Garante que ficam antes das outras abas e iguais em comportamento.
+  const host = document.getElementById("adminUnlocked");
+  const tabs = document.getElementById("adminSectionTabsV187");
+  const notice = document.getElementById("mandatoryNoticeNativeV313");
+  const betsPanel = document.getElementById("ownerBetManagerNativeV313");
+
+  if (host && tabs?.parentNode === host) {
+    if (betsPanel) host.insertBefore(betsPanel, tabs.nextSibling);
+    if (notice) host.insertBefore(notice, tabs.nextSibling);
+  }
+}
+
+(function installNativeAdminDetailsV313() {
+  if (window.__nativeAdminDetailsV313) return;
+  window.__nativeAdminDetailsV313 = true;
+
+  // Neutraliza a tentativa anterior para não voltar a criar wrappers bugados.
+  try { rebuildAdminAccordionsV312 = rebuildNativeAdminDetailsV313; window.rebuildAdminAccordionsV312 = rebuildNativeAdminDetailsV313; } catch {}
+  try { fixAdminCustomCollapsesV311 = rebuildNativeAdminDetailsV313; window.fixAdminCustomCollapsesV311 = rebuildNativeAdminDetailsV313; } catch {}
+  try { makeMandatoryNoticeAdminCollapsibleV306 = () => buildNativeNoticeAdminV313(); window.makeMandatoryNoticeAdminCollapsibleV306 = makeMandatoryNoticeAdminCollapsibleV306; } catch {}
+  try { bindMandatoryNoticeCollapseOpenV307 = () => {}; window.bindMandatoryNoticeCollapseOpenV307 = bindMandatoryNoticeCollapseOpenV307; } catch {}
+
+  const originalNotice = typeof renderMandatoryNoticeAdminPanelV295 === "function" ? renderMandatoryNoticeAdminPanelV295 : null;
+  if (originalNotice && !originalNotice.__nativeV313) {
+    renderMandatoryNoticeAdminPanelV295 = function renderMandatoryNoticeAdminPanelNativeV313() {
+      const result = originalNotice.apply(this, arguments);
+      setTimeout(buildNativeNoticeAdminV313, 0);
+      return result;
+    };
+    renderMandatoryNoticeAdminPanelV295.__nativeV313 = true;
+    window.renderMandatoryNoticeAdminPanelV295 = renderMandatoryNoticeAdminPanelV295;
+  }
+
+  const originalOwnerHost = typeof ownerBetManagerHostV310 === "function" ? ownerBetManagerHostV310 : null;
+  if (originalOwnerHost && !originalOwnerHost.__nativeV313) {
+    ownerBetManagerHostV310 = function ownerBetManagerHostNativeV313() {
+      // Cria body simples se ainda não existir; o painel real é criado no v313.
+      let body = document.getElementById("ownerBetManagerBodyV310");
+      if (!body) {
+        body = document.createElement("div");
+        body.id = "ownerBetManagerBodyV310";
+        body.className = "owner-bet-manager-body-v310";
+        document.body.appendChild(body);
+      }
+      const details = nativeAdminDetailsV313("ownerBetManagerNativeV313", "Editar / limpar apostas", "Gestão total das apostas pelo Dono.", -29);
+      details?.querySelector(":scope > .native-admin-details-body-v313")?.appendChild(body);
+      return details;
+    };
+    ownerBetManagerHostV310.__nativeV313 = true;
+    window.ownerBetManagerHostV310 = ownerBetManagerHostV310;
+  }
+
+  const originalOwner = typeof renderOwnerBetManagerV310 === "function" ? renderOwnerBetManagerV310 : null;
+  if (originalOwner && !originalOwner.__nativeV313) {
+    renderOwnerBetManagerV310 = function renderOwnerBetManagerNativeV313() {
+      const result = originalOwner.apply(this, arguments);
+      setTimeout(buildNativeOwnerBetsAdminV313, 0);
+      return result;
+    };
+    renderOwnerBetManagerV310.__nativeV313 = true;
+    window.renderOwnerBetManagerV310 = renderOwnerBetManagerV310;
+  }
+
+  const originalActive = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+  if (originalActive && !originalActive.__nativeDetailsV313) {
+    renderActivePageV187 = function renderActivePageNativeDetailsV313() {
+      const result = originalActive.apply(this, arguments);
+      setTimeout(rebuildNativeAdminDetailsV313, 120);
+      setTimeout(rebuildNativeAdminDetailsV313, 500);
+      return result;
+    };
+    renderActivePageV187.__nativeDetailsV313 = true;
+    window.renderActivePageV187 = renderActivePageV187;
+  }
+
+  const originalAll = typeof renderAll === "function" ? renderAll : null;
+  if (originalAll && !originalAll.__nativeDetailsV313) {
+    renderAll = function renderAllNativeDetailsV313() {
+      const result = originalAll.apply(this, arguments);
+      setTimeout(rebuildNativeAdminDetailsV313, 350);
+      return result;
+    };
+    renderAll.__nativeDetailsV313 = true;
+    window.renderAll = renderAll;
+  }
+
+  document.addEventListener("click", event => {
+    if (event.target.closest?.('[data-tab="adminTab"],[data-admin-section-v187]')) {
+      setTimeout(rebuildNativeAdminDetailsV313, 180);
+    }
+  }, true);
+
+  setTimeout(rebuildNativeAdminDetailsV313, 900);
+  setTimeout(rebuildNativeAdminDetailsV313, 1800);
+})();
+
+window.debugAdminNativoV313 = function debugAdminNativoV313() {
+  return ["mandatoryNoticeNativeV313", "ownerBetManagerNativeV313", "mandatoryNoticeCollapseV306", "ownerBetManagerPanelV310"].map(id => {
+    const el = document.getElementById(id);
+    return {
+      version: APP_VERSION_V313_NATIVE_ADMIN_DETAILS,
+      id,
+      exists: Boolean(el),
+      tag: el?.tagName || "",
+      classes: el?.className || "",
+      open: Boolean(el?.open),
+      parent: el?.parentElement?.id || ""
     };
   });
 };

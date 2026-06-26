@@ -16783,3 +16783,32 @@ body.mandatory-notice-open-v295{
 #ownerBetManagerPanelV310 > summary{
   display:none!important;
 }
+
+
+/* v313 — novas abas nativas, exatamente como as outras do Admin */
+#mandatoryNoticeNativeV313,
+#ownerBetManagerNativeV313{
+  margin:0!important;
+}
+
+#mandatoryNoticeNativeV313 > summary,
+#ownerBetManagerNativeV313 > summary{
+  cursor:pointer!important;
+}
+
+#mandatoryNoticeNativeV313 .native-admin-details-body-v313,
+#ownerBetManagerNativeV313 .native-admin-details-body-v313{
+  padding:0!important;
+  margin-top:12px!important;
+}
+
+#mandatoryNoticeNativeV313 .native-admin-panel-content-v313,
+#ownerBetManagerNativeV313 .native-admin-panel-content-v313{
+  margin:0!important;
+}
+
+/* apaga visualmente restos das tentativas anteriores */
+#mandatoryNoticeCollapseV306,
+#ownerBetManagerPanelV310{
+  display:none!important;
+}
