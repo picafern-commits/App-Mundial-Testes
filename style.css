@@ -14494,3 +14494,56 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
     max-width:100%!important;
   }
 }
+
+
+/* v281 — Fase Final web: remover hero do mapa e usar altura máxima */
+@media (min-width: 761px){
+  body.knockout-layout-active #knockoutBracket .ko-road-root-v270,
+  body.knockout-layout-active #knockoutBracket .ko-road-page-v270{
+    height:100%!important;
+    min-height:0!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .ko-road-root-v270{
+    overflow:hidden!important;
+    padding-bottom:0!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .ko-road-page-v270{
+    display:flex!important;
+    flex-direction:column!important;
+    min-width:1260px!important;
+    width:100%!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .ko-road-hero-v270{
+    display:none!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .ko-road-board-v270{
+    flex:1 1 auto!important;
+    height:100%!important;
+    min-height:0!important;
+    margin-top:0!important;
+    padding:18px 20px 22px!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket .ko-road-path-label-v270.left{ left: 6px!important; }
+  body.knockout-layout-active #knockoutBracket .ko-road-path-label-v270.right{ right: 4px!important; }
+
+  body.knockout-layout-active #knockoutTab.active{
+    height:calc(100dvh - 86px)!important;
+  }
+
+  body.knockout-layout-active #knockoutBracket.knockout-bracket{
+    height:100%!important;
+    padding:2px 2px 8px!important;
+    overflow:hidden!important;
+  }
+}
+
+@media (min-width: 761px) and (max-height: 900px){
+  body.knockout-layout-active #knockoutBracket .ko-road-board-v270{
+    padding:14px 16px 18px!important;
+  }
+}

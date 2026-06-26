@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v280";
+const APP_VERSION_LABEL = "v281";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -19355,4 +19355,13 @@ window.debugFaseFinalMobileListaV280 = function debugFaseFinalMobileListaV280() 
     stored: (() => { try { return localStorage.getItem(KO_VIEW_MODE_KEY_V270); } catch { return ""; } })(),
     activeTab: document.querySelector(".tab-panel.active")?.id || ""
   };
+};
+
+
+/* v281 — remover cabeçalho do mapa e esticar esquema */
+const APP_VERSION_V281_KO_MAX = "281.0";
+window.debugKoMapaV281 = function debugKoMapaV281(){
+  const hero=document.querySelector(".ko-road-hero-v270");
+  const board=document.querySelector(".ko-road-board-v270");
+  return {version: APP_VERSION_V281_KO_MAX, heroDisplay: hero ? getComputedStyle(hero).display : null, boardHeight: board ? Math.round(board.getBoundingClientRect().height) : null, activeTab: document.querySelector(".tab-panel.active")?.id || ""};
 };
