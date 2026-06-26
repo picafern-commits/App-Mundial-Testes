@@ -15127,3 +15127,23 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
   }
 }
 
+
+
+/* v288 — remover bloco visível do topo do Calendário */
+.calendar-search-holder-v288{
+  display:block;
+  height:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+
+.calendar-search-hidden-v288{
+  opacity:0!important;
+  width:1px!important;
+  min-width:1px!important;
+  height:1px!important;
+  min-height:1px!important;
+  padding:0!important;
+  margin:0!important;
+  border:0!important;
+}
