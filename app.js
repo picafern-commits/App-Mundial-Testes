@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v294";
+const APP_VERSION_LABEL = "v295";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -21181,5 +21181,468 @@ window.debugApostaBloqueiaAoGuardarV294 = function debugApostaBloqueiaAoGuardarV
     match: match ? { id: match.id, jogo: `${match.homeTeam || ""} vs ${match.awayTeam || ""}` } : null,
     existingBet: match ? Boolean(koV294ExistingBetFor(match.id, player)) : false,
     label: match ? knockoutBetButtonLabelV241?.(match) : ""
+  };
+};
+
+
+/* v295 — Aviso obrigatório com confirmação de leitura */
+const APP_VERSION_V295_MANDATORY_NOTICE = "295.0";
+
+function mandatoryNoticeCanManageV295() {
+  try {
+    const role = normalizeRole(currentProfile?.role || "");
+    return role === "owner" || role === "admin" || Boolean(isOwner || isAdmin);
+  } catch {
+    return Boolean(isOwner || isAdmin);
+  }
+}
+
+function mandatoryNoticeStoreV295() {
+  appSettings.mandatoryNotice = appSettings.mandatoryNotice || {};
+  const notice = appSettings.mandatoryNotice;
+  if (!notice.acks || typeof notice.acks !== "object" || Array.isArray(notice.acks)) notice.acks = {};
+  return notice;
+}
+
+function mandatoryNoticeCurrentV295() {
+  try {
+    const notice = appSettings?.mandatoryNotice || {};
+    if (!notice.active) return null;
+    if (!String(notice.text || "").trim()) return null;
+    if (!String(notice.id || "").trim()) return null;
+    return notice;
+  } catch {
+    return null;
+  }
+}
+
+function mandatoryNoticeUserKeyV295(profile = currentProfile, user = currentUser) {
+  const uid = String(user?.uid || profile?.uid || profile?.userId || profile?.authUid || "").trim();
+  if (uid) return `uid:${uid}`;
+  const email = normalizeEmail(user?.email || profile?.email || profile?.id || "");
+  if (email) return `email:${email}`;
+  return "";
+}
+
+function mandatoryNoticeUserNameV295(profile = currentProfile, user = currentUser) {
+  return String(profile?.name || user?.displayName || user?.email || profile?.email || "User").trim();
+}
+
+function mandatoryNoticeAckForCurrentUserV295() {
+  const notice = mandatoryNoticeCurrentV295();
+  if (!notice) return null;
+  const key = mandatoryNoticeUserKeyV295();
+  if (!key) return null;
+  const ack = notice.acks?.[key] || null;
+  return ack && ack.noticeId === notice.id ? ack : null;
+}
+
+function mandatoryNoticeNeedsAckV295() {
+  const notice = mandatoryNoticeCurrentV295();
+  if (!notice) return false;
+  if (!currentUser || !currentProfile) return false;
+  return !mandatoryNoticeAckForCurrentUserV295();
+}
+
+function mandatoryNoticeFormatDateV295(value) {
+  if (!value) return "";
+  try { return new Date(value).toLocaleString("pt-PT"); } catch { return String(value); }
+}
+
+function mandatoryNoticeAllProfilesV295() {
+  const map = new Map();
+  const add = profile => {
+    if (!profile) return;
+    const email = normalizeEmail(profile.email || profile.id || "");
+    const uid = String(profile.uid || profile.userId || profile.authUid || "").trim();
+    const key = uid ? `uid:${uid}` : email ? `email:${email}` : "";
+    if (!key) return;
+    map.set(key, {
+      key,
+      uid,
+      email,
+      name: String(profile.name || profile.displayName || displayNameFromEmail?.(email) || email || "User").trim(),
+      role: normalizeRole(profile.role || "user"),
+      active: profile.active !== false,
+      profile
+    });
+  };
+  try { (permissionsCache || []).forEach(add); } catch {}
+  try {
+    (onlineUsersCache || []).forEach(user => {
+      const email = normalizeEmail(user.email || user.id || "");
+      const uid = String(user.uid || user.userId || "").trim();
+      const key = uid ? `uid:${uid}` : email ? `email:${email}` : "";
+      if (!key || map.has(key)) return;
+      map.set(key, {
+        key,
+        uid,
+        email,
+        name: String(user.name || displayNameFromEmail?.(email) || email || "User").trim(),
+        role: normalizeRole(user.role || "user"),
+        active: true,
+        profile: user
+      });
+    });
+  } catch {}
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "pt"));
+}
+
+function mandatoryNoticeEnsureModalV295() {
+  let modal = document.getElementById("mandatoryNoticeModalV295");
+  if (modal) return modal;
+
+  modal = document.createElement("div");
+  modal.id = "mandatoryNoticeModalV295";
+  modal.className = "modal hidden mandatory-notice-modal-v295";
+  modal.setAttribute("role", "dialog");
+  modal.setAttribute("aria-modal", "true");
+  modal.innerHTML = `
+    <div class="modal-card mandatory-notice-card-v295">
+      <div class="mandatory-notice-head-v295">
+        <span>AVISO OBRIGATÓRIO</span>
+        <h2 id="mandatoryNoticeTitleV295">Aviso da app</h2>
+      </div>
+      <div id="mandatoryNoticeBodyV295" class="mandatory-notice-body-v295"></div>
+      <div class="mandatory-notice-footer-v295">
+        <label class="mandatory-notice-check-v295">
+          <input id="mandatoryNoticeReadCheckV295" type="checkbox" />
+          <span>Li este aviso e confirmo que tomei conhecimento.</span>
+        </label>
+        <button id="mandatoryNoticeConfirmBtnV295" class="primary" type="button" disabled>Li e confirmo</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  modal.addEventListener("click", event => {
+    // Não fecha ao clicar fora. O aviso é obrigatório.
+    event.preventDefault();
+    event.stopPropagation();
+  });
+
+  modal.querySelector("#mandatoryNoticeReadCheckV295")?.addEventListener("change", () => {
+    const checked = Boolean(document.getElementById("mandatoryNoticeReadCheckV295")?.checked);
+    const btn = document.getElementById("mandatoryNoticeConfirmBtnV295");
+    if (btn) btn.disabled = !checked;
+  });
+
+  modal.querySelector("#mandatoryNoticeConfirmBtnV295")?.addEventListener("click", acknowledgeMandatoryNoticeV295);
+
+  return modal;
+}
+
+function showMandatoryNoticeIfNeededV295(force = false) {
+  const notice = mandatoryNoticeCurrentV295();
+  const modal = mandatoryNoticeEnsureModalV295();
+
+  if (!notice || (!force && !mandatoryNoticeNeedsAckV295())) {
+    modal.classList.add("hidden");
+    document.body.classList.remove("mandatory-notice-open-v295");
+    return;
+  }
+
+  const title = String(notice.title || "Aviso da app").trim();
+  const text = String(notice.text || "").trim();
+
+  document.getElementById("mandatoryNoticeTitleV295").textContent = title;
+  document.getElementById("mandatoryNoticeBodyV295").innerHTML = `
+    <div class="mandatory-notice-text-v295">${escapeHtml(text).replace(/\n/g, "<br>")}</div>
+    <div class="mandatory-notice-meta-v295">
+      Publicado em ${escapeHtml(mandatoryNoticeFormatDateV295(notice.createdAt || notice.updatedAt))}${notice.createdByName ? ` por ${escapeHtml(notice.createdByName)}` : ""}
+    </div>
+  `;
+  const check = document.getElementById("mandatoryNoticeReadCheckV295");
+  if (check) check.checked = false;
+  const btn = document.getElementById("mandatoryNoticeConfirmBtnV295");
+  if (btn) btn.disabled = true;
+
+  modal.classList.remove("hidden");
+  document.body.classList.add("mandatory-notice-open-v295");
+}
+
+async function acknowledgeMandatoryNoticeV295() {
+  const notice = mandatoryNoticeCurrentV295();
+  if (!notice) return;
+
+  const check = document.getElementById("mandatoryNoticeReadCheckV295");
+  if (!check?.checked) return toast?.("Tens de confirmar que leste o aviso.");
+
+  const key = mandatoryNoticeUserKeyV295();
+  if (!key) return toast?.("Não consegui identificar o teu utilizador.");
+
+  const store = mandatoryNoticeStoreV295();
+  store.acks[key] = {
+    noticeId: store.id,
+    uid: currentUser?.uid || currentProfile?.uid || "",
+    email: normalizeEmail(currentUser?.email || currentProfile?.email || currentProfile?.id || ""),
+    name: mandatoryNoticeUserNameV295(),
+    role: normalizeRole(currentProfile?.role || "user"),
+    readAt: new Date().toISOString()
+  };
+
+  try {
+    if (typeof saveSettingsFastToFirebase === "function") {
+      await saveSettingsFastToFirebase("confirmar leitura aviso obrigatório v295");
+    } else {
+      saveLocalData?.("confirmar leitura aviso obrigatório v295");
+      scheduleFullSync?.("confirmar leitura aviso obrigatório v295", 300);
+    }
+  } catch (error) {
+    console.warn("v295: falhou guardar confirmação do aviso", error);
+    try {
+      saveLocalData?.("confirmar leitura aviso obrigatório v295");
+      scheduleFullSync?.("confirmar leitura aviso obrigatório v295", 500);
+    } catch {}
+  }
+
+  document.getElementById("mandatoryNoticeModalV295")?.classList.add("hidden");
+  document.body.classList.remove("mandatory-notice-open-v295");
+  try { renderMandatoryNoticeAdminPanelV295?.(); } catch {}
+  toast?.("Confirmação registada.");
+}
+
+function mandatoryNoticeAdminStatsV295() {
+  const notice = mandatoryNoticeStoreV295();
+  const users = mandatoryNoticeAllProfilesV295().filter(user => user.active !== false);
+  const rows = users.map(user => {
+    const ackDirect = notice.acks?.[user.key] || null;
+    const ackByEmail = user.email ? notice.acks?.[`email:${user.email}`] : null;
+    const ackByUid = user.uid ? notice.acks?.[`uid:${user.uid}`] : null;
+    const ack = [ackDirect, ackByEmail, ackByUid].find(item => item && item.noticeId === notice.id) || null;
+    return { ...user, ack, read: Boolean(ack) };
+  });
+  return {
+    total: rows.length,
+    read: rows.filter(row => row.read).length,
+    unread: rows.filter(row => !row.read).length,
+    rows
+  };
+}
+
+function renderMandatoryNoticeAdminPanelV295() {
+  if (!mandatoryNoticeCanManageV295()) return;
+
+  const adminUnlocked = document.getElementById("adminUnlocked") || document.getElementById("adminTab");
+  if (!adminUnlocked) return;
+
+  let panel = document.getElementById("mandatoryNoticeAdminPanelV295");
+  if (!panel) {
+    panel = document.createElement("section");
+    panel.id = "mandatoryNoticeAdminPanelV295";
+    panel.className = "admin-card mandatory-notice-admin-v295";
+  }
+
+  const notice = mandatoryNoticeStoreV295();
+  const stats = mandatoryNoticeAdminStatsV295();
+
+  panel.innerHTML = `
+    <div class="mandatory-notice-admin-head-v295">
+      <div>
+        <h2>Aviso obrigatório</h2>
+        <p>Escreve um aviso que todos os users têm de ler e confirmar.</p>
+      </div>
+      <div class="mandatory-notice-admin-stats-v295">
+        <span><b>${stats.read}</b> leram</span>
+        <span><b>${stats.unread}</b> por ler</span>
+      </div>
+    </div>
+
+    <div class="mandatory-notice-admin-form-v295">
+      <label>
+        <span>Título</span>
+        <input id="mandatoryNoticeTitleInputV295" type="text" value="${escapeHtml(notice.title || "Aviso da app")}" placeholder="Título do aviso" />
+      </label>
+      <label>
+        <span>Texto do aviso</span>
+        <textarea id="mandatoryNoticeTextInputV295" rows="5" placeholder="Escreve aqui o aviso que os users têm de confirmar...">${escapeHtml(notice.text || "")}</textarea>
+      </label>
+      <div class="mandatory-notice-admin-actions-v295">
+        <button id="publishMandatoryNoticeV295" class="primary" type="button">Publicar novo aviso</button>
+        <button id="disableMandatoryNoticeV295" class="secondary" type="button">${notice.active ? "Desativar aviso" : "Aviso desativado"}</button>
+        <button id="previewMandatoryNoticeV295" class="secondary" type="button">Pré-visualizar</button>
+      </div>
+      <small>${notice.active ? `Aviso ativo · ${escapeHtml(mandatoryNoticeFormatDateV295(notice.createdAt || notice.updatedAt))}` : "Sem aviso obrigatório ativo."}</small>
+    </div>
+
+    <div class="mandatory-notice-read-list-v295">
+      <h3>Confirmações de leitura</h3>
+      ${stats.rows.length ? stats.rows.map(row => `
+        <article class="${row.read ? "read" : "unread"}">
+          <div>
+            <strong>${escapeHtml(row.name)}</strong>
+            <span>${escapeHtml(row.email || row.uid || "")}</span>
+          </div>
+          <b>${row.read ? "Leu" : "Por ler"}</b>
+          <em>${row.read ? escapeHtml(mandatoryNoticeFormatDateV295(row.ack.readAt)) : "—"}</em>
+        </article>
+      `).join("") : `<div class="empty small-empty">Ainda não existem users registados.</div>`}
+    </div>
+  `;
+
+  if (!panel.parentNode) {
+    const anchor = document.getElementById("adminOverviewV162") || adminUnlocked.firstElementChild;
+    if (anchor?.parentNode === adminUnlocked) adminUnlocked.insertBefore(panel, anchor.nextSibling);
+    else adminUnlocked.prepend(panel);
+  }
+
+  bindMandatoryNoticeAdminPanelV295();
+}
+
+function bindMandatoryNoticeAdminPanelV295() {
+  const publishBtn = document.getElementById("publishMandatoryNoticeV295");
+  if (publishBtn && !publishBtn.__v295) {
+    publishBtn.__v295 = true;
+    publishBtn.addEventListener("click", publishMandatoryNoticeV295);
+  }
+
+  const disableBtn = document.getElementById("disableMandatoryNoticeV295");
+  if (disableBtn && !disableBtn.__v295) {
+    disableBtn.__v295 = true;
+    disableBtn.addEventListener("click", disableMandatoryNoticeV295);
+  }
+
+  const previewBtn = document.getElementById("previewMandatoryNoticeV295");
+  if (previewBtn && !previewBtn.__v295) {
+    previewBtn.__v295 = true;
+    previewBtn.addEventListener("click", () => {
+      const store = mandatoryNoticeStoreV295();
+      const original = { ...store };
+      store.id = store.id || `preview-${Date.now()}`;
+      store.active = true;
+      store.title = document.getElementById("mandatoryNoticeTitleInputV295")?.value || "Aviso da app";
+      store.text = document.getElementById("mandatoryNoticeTextInputV295")?.value || "";
+      store.createdAt = new Date().toISOString();
+      showMandatoryNoticeIfNeededV295(true);
+      Object.assign(store, original);
+    });
+  }
+}
+
+async function publishMandatoryNoticeV295() {
+  if (!mandatoryNoticeCanManageV295()) return toast?.("Sem permissão.");
+
+  const title = String(document.getElementById("mandatoryNoticeTitleInputV295")?.value || "Aviso da app").trim() || "Aviso da app";
+  const text = String(document.getElementById("mandatoryNoticeTextInputV295")?.value || "").trim();
+
+  if (!text) return toast?.("Escreve o texto do aviso.");
+
+  const store = mandatoryNoticeStoreV295();
+  store.id = `notice-${Date.now()}`;
+  store.active = true;
+  store.title = title;
+  store.text = text;
+  store.createdAt = new Date().toISOString();
+  store.updatedAt = store.createdAt;
+  store.createdByUid = currentUser?.uid || "";
+  store.createdByEmail = normalizeEmail(currentUser?.email || "");
+  store.createdByName = currentProfile?.name || currentUser?.email || "Admin";
+  store.acks = {};
+
+  await saveMandatoryNoticeSettingsV295("publicar aviso obrigatório v295");
+  try { addSystemLog?.("Aviso obrigatório", `Novo aviso publicado: ${title}`, { noticeId: store.id }, { sync: true }); } catch {}
+  renderMandatoryNoticeAdminPanelV295();
+  toast?.("Aviso publicado. Todos os users terão de confirmar leitura.");
+}
+
+async function disableMandatoryNoticeV295() {
+  if (!mandatoryNoticeCanManageV295()) return toast?.("Sem permissão.");
+
+  const store = mandatoryNoticeStoreV295();
+  store.active = false;
+  store.updatedAt = new Date().toISOString();
+
+  await saveMandatoryNoticeSettingsV295("desativar aviso obrigatório v295");
+  renderMandatoryNoticeAdminPanelV295();
+  document.getElementById("mandatoryNoticeModalV295")?.classList.add("hidden");
+  document.body.classList.remove("mandatory-notice-open-v295");
+  toast?.("Aviso obrigatório desativado.");
+}
+
+async function saveMandatoryNoticeSettingsV295(reason) {
+  try {
+    if (typeof saveSettingsFastToFirebase === "function") {
+      await saveSettingsFastToFirebase(reason);
+    } else {
+      saveLocalData?.(reason);
+      scheduleFullSync?.(reason, 300);
+    }
+  } catch (error) {
+    console.warn("v295: falhou guardar aviso obrigatório", error);
+    try {
+      saveLocalData?.(reason);
+      scheduleFullSync?.(reason, 500);
+    } catch {}
+  }
+}
+
+(function installMandatoryNoticeV295() {
+  if (window.__mandatoryNoticeV295) return;
+  window.__mandatoryNoticeV295 = true;
+
+  const originalRenderAdmin = typeof renderAdmin === "function" ? renderAdmin : null;
+  if (originalRenderAdmin && !originalRenderAdmin.__noticeV295) {
+    renderAdmin = function renderAdminMandatoryNoticeV295() {
+      const result = originalRenderAdmin.apply(this, arguments);
+      setTimeout(renderMandatoryNoticeAdminPanelV295, 0);
+      setTimeout(renderMandatoryNoticeAdminPanelV295, 300);
+      return result;
+    };
+    renderAdmin.__noticeV295 = true;
+    window.renderAdmin = renderAdmin;
+  }
+
+  const originalRenderAll = typeof renderAll === "function" ? renderAll : null;
+  if (originalRenderAll && !originalRenderAll.__noticeV295) {
+    renderAll = function renderAllMandatoryNoticeV295() {
+      const result = originalRenderAll.apply(this, arguments);
+      setTimeout(() => showMandatoryNoticeIfNeededV295(false), 650);
+      setTimeout(renderMandatoryNoticeAdminPanelV295, 250);
+      return result;
+    };
+    renderAll.__noticeV295 = true;
+    window.renderAll = renderAll;
+  }
+
+  const originalRenderActive = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+  if (originalRenderActive && !originalRenderActive.__noticeV295) {
+    renderActivePageV187 = function renderActivePageMandatoryNoticeV295() {
+      const result = originalRenderActive.apply(this, arguments);
+      setTimeout(() => {
+        showMandatoryNoticeIfNeededV295(false);
+        renderMandatoryNoticeAdminPanelV295();
+      }, 250);
+      return result;
+    };
+    renderActivePageV187.__noticeV295 = true;
+    window.renderActivePageV187 = renderActivePageV187;
+  }
+
+  document.addEventListener("keydown", event => {
+    const modal = document.getElementById("mandatoryNoticeModalV295");
+    if (!modal || modal.classList.contains("hidden")) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, true);
+
+  setInterval(() => {
+    if (!document.hidden) showMandatoryNoticeIfNeededV295(false);
+  }, 30000);
+
+  setTimeout(() => showMandatoryNoticeIfNeededV295(false), 1200);
+})();
+
+window.debugAvisoObrigatorioV295 = function debugAvisoObrigatorioV295() {
+  const notice = mandatoryNoticeStoreV295();
+  const stats = mandatoryNoticeAdminStatsV295();
+  return {
+    version: APP_VERSION_V295_MANDATORY_NOTICE,
+    active: Boolean(notice.active),
+    id: notice.id || "",
+    title: notice.title || "",
+    needsAck: mandatoryNoticeNeedsAckV295(),
+    ack: mandatoryNoticeAckForCurrentUserV295(),
+    stats: { total: stats.total, read: stats.read, unread: stats.unread }
   };
 };
