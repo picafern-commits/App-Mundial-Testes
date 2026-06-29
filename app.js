@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v332";
+const APP_VERSION_LABEL = "v333";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -26803,4 +26803,128 @@ window.debugOwnerEditBetsV332 = function debugOwnerEditBetsV332() {
     addBar: Boolean(document.getElementById("koOwnerAddMissingV331")),
     adminClean: Boolean(document.getElementById("knockoutAdminPanel")?.classList.contains("ko-admin-clean-v332"))
   };
+};
+
+
+// v333 — Corrige pontos da equipa qualificada na Fase Final.
+// Antes, os +2 só eram somados quando o resultado era empate.
+// Agora, se o user acertar na equipa que se qualifica, recebe os pontos configurados,
+// independentemente do resultado do jogo.
+function koV333QualifiedCorrect(bet, match) {
+  if (!bet || !knockoutMatchHasResult(match)) return false;
+
+  const actualQualified =
+    (typeof koV267QualifiedFromMatch === "function" ? koV267QualifiedFromMatch(match) : "") ||
+    knockoutWinner(match);
+
+  const predictedQualified =
+    (typeof koV267QualifiedFromBet === "function" ? koV267QualifiedFromBet(bet, match) : "") ||
+    knockoutBetWinnerName(bet, match);
+
+  return Boolean(
+    actualQualified &&
+    predictedQualified &&
+    normalizeComparable(actualQualified) === normalizeComparable(predictedQualified)
+  );
+}
+
+function koV333QualifiedPointsValue() {
+  const points = { ...defaultKnockoutPointSettings(), ...(appSettings?.knockoutPoints || {}) };
+  return Number(points.qualified ?? points.penalties ?? 2) || 0;
+}
+
+pointsForKnockoutBet = function pointsForKnockoutBetV333(bet, match) {
+  if (!bet || !knockoutMatchHasResult(match)) return 0;
+
+  const points = { ...defaultKnockoutPointSettings(), ...(appSettings?.knockoutPoints || {}) };
+  const exactPoints = Number(points.exact) || 3;
+  const winnerPoints = Number(points.winner) || 1;
+  const qualifiedPoints = koV333QualifiedPointsValue();
+
+  let total = 0;
+
+  // Resultado exato mantém a regra antiga: exato não acumula com vencedor/empate.
+  if (isExactKnockoutBet(bet, match)) {
+    total += exactPoints;
+  } else if (isWinnerKnockoutBet(bet, match)) {
+    total += winnerPoints;
+  }
+
+  // A equipa qualificada é uma aposta separada e acumula sempre que estiver certa.
+  if (koV333QualifiedCorrect(bet, match)) {
+    total += qualifiedPoints;
+  }
+
+  return total;
+};
+
+knockoutBetResultLabel = function knockoutBetResultLabelV333(bet, match) {
+  const labels = [];
+
+  if (isExactKnockoutBet(bet, match)) labels.push("Resultado exato");
+  else if (isWinnerKnockoutBet(bet, match)) labels.push("Vitória/empate");
+
+  if (koV333QualifiedCorrect(bet, match)) labels.push("Qualificada +2");
+
+  return labels.length ? labels.join(" + ") : "Falhou";
+};
+
+knockoutBetResultClass = function knockoutBetResultClassV333(bet, match) {
+  if (isExactKnockoutBet(bet, match)) return "exact";
+  if (isWinnerKnockoutBet(bet, match) || koV333QualifiedCorrect(bet, match)) return "winner";
+  return "miss";
+};
+
+const playerStatsOriginalV333 = typeof playerStats === "function" ? playerStats : null;
+if (playerStatsOriginalV333 && !window.__playerStatsQualifiedV333) {
+  window.__playerStatsQualifiedV333 = true;
+  playerStats = function playerStatsQualifiedV333(playerName) {
+    const stats = playerStatsOriginalV333(playerName);
+
+    try {
+      let qualifiedHits = 0;
+      const playerId = playerIdFromName(playerName);
+
+      bets.forEach(bet => {
+        const samePlayer =
+          bet.playerId === playerId ||
+          playerIdFromName(bet.playerName || "") === playerId ||
+          String(bet.playerName || "").trim().toLowerCase() === String(playerName || "").trim().toLowerCase();
+
+        if (!samePlayer) return;
+
+        const match = knockoutMatchById?.(bet.gameId);
+        if (match && koV333QualifiedCorrect(bet, match)) qualifiedHits += 1;
+      });
+
+      // O campo antigo "penalties" já estava a ser usado na UI como contador da qualificada.
+      stats.penalties = qualifiedHits;
+      stats.qualified = qualifiedHits;
+    } catch {}
+
+    return stats;
+  };
+}
+
+window.debugKnockoutPointsV333 = function debugKnockoutPointsV333(playerName = "") {
+  const names = playerName ? [playerName] : playerNames();
+  return names.map(name => {
+    const stats = playerStats(name);
+    const playerId = playerIdFromName(name);
+    const rows = bets
+      .filter(bet => bet.playerId === playerId || playerIdFromName(bet.playerName || "") === playerId)
+      .map(bet => {
+        const match = knockoutMatchById?.(bet.gameId);
+        if (!match) return null;
+        return {
+          gameId: bet.gameId,
+          match: `${match.homeTeam || ""} - ${match.awayTeam || ""}`,
+          bet: knockoutBetDisplay?.(bet),
+          qualifiedCorrect: koV333QualifiedCorrect(bet, match),
+          points: pointsForKnockoutBet(bet, match)
+        };
+      })
+      .filter(Boolean);
+    return { player: name, points: stats.points, knockoutPoints: stats.knockoutPoints, qualifiedHits: stats.qualified, rows };
+  });
 };
