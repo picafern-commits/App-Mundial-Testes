@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v311";
+const APP_VERSION_LABEL = "v312";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -24327,3 +24327,89 @@ function appQuickFixSafeV311() {
     try { document.documentElement.classList.add("app-clean-v311"); } catch {}
   });
 })();
+
+
+/* v312 — Pontuação: mostrar data/hora nos jogos da Fase Final */
+const APP_VERSION_V312_SCORE_KO_DATE_LABEL = "312.0";
+
+function scoreKoDateValueV312(match = {}, game = {}) {
+  return match.matchDate || match.date || match.kickoff || match.utcDate || match.footballDataUtcDate ||
+         game.matchDate || game.date || game.kickoff || game.utcDate || game.footballDataUtcDate || "";
+}
+
+function scoreKoDateLabelV312(match = {}, game = {}) {
+  const value = scoreKoDateValueV312(match, game);
+  if (!value) return "";
+  try {
+    return `${dateHeader(value)} · ${timePortugal(value)}`;
+  } catch {
+    return String(value || "");
+  }
+}
+
+function scoreKoRoundLabelV312(match = {}, game = {}) {
+  return match.roundLabel || game.group || game.roundLabel || knockoutRoundLabel?.(match.round) || "Fase Final";
+}
+
+function scoreKoGameLabelV312(match = {}, game = {}) {
+  const round = scoreKoRoundLabelV312(match, game);
+  const date = scoreKoDateLabelV312(match, game);
+  if (date) return `${round} · ${date}`;
+  return `${round}${match.index ? ` · Jogo ${match.index}` : ""}`;
+}
+
+(function installScoreKoDateLabelV312() {
+  if (window.__scoreKoDateLabelV312) return;
+  window.__scoreKoDateLabelV312 = true;
+
+  const originalPlayerGameRows = typeof playerGameRows === "function" ? playerGameRows : null;
+  if (originalPlayerGameRows && !originalPlayerGameRows.__koDateLabelV312) {
+    playerGameRows = function playerGameRowsKoDateLabelV312(playerNameOrId) {
+      const rows = originalPlayerGameRows.apply(this, arguments) || [];
+      return rows.map(row => {
+        if (!row?.knockout) return row;
+
+        const matchId = row.match?.id || row.game?.id || row.bet?.gameId || "";
+        const match = row.match || knockoutMatchById?.(matchId) || (appSettings?.knockout?.matches || []).find(item => String(item.id || "") === String(matchId)) || {};
+        const game = (games || []).find(item => String(item.id || "") === String(matchId)) || row.game || {};
+        const dateValue = scoreKoDateValueV312(match, game);
+
+        return {
+          ...row,
+          game: {
+            ...(row.game || {}),
+            ...(game || {}),
+            id: matchId || row.game?.id,
+            homeTeam: row.game?.homeTeam || match.homeTeam || game.homeTeam || "",
+            awayTeam: row.game?.awayTeam || match.awayTeam || game.awayTeam || "",
+            group: scoreKoGameLabelV312(match, game),
+            matchDate: row.game?.matchDate || dateValue,
+            date: row.game?.date || dateValue,
+            phase: "Fase Final"
+          },
+          match: {
+            ...(match || {}),
+            matchDate: match.matchDate || dateValue,
+            date: match.date || dateValue
+          }
+        };
+      });
+    };
+    playerGameRows.__koDateLabelV312 = true;
+    window.playerGameRows = playerGameRows;
+  }
+})();
+
+window.debugPontuacaoDataFinalV312 = function debugPontuacaoDataFinalV312(player = "") {
+  const id = player || leaderboard?.()[0]?.playerId || leaderboard?.()[0]?.playerName || "";
+  const rows = typeof playerGameRows === "function" ? playerGameRows(id) : [];
+  return {
+    version: APP_VERSION_V312_SCORE_KO_DATE_LABEL,
+    player: id,
+    knockoutRows: rows.filter(row => row.knockout).map(row => ({
+      game: `${row.game?.homeTeam || ""} - ${row.game?.awayTeam || ""}`,
+      group: row.game?.group || "",
+      matchDate: row.game?.matchDate || row.game?.date || ""
+    })).slice(0, 30)
+  };
+};
