@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v315";
+const APP_VERSION_LABEL = "v317";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -25140,6 +25140,478 @@ window.debugPesquisarJogosV315 = function debugPesquisarJogosV315() {
     intervalLegacyKnown: {
       v115: typeof v115PesquisarTodosInterval !== "undefined" && Boolean(v115PesquisarTodosInterval),
       v117: typeof v117PesquisarReapply !== "undefined" && Boolean(v117PesquisarReapply)
+    }
+  };
+};
+
+
+/* v316 — Competições ocultas: Liga dos Campeões só para Dono */
+const APP_VERSION_V316_OWNER_HIDDEN_COMPETITIONS = "316.0";
+const OWNER_COMPETITION_DRAFT_KEY_V316 = `${STORAGE_KEY}_owner_working_competition_v316`;
+
+function isOwnerOnlyV316() {
+  try { return normalizeRole?.(currentProfile?.role || "") === "owner"; }
+  catch { return false; }
+}
+
+function defaultCompetitionsV316() {
+  return {
+    activePublicId: "mundial2026",
+    ownerWorkingId: localStorage.getItem(OWNER_COMPETITION_DRAFT_KEY_V316) || "mundial2026",
+    items: {
+      mundial2026: {
+        id: "mundial2026",
+        name: "Mundial 2026",
+        shortName: "Mundial",
+        status: "active",
+        visibleToUsers: true,
+        visibleToAdmins: true,
+        ownerOnly: false,
+        kind: "worldcup",
+        draftGames: [],
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: new Date().toISOString()
+      },
+      champions: {
+        id: "champions",
+        name: "Liga dos Campeões",
+        shortName: "Champions",
+        status: "draft",
+        visibleToUsers: false,
+        visibleToAdmins: false,
+        ownerOnly: true,
+        kind: "champions",
+        draftGames: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    }
+  };
+}
+
+function ensureCompetitionsV316() {
+  if (!appSettings || typeof appSettings !== "object") appSettings = defaultSettings?.() || {};
+  const defaults = defaultCompetitionsV316();
+  const current = appSettings.competitions && typeof appSettings.competitions === "object" ? appSettings.competitions : {};
+  const currentItems = current.items && typeof current.items === "object" ? current.items : {};
+
+  appSettings.competitions = {
+    ...defaults,
+    ...current,
+    activePublicId: current.activePublicId || "mundial2026",
+    ownerWorkingId: localStorage.getItem(OWNER_COMPETITION_DRAFT_KEY_V316) || current.ownerWorkingId || "mundial2026",
+    items: {
+      ...defaults.items,
+      ...currentItems,
+      mundial2026: { ...defaults.items.mundial2026, ...(currentItems.mundial2026 || {}) },
+      champions: { ...defaults.items.champions, ...(currentItems.champions || {}) }
+    }
+  };
+
+  if (!Array.isArray(appSettings.competitions.items.champions.draftGames)) {
+    appSettings.competitions.items.champions.draftGames = [];
+  }
+
+  appSettings.competitions.items.champions.visibleToUsers = false;
+  appSettings.competitions.items.champions.visibleToAdmins = false;
+  appSettings.competitions.items.champions.ownerOnly = true;
+  appSettings.competitions.items.champions.status = appSettings.competitions.items.champions.status || "draft";
+
+  return appSettings.competitions;
+}
+
+function ownerWorkingCompetitionV316() {
+  const comps = ensureCompetitionsV316();
+  const id = isOwnerOnlyV316() ? (comps.ownerWorkingId || "mundial2026") : comps.activePublicId;
+  return comps.items[id] || comps.items.mundial2026;
+}
+
+function setOwnerWorkingCompetitionV316(id) {
+  if (!isOwnerOnlyV316()) return;
+  const comps = ensureCompetitionsV316();
+  if (!comps.items[id]) return;
+  comps.ownerWorkingId = id;
+  localStorage.setItem(OWNER_COMPETITION_DRAFT_KEY_V316, id);
+  renderOwnerCompetitionsPanelV316();
+}
+
+function championsDraftGamesV316() {
+  const comps = ensureCompetitionsV316();
+  return comps.items.champions.draftGames || [];
+}
+
+function phaseOptionsChampionsV316(selected = "") {
+  const phases = ["Fase Liga", "Play-off", "Oitavos", "Quartos", "Meias", "Final"];
+  return phases.map(phase => `<option value="${escapeHtml(phase)}" ${phase === selected ? "selected" : ""}>${escapeHtml(phase)}</option>`).join("");
+}
+
+function saveCompetitionsSettingsV316(reason = "competicoes ocultas") {
+  ensureCompetitionsV316();
+  try { appSettings.competitions.items.champions.updatedAt = new Date().toISOString(); } catch {}
+  try { saveLocalData?.(reason); } catch {}
+
+  try {
+    if (typeof persistSettings === "function") {
+      return Promise.resolve(persistSettings()).catch(error => {
+        console.warn("v316: persistSettings falhou", error);
+        try { scheduleFullSync?.(reason, 800); } catch {}
+      });
+    }
+  } catch {}
+
+  try { scheduleFullSync?.(reason, 800); } catch {}
+  return Promise.resolve(false);
+}
+
+function createChampionsDraftGameV316() {
+  if (!isOwnerOnlyV316()) return;
+
+  const home = String(document.getElementById("uclDraftHomeV316")?.value || "").trim();
+  const away = String(document.getElementById("uclDraftAwayV316")?.value || "").trim();
+  const date = String(document.getElementById("uclDraftDateV316")?.value || "").trim();
+  const time = String(document.getElementById("uclDraftTimeV316")?.value || "").trim();
+  const phase = String(document.getElementById("uclDraftPhaseV316")?.value || "Fase Liga").trim();
+  const group = String(document.getElementById("uclDraftGroupV316")?.value || "").trim();
+
+  if (!home || !away || !date || !time) {
+    toast?.("Preenche equipa casa, equipa fora, data e hora.");
+    return;
+  }
+
+  const matchDate = `${date}T${time}:00`;
+  const game = {
+    id: `ucl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    competitionId: "champions",
+    source: "owner-draft-v316",
+    homeTeam: home,
+    awayTeam: away,
+    matchDate,
+    date: matchDate,
+    group: group || phase,
+    phase,
+    status: "draft",
+    visibleToUsers: false,
+    visibleToAdmins: false,
+    ownerOnly: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  championsDraftGamesV316().push(game);
+  saveCompetitionsSettingsV316("adicionar jogo champions rascunho");
+  renderOwnerCompetitionsPanelV316();
+  toast?.("Jogo da Champions guardado em rascunho privado.");
+}
+
+function deleteChampionsDraftGameV316(id) {
+  if (!isOwnerOnlyV316()) return;
+  const comps = ensureCompetitionsV316();
+  comps.items.champions.draftGames = championsDraftGamesV316().filter(game => String(game.id || "") !== String(id || ""));
+  saveCompetitionsSettingsV316("apagar jogo champions rascunho");
+  renderOwnerCompetitionsPanelV316();
+}
+
+function ownerCompetitionsPanelHostV316() {
+  return document.getElementById("adminUnlocked") || document.getElementById("settingsTab") || document.getElementById("adminTab");
+}
+
+function renderOwnerCompetitionsPanelV316() {
+  const existing = document.getElementById("ownerCompetitionsPanelV316");
+  if (!isOwnerOnlyV316()) {
+    existing?.remove();
+    return;
+  }
+
+  const host = ownerCompetitionsPanelHostV316();
+  if (!host) return;
+
+  ensureCompetitionsV316();
+  const comps = appSettings.competitions;
+  const working = ownerWorkingCompetitionV316();
+  const draftGames = championsDraftGamesV316()
+    .slice()
+    .sort((a, b) => scoreCleanParseDateV312?.(a.matchDate || a.date) - scoreCleanParseDateV312?.(b.matchDate || b.date));
+
+  const html = `
+    <section id="ownerCompetitionsPanelV316" class="admin-card owner-competitions-panel-v316" data-owner-only="1">
+      <div class="owner-competitions-head-v316">
+        <div>
+          <p class="eyebrow">Só Dono</p>
+          <h3>Competições</h3>
+          <span>Prepara a Liga dos Campeões em privado. Admins e users não veem isto.</span>
+        </div>
+        <strong class="owner-private-pill-v316">Privado</strong>
+      </div>
+
+      <div class="owner-competition-switch-v316">
+        <label>
+          <span>Competição de trabalho</span>
+          <select id="ownerCompetitionSelectV316">
+            <option value="mundial2026" ${working.id === "mundial2026" ? "selected" : ""}>Mundial 2026 · Público</option>
+            <option value="champions" ${working.id === "champions" ? "selected" : ""}>Liga dos Campeões · Rascunho privado</option>
+          </select>
+        </label>
+        <div class="owner-competition-status-v316">
+          <b>${escapeHtml(working.name)}</b>
+          <small>${working.id === "champions" ? "Oculta para Admin/User" : "Competição pública atual"}</small>
+        </div>
+      </div>
+
+      <div class="owner-champions-box-v316">
+        <div class="owner-champions-title-v316">
+          <div>
+            <h4>Liga dos Campeões</h4>
+            <span>Rascunho separado. Estes jogos ainda não entram no Calendário, Pontuação nem Notificações.</span>
+          </div>
+          <span>${draftGames.length} jogos</span>
+        </div>
+
+        <div class="owner-champions-form-v316">
+          <input id="uclDraftHomeV316" placeholder="Equipa casa" autocomplete="off">
+          <input id="uclDraftAwayV316" placeholder="Equipa fora" autocomplete="off">
+          <input id="uclDraftDateV316" type="date">
+          <input id="uclDraftTimeV316" type="time">
+          <select id="uclDraftPhaseV316">${phaseOptionsChampionsV316()}</select>
+          <input id="uclDraftGroupV316" placeholder="Grupo/jornada opcional" autocomplete="off">
+          <button type="button" class="primary" id="addChampionsDraftGameV316">Adicionar jogo privado</button>
+        </div>
+
+        <div class="owner-champions-list-v316">
+          ${draftGames.length ? draftGames.map(game => `
+            <article class="owner-champions-game-v316">
+              <div>
+                <strong>${escapeHtml(game.homeTeam || "")} - ${escapeHtml(game.awayTeam || "")}</strong>
+                <small>${escapeHtml(game.phase || "Fase Liga")} · ${escapeHtml(scoreCleanDateLabelV312?.(game.matchDate || game.date) || game.matchDate || "")}</small>
+              </div>
+              <button type="button" class="secondary small" data-delete-ucl-draft-v316="${escapeHtml(game.id)}">Apagar</button>
+            </article>
+          `).join("") : `<p class="owner-empty-v316">Ainda não tens jogos da Champions em rascunho.</p>`}
+        </div>
+
+        <div class="owner-champions-warning-v316">
+          <b>Publicação bloqueada por segurança</b>
+          <span>Quando estiver tudo pronto, criamos o botão de publicar numa versão própria com confirmação forte.</span>
+        </div>
+      </div>
+    </section>
+  `;
+
+  if (existing) {
+    existing.outerHTML = html;
+  } else {
+    host.prepend(document.createRange().createContextualFragment(html));
+  }
+
+  document.getElementById("ownerCompetitionSelectV316")?.addEventListener("change", event => {
+    setOwnerWorkingCompetitionV316(event.target.value);
+  });
+
+  document.getElementById("addChampionsDraftGameV316")?.addEventListener("click", createChampionsDraftGameV316);
+
+  document.querySelectorAll("[data-delete-ucl-draft-v316]").forEach(button => {
+    button.addEventListener("click", () => deleteChampionsDraftGameV316(button.dataset.deleteUclDraftV316));
+  });
+}
+
+(function installOwnerHiddenCompetitionsV316() {
+  if (window.__ownerHiddenCompetitionsV316) return;
+  window.__ownerHiddenCompetitionsV316 = true;
+
+  ensureCompetitionsV316();
+
+  const originalRenderAll = typeof renderAll === "function" ? renderAll : null;
+  if (originalRenderAll && !originalRenderAll.__competitionsV316) {
+    renderAll = function renderAllCompetitionsV316() {
+      const result = originalRenderAll.apply(this, arguments);
+      requestAnimationFrame(renderOwnerCompetitionsPanelV316);
+      return result;
+    };
+    renderAll.__competitionsV316 = true;
+    window.renderAll = renderAll;
+  }
+
+  const originalRenderActive = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+  if (originalRenderActive && !originalRenderActive.__competitionsV316) {
+    renderActivePageV187 = function renderActivePageCompetitionsV316() {
+      const result = originalRenderActive.apply(this, arguments);
+      requestAnimationFrame(renderOwnerCompetitionsPanelV316);
+      return result;
+    };
+    renderActivePageV187.__competitionsV316 = true;
+    window.renderActivePageV187 = renderActivePageV187;
+  }
+
+  document.addEventListener("click", event => {
+    if (event.target.closest?.("[data-tab],.tab,#adminTab,#settingsTab")) {
+      requestAnimationFrame(renderOwnerCompetitionsPanelV316);
+    }
+  }, true);
+
+  requestAnimationFrame(renderOwnerCompetitionsPanelV316);
+})();
+
+window.debugCompeticoesOcultasV316 = function debugCompeticoesOcultasV316() {
+  const comps = ensureCompetitionsV316();
+  return {
+    version: APP_VERSION_V316_OWNER_HIDDEN_COMPETITIONS,
+    isOwner: isOwnerOnlyV316(),
+    currentRole: currentProfile?.role || "",
+    adminCanSeeChampions: false,
+    userCanSeeChampions: false,
+    activePublicId: comps.activePublicId,
+    ownerWorkingId: comps.ownerWorkingId,
+    champions: {
+      status: comps.items.champions.status,
+      visibleToUsers: comps.items.champions.visibleToUsers,
+      visibleToAdmins: comps.items.champions.visibleToAdmins,
+      ownerOnly: comps.items.champions.ownerOnly,
+      draftGames: comps.items.champions.draftGames.length
+    },
+    panelVisible: Boolean(document.getElementById("ownerCompetitionsPanelV316"))
+  };
+};
+
+
+/* v317 — Fase 1: Design system global premium, sem alterar lógica */
+const APP_VERSION_V317_PHASE1_DESIGN_SYSTEM = "317.0";
+
+const DESIGN_SYSTEM_PHASE1_V317 = {
+  name: "Mundial Premium UI",
+  scope: "visual-only",
+  base: "v316",
+  pages: ["global", "sidebar", "topbar", "cards", "buttons", "modals"],
+  logicChanged: false
+};
+
+function designActivePageIdV317() {
+  try {
+    return document.querySelector(".tab-panel.active")?.id || activeTabIdV187?.() || "";
+  } catch {
+    return "";
+  }
+}
+
+function designPageSlugV317(id = designActivePageIdV317()) {
+  const map = {
+    calendarTab: "calendar",
+    scoreTab: "score",
+    knockoutTab: "knockout",
+    notificationsTab: "notifications",
+    logsTab: "logs",
+    adminTab: "admin",
+    settingsTab: "settings",
+    accountTab: "account",
+    chatTab: "chat"
+  };
+  return map[id] || String(id || "unknown").replace(/Tab$/i, "").toLowerCase();
+}
+
+function applyPhase1DesignClassesV317() {
+  const page = designPageSlugV317();
+  const root = document.documentElement;
+  const body = document.body;
+
+  root.classList.add("mp-ui-v317");
+  body?.classList.add("mp-body-v317");
+  body?.setAttribute("data-mp-page-v317", page);
+
+  document.querySelector(".app-shell")?.classList.add("mp-shell-v317");
+  document.querySelector(".topbar")?.classList.add("mp-topbar-v317");
+  document.querySelector(".sidebar")?.classList.add("mp-sidebar-v317");
+  document.querySelector(".brand")?.classList.add("mp-brand-v317");
+  document.querySelectorAll(".tab").forEach(tab => tab.classList.add("mp-nav-item-v317"));
+
+  document.querySelectorAll(
+    ".admin-card,.settings-card,.top-card,.score-card,.player-score-card,.modal-card,.match-row,.day-block,.stats-card,.owner-competitions-panel-v316"
+  ).forEach(card => card.classList.add("mp-card-v317"));
+
+  document.querySelectorAll(".modal-card").forEach(modal => modal.classList.add("mp-modal-card-v317"));
+  document.querySelectorAll(".modal-backdrop,.modal-overlay").forEach(overlay => overlay.classList.add("mp-modal-overlay-v317"));
+
+  document.querySelectorAll("button,.button,.primary,.secondary,.danger").forEach(button => {
+    button.classList.add("mp-button-v317");
+    if (button.classList.contains("primary")) button.classList.add("mp-button-primary-v317");
+    if (button.classList.contains("secondary")) button.classList.add("mp-button-secondary-v317");
+    if (button.classList.contains("danger")) button.classList.add("mp-button-danger-v317");
+  });
+
+  document.querySelectorAll("input,select,textarea").forEach(input => input.classList.add("mp-input-v317"));
+  document.querySelectorAll(".badge,.pill,.chip,.status,.active-filter,.player-total").forEach(chip => chip.classList.add("mp-chip-v317"));
+
+  document.querySelectorAll(".section-head,h1,h2,h3").forEach(title => title.classList.add("mp-title-v317"));
+}
+
+function schedulePhase1DesignApplyV317() {
+  applyPhase1DesignClassesV317();
+  requestAnimationFrame(applyPhase1DesignClassesV317);
+  setTimeout(applyPhase1DesignClassesV317, 80);
+}
+
+(function installPhase1DesignSystemV317() {
+  if (window.__phase1DesignSystemV317) return;
+  window.__phase1DesignSystemV317 = true;
+
+  const originalRenderAll = typeof renderAll === "function" ? renderAll : null;
+  if (originalRenderAll && !originalRenderAll.__phase1DesignV317) {
+    renderAll = function renderAllPhase1DesignV317() {
+      const result = originalRenderAll.apply(this, arguments);
+      schedulePhase1DesignApplyV317();
+      return result;
+    };
+    renderAll.__phase1DesignV317 = true;
+    window.renderAll = renderAll;
+  }
+
+  const originalRenderActive = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+  if (originalRenderActive && !originalRenderActive.__phase1DesignV317) {
+    renderActivePageV187 = function renderActivePagePhase1DesignV317() {
+      const result = originalRenderActive.apply(this, arguments);
+      schedulePhase1DesignApplyV317();
+      return result;
+    };
+    renderActivePageV187.__phase1DesignV317 = true;
+    window.renderActivePageV187 = renderActivePageV187;
+  }
+
+  document.addEventListener("click", event => {
+    if (event.target.closest?.("button,.tab,[data-tab],summary,.modal-card")) {
+      schedulePhase1DesignApplyV317();
+    }
+  }, true);
+
+  try {
+    const observer = new MutationObserver(mutations => {
+      let shouldApply = false;
+      for (const mutation of mutations) {
+        if (mutation.addedNodes?.length) {
+          shouldApply = true;
+          break;
+        }
+      }
+      if (shouldApply) requestAnimationFrame(applyPhase1DesignClassesV317);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.__phase1DesignObserverV317 = observer;
+  } catch {}
+
+  schedulePhase1DesignApplyV317();
+})();
+
+window.debugDesignSystemV317 = function debugDesignSystemV317() {
+  return {
+    version: APP_VERSION_V317_PHASE1_DESIGN_SYSTEM,
+    base: DESIGN_SYSTEM_PHASE1_V317.base,
+    scope: DESIGN_SYSTEM_PHASE1_V317.scope,
+    logicChanged: DESIGN_SYSTEM_PHASE1_V317.logicChanged,
+    activePage: designActivePageIdV317(),
+    pageSlug: designPageSlugV317(),
+    rootActive: document.documentElement.classList.contains("mp-ui-v317"),
+    classes: {
+      cards: document.querySelectorAll(".mp-card-v317").length,
+      buttons: document.querySelectorAll(".mp-button-v317").length,
+      inputs: document.querySelectorAll(".mp-input-v317").length,
+      modals: document.querySelectorAll(".mp-modal-card-v317").length,
+      navItems: document.querySelectorAll(".mp-nav-item-v317").length
     }
   };
 };
