@@ -23,7 +23,7 @@
     .hidden,#appShell.auth-hidden,.tab-panel:not(.active){display:none!important}
     body{margin:0;background:#070b13}
   </style>
-  <link rel="stylesheet" href="style.css?v=249" />
+  <link rel="stylesheet" href="style.css?v=327" />
 </head>
 <body class="desktop-fullscreen-instant-v148 pc-fullscreen-instant-v168">
 
@@ -63,6 +63,22 @@
       </div>
     </div>
   </section>
+
+  
+
+  <div id="appBootLoaderV275" class="app-boot-loader-v275 hidden" aria-live="polite" aria-busy="true">
+    <div class="app-boot-loader-card-v275">
+      <div class="app-boot-loader-top-v275">
+        <img src="icons/icon-512.png" alt="" />
+        <div>
+          <span>Mundial Pontos 2026</span>
+          <strong data-boot-loader-text>A carregar a app...</strong>
+        </div>
+      </div>
+      <div class="app-boot-progress-v275"><i></i></div>
+      <small>A preparar dados e dimensões...</small>
+    </div>
+  </div>
 
   <div id="appShell" class="app-shell auth-hidden">
     <header class="topbar">
@@ -115,16 +131,13 @@
       <button class="tab" type="button" data-tab="logsTab">Logs</button>
       <button class="tab" type="button" data-tab="adminTab">Admin</button>
       <button class="tab" type="button" data-tab="settingsTab">Configurações</button>
+      <button class="tab" type="button" data-tab="userSettingsTab">Minha Conta</button>
     </nav>
 
     <main>
 <section id="calendarTab" class="tab-panel active">
-        <div class="section-head compact">
-          <div>
-            <h2>Fase de Grupos</h2>
-            <p>Jogos por data, com horas de Portugal.</p>
-          </div>
-          <input id="searchInput" class="search" type="search" placeholder="" />
+        <div class="calendar-search-holder-v288" aria-hidden="true">
+          <input id="searchInput" class="search calendar-search-hidden-v288" type="search" placeholder="" />
         </div>
         <div id="gamesList" class="calendar-list"></div>
       </section>
@@ -148,6 +161,16 @@
         </div>
         <div id="knockoutLockNotice" class="knockout-lock-notice"></div>
         <div id="knockoutBracket" class="knockout-bracket"></div>
+      </section>
+
+      <section id="userSettingsTab" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <h2>Minha Conta</h2>
+            <p>Configurações pessoais deste user e deste dispositivo.</p>
+          </div>
+        </div>
+        <div id="userSettingsPanelV299" class="user-settings-panel-v299"></div>
       </section>
 
       <section id="notificationsTab" class="tab-panel">
@@ -381,7 +404,7 @@
             </div>
             <div class="points-settings-separator">
               <h3>Sistema de Pontos da Fase Final</h3>
-              <p>Pontos usados nos jogos a eliminar.</p>
+              <p>Resultado aos 90 minutos + compensação. Se houver empate, soma pontos pela equipa qualificada.</p>
             </div>
             <div class="points-settings-grid">
               <label>Resultado exato
@@ -390,7 +413,7 @@
               <label>Equipa vencedora
                 <input id="knockoutPointsWinnerInput" type="number" min="0" step="1" />
               </label>
-              <label>Acerto nos penáltis
+              <label>Equipa qualificada em empate
                 <input id="knockoutPointsPenaltiesInput" type="number" min="0" step="1" />
               </label>
               <label>MVP
@@ -453,7 +476,7 @@
         <div class="settings-grid-v162">
           <article class="settings-card-v162">
             <span>Versão</span>
-            <strong id="appVersionLabelV162">v249</strong>
+            <strong id="appVersionLabelV162">v327</strong>
             <p id="pwaUpdateStateV162">A verificar atualizações...</p>
             <div class="settings-actions-v162">
               <button id="forceUpdateAppBtnV162" class="primary" type="button">Atualizar app</button>
@@ -591,9 +614,9 @@
   </div>
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-  <script src="config.js?v=249"></script>
+  <script src="config.js?v=327"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="app.js?v=249"></script>
+  <script type="module" src="app.js?v=327"></script>
 
       <div id="chatPanel" class="chat-panel hidden">
         <div class="chat-header">
