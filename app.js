@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v324";
+const APP_VERSION_LABEL = "v325";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -27739,5 +27739,163 @@ window.debugUclButtonsV324 = function debugUclButtonsV324() {
     totalButtons: buttons.length,
     boundButtons: buttons.filter(btn => btn.dataset.ucl324Bound === "1").length,
     actions: buttons.map(btn => ({ text: ucl324Text(btn), action: btn.dataset.ucl324Action || "", bound: btn.dataset.ucl324Bound || "0" }))
+  };
+};
+
+
+/* v325 — Liga dos Campeões: bloquear renders antigos do Mundial quando a shell Champions está ativa */
+const APP_VERSION_V325_UCL_RENDER_GUARD = "325.0";
+
+function ucl325IsChampionsMode() {
+  try { return typeof isChampionsModeV318 === "function" && isChampionsModeV318(); }
+  catch { return false; }
+}
+
+function ucl325Host() {
+  return document.getElementById("uclPreviewAppV320") || document.getElementById("uclPreviewAppV321");
+}
+
+function ucl325IsStandaloneActive() {
+  const host = ucl325Host();
+  return Boolean(ucl325IsChampionsMode() && host && (host.classList.contains("active") || host.classList.contains("ucl321-active")));
+}
+
+function ucl325RenderChampionsShellSoon() {
+  try {
+    if (typeof renderUclStandaloneAppV321 === "function") {
+      setTimeout(renderUclStandaloneAppV321, 0);
+      requestAnimationFrame(renderUclStandaloneAppV321);
+      return true;
+    }
+    if (typeof renderUclStandaloneAppV320 === "function") {
+      setTimeout(renderUclStandaloneAppV320, 0);
+      requestAnimationFrame(renderUclStandaloneAppV320);
+      return true;
+    }
+  } catch (error) {
+    console.warn("v325: render Champions falhou", error);
+  }
+  return false;
+}
+
+function ucl325ShouldBlockMundialRender() {
+  // Se estamos no modo Champions, os renders do Mundial não devem tocar em elementos antigos
+  // como gamesList/scoreSummary, porque podem estar ausentes e rebentar os cliques.
+  return ucl325IsChampionsMode();
+}
+
+(function installUclRenderGuardV325() {
+  if (window.__uclRenderGuardV325) return;
+  window.__uclRenderGuardV325 = true;
+
+  const originalRenderCalendar = typeof renderCalendar === "function" ? renderCalendar : null;
+  if (originalRenderCalendar && !originalRenderCalendar.__uclGuardV325) {
+    renderCalendar = function renderCalendarGuardedV325() {
+      if (ucl325ShouldBlockMundialRender()) {
+        ucl325RenderChampionsShellSoon();
+        return;
+      }
+      return originalRenderCalendar.apply(this, arguments);
+    };
+    renderCalendar.__uclGuardV325 = true;
+    window.renderCalendar = renderCalendar;
+  }
+
+  const originalRenderScore = typeof renderScore === "function" ? renderScore : null;
+  if (originalRenderScore && !originalRenderScore.__uclGuardV325) {
+    renderScore = function renderScoreGuardedV325() {
+      if (ucl325ShouldBlockMundialRender()) {
+        ucl325RenderChampionsShellSoon();
+        return;
+      }
+      return originalRenderScore.apply(this, arguments);
+    };
+    renderScore.__uclGuardV325 = true;
+    window.renderScore = renderScore;
+  }
+
+  const originalRenderActivePage = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+  if (originalRenderActivePage && !originalRenderActivePage.__uclGuardV325) {
+    renderActivePageV187 = function renderActivePageGuardedV325(tabId) {
+      if (ucl325ShouldBlockMundialRender()) {
+        ucl325RenderChampionsShellSoon();
+        return;
+      }
+      return originalRenderActivePage.apply(this, arguments);
+    };
+    renderActivePageV187.__uclGuardV325 = true;
+    window.renderActivePageV187 = renderActivePageV187;
+  }
+
+  const originalRenderAll = typeof renderAll === "function" ? renderAll : null;
+  if (originalRenderAll && !originalRenderAll.__uclGuardV325) {
+    renderAll = function renderAllGuardedV325(reason = "renderAll") {
+      if (ucl325ShouldBlockMundialRender()) {
+        ucl325RenderChampionsShellSoon();
+        return;
+      }
+      return originalRenderAll.apply(this, arguments);
+    };
+    renderAll.__uclGuardV325 = true;
+    window.renderAll = renderAll;
+  }
+
+  const originalQueueRealtimeRender = typeof queueRealtimeRender === "function" ? queueRealtimeRender : null;
+  if (originalQueueRealtimeRender && !originalQueueRealtimeRender.__uclGuardV325) {
+    queueRealtimeRender = function queueRealtimeRenderGuardedV325(reason = "firebase realtime") {
+      if (ucl325ShouldBlockMundialRender()) {
+        ucl325RenderChampionsShellSoon();
+        return;
+      }
+      return originalQueueRealtimeRender.apply(this, arguments);
+    };
+    queueRealtimeRender.__uclGuardV325 = true;
+    window.queueRealtimeRender = queueRealtimeRender;
+  }
+
+  // Evita que erros antigos de render do Mundial matem os cliques na Champions.
+  window.addEventListener("error", event => {
+    if (!ucl325IsChampionsMode()) return;
+    const msg = String(event?.message || "");
+    const stack = String(event?.error?.stack || "");
+    if (
+      msg.includes("Cannot set properties of null") &&
+      (stack.includes("renderCalendar") || stack.includes("renderScore") || stack.includes("renderAll"))
+    ) {
+      event.preventDefault();
+      console.warn("v325: erro de render antigo do Mundial bloqueado em modo Champions.", msg);
+      ucl325RenderChampionsShellSoon();
+    }
+  }, true);
+
+  // Quando muda para Champions, renderiza a shell e impede renders antigos atrasados.
+  document.addEventListener("click", event => {
+    if (event.target.closest?.("[data-ucl-competition], [data-competition-switch-v318], #ownerCompetitionSwitchV318")) {
+      setTimeout(() => {
+        if (ucl325IsChampionsMode()) ucl325RenderChampionsShellSoon();
+      }, 40);
+    }
+  }, true);
+
+  setTimeout(() => {
+    if (ucl325IsChampionsMode()) ucl325RenderChampionsShellSoon();
+  }, 200);
+})();
+
+window.debugUclRenderGuardV325 = function debugUclRenderGuardV325() {
+  return {
+    version: APP_VERSION_V325_UCL_RENDER_GUARD,
+    championsMode: ucl325IsChampionsMode(),
+    standaloneActive: ucl325IsStandaloneActive(),
+    hostId: ucl325Host()?.id || "",
+    hasRenderUcl321: typeof renderUclStandaloneAppV321 === "function",
+    hasRenderUcl320: typeof renderUclStandaloneAppV320 === "function",
+    renderCalendarGuarded: Boolean(renderCalendar?.__uclGuardV325),
+    renderScoreGuarded: Boolean(renderScore?.__uclGuardV325),
+    renderAllGuarded: Boolean(renderAll?.__uclGuardV325),
+    renderActivePageGuarded: Boolean(renderActivePageV187?.__uclGuardV325),
+    legacyGamesListExists: Boolean(document.getElementById("gamesList")),
+    legacyScoreSummaryExists: Boolean(document.getElementById("scoreSummary")),
+    buttonsInChampions: [...document.querySelectorAll("#uclPreviewAppV320 button, #uclPreviewAppV321 button")].length
   };
 };
