@@ -17092,3 +17092,58 @@ html.app-clean-v311 body{
     background:rgba(255,212,90,.09);
   }
 }
+
+
+/* v313 — estabilidade visual: evita flashes, saltos e animações durante renders */
+html.render-stabilizing-v313 *,
+html.render-stabilizing-v313 *::before,
+html.render-stabilizing-v313 *::after{
+  transition:none!important;
+  animation:none!important;
+  scroll-behavior:auto!important;
+}
+
+html.render-stabilizing-v313 .match-row,
+html.render-stabilizing-v313 .admin-card,
+html.render-stabilizing-v313 .player-score-card,
+html.render-stabilizing-v313 .modal-card,
+html.render-stabilizing-v313 button{
+  transform:none!important;
+}
+
+.app-shell,
+.tab-panel,
+#gamesList,
+#scoreSummary,
+#adminUnlocked,
+#knockoutBracket{
+  contain:layout style;
+}
+
+button,
+.tab,
+.match-row,
+.player-score-card,
+.admin-card{
+  backface-visibility:hidden;
+}
+
+.match-row,
+.player-score-card,
+.admin-card{
+  will-change:auto!important;
+}
+
+/* botões principais com tamanho mínimo estável para não encolher/aparecer */
+.match-row button,
+.calendar-actions button,
+.top-actions button,
+.modal-actions button{
+  min-height:38px;
+}
+
+#gamesList .day-block h3,
+.match-row,
+.player-score-card > summary{
+  overflow-anchor:none;
+}

@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v312-pontuacao-clean-rebuild";
+const CACHE_NAME = "mundial-pontos-2026-v313-estabilidade-renders";
 const APP_VERSION_SW_V298_USER_NOTIFICATIONS = "298.0";
 let userNotificationsEnabledSwV298 = true;
 const APP_VERSION_SW_V311_CLEAN_AUDIT = "311.0";

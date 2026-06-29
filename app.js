@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v312";
+const APP_VERSION_LABEL = "v313";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -24672,5 +24672,219 @@ window.debugPontuacaoCleanV312 = function debugPontuacaoCleanV312(playerName = "
       result: row.resultText,
       points: row.points
     }))
+  };
+};
+
+
+/* v313 — Estabilidade global: menos flashes, refreshs e renders duplicados */
+const APP_VERSION_V313_RENDER_STABILITY = "313.0";
+
+const renderStabilityV313 = {
+  renderAllCount: 0,
+  renderAllSkipped: 0,
+  activePageCount: 0,
+  calendarCount: 0,
+  scoreCount: 0,
+  realtimeCount: 0,
+  lastRenderAllAt: 0,
+  lastActivePageAt: 0,
+  pendingRenderAllTimer: null,
+  pendingActivePageTimer: null,
+  pendingCalendarFrame: 0,
+  pendingScoreFrame: 0,
+  pendingCalendarArgs: null,
+  pendingScoreArgs: null,
+  stabilizingTimer: null
+};
+
+function activeTabIdStableV313() {
+  try { return document.querySelector(".tab-panel.active")?.id || activeTabIdV187?.() || "calendarTab"; }
+  catch { return "calendarTab"; }
+}
+
+function setRenderStabilizingV313(on = true) {
+  try {
+    document.documentElement.classList.toggle("render-stabilizing-v313", Boolean(on));
+    if (renderStabilityV313.stabilizingTimer) clearTimeout(renderStabilityV313.stabilizingTimer);
+    if (on) {
+      renderStabilityV313.stabilizingTimer = setTimeout(() => {
+        document.documentElement.classList.remove("render-stabilizing-v313");
+        renderStabilityV313.stabilizingTimer = null;
+      }, 180);
+    }
+  } catch {}
+}
+
+function afterRenderStabilizeV313() {
+  try { updateCalendarFilterButtonsV221?.(); } catch {}
+  try { renderCalendarFilterState?.(); } catch {}
+  try { applyPermissionsToUi?.(); } catch {}
+  try { koV262ApplyCalendarDayRoundColors?.(); } catch {}
+  try { freezeCalendarCardsV302?.(); } catch {}
+  try { document.documentElement.classList.remove("render-stabilizing-v313"); } catch {}
+}
+
+function installRenderStabilityV313() {
+  if (window.__renderStabilityV313) return;
+  window.__renderStabilityV313 = true;
+
+  const originalRenderCalendar = typeof renderCalendar === "function" ? renderCalendar : null;
+  if (originalRenderCalendar && !originalRenderCalendar.__stableV313) {
+    renderCalendar = function renderCalendarStableV313() {
+      renderStabilityV313.pendingCalendarArgs = arguments;
+      if (renderStabilityV313.pendingCalendarFrame) return;
+      renderStabilityV313.pendingCalendarFrame = requestAnimationFrame(() => {
+        renderStabilityV313.pendingCalendarFrame = 0;
+        renderStabilityV313.calendarCount += 1;
+        setRenderStabilizingV313(true);
+        try {
+          originalRenderCalendar.apply(this, renderStabilityV313.pendingCalendarArgs || []);
+        } finally {
+          requestAnimationFrame(afterRenderStabilizeV313);
+        }
+      });
+    };
+    renderCalendar.__stableV313 = true;
+    window.renderCalendar = renderCalendar;
+  }
+
+  const originalRenderScore = typeof renderScore === "function" ? renderScore : null;
+  if (originalRenderScore && !originalRenderScore.__stableV313) {
+    renderScore = function renderScoreStableV313() {
+      renderStabilityV313.pendingScoreArgs = arguments;
+      if (renderStabilityV313.pendingScoreFrame) return;
+      renderStabilityV313.pendingScoreFrame = requestAnimationFrame(() => {
+        renderStabilityV313.pendingScoreFrame = 0;
+        renderStabilityV313.scoreCount += 1;
+        setRenderStabilizingV313(true);
+        try {
+          originalRenderScore.apply(this, renderStabilityV313.pendingScoreArgs || []);
+        } finally {
+          requestAnimationFrame(afterRenderStabilizeV313);
+        }
+      });
+    };
+    renderScore.__stableV313 = true;
+    window.renderScore = renderScore;
+  }
+
+  const originalRenderActivePage = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+  if (originalRenderActivePage && !originalRenderActivePage.__stableV313) {
+    renderActivePageV187 = function renderActivePageStableV313(tabId = activeTabIdStableV313()) {
+      const now = Date.now();
+      const important = String(tabId || "").includes("login") || !document.querySelector(".app-shell.hidden");
+      if (now - renderStabilityV313.lastActivePageAt < 70 && !important) {
+        renderStabilityV313.activePageCount += 0;
+        clearTimeout(renderStabilityV313.pendingActivePageTimer);
+        renderStabilityV313.pendingActivePageTimer = setTimeout(() => {
+          renderStabilityV313.lastActivePageAt = Date.now();
+          renderStabilityV313.activePageCount += 1;
+          setRenderStabilizingV313(true);
+          originalRenderActivePage.call(this, activeTabIdStableV313());
+          requestAnimationFrame(afterRenderStabilizeV313);
+        }, 90);
+        return;
+      }
+
+      renderStabilityV313.lastActivePageAt = now;
+      renderStabilityV313.activePageCount += 1;
+      setRenderStabilizingV313(true);
+      const result = originalRenderActivePage.apply(this, arguments);
+      requestAnimationFrame(afterRenderStabilizeV313);
+      return result;
+    };
+    renderActivePageV187.__stableV313 = true;
+    window.renderActivePageV187 = renderActivePageV187;
+  }
+
+  const originalRenderAll = typeof renderAll === "function" ? renderAll : null;
+  if (originalRenderAll && !originalRenderAll.__stableV313) {
+    renderAll = function renderAllStableV313(reason = "renderAll") {
+      const now = Date.now();
+
+      if (now - renderStabilityV313.lastRenderAllAt < 140) {
+        renderStabilityV313.renderAllSkipped += 1;
+        clearTimeout(renderStabilityV313.pendingRenderAllTimer);
+        renderStabilityV313.pendingRenderAllTimer = setTimeout(() => {
+          renderStabilityV313.lastRenderAllAt = Date.now();
+          renderStabilityV313.renderAllCount += 1;
+          setRenderStabilizingV313(true);
+          try {
+            originalRenderAll.call(this, `${reason} · consolidado`);
+          } finally {
+            requestAnimationFrame(afterRenderStabilizeV313);
+          }
+        }, 160);
+        return;
+      }
+
+      renderStabilityV313.lastRenderAllAt = now;
+      renderStabilityV313.renderAllCount += 1;
+      setRenderStabilizingV313(true);
+      const result = originalRenderAll.apply(this, arguments);
+      requestAnimationFrame(afterRenderStabilizeV313);
+      return result;
+    };
+    renderAll.__stableV313 = true;
+    window.renderAll = renderAll;
+  }
+
+  const originalQueueRealtimeRender = typeof queueRealtimeRender === "function" ? queueRealtimeRender : null;
+  if (originalQueueRealtimeRender && !originalQueueRealtimeRender.__stableV313) {
+    queueRealtimeRender = function queueRealtimeRenderStableV313(reason = "firebase realtime") {
+      renderStabilityV313.realtimeCount += 1;
+      if (realtimeRenderTimer) clearTimeout(realtimeRenderTimer);
+
+      const reasonText = String(reason || "").toLowerCase();
+      const fast = reasonText.includes("jogos") || reasonText.includes("bets") || reasonText.includes("apostas") || reasonText.includes("resultado");
+      realtimeRenderTimer = setTimeout(() => {
+        realtimeRenderTimer = null;
+        try { ensureKnockoutSettings?.(); } catch {}
+        try { saveLocalData?.(reason); } catch {}
+
+        const active = activeTabIdStableV313();
+        if (active === "calendarTab") {
+          try { renderCalendar?.(); } catch {}
+          try { renderCalendarFilterState?.(); } catch {}
+        } else if (active === "scoreTab") {
+          try { renderScore?.(); } catch {}
+        } else {
+          try { renderActivePageV187?.(active); } catch {}
+        }
+
+        requestAnimationFrame(afterRenderStabilizeV313);
+      }, fast ? 180 : 520);
+    };
+    queueRealtimeRender.__stableV313 = true;
+    window.queueRealtimeRender = queueRealtimeRender;
+  }
+
+  document.addEventListener("click", event => {
+    if (event.target.closest?.(".tab,[data-tab],button")) {
+      setRenderStabilizingV313(true);
+      requestAnimationFrame(afterRenderStabilizeV313);
+    }
+  }, true);
+
+  requestAnimationFrame(afterRenderStabilizeV313);
+}
+
+installRenderStabilityV313();
+
+window.debugEstabilidadeV313 = function debugEstabilidadeV313() {
+  return {
+    version: APP_VERSION_V313_RENDER_STABILITY,
+    activeTab: activeTabIdStableV313(),
+    ...renderStabilityV313,
+    pending: {
+      renderAllTimer: Boolean(renderStabilityV313.pendingRenderAllTimer),
+      activePageTimer: Boolean(renderStabilityV313.pendingActivePageTimer),
+      calendarFrame: Boolean(renderStabilityV313.pendingCalendarFrame),
+      scoreFrame: Boolean(renderStabilityV313.pendingScoreFrame),
+      realtimeTimer: Boolean(realtimeRenderTimer)
+    },
+    visibleButtons: [...document.querySelectorAll("button")].filter(btn => btn.offsetParent !== null).length,
+    hiddenButtons: [...document.querySelectorAll("button")].filter(btn => btn.offsetParent === null).length,
+    activeCards: [...document.querySelectorAll(".match-row,.admin-card,.player-score-card,.modal-card")].filter(el => el.offsetParent !== null).length
   };
 };
