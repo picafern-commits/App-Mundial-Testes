@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v318";
+const APP_VERSION_LABEL = "v319";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -25839,5 +25839,486 @@ window.debugSwitchCompeticaoV318 = function debugSwitchCompeticaoV318() {
     mundialClassActive: document.documentElement.classList.contains("competition-mundial-v318"),
     adminCanSeeChampions: false,
     userCanSeeChampions: false
+  };
+};
+
+
+/* v319 — Experiência visual exclusiva da Liga dos Campeões (Dono) */
+const APP_VERSION_V319_CHAMPIONS_PREVIEW = "319.0";
+
+function championsActiveTabV319() {
+  return document.querySelector('.tab-panel.active')?.id || 'calendarTab';
+}
+
+function championsProfileNameV319() {
+  const fallback = 'Dono';
+  try {
+    return String(currentProfile?.displayName || currentProfile?.name || currentProfile?.email || fallback).trim() || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function championsTabMapV319() {
+  return {
+    calendarTab: { label: 'Calendário', icon: '📅' },
+    scoreTab: { label: 'Pontuação', icon: '📊' },
+    knockoutTab: { label: 'Fase Final', icon: '🏆' },
+    notificationsTab: { label: 'Apostas Eliminatórias', icon: '🎯' },
+    logsTab: { label: 'Chat', icon: '💬', badge: '12' },
+    adminTab: { label: 'Admin', icon: '🛡️' },
+    settingsTab: { label: 'Configurações', icon: '⚙️' },
+    userSettingsTab: { label: 'Minha Conta', icon: '👤' }
+  };
+}
+
+function renderChampionsSidebarChromeV319() {
+  const tabs = document.querySelector('.tabs');
+  if (!tabs) return;
+  const inChampions = typeof isChampionsModeV318 === 'function' && isChampionsModeV318();
+  const map = championsTabMapV319();
+
+  tabs.querySelectorAll('button[data-tab]').forEach(button => {
+    if (!button.dataset.originalLabelV319) button.dataset.originalLabelV319 = button.textContent.trim();
+    const conf = map[button.dataset.tab];
+    if (inChampions && conf) {
+      button.classList.add('champions-tab-v319');
+      button.innerHTML = `<span class="champions-tab-icon-v319">${conf.icon}</span><span class="champions-tab-text-v319">${escapeHtml(conf.label)}</span>${conf.badge ? `<span class="champions-tab-badge-v319">${escapeHtml(conf.badge)}</span>` : ''}`;
+      if (button.dataset.tab === 'notificationsTab') button.title = 'Apostas Eliminatórias';
+      if (button.dataset.tab === 'logsTab') button.title = 'Chat';
+    } else {
+      button.classList.remove('champions-tab-v319');
+      button.textContent = button.dataset.originalLabelV319 || button.textContent;
+    }
+  });
+
+  const oldBrand = tabs.querySelector('.champions-sidebar-brand-v319');
+  const oldPromo = tabs.querySelector('.champions-sidebar-promo-v319');
+  if (!inChampions) {
+    oldBrand?.remove();
+    oldPromo?.remove();
+    tabs.classList.remove('champions-tabs-v319');
+    return;
+  }
+
+  tabs.classList.add('champions-tabs-v319');
+
+  if (!oldBrand) {
+    tabs.insertAdjacentHTML('afterbegin', `
+      <div class="champions-sidebar-brand-v319">
+        <div class="champions-brand-logo-v319">★</div>
+        <div>
+          <strong>Liga dos<br>Campeões</strong>
+          <span>Modo privado do Dono</span>
+        </div>
+      </div>
+    `);
+  }
+
+  if (!oldPromo) {
+    tabs.insertAdjacentHTML('beforeend', `
+      <div class="champions-sidebar-promo-v319">
+        <div class="champions-sidebar-promo-glow-v319"></div>
+        <div class="champions-sidebar-promo-title-v319">Champions League</div>
+        <div class="champions-sidebar-promo-sub-v319">Layout novo em preparação</div>
+        <button type="button">Continuar construção →</button>
+      </div>
+    `);
+  }
+}
+
+function renderChampionsTopbarV319() {
+  const topbar = document.querySelector('.topbar');
+  if (!topbar) return;
+  const inChampions = typeof isChampionsModeV318 === 'function' && isChampionsModeV318();
+  topbar.classList.toggle('champions-topbar-v319', inChampions);
+
+  const titleBox = topbar.querySelector('div');
+  const eyebrow = titleBox?.querySelector('.eyebrow');
+  const h1 = titleBox?.querySelector('h1');
+  if (eyebrow && !eyebrow.dataset.originalTextV319) eyebrow.dataset.originalTextV319 = eyebrow.textContent;
+  if (h1 && !h1.dataset.originalTextV319) h1.dataset.originalTextV319 = h1.textContent;
+
+  if (inChampions) {
+    if (eyebrow) eyebrow.textContent = 'Liga dos Campeões · privado';
+    if (h1) h1.textContent = 'Champions Control';
+  } else {
+    if (eyebrow?.dataset.originalTextV319) eyebrow.textContent = eyebrow.dataset.originalTextV319;
+    if (h1?.dataset.originalTextV319) h1.textContent = h1.dataset.originalTextV319;
+  }
+
+  let sync = document.getElementById('championsTopbarSyncV319');
+  if (!inChampions) {
+    sync?.remove();
+    return;
+  }
+  if (!sync) {
+    sync = document.createElement('div');
+    sync.id = 'championsTopbarSyncV319';
+    sync.className = 'champions-topbar-sync-v319';
+    sync.innerHTML = '<span class="champions-sync-icon-v319">⟳</span><span>Sincronizado agora há 1 min</span><i></i>';
+    const ref = document.getElementById('sessionBox') || topbar.lastElementChild;
+    if (ref) ref.insertAdjacentElement('beforebegin', sync); else topbar.appendChild(sync);
+  }
+}
+
+function placeholderMatchCardV319(opts = {}) {
+  const phase = opts.phase || 'Fase Liga';
+  const date = opts.date || 'A definir';
+  const time = opts.time || '--:--';
+  const venue = opts.venue || 'Estádio por definir';
+  const home = opts.home || 'A definir';
+  const away = opts.away || 'A definir';
+  const live = Boolean(opts.live);
+  const badge = opts.badge || phase;
+  return `
+    <article class="ucl-match-card-v319 ${phase.toLowerCase().includes('oitavas') || phase.toLowerCase().includes('final') ? 'is-knockout' : ''}">
+      <div class="ucl-match-time-v319">
+        <strong>${escapeHtml(time)}</strong>
+        <span>${escapeHtml(date)}</span>
+      </div>
+      <div class="ucl-match-meta-v319">
+        <span class="ucl-phase-badge-v319">${escapeHtml(badge)}</span>
+        <small>${escapeHtml(phase)}</small>
+        <small>${escapeHtml(venue)}</small>
+      </div>
+      <div class="ucl-match-teams-v319">
+        <div class="ucl-team-v319"><span class="ucl-team-crest-v319"></span><strong>${escapeHtml(home)}</strong></div>
+        <div class="ucl-versus-v319">VS</div>
+        <div class="ucl-team-v319 away"><span class="ucl-team-crest-v319"></span><strong>${escapeHtml(away)}</strong></div>
+      </div>
+      <div class="ucl-match-actions-v319">
+        ${live ? '<span class="ucl-live-pill-v319">Ao vivo</span>' : '<span class="ucl-upcoming-pill-v319">Próximo</span>'}
+        <button type="button" class="secondary">Ver apostas</button>
+        <button type="button" class="primary">Editar resultado</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderChampionsCalendarV319() {
+  const section = document.getElementById('calendarTab');
+  if (!section) return;
+  section.innerHTML = `
+    <div class="ucl-page-v319 ucl-calendar-page-v319">
+      <div class="ucl-page-header-v319">
+        <div>
+          <span class="ucl-page-kicker-v319">Liga dos Campeões</span>
+          <h2>Calendário</h2>
+          <p>Estrutura nova pronta para receber os jogos quando a competição começar.</p>
+        </div>
+        <div class="ucl-filter-row-v319">
+          <button class="primary active">Por colocar resultado <span>8</span></button>
+          <button>Todos <span>48</span></button>
+          <button>Já jogados <span>0</span></button>
+          <button class="purple">Fase Final <span>0</span></button>
+        </div>
+      </div>
+
+      <section class="ucl-day-block-v319">
+        <div class="ucl-day-title-v319">Hoje · A definir</div>
+        ${placeholderMatchCardV319({phase:'Fase Liga', badge:'Jornada 1', time:'18:45', date:'-- ---', venue:'Estádio por definir'})}
+        ${placeholderMatchCardV319({phase:'Fase Liga', badge:'Jornada 1', time:'21:00', date:'-- ---', venue:'Estádio por definir'})}
+      </section>
+
+      <section class="ucl-day-block-v319">
+        <div class="ucl-day-title-v319">Próxima data · A definir</div>
+        ${placeholderMatchCardV319({phase:'Fase Liga', badge:'Jornada 2', time:'18:45', date:'-- ---', venue:'Estádio por definir'})}
+        ${placeholderMatchCardV319({phase:'Fase Liga', badge:'Jornada 2', time:'21:00', date:'-- ---', venue:'Estádio por definir'})}
+      </section>
+
+      <section class="ucl-day-block-v319">
+        <div class="ucl-day-title-v319 purple">Fase Final · Placeholder</div>
+        ${placeholderMatchCardV319({phase:'Oitavas de Final', badge:'Oitavas de Final', time:'21:00', date:'-- ---', venue:'Estádio por definir'})}
+        ${placeholderMatchCardV319({phase:'Oitavas de Final', badge:'Oitavas de Final', time:'21:00', date:'-- ---', venue:'Estádio por definir'})}
+      </section>
+    </div>
+  `;
+}
+
+function renderChampionsScoreV319() {
+  const section = document.getElementById('scoreTab');
+  if (!section) return;
+  const owner = escapeHtml(championsProfileNameV319());
+  const rows = [owner, 'Jogador 2', 'Jogador 3', 'Jogador 4', 'Jogador 5', 'Jogador 6', 'Jogador 7', 'Jogador 8'];
+  section.innerHTML = `
+    <div class="ucl-page-v319 ucl-score-page-v319">
+      <div class="ucl-page-header-v319 simple">
+        <div>
+          <span class="ucl-page-kicker-v319">Visão geral</span>
+          <h2>Pontuação</h2>
+          <p>Ranking clean para a futura Liga dos Campeões.</p>
+        </div>
+      </div>
+      <div class="ucl-stats-grid-v319">
+        <article class="ucl-stat-card-v319"><span>Total de jogadores</span><strong>8</strong><small>Pré-configurados</small></article>
+        <article class="ucl-stat-card-v319 cyan"><span>Total de pontos</span><strong>0</strong><small>Aguardando jogos</small></article>
+        <article class="ucl-stat-card-v319 gold"><span>Resultados exatos</span><strong>0</strong><small>Ainda sem partidas</small></article>
+        <article class="ucl-stat-card-v319 purple"><span>Média de pontos</span><strong>0,0</strong><small>Sem atividade</small></article>
+      </div>
+      <div class="ucl-score-layout-v319">
+        <section class="ucl-table-card-v319">
+          <div class="ucl-card-head-v319"><strong>Ranking Geral</strong><button type="button">Filtros</button></div>
+          <div class="ucl-score-table-v319">
+            <div class="ucl-score-row-v319 head"><span>#</span><span>Jogador</span><span>Pontos</span><span>Exatos</span><span>Vencedores</span><span>Desempenho</span></div>
+            ${rows.map((name, index) => `
+              <div class="ucl-score-row-v319 ${index === 0 ? 'highlight' : ''}">
+                <span>${index+1}</span>
+                <span>${escapeHtml(name)} <small>${index===0 ? 'Nível Ouro' : 'Nível Standard'}</small></span>
+                <span>0</span>
+                <span>0</span>
+                <span>0</span>
+                <span><i></i><i></i><i></i><i></i></span>
+              </div>
+            `).join('')}
+          </div>
+        </section>
+        <aside class="ucl-player-focus-v319">
+          <div class="ucl-player-head-v319">
+            <div class="ucl-avatar-v319">${owner.charAt(0).toUpperCase()}</div>
+            <div><strong>${owner}</strong><small>Nível Ouro</small></div>
+            <b>0 pts</b>
+          </div>
+          <div class="ucl-player-mini-stats-v319">
+            <div><strong>0</strong><span>Exatos</span></div>
+            <div><strong>0</strong><span>Vencedores</span></div>
+            <div><strong>0%</strong><span>Aproveitamento</span></div>
+          </div>
+          <div class="ucl-player-history-v319">
+            <h4>Partidas recentes</h4>
+            <article><span>A definir</span><strong>Sem jogos ainda</strong><b>+0 pts</b></article>
+            <article><span>A definir</span><strong>Sem jogos ainda</strong><b>+0 pts</b></article>
+            <article><span>A definir</span><strong>Sem jogos ainda</strong><b>+0 pts</b></article>
+          </div>
+        </aside>
+      </div>
+    </div>
+  `;
+}
+
+function bracketMatchV319(time, left='A definir', right='A definir') {
+  return `<article class="ucl-bracket-match-v319"><div class="ucl-bracket-time-v319">${escapeHtml(time)}</div><div class="ucl-bracket-team-v319"><span></span>${escapeHtml(left)}</div><div class="ucl-bracket-team-v319"><span></span>${escapeHtml(right)}</div><button type="button" class="secondary">Ver apostas</button></article>`;
+}
+
+function renderChampionsFinalV319() {
+  const section = document.getElementById('knockoutTab');
+  if (!section) return;
+  section.innerHTML = `
+    <div class="ucl-page-v319 ucl-bracket-page-v319">
+      <div class="ucl-page-header-v319 inline-actions">
+        <div>
+          <span class="ucl-page-kicker-v319 purple">Fase Final</span>
+          <h2>Fase Final</h2>
+          <p>Mapa visual preparado, ainda sem confrontos definidos.</p>
+        </div>
+        <div class="ucl-toggle-v319"><button class="active">Mapa</button><button>Lista</button></div>
+      </div>
+      <div class="ucl-bracket-board-v319">
+        <div class="ucl-bracket-col-v319"><h4>Oitavas de Final</h4>${bracketMatchV319('-- --- · --:--')}${bracketMatchV319('-- --- · --:--')}${bracketMatchV319('-- --- · --:--')}${bracketMatchV319('-- --- · --:--')}</div>
+        <div class="ucl-bracket-col-v319"><h4>Quartas de Final</h4>${bracketMatchV319('-- --- · --:--')}${bracketMatchV319('-- --- · --:--')}</div>
+        <div class="ucl-bracket-col-v319 final"><h4>Final</h4><div class="ucl-grand-final-v319"><div class="ucl-final-shield-v319"></div><strong>VS</strong><div class="ucl-final-shield-v319"></div><span>A definir</span><button type="button" class="secondary">Ver apostas</button></div></div>
+        <div class="ucl-bracket-col-v319"><h4>Semifinais</h4>${bracketMatchV319('-- --- · --:--')}${bracketMatchV319('-- --- · --:--')}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderChampionsKnockoutBetsV319() {
+  const section = document.getElementById('notificationsTab');
+  if (!section) return;
+  section.innerHTML = `
+    <div class="ucl-page-v319 ucl-ko-bets-page-v319">
+      <div class="ucl-page-header-v319 simple">
+        <div>
+          <span class="ucl-page-kicker-v319">Owner Draft</span>
+          <h2>Apostas Eliminatórias</h2>
+          <p>Estrutura pronta para apostas da fase a eliminar.</p>
+        </div>
+      </div>
+      <div class="ucl-stats-grid-v319 compact">
+        <article class="ucl-stat-card-v319"><span>Pendentes</span><strong>5</strong><small>Apostas para preencher</small></article>
+        <article class="ucl-stat-card-v319 purple"><span>Guardadas</span><strong>0</strong><small>Aguardando jogos</small></article>
+        <article class="ucl-stat-card-v319 green"><span>Pontuação total</span><strong>0</strong><small>pontos</small></article>
+      </div>
+      <div class="ucl-ko-bet-card-v319 open">
+        <div class="ucl-ko-head-v319"><span class="ucl-phase-badge-v319">Oitavas de Final</span><strong>A definir vs A definir</strong><b>Prazo: ---, --:--</b></div>
+        <div class="ucl-ko-body-v319">
+          <div class="ucl-ko-score-box-v319"><h4>Placar (90 minutos)</h4><div class="ucl-score-stepper-v319"><button>-</button><strong>0</strong><button>+</button><span>X</span><button>-</button><strong>0</strong><button>+</button></div></div>
+          <div class="ucl-ko-score-box-v319"><h4>Quem se classifica?</h4><div class="ucl-qualified-pills-v319"><button>A definir</button><button class="active">Empate</button><button>A definir</button></div></div>
+        </div>
+        <div class="ucl-ko-foot-v319"><small>Apenas visual por agora. Os jogos reais serão inseridos mais tarde.</small><button type="button" class="primary">Salvar aposta</button></div>
+      </div>
+      <div class="ucl-ko-bet-list-v319">
+        <article class="ucl-ko-mini-v319"><span>Quartas de Final</span><strong>Vencedor A vs Vencedor B</strong><b>Pendente</b></article>
+        <article class="ucl-ko-mini-v319"><span>Quartas de Final</span><strong>Vencedor C vs Vencedor D</strong><b>Pendente</b></article>
+        <article class="ucl-ko-mini-v319"><span>Semifinal</span><strong>A definir vs A definir</strong><b>Pendente</b></article>
+      </div>
+    </div>
+  `;
+}
+
+function renderChampionsChatV319() {
+  const section = document.getElementById('logsTab');
+  if (!section) return;
+  section.innerHTML = `
+    <div class="ucl-page-v319 ucl-chat-page-v319">
+      <div class="ucl-chat-sidebar-v319">
+        <div class="ucl-chat-side-head-v319"><strong>Conversas</strong><span>12</span></div>
+        <input type="search" placeholder="Buscar conversas">
+        <div class="ucl-chat-room-v319 active"><strong>Geral - Champions</strong><small>Preparação da competição</small><b>3</b></div>
+        <div class="ucl-chat-room-v319"><strong>Grupo A</strong><small>Sem mensagens recentes</small><b>2</b></div>
+        <div class="ucl-chat-room-v319"><strong>Apostas & Palpites</strong><small>Owner draft</small><b>5</b></div>
+        <div class="ucl-chat-room-v319"><strong>Resultados ao vivo</strong><small>Sem atividade ainda</small><b>0</b></div>
+        <div class="ucl-online-list-v319"><h4>Usuários online</h4><span>${escapeHtml(championsProfileNameV319())}</span><span>Jogador 2</span><span>Jogador 3</span><span>Jogador 4</span></div>
+      </div>
+      <div class="ucl-chat-main-v319">
+        <div class="ucl-chat-main-head-v319"><strong>⚽ Geral - Liga dos Campeões</strong><small>128 membros online</small></div>
+        <div class="ucl-chat-messages-v319">
+          <article class="ucl-msg-v319"><b>${escapeHtml(championsProfileNameV319())}</b><p>Vamos preparar a Champions com o novo design. Os jogos ainda vão ser inseridos mais tarde.</p></article>
+          <article class="ucl-msg-v319 alt"><b>Jogador 2</b><p>Perfeito. Assim a estrutura já fica pronta para quando soubermos os confrontos.</p></article>
+          <article class="ucl-msg-v319"><b>Champions Bot</b><p>Próximos jogos: em breve.</p></article>
+        </div>
+        <div class="ucl-chat-compose-v319"><button>＋</button><input placeholder="Escreva sua mensagem..."><button class="send">➤</button></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderChampionsAdminV319() {
+  const section = document.getElementById('adminTab');
+  if (!section) return;
+  section.innerHTML = `
+    <div class="ucl-page-v319 ucl-admin-page-v319">
+      <div class="ucl-page-header-v319 simple"><div><span class="ucl-page-kicker-v319">Owner tools</span><h2>Admin</h2><p>Estrutura clean para gestão privada da Champions.</p></div></div>
+      <div class="ucl-admin-stack-v319">
+        <section class="ucl-admin-panel-v319 open"><header><div><strong>Aviso obrigatório</strong><small>Mensagem para todos os utilizadores</small></div><span>⌃</span></header><div class="ucl-admin-body-v319"><textarea rows="5" placeholder="Bem-vindos à Liga dos Campeões..."></textarea><div class="ucl-admin-grid-v319"><input placeholder="Data de início"><input placeholder="Tipo de aviso"></div><div class="ucl-admin-actions-v319"><button class="primary">Salvar aviso</button><button>Visualizar</button><button class="danger">Remover aviso</button></div></div></section>
+        <section class="ucl-admin-panel-v319"><header><div><strong>Users</strong><small>Permissões e acessos</small></div><span>⌄</span></header></section>
+        <section class="ucl-admin-panel-v319"><header><div><strong>Resultados</strong><small>Jogos e validações</small></div><span>⌄</span></header></section>
+        <section class="ucl-admin-panel-v319"><header><div><strong>Pontos</strong><small>Regras e critérios</small></div><span>⌄</span></header></section>
+        <section class="ucl-admin-panel-v319"><header><div><strong>Fase Final</strong><small>Configurações da fase final</small></div><span>⌄</span></header></section>
+        <section class="ucl-admin-panel-v319"><header><div><strong>Sistema</strong><small>Configurações gerais</small></div><span>⌄</span></header></section>
+      </div>
+    </div>
+  `;
+}
+
+function renderChampionsSettingsV319() {
+  const section = document.getElementById('settingsTab');
+  if (!section) return;
+  section.innerHTML = `
+    <div class="ucl-page-v319 ucl-settings-page-v319">
+      <div class="ucl-page-header-v319 simple"><div><span class="ucl-page-kicker-v319">Owner draft</span><h2>Configurações</h2><p>Preferências da nova app da Liga dos Campeões.</p></div></div>
+      <div class="ucl-settings-layout-v319">
+        <aside class="ucl-settings-menu-v319">
+          <button class="active">Geral</button><button>Layout</button><button>Regras de Pontuação</button><button>Minutos antes do bloqueio</button><button>Permissões</button><button>Competições ocultas do Dono</button>
+        </aside>
+        <section class="ucl-settings-card-v319">
+          <div class="ucl-card-head-v319"><strong>Geral</strong><button class="primary">Salvar alterações</button></div>
+          <div class="ucl-form-grid-v319"><label><span>Nome da liga</span><input value="Liga dos Campeões"></label><label><span>Idioma</span><input value="Português"></label><label><span>Moeda de pontuação</span><input value="Pontos"></label><label><span>Fuso horário</span><input value="Europa/Lisboa"></label></div>
+          <div class="ucl-toggle-list-v319"><article><strong>Notificações por e-mail</strong><i class="on"></i></article><article><strong>Exibir tabelas públicas</strong><i class="on"></i></article><article><strong>Permitir convites</strong><i></i></article><article><strong>Ativar chat global</strong><i class="on"></i></article></div>
+        </section>
+      </div>
+    </div>
+  `;
+}
+
+function renderChampionsAccountV319() {
+  const section = document.getElementById('userSettingsTab');
+  if (!section) return;
+  const owner = escapeHtml(championsProfileNameV319());
+  section.innerHTML = `
+    <div class="ucl-page-v319 ucl-account-page-v319">
+      <div class="ucl-page-header-v319 simple"><div><span class="ucl-page-kicker-v319">Perfil</span><h2>Minha Conta</h2><p>Configurações pessoais da versão Champions.</p></div></div>
+      <div class="ucl-account-hero-v319"><div class="ucl-account-avatar-v319">${owner.charAt(0).toUpperCase()}</div><div><strong>${owner}</strong><small>Administrador · Conta ativa</small></div><span>Modo privado</span></div>
+      <div class="ucl-account-grid-v319">
+        <section class="ucl-info-card-v319"><h4>Notificações</h4><article><span>Notificações por e-mail</span><i class="on"></i></article><article><span>Notificações push</span><i class="on"></i></article><article><span>Alertas de partidas ao vivo</span><i class="on"></i></article><article><span>Novidades e atualizações</span><i></i></article></section>
+        <section class="ucl-info-card-v319"><h4>Preferências</h4><article><span>Tema</span><b>Escuro</b></article><article><span>Idioma</span><b>Português</b></article><article><span>Fuso horário</span><b>Europa/Lisboa</b></article><article><span>Unidade</span><b>Decimal</b></article></section>
+        <section class="ucl-info-card-v319"><h4>Sessão</h4><article><span>Senha</span><b>Alterar</b></article><article><span>Autenticação em duas etapas</span><b>Ativada</b></article><article><span>Sessões ativas</span><b>2 dispositivos</b></article></section>
+        <section class="ucl-info-card-v319 wide"><h4>Atividade recente</h4><article><span>Login realizado</span><b>Hoje</b></article><article><span>Dispositivo atual</span><b>Windows / Browser</b></article><article><span>Localização</span><b>Portugal</b></article></section>
+      </div>
+      <div class="ucl-account-exit-v319"><button class="danger">Sair da conta</button></div>
+    </div>
+  `;
+}
+
+function renderChampionsActivePageV319(tabId = championsActiveTabV319()) {
+  if (!(typeof isChampionsModeV318 === 'function' && isChampionsModeV318())) return false;
+  if (tabId === 'calendarTab') renderChampionsCalendarV319();
+  else if (tabId === 'scoreTab') renderChampionsScoreV319();
+  else if (tabId === 'knockoutTab') renderChampionsFinalV319();
+  else if (tabId === 'notificationsTab') renderChampionsKnockoutBetsV319();
+  else if (tabId === 'logsTab') renderChampionsChatV319();
+  else if (tabId === 'adminTab') renderChampionsAdminV319();
+  else if (tabId === 'settingsTab') renderChampionsSettingsV319();
+  else if (tabId === 'userSettingsTab') renderChampionsAccountV319();
+  return true;
+}
+
+function refreshChampionsExperienceV319(tabId = championsActiveTabV319()) {
+  renderChampionsSidebarChromeV319();
+  renderChampionsTopbarV319();
+  renderChampionsActivePageV319(tabId);
+}
+
+(function installChampionsPreviewV319(){
+  if (window.__installChampionsPreviewV319) return;
+  window.__installChampionsPreviewV319 = true;
+
+  const originalRenderAll = typeof renderAll === 'function' ? renderAll : null;
+  if (originalRenderAll && !originalRenderAll.__championsPreviewV319) {
+    renderAll = function renderAllChampionsPreviewV319() {
+      const result = originalRenderAll.apply(this, arguments);
+      requestAnimationFrame(() => refreshChampionsExperienceV319(championsActiveTabV319()));
+      setTimeout(() => refreshChampionsExperienceV319(championsActiveTabV319()), 80);
+      return result;
+    };
+    renderAll.__championsPreviewV319 = true;
+    window.renderAll = renderAll;
+  }
+
+  const originalRenderActive = typeof renderActivePageV187 === 'function' ? renderActivePageV187 : null;
+  if (originalRenderActive && !originalRenderActive.__championsPreviewV319) {
+    renderActivePageV187 = function renderActivePageChampionsPreviewV319(tabId = championsActiveTabV319()) {
+      const result = originalRenderActive.apply(this, arguments);
+      requestAnimationFrame(() => refreshChampionsExperienceV319(tabId));
+      return result;
+    };
+    renderActivePageV187.__championsPreviewV319 = true;
+    window.renderActivePageV187 = renderActivePageV187;
+  }
+
+  const originalSetCompetition = typeof setCompetitionModeV318 === 'function' ? setCompetitionModeV318 : null;
+  if (originalSetCompetition && !originalSetCompetition.__championsPreviewV319) {
+    setCompetitionModeV318 = function setCompetitionModeWithPreviewV319(id) {
+      const result = originalSetCompetition.apply(this, arguments);
+      try {
+        renderActivePageV187?.(championsActiveTabV319());
+      } catch {}
+      setTimeout(() => refreshChampionsExperienceV319(championsActiveTabV319()), 60);
+      return result;
+    };
+    setCompetitionModeV318.__championsPreviewV319 = true;
+    window.setCompetitionModeV318 = setCompetitionModeV318;
+  }
+
+  document.addEventListener('click', event => {
+    if (event.target.closest?.('.tab,[data-tab],#ownerCompetitionSwitchV318')) {
+      setTimeout(() => refreshChampionsExperienceV319(championsActiveTabV319()), 60);
+    }
+  }, true);
+
+  setTimeout(() => refreshChampionsExperienceV319(championsActiveTabV319()), 200);
+  requestAnimationFrame(() => refreshChampionsExperienceV319(championsActiveTabV319()));
+})();
+
+window.debugChampionsPreviewV319 = function debugChampionsPreviewV319() {
+  return {
+    version: APP_VERSION_V319_CHAMPIONS_PREVIEW,
+    championsMode: typeof isChampionsModeV318 === 'function' && isChampionsModeV318(),
+    activeTab: championsActiveTabV319(),
+    sidebarBrand: Boolean(document.querySelector('.champions-sidebar-brand-v319')),
+    sidebarPromo: Boolean(document.querySelector('.champions-sidebar-promo-v319')),
+    syncVisible: Boolean(document.getElementById('championsTopbarSyncV319')),
+    pageRendered: Boolean(document.querySelector('.ucl-page-v319'))
   };
 };
