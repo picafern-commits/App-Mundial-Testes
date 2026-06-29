@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v311";
+const APP_VERSION_LABEL = "v312";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -24327,3 +24327,149 @@ function appQuickFixSafeV311() {
     try { document.documentElement.classList.add("app-clean-v311"); } catch {}
   });
 })();
+
+
+/* v312 — Pontuação: jogos de cada jogador por data recente, incluindo Fase Final no sítio certo */
+const APP_VERSION_V312_SCORE_DATE_ORDER = "312.0";
+
+function scoreRowDateMillisV312(row = {}) {
+  const game = row.game || row.match || row || {};
+  const candidates = [
+    game.matchDate,
+    game.date,
+    game.kickoff,
+    game.utcDate,
+    game.footballDataUtcDate,
+    game.startAt,
+    game.startTime,
+    row.matchDate,
+    row.date
+  ];
+
+  for (const raw of candidates) {
+    if (!raw) continue;
+    const ms = new Date(raw).getTime();
+    if (Number.isFinite(ms)) return ms;
+  }
+
+  return 0;
+}
+
+function normalizeScoreGameDateV312(game = {}) {
+  if (!game || typeof game !== "object") return game;
+  const date = game.matchDate || game.date || game.kickoff || game.utcDate || game.footballDataUtcDate || "";
+  return {
+    ...game,
+    matchDate: game.matchDate || date,
+    date: game.date || date
+  };
+}
+
+function sortPlayerGameRowsByDateV312(rows = []) {
+  return [...rows].sort((a, b) => {
+    const dateDiff = scoreRowDateMillisV312(b) - scoreRowDateMillisV312(a);
+    if (dateDiff !== 0) return dateDiff;
+
+    const aKo = a.knockout ? 1 : 0;
+    const bKo = b.knockout ? 1 : 0;
+    if (aKo !== bKo) return bKo - aKo;
+
+    const aLabel = `${a.game?.group || a.game?.roundLabel || ""} ${a.game?.homeTeam || ""} ${a.game?.awayTeam || ""}`;
+    const bLabel = `${b.game?.group || b.game?.roundLabel || ""} ${b.game?.homeTeam || ""} ${b.game?.awayTeam || ""}`;
+    return String(aLabel).localeCompare(String(bLabel), "pt");
+  });
+}
+
+function buildPlayerGameRowsV312(playerId) {
+  const groupRows = (games || []).map(game => {
+    const bet = (bets || []).find(item =>
+      String(item.playerId || "") === String(playerId || "") &&
+      String(item.gameId || "") === String(game.id || "")
+    );
+    const points = bet ? pointsForBet(bet, game) : 0;
+    return {
+      game: normalizeScoreGameDateV312(game),
+      bet,
+      points,
+      label: bet ? betResultLabel(bet, game) : "Sem aposta",
+      className: bet ? betResultClass(bet, game) : "miss",
+      knockout: false
+    };
+  });
+
+  const knockoutRows = (appSettings?.knockout?.matches || [])
+    .filter(match => match && match.id && (match.homeTeam || match.awayTeam))
+    .map(match => {
+      const game = (games || []).find(item => String(item.id || "") === String(match.id || ""));
+      const mergedMatch = normalizeScoreGameDateV312({
+        ...(game || {}),
+        ...(match || {}),
+        id: match.id,
+        homeTeam: match.homeTeam || game?.homeTeam || "",
+        awayTeam: match.awayTeam || game?.awayTeam || "",
+        group: match.roundLabel || game?.group || "Fase Final",
+        roundLabel: match.roundLabel || game?.roundLabel || "",
+        phase: "Fase Final"
+      });
+
+      const bet = (bets || []).find(item =>
+        String(item.playerId || "") === String(playerId || "") &&
+        String(item.gameId || "") === String(match.id || "")
+      );
+
+      const points = bet ? pointsForKnockoutBet(bet, match) : 0;
+      return {
+        game: mergedMatch,
+        match,
+        bet,
+        points,
+        label: bet ? knockoutBetResultLabel(bet, match) : "Sem aposta",
+        className: bet ? knockoutBetResultClass(bet, match) : "miss",
+        knockout: true
+      };
+    });
+
+  return sortPlayerGameRowsByDateV312([...groupRows, ...knockoutRows]);
+}
+
+(function installScoreDateOrderV312() {
+  if (window.__scoreDateOrderV312) return;
+  window.__scoreDateOrderV312 = true;
+
+  if (typeof playerGameRows === "function") {
+    playerGameRows = function playerGameRowsDateOrderV312(playerId) {
+      return buildPlayerGameRowsV312(playerId);
+    };
+    playerGameRows.__dateOrderV312 = true;
+    window.playerGameRows = playerGameRows;
+  }
+
+  const originalRenderScore = typeof renderScore === "function" ? renderScore : null;
+  if (originalRenderScore && !originalRenderScore.__dateOrderV312) {
+    renderScore = function renderScoreDateOrderV312() {
+      const result = originalRenderScore.apply(this, arguments);
+      return result;
+    };
+    renderScore.__dateOrderV312 = true;
+    window.renderScore = renderScore;
+  }
+})();
+
+window.debugPontuacaoOrdemDatasV312 = function debugPontuacaoOrdemDatasV312(playerId = "") {
+  const player = playerId || (leaderboard?.()[0]?.playerId) || "";
+  const rows = buildPlayerGameRowsV312(player);
+  return {
+    version: APP_VERSION_V312_SCORE_DATE_ORDER,
+    player,
+    total: rows.length,
+    first20: rows.slice(0, 20).map(row => ({
+      date: row.game?.matchDate || row.game?.date || "",
+      millis: scoreRowDateMillisV312(row),
+      knockout: Boolean(row.knockout),
+      game: `${row.game?.homeTeam || ""} - ${row.game?.awayTeam || ""}`,
+      group: row.game?.group || row.game?.roundLabel || "",
+      bet: row.bet ? `${row.bet.homeGuess ?? ""}-${row.bet.awayGuess ?? ""}` : "sem aposta",
+      points: row.points
+    }))
+  };
+};
