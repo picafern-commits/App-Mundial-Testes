@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v334";
+const APP_VERSION_LABEL = "v333";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -20833,9 +20833,9 @@ function koLockMinutesLabelV293() {
 function koCanManageLockMinutesV293() {
   try {
     const role = normalizeRole(currentProfile?.role || "");
-    return role === "owner" || role === "admin" || Boolean((typeof isOwner !== "undefined" && isOwner) || (typeof isAdmin !== "undefined" && isAdmin));
+    return role === "owner" || role === "admin" || Boolean(isOwner || isAdmin);
   } catch {
-    return Boolean((typeof isOwner !== "undefined" && isOwner) || (typeof isAdmin !== "undefined" && isAdmin));
+    return Boolean(isOwner || isAdmin);
   }
 }
 
@@ -21251,9 +21251,9 @@ const APP_VERSION_V295_MANDATORY_NOTICE = "295.0";
 function mandatoryNoticeCanManageV295() {
   try {
     const role = normalizeRole(currentProfile?.role || "");
-    return role === "owner" || role === "admin" || Boolean((typeof isOwner !== "undefined" && isOwner) || (typeof isAdmin !== "undefined" && isAdmin));
+    return role === "owner" || role === "admin" || Boolean(isOwner || isAdmin);
   } catch {
-    return Boolean((typeof isOwner !== "undefined" && isOwner) || (typeof isAdmin !== "undefined" && isAdmin));
+    return Boolean(isOwner || isAdmin);
   }
 }
 
@@ -23164,7 +23164,7 @@ function ownerKoCanManageV306() {
     const role = normalizeRole(currentProfile?.role || "");
     return role === "owner" || Boolean(isOwnerProfileV264?.());
   } catch {
-    return Boolean(typeof isOwner !== "undefined" && isOwner);
+    return Boolean(isOwner);
   }
 }
 
@@ -26927,282 +26927,4 @@ window.debugKnockoutPointsV333 = function debugKnockoutPointsV333(playerName = "
       .filter(Boolean);
     return { player: name, points: stats.points, knockoutPoints: stats.knockoutPoints, qualifiedHits: stats.qualified, rows };
   });
-};
-
-/* v334 — Premium shell inspirado nas referencias: sidebar, topo, filtros e cliques suaves. */
-const APP_VERSION_V334_PREMIUM_SHELL = "334.0";
-
-function v334UserName() {
-  return String(currentProfile?.name || currentUser?.displayName || currentUser?.email || "Rafael Monteiro").trim();
-}
-
-function v334UserInitials() {
-  return v334UserName()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(part => part[0]?.toUpperCase() || "")
-    .join("") || "MP";
-}
-
-function v334TabAllowed(tabId) {
-  try { return permissionTabAllowed(tabId); }
-  catch { return true; }
-}
-
-function v334OpenTab(tabId) {
-  if (!tabId) return false;
-  if (!v334TabAllowed(tabId)) {
-    try { toast("Sem permissão para abrir esta página."); } catch {}
-    return false;
-  }
-  if (tabId === "knockoutTab") {
-    try {
-      if (!knockoutAvailable()) {
-        toast("Fase Final bloqueada. O Admin pode ativar no painel Admin.");
-        return false;
-      }
-    } catch {}
-  }
-  try {
-    setActiveTabStateV217(tabId);
-    updateActiveAppSection();
-    renderActivePageV187(tabId);
-    v334SyncShell();
-    return true;
-  } catch (error) {
-    console.warn("v334 abrir página falhou, a tentar clique original:", error);
-    document.querySelector(`.tabs [data-tab="${CSS.escape(tabId)}"]`)?.click();
-    v334SyncShell();
-    return true;
-  }
-}
-
-function v334OpenKnockoutBets() {
-  v334OpenTab("knockoutTab");
-  setTimeout(() => {
-    try {
-      if (typeof openKnockoutMandatoryModalV247 === "function" && openKnockoutMandatoryModalV247()) return;
-      if (typeof focusKnockoutRequiredHomePanelV245 === "function") focusKnockoutRequiredHomePanelV245();
-    } catch (error) {
-      console.warn("v334 abrir apostas eliminatórias falhou:", error);
-    }
-  }, 180);
-}
-
-function v334OpenChat() {
-  try {
-    if (typeof openChatPanel === "function") openChatPanel();
-    else $("chatOpenBtn")?.click();
-  } catch (error) {
-    console.warn("v334 chat falhou:", error);
-    $("chatOpenBtn")?.click();
-  }
-}
-
-function v334SidebarItems() {
-  return [
-    { key: "calendar", label: "Calendário", icon: "calendar", tab: "calendarTab" },
-    { key: "score", label: "Pontuação", icon: "chart", tab: "scoreTab" },
-    { key: "knockout", label: "Fase Final", icon: "trophy", tab: "knockoutTab" },
-    { key: "bets", label: "Apostas Eliminatórias", icon: "bracket", action: "koBets" },
-    { key: "chat", label: "Chat", icon: "chat", action: "chat", badge: "12" },
-    { key: "admin", label: "Admin", icon: "shield", tab: "adminTab" },
-    { key: "account", label: "Minha Conta", icon: "user", tab: "userSettingsTab" },
-    { key: "settings", label: "Configurações", icon: "settings", tab: "settingsTab" }
-  ];
-}
-
-function v334Icon(name) {
-  const icons = {
-    calendar: `<path d="M8 3v4M16 3v4M4 9h16M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/>`,
-    chart: `<path d="M4 19V9M10 19V5M16 19v-8M22 19H2"/>`,
-    trophy: `<path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a3 3 0 0 0 3 3M17 6h3a3 3 0 0 1-3 3"/>`,
-    bracket: `<path d="M5 4h5v5H5zM5 15h5v5H5zM14 9h5v6h-5zM10 7h2a2 2 0 0 1 2 2M10 17h2a2 2 0 0 0 2-2"/>`,
-    chat: `<path d="M4 5h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-5 4v-4H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/>`,
-    shield: `<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>`,
-    user: `<path d="M20 21a8 8 0 0 0-16 0M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>`,
-    settings: `<path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2 3.4-.2-.1a1.7 1.7 0 0 0-1.9.3 1.7 1.7 0 0 0-.7 1.7V22h-4v-.3a1.7 1.7 0 0 0-.7-1.7 1.7 1.7 0 0 0-1.9-.3l-.2.1-2-3.4.1-.1A1.7 1.7 0 0 0 4.6 15 1.7 1.7 0 0 0 3 14H3v-4h.3A1.7 1.7 0 0 0 5 8.7a1.7 1.7 0 0 0-.3-1.9l-.1-.1 2-3.4.2.1A1.7 1.7 0 0 0 8.7 3a1.7 1.7 0 0 0 .7-1.7V1h4v.3A1.7 1.7 0 0 0 14 3a1.7 1.7 0 0 0 1.9.3l.2-.1 2 3.4-.1.1a1.7 1.7 0 0 0-.3 1.9A1.7 1.7 0 0 0 19 10h.3v4H19a1.7 1.7 0 0 0 1.4 1z"/>`
-  };
-  return `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.calendar}</svg>`;
-}
-
-function v334EnsureShell() {
-  if ($("premiumSidebarV334") && $("premiumTopbarV334")) return;
-
-  const sidebar = document.createElement("aside");
-  sidebar.id = "premiumSidebarV334";
-  sidebar.className = "premium-sidebar-v334";
-  sidebar.innerHTML = `
-    <div class="premium-brand-v334">
-      <img src="icons/icon-512.png" alt="" />
-      <strong>MUNDIAL<br>PONTOS<br><b>2026</b></strong>
-    </div>
-    <button class="premium-version-v334" type="button">${escapeHtml(APP_VERSION_LABEL)}</button>
-    <nav class="premium-nav-v334">
-      ${v334SidebarItems().map(item => `
-        <button type="button" data-premium-nav-v334="${escapeHtml(item.key)}" ${item.tab ? `data-premium-tab-v334="${escapeHtml(item.tab)}"` : ""} ${item.action ? `data-premium-action-v334="${escapeHtml(item.action)}"` : ""}>
-          ${v334Icon(item.icon)}
-          <span>${escapeHtml(item.label)}</span>
-          ${item.badge ? `<em>${escapeHtml(item.badge)}</em>` : ""}
-        </button>
-      `).join("")}
-    </nav>
-    <article class="premium-cup-card-v334">
-      <img src="icons/icon-512.png" alt="" />
-      <span>COPA DO MUNDO</span>
-      <strong>2026</strong>
-      <small>11 JUN - 19 JUL</small>
-      <button type="button" data-premium-tab-v334="calendarTab">Saiba mais <b>-></b></button>
-    </article>
-  `;
-  document.body.prepend(sidebar);
-
-  const topbar = document.createElement("header");
-  topbar.id = "premiumTopbarV334";
-  topbar.className = "premium-topbar-v334";
-  topbar.innerHTML = `
-    <div class="premium-sync-v334"><span>↻</span><strong>Sincronizado agora há 1 min</strong><i></i></div>
-    <div class="premium-user-v334">
-      <button type="button" class="premium-bell-v334" data-premium-tab-v334="notificationsTab">🔔<em>3</em></button>
-      <button type="button" class="premium-profile-v334" data-premium-tab-v334="userSettingsTab">
-        <span class="premium-avatar-v334">${escapeHtml(v334UserInitials())}</span>
-        <span><strong data-premium-user-name-v334>${escapeHtml(v334UserName())}</strong><small>Nível Ouro</small></span>
-      </button>
-      <button type="button" class="premium-logout-v334" data-premium-logout-v334>Sair</button>
-    </div>
-  `;
-  document.body.prepend(topbar);
-
-  const calendar = $("calendarTab");
-  if (calendar && !$("premiumCalendarFiltersV334")) {
-    const filters = document.createElement("div");
-    filters.id = "premiumCalendarFiltersV334";
-    filters.className = "premium-calendar-filters-v334";
-    calendar.prepend(filters);
-  }
-}
-
-function v334MoveCalendarFilters() {
-  const host = $("premiumCalendarFiltersV334");
-  const actions = document.querySelector(".copy-actions");
-  if (!host || !actions || actions.parentElement === host) return;
-  host.appendChild(actions);
-}
-
-function v334CurrentNavKey() {
-  const active = document.querySelector(".tab.active[data-tab]")?.dataset.tab || "";
-  const item = v334SidebarItems().find(entry => entry.tab === active);
-  return item?.key || "";
-}
-
-function v334SyncShell() {
-  v334EnsureShell();
-  v334MoveCalendarFilters();
-  const shellVisible = !$("appShell")?.classList.contains("auth-hidden");
-  document.body.classList.toggle("premium-shell-on-v334", Boolean(shellVisible));
-  document.documentElement.classList.toggle("premium-shell-on-v334", Boolean(shellVisible));
-
-  const activeKey = v334CurrentNavKey();
-  document.querySelectorAll("[data-premium-nav-v334]").forEach(button => {
-    button.classList.toggle("active", button.dataset.premiumNavV334 === activeKey);
-  });
-  const userName = document.querySelector("[data-premium-user-name-v334]");
-  if (userName) userName.textContent = v334UserName();
-  const avatar = document.querySelector(".premium-avatar-v334");
-  if (avatar) avatar.textContent = v334UserInitials();
-}
-
-function v334VisibleModal(element) {
-  if (!element || element.classList?.contains("hidden")) return false;
-  const style = getComputedStyle(element);
-  const rect = element.getBoundingClientRect?.();
-  return style.display !== "none" && style.visibility !== "hidden" && style.opacity !== "0" && rect?.width > 0 && rect?.height > 0;
-}
-
-function v334CleanupStuckClicks() {
-  const hasModal = [...document.querySelectorAll(".modal,.knockout-record-modal,.ko-mandatory-modal-v247,.ko-owner-edit-backdrop-v331")].some(v334VisibleModal);
-  if (!hasModal) {
-    document.body.classList.remove("modal-open-v162", "modal-open", "drawer-open", "sheet-open", "overflow-hidden", "no-scroll", "lock-scroll", "ko-record-modal-open");
-    document.documentElement.classList.remove("modal-open", "drawer-open", "sheet-open", "overflow-hidden", "no-scroll", "lock-scroll");
-  }
-  if (!$("appBootLoaderV275") || $("appBootLoaderV275").classList.contains("hidden")) {
-    document.body.classList.remove("app-boot-loading-v275");
-    $("appShell")?.classList.remove("app-boot-hidden-v275");
-  }
-  if (!$("loginScreen")?.classList.contains("hidden")) {
-    $("loginBtn") && ($("loginBtn").disabled = false);
-    $("createAccountBtn") && ($("createAccountBtn").disabled = false);
-  }
-}
-
-function v334HandleClick(event) {
-  const nav = event.target.closest?.("[data-premium-tab-v334],[data-premium-action-v334],[data-premium-logout-v334]");
-  if (!nav) return;
-  event.preventDefault();
-  event.stopPropagation();
-
-  if (nav.dataset.premiumLogoutV334 !== undefined) {
-    logout?.();
-    return;
-  }
-  const action = nav.dataset.premiumActionV334 || "";
-  if (action === "chat") return v334OpenChat();
-  if (action === "koBets") return v334OpenKnockoutBets();
-
-  v334OpenTab(nav.dataset.premiumTabV334 || "");
-}
-
-document.addEventListener("click", v334HandleClick, true);
-document.addEventListener("pointerdown", () => v334CleanupStuckClicks(), true);
-document.addEventListener("pointerup", event => {
-  v334CleanupStuckClicks();
-  if (event.target.closest?.(".tabs [data-tab]")) setTimeout(v334SyncShell, 80);
-  const filter = event.target.closest?.("#calendarMissingResultsBtn,#calendarPlayedGamesBtn,#calendarAllGamesBtn,#calendarKnockoutGamesBtn");
-  if (filter) setTimeout(() => {
-    try { renderCalendarFilterState?.(); } catch {}
-  }, 80);
-}, true);
-
-document.addEventListener("DOMContentLoaded", () => {
-  v334EnsureShell();
-  v334SyncShell();
-  setTimeout(v334SyncShell, 500);
-  setTimeout(v334SyncShell, 1500);
-});
-window.addEventListener("focus", () => {
-  v334CleanupStuckClicks();
-  v334SyncShell();
-});
-setInterval(v334SyncShell, 2500);
-
-const showAppScreenOriginalV334 = typeof showAppScreen === "function" ? showAppScreen : null;
-if (showAppScreenOriginalV334 && !showAppScreenOriginalV334.__v334) {
-  showAppScreen = function showAppScreenPremiumV334() {
-    const result = showAppScreenOriginalV334.apply(this, arguments);
-    setTimeout(v334SyncShell, 80);
-    return result;
-  };
-  showAppScreen.__v334 = true;
-}
-
-const showLoginScreenOriginalV334 = typeof showLoginScreen === "function" ? showLoginScreen : null;
-if (showLoginScreenOriginalV334 && !showLoginScreenOriginalV334.__v334) {
-  showLoginScreen = function showLoginScreenPremiumV334() {
-    const result = showLoginScreenOriginalV334.apply(this, arguments);
-    setTimeout(v334SyncShell, 80);
-    return result;
-  };
-  showLoginScreen.__v334 = true;
-}
-
-window.debugPremiumShellV334 = function debugPremiumShellV334() {
-  return {
-    version: APP_VERSION_V334_PREMIUM_SHELL,
-    sidebar: Boolean($("premiumSidebarV334")),
-    topbar: Boolean($("premiumTopbarV334")),
-    active: document.querySelector(".tab.active[data-tab]")?.dataset.tab || "",
-    visible: document.body.classList.contains("premium-shell-on-v334"),
-    filtersMoved: $("premiumCalendarFiltersV334")?.contains(document.querySelector(".copy-actions")) || false
-  };
 };
