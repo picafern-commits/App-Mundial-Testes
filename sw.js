@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v327-ucl-botoes-clean-design";
+const CACHE_NAME = "mundial-pontos-2026-v327-horas-pt-desbloqueio-apostas";
 const APP_VERSION_SW_V298_USER_NOTIFICATIONS = "298.0";
 let userNotificationsEnabledSwV298 = true;
 const APP_VERSION_SW_V311_CLEAN_AUDIT = "311.0";
