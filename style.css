@@ -19720,3 +19720,159 @@ html.competition-champions-v318 body:not(.ucl-standalone-active-v320):not(.ucl-s
     display:none;
   }
 }
+
+
+/* v323 — Feedback e modais para botões da Champions */
+#uclPreviewAppV320 .ucl323-toast{
+  position:fixed;
+  right:24px;
+  bottom:24px;
+  z-index:2147483000;
+  max-width:min(420px,calc(100vw - 32px));
+  padding:14px 16px;
+  border-radius:16px;
+  color:#f8fbff;
+  background:linear-gradient(135deg,rgba(11,37,78,.96),rgba(42,20,78,.94));
+  border:1px solid rgba(125,173,255,.28);
+  box-shadow:0 20px 60px rgba(0,0,0,.42);
+  opacity:0;
+  transform:translateY(10px);
+  pointer-events:none;
+  transition:.18s ease;
+  font-weight:900;
+}
+
+#uclPreviewAppV320 .ucl323-toast.show{
+  opacity:1;
+  transform:translateY(0);
+}
+
+#uclPreviewAppV320 .ucl323-modal-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:2147482900;
+  display:grid;
+  place-items:center;
+  padding:24px;
+  background:rgba(1,7,18,.64);
+  backdrop-filter:blur(12px);
+}
+
+#uclPreviewAppV320 .ucl323-modal{
+  width:min(620px,100%);
+  border-radius:24px;
+  overflow:hidden;
+  color:#eef6ff;
+  background:
+    radial-gradient(circle at 20% 0%,rgba(36,120,255,.20),transparent 18rem),
+    linear-gradient(145deg,rgba(6,20,45,.98),rgba(5,12,28,.98));
+  border:1px solid rgba(125,173,255,.24);
+  box-shadow:0 28px 90px rgba(0,0,0,.54);
+}
+
+#uclPreviewAppV320 .ucl323-modal header,
+#uclPreviewAppV320 .ucl323-modal footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:18px 20px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+#uclPreviewAppV320 .ucl323-modal footer{
+  border-top:1px solid rgba(255,255,255,.08);
+  border-bottom:0;
+  justify-content:flex-end;
+}
+
+#uclPreviewAppV320 .ucl323-modal header span{
+  display:block;
+  color:#8db8ff;
+  font-size:12px;
+  font-weight:950;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+#uclPreviewAppV320 .ucl323-modal h3{
+  margin:4px 0 0;
+  font-size:24px;
+  color:#fff;
+}
+
+#uclPreviewAppV320 .ucl323-modal-close{
+  width:42px;
+  min-height:42px;
+  padding:0!important;
+  border-radius:14px;
+}
+
+#uclPreviewAppV320 .ucl323-modal-body{
+  padding:20px;
+  color:#cbdaf4;
+  font-weight:750;
+}
+
+#uclPreviewAppV320 .ucl323-info-card,
+#uclPreviewAppV320 .ucl323-empty-state{
+  padding:14px 16px;
+  margin-bottom:12px;
+  border-radius:16px;
+  border:1px solid rgba(125,173,255,.16);
+  background:rgba(255,255,255,.04);
+}
+
+#uclPreviewAppV320 .ucl323-info-card strong,
+#uclPreviewAppV320 .ucl323-empty-state strong{
+  display:block;
+  color:#8db8ff;
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+
+#uclPreviewAppV320 .ucl323-info-card b{
+  display:block;
+  margin-top:5px;
+  color:#fff;
+  font-size:22px;
+}
+
+#uclPreviewAppV320 .ucl323-score-preview{
+  display:grid;
+  grid-template-columns:52px 1fr auto 1fr 52px;
+  gap:10px;
+  align-items:center;
+  margin-bottom:12px;
+}
+
+#uclPreviewAppV320 .ucl323-score-preview strong,
+#uclPreviewAppV320 .ucl323-score-preview span{
+  min-height:58px;
+  display:grid;
+  place-items:center;
+  border-radius:16px;
+  color:#fff;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  font-size:26px;
+}
+
+#uclPreviewAppV320 .ucl321-admin-card:not(.is-open) .ucl321-admin-body{
+  display:none!important;
+}
+
+#uclPreviewAppV320 .ucl321-admin-card.is-open .ucl321-admin-body{
+  display:block!important;
+}
+
+@media(max-width:720px){
+  #uclPreviewAppV320 .ucl323-modal-backdrop{
+    padding:12px;
+  }
+
+  #uclPreviewAppV320 .ucl323-score-preview{
+    grid-template-columns:1fr;
+  }
+}
