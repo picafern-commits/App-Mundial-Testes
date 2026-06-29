@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v314-design-calendario-clean";
+const CACHE_NAME = "mundial-pontos-2026-v315-sem-pesquisar-cards";
 const APP_VERSION_SW_V298_USER_NOTIFICATIONS = "298.0";
 let userNotificationsEnabledSwV298 = true;
 const APP_VERSION_SW_V311_CLEAN_AUDIT = "311.0";

@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v314";
+const APP_VERSION_LABEL = "v315";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -25033,5 +25033,113 @@ window.debugDesignCalendarioV314 = function debugDesignCalendarioV314() {
       state: row.dataset.calendarStateV314 || "",
       score: row.querySelector(".score-vs")?.textContent?.trim() || ""
     }))
+  };
+};
+
+
+/* v315 — Remover botão Pesquisar dos cards de jogos no Calendário */
+const APP_VERSION_V315_NO_SEARCH_BUTTON_GAME_CARDS = "315.0";
+
+function removeSearchButtonsFromGameCardsV315() {
+  try {
+    document.querySelectorAll("#gamesList [data-search-result-game], #calendarTab [data-search-result-game], .match-row [data-search-result-game], [data-game-id] > [data-search-result-game]").forEach(btn => {
+      btn.remove();
+    });
+  } catch {}
+}
+
+function isCalendarGameCardSearchTargetV315(element) {
+  if (!element) return false;
+  const card = element.closest?.("#gamesList .match-row, #calendarTab .match-row, #gamesList [data-game-id], #calendarTab [data-game-id]");
+  return Boolean(card);
+}
+
+(function installNoSearchButtonGameCardsV315() {
+  if (window.__noSearchButtonGameCardsV315) return;
+  window.__noSearchButtonGameCardsV315 = true;
+
+  const originalAddSearchButtons = typeof addSearchButtonsToResultCards === "function" ? addSearchButtonsToResultCards : null;
+  if (originalAddSearchButtons && !originalAddSearchButtons.__noCardsV315) {
+    addSearchButtonsToResultCards = function addSearchButtonsNoGameCardsV315() {
+      // Mantém o botão global "Pesquisar todos" e pesquisa fora dos cards.
+      // Nos cards do calendário, o botão antigo era injetado por interval/setTimeout e causava piscar.
+      const before = document.querySelectorAll("#gamesList [data-search-result-game], #calendarTab [data-search-result-game]").length;
+
+      // Corre o sistema antigo para não quebrar outros ecrãs onde possa ser necessário.
+      const result = originalAddSearchButtons.apply(this, arguments);
+
+      // Remove imediatamente só dos cards/jogos do Calendário.
+      removeSearchButtonsFromGameCardsV315();
+
+      return result;
+    };
+    addSearchButtonsToResultCards.__noCardsV315 = true;
+    window.addSearchButtonsToResultCards = addSearchButtonsToResultCards;
+  }
+
+  const originalSetupSearch = typeof setupSearchResultsAdminButton === "function" ? setupSearchResultsAdminButton : null;
+  if (originalSetupSearch && !originalSetupSearch.__noCardsV315) {
+    setupSearchResultsAdminButton = function setupSearchResultsAdminButtonNoCardsV315() {
+      const result = originalSetupSearch.apply(this, arguments);
+      removeSearchButtonsFromGameCardsV315();
+      return result;
+    };
+    setupSearchResultsAdminButton.__noCardsV315 = true;
+    window.setupSearchResultsAdminButton = setupSearchResultsAdminButton;
+  }
+
+  const originalRenderCalendar = typeof renderCalendar === "function" ? renderCalendar : null;
+  if (originalRenderCalendar && !originalRenderCalendar.__noSearchCardsV315) {
+    renderCalendar = function renderCalendarNoSearchCardsV315() {
+      const result = originalRenderCalendar.apply(this, arguments);
+      removeSearchButtonsFromGameCardsV315();
+      requestAnimationFrame(removeSearchButtonsFromGameCardsV315);
+      setTimeout(removeSearchButtonsFromGameCardsV315, 80);
+      return result;
+    };
+    renderCalendar.__noSearchCardsV315 = true;
+    window.renderCalendar = renderCalendar;
+  }
+
+  document.addEventListener("click", event => {
+    if (event.target.closest?.("#calendarTab, #gamesList, .tab, [data-tab]")) {
+      requestAnimationFrame(removeSearchButtonsFromGameCardsV315);
+      setTimeout(removeSearchButtonsFromGameCardsV315, 120);
+    }
+  }, true);
+
+  // Como há intervalos antigos a tentar reinjetar o botão, este observador remove antes de ficar visível.
+  const target = document.getElementById("calendarTab") || document.body;
+  try {
+    const observer = new MutationObserver(mutations => {
+      let found = false;
+      for (const mutation of mutations) {
+        mutation.addedNodes?.forEach(node => {
+          if (node?.nodeType !== 1) return;
+          if (node.matches?.("[data-search-result-game]") || node.querySelector?.("[data-search-result-game]")) found = true;
+        });
+      }
+      if (found) removeSearchButtonsFromGameCardsV315();
+    });
+    observer.observe(target, { childList: true, subtree: true });
+    window.__searchButtonObserverV315 = observer;
+  } catch {}
+
+  removeSearchButtonsFromGameCardsV315();
+  requestAnimationFrame(removeSearchButtonsFromGameCardsV315);
+})();
+
+window.debugPesquisarJogosV315 = function debugPesquisarJogosV315() {
+  const all = [...document.querySelectorAll("[data-search-result-game]")];
+  const calendar = [...document.querySelectorAll("#gamesList [data-search-result-game], #calendarTab [data-search-result-game]")];
+  return {
+    version: APP_VERSION_V315_NO_SEARCH_BUTTON_GAME_CARDS,
+    totalSearchButtons: all.length,
+    calendarSearchButtons: calendar.length,
+    calendarSearchButtonsText: calendar.map(btn => btn.textContent?.trim() || ""),
+    intervalLegacyKnown: {
+      v115: typeof v115PesquisarTodosInterval !== "undefined" && Boolean(v115PesquisarTodosInterval),
+      v117: typeof v117PesquisarReapply !== "undefined" && Boolean(v117PesquisarReapply)
+    }
   };
 };
