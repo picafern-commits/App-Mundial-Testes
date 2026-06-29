@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v323";
+const APP_VERSION_LABEL = "v324";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -27459,5 +27459,285 @@ window.debugUclButtonsV323 = function debugUclButtonsV323() {
     competitionButtons: buttons.filter(btn => btn.matches("[data-ucl-competition]")).length,
     actionButtons: buttons.filter(btn => !btn.matches("[data-ucl-page]") && !btn.matches("[data-ucl-competition]")).map(btn => ucl323Text(btn)),
     modalOpen: Boolean(document.getElementById("ucl323ActionModal"))
+  };
+};
+
+
+/* v324 — Liga dos Campeões: botões ligados diretamente após cada render */
+const APP_VERSION_V324_UCL_DIRECT_BUTTONS = "324.0";
+
+function ucl324Host() {
+  return document.getElementById("uclPreviewAppV320") || document.querySelector("[class*='ucl321']")?.closest("#uclPreviewAppV320");
+}
+
+function ucl324Active() {
+  const host = ucl324Host();
+  return Boolean(host && (host.classList.contains("ucl321-active") || host.classList.contains("active") || document.documentElement.classList.contains("competition-champions-v318")));
+}
+
+function ucl324Text(el) {
+  return String(el?.textContent || "").replace(/\s+/g, " ").trim();
+}
+
+function ucl324Escape(value) {
+  try { return escapeHtml(String(value ?? "")); } catch { return String(value ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+}
+
+function ucl324Toast(message = "Ação ligada.") {
+  const host = ucl324Host() || document.body;
+  let toast = document.getElementById("ucl324Toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "ucl324Toast";
+    toast.className = "ucl324-toast";
+    host.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.add("show");
+  clearTimeout(window.__ucl324ToastTimer);
+  window.__ucl324ToastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
+}
+
+function ucl324CloseModal() {
+  document.getElementById("ucl324Modal")?.remove();
+}
+
+function ucl324Modal(title, body, button = "Ok") {
+  const host = ucl324Host() || document.body;
+  ucl324CloseModal();
+  const modal = document.createElement("div");
+  modal.id = "ucl324Modal";
+  modal.className = "ucl324-modal-backdrop";
+  modal.innerHTML = `
+    <section class="ucl324-modal-card">
+      <header>
+        <div><span>Liga dos Campeões · privado</span><h3>${ucl324Escape(title)}</h3></div>
+        <button type="button" data-ucl324-close>×</button>
+      </header>
+      <div class="ucl324-modal-body">${body}</div>
+      <footer><button type="button" data-ucl324-close>Fechar</button><button type="button" class="primary" data-ucl324-close>${ucl324Escape(button)}</button></footer>
+    </section>
+  `;
+  host.appendChild(modal);
+  modal.querySelectorAll("[data-ucl324-close]").forEach(btn => btn.onclick = () => { ucl324CloseModal(); return false; });
+}
+
+function ucl324SetGroupActive(button, selector) {
+  const group = button.closest(selector);
+  if (!group) return;
+  group.querySelectorAll("button").forEach(btn => btn.classList.remove("is-active"));
+  button.classList.add("is-active");
+}
+
+function ucl324Score(button) {
+  const editor = button.closest(".ucl321-score-editor");
+  const numbers = [...(editor?.querySelectorAll("strong") || [])];
+  const buttons = [...(editor?.querySelectorAll("button") || [])];
+  const idx = buttons.indexOf(button);
+  const target = idx <= 1 ? numbers[0] : numbers[1];
+  if (!target) return;
+  const delta = ucl324Text(button) === "+" ? 1 : -1;
+  target.textContent = String(Math.max(0, Math.min(20, Number(target.textContent || 0) + delta)));
+  ucl324Toast("Placar atualizado.");
+}
+
+function ucl324SaveBet() {
+  const scores = [...document.querySelectorAll("#uclPreviewAppV320 .ucl321-score-editor strong")].map(el => el.textContent.trim());
+  const qualifier = document.querySelector("#uclPreviewAppV320 .ucl321-qualifier button.is-active")?.textContent?.trim() || "Empate";
+  ucl324Modal("Aposta guardada no rascunho", `
+    <div class="ucl324-kpi"><span>Placar</span><strong>${ucl324Escape(scores.join(" - ") || "0 - 0")}</strong></div>
+    <div class="ucl324-kpi"><span>Qualificada</span><strong>${ucl324Escape(qualifier)}</strong></div>
+    <p>Quando os jogos reais forem criados, este botão passa a gravar a aposta da Champions.</p>
+  `, "Percebido");
+}
+
+function ucl324SendChat() {
+  const input = document.querySelector("#uclPreviewAppV320 .ucl321-composer input");
+  const value = String(input?.value || "").trim();
+  if (!value) { ucl324Toast("Escreve uma mensagem primeiro."); return; }
+  const list = document.querySelector("#uclPreviewAppV320 .ucl321-messages");
+  const name = String(window.currentProfile?.displayName || window.currentProfile?.name || "Dono");
+  list?.insertAdjacentHTML("beforeend", `<article class="me"><b>${ucl324Escape(name)}</b><p>${ucl324Escape(value)}</p></article>`);
+  input.value = "";
+  ucl324Toast("Mensagem enviada no rascunho visual.");
+}
+
+function ucl324ButtonAction(button) {
+  const label = ucl324Text(button);
+
+  if (button.matches("[data-ucl-page]")) return "nav";
+  if (button.matches("[data-ucl-competition]")) return "competition";
+  if (button.closest(".ucl321-filter-row")) return "filter";
+  if (button.closest(".ucl321-map-switch")) return "map-switch";
+  if (button.closest(".ucl321-score-editor")) return "score";
+  if (button.closest(".ucl321-qualifier")) return "qualifier";
+  if (button.closest(".ucl321-settings-grid aside")) return "settings-menu";
+  if (button.classList.contains("send") || label === "➤") return "chat-send";
+  if (label === "Ver apostas") return "view-bets";
+  if (label === "Editar resultado") return "edit-result";
+  if (label === "Salvar aposta") return "save-bet";
+  if (label === "Filtros") return "filters-modal";
+  if (label === "Salvar aviso") return "save-notice";
+  if (label === "Visualizar") return "preview-notice";
+  if (label === "Remover aviso") return "remove-notice";
+  if (label === "Salvar alterações") return "save-settings";
+  if (label === "Sair da conta") return "logout";
+  if (label === "＋" || label === "+") return "plus";
+  if (label === "-") return "minus";
+  return "generic";
+}
+
+function ucl324RunAction(button, event) {
+  const action = ucl324ButtonAction(button);
+  if (action === "nav" || action === "competition") return true;
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  event?.stopImmediatePropagation?.();
+
+  if (action === "filter") { ucl324SetGroupActive(button, ".ucl321-filter-row"); ucl324Toast(`Filtro ativo: ${ucl324Text(button).replace(/\d+$/, "").trim()}`); return false; }
+  if (action === "map-switch") { ucl324SetGroupActive(button, ".ucl321-map-switch"); ucl324Toast(`Vista ${ucl324Text(button)} ativa.`); return false; }
+  if (action === "score") { ucl324Score(button); return false; }
+  if (action === "qualifier") { ucl324SetGroupActive(button, ".ucl321-qualifier"); ucl324Toast(`Qualificada: ${ucl324Text(button)}.`); return false; }
+  if (action === "settings-menu") {
+    ucl324SetGroupActive(button, ".ucl321-settings-grid aside");
+    const title = ucl324Text(button);
+    const panel = document.querySelector("#uclPreviewAppV320 .ucl321-settings-panel header strong");
+    const sub = document.querySelector("#uclPreviewAppV320 .ucl321-settings-panel header small");
+    if (panel) panel.textContent = title;
+    if (sub) sub.textContent = `${title} da Liga dos Campeões em modo privado.`;
+    ucl324Toast(`Secção ${title} aberta.`);
+    return false;
+  }
+  if (action === "chat-send") { ucl324SendChat(); return false; }
+  if (action === "view-bets") { ucl324Modal("Apostas do jogo", "<p>As apostas aparecem aqui quando os jogos reais da Champions forem adicionados.</p>"); return false; }
+  if (action === "edit-result") { ucl324Modal("Editar resultado", "<p>Editor visual preparado. A gravação real fica para quando ligarmos os jogos reais.</p>"); return false; }
+  if (action === "save-bet") { ucl324SaveBet(); return false; }
+  if (action === "filters-modal") { ucl324Modal("Filtros", "<p>Filtros visuais preparados para o ranking da Champions.</p>"); return false; }
+  if (action === "save-notice") { ucl324Toast("Aviso guardado no rascunho visual."); return false; }
+  if (action === "preview-notice") {
+    const msg = document.querySelector("#uclPreviewAppV320 .ucl321-admin-body textarea")?.value || "Sem mensagem.";
+    ucl324Modal("Pré-visualização do aviso", `<p>${ucl324Escape(msg)}</p>`); return false;
+  }
+  if (action === "remove-notice") { const t = document.querySelector("#uclPreviewAppV320 .ucl321-admin-body textarea"); if (t) t.value = ""; ucl324Toast("Aviso removido do rascunho."); return false; }
+  if (action === "save-settings") { ucl324Toast("Alterações guardadas no rascunho visual."); return false; }
+  if (action === "logout") { ucl324Modal("Sair da conta", "<p>Logout real continua no Mundial. Aqui está bloqueado para não interferir na sessão.</p>"); return false; }
+
+  ucl324Toast("Botão ligado em modo rascunho.");
+  return false;
+}
+
+function ucl324BindButtons() {
+  const host = ucl324Host();
+  if (!host) return;
+  host.querySelectorAll("button").forEach(button => {
+    if (button.dataset.ucl324Bound === "1") return;
+    button.dataset.ucl324Bound = "1";
+    button.dataset.ucl324Action = ucl324ButtonAction(button);
+    const old = button.onclick;
+    button.onclick = function(event) {
+      if (button.dataset.ucl324Action === "nav" || button.dataset.ucl324Action === "competition") {
+        if (typeof old === "function") old.call(this, event);
+        setTimeout(ucl324BindButtons, 30);
+        return true;
+      }
+      return ucl324RunAction(button, event);
+    };
+  });
+
+  host.querySelectorAll(".ucl321-admin-card header").forEach(header => {
+    if (header.dataset.ucl324Bound === "1") return;
+    header.dataset.ucl324Bound = "1";
+    header.style.cursor = "pointer";
+    header.onclick = function(event) {
+      event.preventDefault(); event.stopPropagation();
+      const card = header.closest(".ucl321-admin-card");
+      const stack = card?.closest(".ucl321-admin-stack");
+      stack?.querySelectorAll(".ucl321-admin-card").forEach(item => { if (item !== card) item.classList.remove("is-open"); });
+      card?.classList.toggle("is-open");
+      const arrow = header.querySelector("span:last-child");
+      if (arrow) arrow.textContent = card?.classList.contains("is-open") ? "⌃" : "⌄";
+      return false;
+    };
+  });
+
+  host.querySelectorAll(".ucl321-toggle-list article").forEach(row => {
+    if (row.dataset.ucl324Bound === "1") return;
+    row.dataset.ucl324Bound = "1";
+    row.style.cursor = "pointer";
+    row.onclick = function(event) {
+      event.preventDefault(); event.stopPropagation();
+      const indicator = row.querySelector("i");
+      indicator?.classList.toggle("on");
+      ucl324Toast(`${row.querySelector("strong")?.textContent || "Opção"}: ${indicator?.classList.contains("on") ? "ativo" : "inativo"}.`);
+      return false;
+    };
+  });
+
+  const chatInput = host.querySelector(".ucl321-composer input");
+  if (chatInput && chatInput.dataset.ucl324Bound !== "1") {
+    chatInput.dataset.ucl324Bound = "1";
+    chatInput.addEventListener("keydown", event => {
+      if (event.key === "Enter") { event.preventDefault(); ucl324SendChat(); }
+    });
+  }
+}
+
+(function installUclDirectButtonsV324() {
+  if (window.__uclDirectButtonsV324) return;
+  window.__uclDirectButtonsV324 = true;
+
+  const bindLater = () => { ucl324BindButtons(); setTimeout(ucl324BindButtons, 60); setTimeout(ucl324BindButtons, 260); };
+
+  const previousRender321 = typeof renderUclStandaloneAppV321 === "function" ? renderUclStandaloneAppV321 : null;
+  if (previousRender321 && !previousRender321.__directButtonsV324) {
+    renderUclStandaloneAppV321 = function renderUclStandaloneAppDirectButtonsV324() {
+      const result = previousRender321.apply(this, arguments);
+      bindLater();
+      return result;
+    };
+    renderUclStandaloneAppV321.__directButtonsV324 = true;
+    window.renderUclStandaloneAppV321 = renderUclStandaloneAppV321;
+    try { window.renderUclStandaloneAppV320 = renderUclStandaloneAppV321; } catch {}
+  }
+
+  const previousSetPage = typeof setUclCurrentPageV321 === "function" ? setUclCurrentPageV321 : null;
+  if (previousSetPage && !previousSetPage.__directButtonsV324) {
+    setUclCurrentPageV321 = function setUclCurrentPageDirectButtonsV324(page) {
+      const result = previousSetPage.apply(this, arguments);
+      bindLater();
+      return result;
+    };
+    setUclCurrentPageV321.__directButtonsV324 = true;
+    window.setUclCurrentPageV321 = setUclCurrentPageV321;
+  }
+
+  document.addEventListener("click", event => {
+    const close = event.target.closest?.("#ucl324Modal [data-ucl324-close]");
+    if (close) { event.preventDefault(); ucl324CloseModal(); return; }
+    const button = event.target.closest?.("#uclPreviewAppV320 button[data-ucl324-action]");
+    if (button && button.dataset.ucl324Action !== "nav" && button.dataset.ucl324Action !== "competition") {
+      ucl324RunAction(button, event);
+    }
+  }, true);
+
+  document.addEventListener("keydown", event => { if (event.key === "Escape") ucl324CloseModal(); }, true);
+  window.addEventListener("load", bindLater);
+  document.addEventListener("DOMContentLoaded", bindLater);
+  setTimeout(bindLater, 80);
+  setTimeout(bindLater, 500);
+  setTimeout(bindLater, 1200);
+})();
+
+window.debugUclButtonsV324 = function debugUclButtonsV324() {
+  const host = ucl324Host();
+  const buttons = [...(host?.querySelectorAll("button") || [])];
+  return {
+    version: APP_VERSION_V324_UCL_DIRECT_BUTTONS,
+    hostFound: Boolean(host),
+    hostClass: host?.className || "",
+    active: ucl324Active(),
+    totalButtons: buttons.length,
+    boundButtons: buttons.filter(btn => btn.dataset.ucl324Bound === "1").length,
+    actions: buttons.map(btn => ({ text: ucl324Text(btn), action: btn.dataset.ucl324Action || "", bound: btn.dataset.ucl324Bound || "0" }))
   };
 };

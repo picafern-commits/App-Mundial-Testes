@@ -19876,3 +19876,21 @@ html.competition-champions-v318 body:not(.ucl-standalone-active-v320):not(.ucl-s
     grid-template-columns:1fr;
   }
 }
+
+
+/* v324 — botões diretos Champions: feedback */
+#uclPreviewAppV320 button[data-ucl324-bound="1"]{cursor:pointer!important;}
+#uclPreviewAppV320 .ucl324-toast{position:fixed;right:24px;bottom:24px;z-index:2147483640;max-width:min(440px,calc(100vw - 32px));padding:14px 16px;border-radius:16px;color:#fff;background:linear-gradient(135deg,rgba(13,38,82,.98),rgba(55,24,98,.96));border:1px solid rgba(137,183,255,.3);box-shadow:0 20px 70px rgba(0,0,0,.42);font-weight:900;opacity:0;transform:translateY(10px);pointer-events:none;transition:.18s ease}
+#uclPreviewAppV320 .ucl324-toast.show{opacity:1;transform:translateY(0)}
+#uclPreviewAppV320 .ucl324-modal-backdrop{position:fixed;inset:0;z-index:2147483600;display:grid;place-items:center;padding:22px;background:rgba(0,6,18,.64);backdrop-filter:blur(12px)}
+#uclPreviewAppV320 .ucl324-modal-card{width:min(640px,100%);border-radius:24px;overflow:hidden;color:#eef6ff;background:radial-gradient(circle at 20% 0%,rgba(42,119,255,.22),transparent 18rem),linear-gradient(145deg,rgba(8,22,48,.98),rgba(5,12,28,.98));border:1px solid rgba(137,183,255,.28);box-shadow:0 28px 90px rgba(0,0,0,.55)}
+#uclPreviewAppV320 .ucl324-modal-card header,#uclPreviewAppV320 .ucl324-modal-card footer{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
+#uclPreviewAppV320 .ucl324-modal-card footer{border-bottom:0;border-top:1px solid rgba(255,255,255,.08);justify-content:flex-end}
+#uclPreviewAppV320 .ucl324-modal-card header span{display:block;color:#8db8ff;font-size:12px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
+#uclPreviewAppV320 .ucl324-modal-card h3{margin:4px 0 0;color:#fff;font-size:24px}
+#uclPreviewAppV320 .ucl324-modal-body{padding:20px;color:#cbdaf4;font-weight:750}
+#uclPreviewAppV320 .ucl324-kpi{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;margin-bottom:12px;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}
+#uclPreviewAppV320 .ucl324-kpi span{color:#8db8ff;font-size:12px;font-weight:950;text-transform:uppercase;letter-spacing:.06em}
+#uclPreviewAppV320 .ucl324-kpi strong{color:#fff;font-size:24px}
+#uclPreviewAppV320 .ucl321-admin-card:not(.is-open) .ucl321-admin-body{display:none!important}
+#uclPreviewAppV320 .ucl321-admin-card.is-open .ucl321-admin-body{display:block!important}
