@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v325";
+const APP_VERSION_LABEL = "v326";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -27897,5 +27897,327 @@ window.debugUclRenderGuardV325 = function debugUclRenderGuardV325() {
     legacyGamesListExists: Boolean(document.getElementById("gamesList")),
     legacyScoreSummaryExists: Boolean(document.getElementById("scoreSummary")),
     buttonsInChampions: [...document.querySelectorAll("#uclPreviewAppV320 button, #uclPreviewAppV321 button")].length
+  };
+};
+
+
+/* v326 — Liga dos Campeões: deteção ativa real + botões funcionais */
+const APP_VERSION_V326_UCL_ACTIVE_BUTTONS = "326.0";
+
+function ucl326Host() {
+  return document.getElementById("uclPreviewAppV320") ||
+         document.getElementById("uclPreviewAppV321") ||
+         document.querySelector("[id^='uclPreviewApp']");
+}
+
+function ucl326IsChampionsMode() {
+  try { return typeof isChampionsModeV318 === "function" && isChampionsModeV318(); }
+  catch { return document.documentElement.classList.contains("competition-champions-v318"); }
+}
+
+function ucl326IsVisible(el) {
+  if (!el) return false;
+  const rect = el.getBoundingClientRect?.();
+  const style = getComputedStyle(el);
+  return style.display !== "none" && style.visibility !== "hidden" && rect && rect.width > 0 && rect.height > 0;
+}
+
+function ucl326IsActive() {
+  const host = ucl326Host();
+  if (!ucl326IsChampionsMode()) return false;
+  if (!host) return false;
+
+  // A v321/v322 mostra a shell sem meter a classe active. No modo Champions,
+  // se o host existe e tem conteúdo visível, deve contar como ativo.
+  return host.classList.contains("active") ||
+         host.classList.contains("ucl321-active") ||
+         host.innerHTML.trim().length > 0 ||
+         ucl326IsVisible(host);
+}
+
+function ucl326Escape(value) {
+  try { return escapeHtml(String(value ?? "")); }
+  catch { return String(value ?? "").replace(/[&<>"']/g, s => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[s])); }
+}
+
+function ucl326Text(el) {
+  return String(el?.textContent || "").replace(/\s+/g, " ").trim();
+}
+
+function ucl326Toast(message = "Ação preparada.") {
+  const host = ucl326Host() || document.body;
+  let toast = document.getElementById("ucl326Toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "ucl326Toast";
+    toast.className = "ucl326-toast";
+    host.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.add("show");
+  clearTimeout(window.__ucl326ToastTimer);
+  window.__ucl326ToastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
+}
+
+function ucl326CloseModal() {
+  document.getElementById("ucl326Modal")?.remove();
+}
+
+function ucl326OpenModal(title, body, action = "Ok") {
+  const host = ucl326Host() || document.body;
+  ucl326CloseModal();
+  const modal = document.createElement("div");
+  modal.id = "ucl326Modal";
+  modal.className = "ucl326-modal-backdrop";
+  modal.innerHTML = `
+    <section class="ucl326-modal">
+      <header>
+        <div>
+          <span>Liga dos Campeões · privado</span>
+          <h3>${ucl326Escape(title)}</h3>
+        </div>
+        <button type="button" data-ucl326-close>×</button>
+      </header>
+      <div class="ucl326-modal-body">${body}</div>
+      <footer>
+        <button type="button" class="secondary" data-ucl326-close>Fechar</button>
+        <button type="button" class="primary" data-ucl326-close>${ucl326Escape(action)}</button>
+      </footer>
+    </section>
+  `;
+  host.appendChild(modal);
+}
+
+function ucl326SetGroupActive(button, selector) {
+  const group = button.closest(selector);
+  if (!group) return;
+  group.querySelectorAll("button").forEach(btn => {
+    btn.classList.remove("active", "is-active");
+  });
+  button.classList.add("active", "is-active");
+}
+
+function ucl326UpdateStepper(button) {
+  const wrap = button.closest(".ucl321-score-editor,.ucl320-stepper,.ucl-score-stepper-v319");
+  if (!wrap) return false;
+  const buttons = [...wrap.querySelectorAll("button")];
+  const nums = [...wrap.querySelectorAll("strong")];
+  const idx = buttons.indexOf(button);
+  const target = idx <= 1 ? nums[0] : nums[1];
+  if (!target) return true;
+  const delta = ucl326Text(button).includes("+") ? 1 : -1;
+  target.textContent = String(Math.max(0, Math.min(20, Number(target.textContent || 0) + delta)));
+  ucl326Toast("Placar atualizado.");
+  return true;
+}
+
+function ucl326HandleInternalButton(button, event) {
+  if (!ucl326IsActive()) return false;
+  const host = ucl326Host();
+  if (!host || !button.closest(`#${host.id}`)) return false;
+
+  if (button.matches("[data-ucl-page],[data-ucl-competition],[data-competition-switch-v318]")) return false;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  const label = ucl326Text(button);
+  window.__ucl326LastButton = { label, className: button.className, at: new Date().toISOString() };
+
+  if (button.matches("[data-ucl326-close]") || button.closest("[data-ucl326-close]")) {
+    ucl326CloseModal();
+    return true;
+  }
+
+  if (button.closest(".ucl321-filter-row,.ucl320-pill-row,.ucl-filter-row-v319")) {
+    ucl326SetGroupActive(button, ".ucl321-filter-row,.ucl320-pill-row,.ucl-filter-row-v319");
+    ucl326Toast(`Filtro aplicado: ${label.replace(/\d+$/,"").trim()}.`);
+    return true;
+  }
+
+  if (button.closest(".ucl321-map-switch,.ucl320-map-toggle,.ucl-toggle-v319")) {
+    ucl326SetGroupActive(button, ".ucl321-map-switch,.ucl320-map-toggle,.ucl-toggle-v319");
+    ucl326Toast(label.toLowerCase().includes("lista") ? "Vista Lista ativada." : "Vista Mapa ativada.");
+    return true;
+  }
+
+  if (ucl326UpdateStepper(button)) return true;
+
+  if (button.closest(".ucl321-qualifier,.ucl320-choice-row,.ucl-qualified-pills-v319")) {
+    ucl326SetGroupActive(button, ".ucl321-qualifier,.ucl320-choice-row,.ucl-qualified-pills-v319");
+    ucl326Toast(`Qualificada: ${label}.`);
+    return true;
+  }
+
+  if (button.closest(".ucl321-settings-grid aside,.ucl320-settings-menu,.ucl-settings-menu-v319")) {
+    ucl326SetGroupActive(button, ".ucl321-settings-grid aside,.ucl320-settings-menu,.ucl-settings-menu-v319");
+    const title = label;
+    const panel = host.querySelector(".ucl321-settings-panel header strong,.ucl320-card-head strong,.ucl-settings-card-v319 .ucl-card-head-v319 strong");
+    if (panel) panel.textContent = title;
+    ucl326Toast(`Secção ${title} selecionada.`);
+    return true;
+  }
+
+  if (label === "Ver apostas") {
+    ucl326OpenModal("Apostas do jogo", `<p>Este jogo ainda está em modo placeholder. Quando os jogos reais forem adicionados, aqui aparece a lista de apostas.</p>`);
+    return true;
+  }
+
+  if (label === "Editar resultado") {
+    ucl326OpenModal("Editar resultado", `
+      <div class="ucl326-score">
+        <strong>0</strong><span>VS</span><strong>0</strong>
+      </div>
+      <p>Resultado placeholder. A gravação real entra quando ligarmos os jogos oficiais da Champions.</p>
+    `, "Guardar visual");
+    return true;
+  }
+
+  if (label === "Salvar aposta") {
+    const nums = [...host.querySelectorAll(".ucl321-score-editor strong,.ucl320-stepper strong,.ucl-score-stepper-v319 strong")].map(el => el.textContent.trim());
+    const score = nums.length >= 2 ? `${nums[0]} - ${nums[1]}` : "0 - 0";
+    const qual = host.querySelector(".ucl321-qualifier .active,.ucl321-qualifier .is-active,.ucl320-choice-row .active,.ucl-qualified-pills-v319 .active")?.textContent?.trim() || "A definir";
+    ucl326OpenModal("Aposta guardada visualmente", `<p><b>Placar:</b> ${ucl326Escape(score)}</p><p><b>Qualificada:</b> ${ucl326Escape(qual)}</p>`);
+    return true;
+  }
+
+  if (label === "Filtros") {
+    ucl326OpenModal("Filtros", "<p>Filtros preparados para quando existirem jogos reais da Champions.</p>");
+    return true;
+  }
+
+  if (label === "Salvar aviso") {
+    ucl326Toast("Aviso guardado visualmente.");
+    return true;
+  }
+
+  if (label === "Visualizar") {
+    const msg = host.querySelector("textarea")?.value || "Sem aviso escrito.";
+    ucl326OpenModal("Pré-visualização do aviso", `<p>${ucl326Escape(msg)}</p>`);
+    return true;
+  }
+
+  if (label === "Remover aviso") {
+    const textarea = host.querySelector("textarea");
+    if (textarea) textarea.value = "";
+    ucl326Toast("Aviso removido do rascunho.");
+    return true;
+  }
+
+  if (label === "Salvar alterações") {
+    ucl326Toast("Alterações guardadas visualmente.");
+    return true;
+  }
+
+  if (label === "Sair da conta") {
+    ucl326OpenModal("Sair da conta", "<p>Este botão é visual no modo Champions privado. O logout real continua no Mundial.</p>");
+    return true;
+  }
+
+  if (label === "＋") {
+    ucl326Toast("Anexos preparados para a próxima fase.");
+    return true;
+  }
+
+  if (label === "➤" || button.classList.contains("send")) {
+    const input = host.querySelector(".ucl321-composer input,.ucl320-compose input,.ucl-chat-compose-v319 input");
+    const value = String(input?.value || "").trim();
+    if (!value) {
+      ucl326Toast("Escreve uma mensagem primeiro.");
+      return true;
+    }
+    const list = host.querySelector(".ucl321-messages,.ucl320-message-list,.ucl-chat-messages-v319");
+    list?.insertAdjacentHTML("beforeend", `<article class="me"><b>Dono</b><p>${ucl326Escape(value)}</p></article>`);
+    input.value = "";
+    ucl326Toast("Mensagem adicionada visualmente.");
+    return true;
+  }
+
+  ucl326Toast(`Botão ligado: ${label || "ação"}.`);
+  return true;
+}
+
+function ucl326BindButtons() {
+  const host = ucl326Host();
+  if (!host || !ucl326IsActive()) return;
+  const buttons = [...host.querySelectorAll("button")];
+  buttons.forEach(button => {
+    if (button.dataset.ucl326Bound === "1") return;
+    button.dataset.ucl326Bound = "1";
+    button.addEventListener("click", event => ucl326HandleInternalButton(button, event), true);
+  });
+}
+
+(function installUclActiveButtonsV326() {
+  if (window.__uclActiveButtonsV326) return;
+  window.__uclActiveButtonsV326 = true;
+
+  document.addEventListener("click", event => {
+    const close = event.target.closest?.("[data-ucl326-close]");
+    if (close) {
+      event.preventDefault();
+      ucl326CloseModal();
+      return;
+    }
+
+    const header = event.target.closest?.("#uclPreviewAppV320 .ucl321-admin-card header, #uclPreviewAppV320 .ucl320-accordion header, #uclPreviewAppV320 .ucl-admin-panel-v319 header");
+    if (header && ucl326IsActive()) {
+      event.preventDefault();
+      const card = header.closest(".ucl321-admin-card,.ucl320-accordion,.ucl-admin-panel-v319");
+      card?.classList.toggle("is-open");
+      ucl326Toast(card?.classList.contains("is-open") ? "Secção aberta." : "Secção fechada.");
+      return;
+    }
+
+    const toggle = event.target.closest?.("#uclPreviewAppV320 .ucl321-toggle-list article, #uclPreviewAppV320 .ucl320-toggle-list article, #uclPreviewAppV320 .ucl-toggle-list-v319 article");
+    if (toggle && ucl326IsActive()) {
+      event.preventDefault();
+      const i = toggle.querySelector("i");
+      i?.classList.toggle("on");
+      ucl326Toast(i?.classList.contains("on") ? "Opção ativada." : "Opção desativada.");
+      return;
+    }
+
+    const button = event.target.closest?.("#uclPreviewAppV320 button, #uclPreviewAppV321 button");
+    if (button) ucl326HandleInternalButton(button, event);
+  }, true);
+
+  const run = () => {
+    if (ucl326IsChampionsMode()) {
+      ucl326BindButtons();
+      try { renderUclStandaloneAppV321?.(); } catch {}
+      setTimeout(ucl326BindButtons, 80);
+    }
+  };
+
+  document.addEventListener("DOMContentLoaded", run);
+  window.addEventListener("load", run);
+  document.addEventListener("click", event => {
+    if (event.target.closest?.("[data-ucl-page],[data-ucl-competition],[data-competition-switch-v318],#ownerCompetitionSwitchV318")) {
+      setTimeout(run, 80);
+    }
+  }, true);
+
+  setTimeout(run, 100);
+  setInterval(() => {
+    if (ucl326IsChampionsMode()) ucl326BindButtons();
+  }, 1200);
+})();
+
+window.debugUclButtonsV326 = function debugUclButtonsV326() {
+  const host = ucl326Host();
+  const buttons = [...(host?.querySelectorAll("button") || [])];
+  return {
+    version: APP_VERSION_V326_UCL_ACTIVE_BUTTONS,
+    championsMode: ucl326IsChampionsMode(),
+    active: ucl326IsActive(),
+    hostId: host?.id || "",
+    hostClasses: host?.className || "",
+    hostVisible: ucl326IsVisible(host),
+    hostHtmlLength: host?.innerHTML?.length || 0,
+    totalButtons: buttons.length,
+    boundButtons: buttons.filter(btn => btn.dataset.ucl326Bound === "1").length,
+    lastButton: window.__ucl326LastButton || null,
+    buttonTexts: buttons.map(ucl326Text).slice(0, 80)
   };
 };
