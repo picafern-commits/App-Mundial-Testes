@@ -1,4 +1,4 @@
-const CACHE_NAME = "mundial-pontos-2026-v320-ucl-app-shell";
+const CACHE_NAME = "mundial-pontos-2026-v322-ucl-champions-navbar";
 const APP_VERSION_SW_V298_USER_NOTIFICATIONS = "298.0";
 let userNotificationsEnabledSwV298 = true;
 const APP_VERSION_SW_V311_CLEAN_AUDIT = "311.0";

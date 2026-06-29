@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v320";
+const APP_VERSION_LABEL = "v322";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -7690,6 +7690,458 @@ setupSearchResultsAdminButton();
       window.closeChatMobileClean();
     }
   });
+})();
+
+/* v321 — Liga dos Campeões premium isolada */
+const UCL_APP_V321_KEY = "ucl_preview_active_page_v321";
+const UCL_APP_V321_PAGES = {
+  calendar: { label: "Calendário", icon: "calendar" },
+  score: { label: "Pontuação", icon: "score" },
+  final: { label: "Fase Final", icon: "trophy", accent: "purple" },
+  bets: { label: "Apostas Eliminatórias", icon: "bracket" },
+  chat: { label: "Chat", icon: "chat", badge: "12" },
+  admin: { label: "Admin", icon: "shield" },
+  settings: { label: "Configurações", icon: "settings" },
+  account: { label: "Minha Conta", icon: "account" }
+};
+
+function ucl321Icon(name) {
+  const icons = {
+    calendar: '<path d="M7 3v4M17 3v4M4 9h16M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/><path d="M8 13h3M13 13h3M8 17h3M13 17h3"/>',
+    score: '<path d="M4 20V9M10 20V4M16 20v-7M22 20H2"/><path d="M8 9h4M14 13h4"/>',
+    trophy: '<path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 6H5a3 3 0 0 0 3 3M16 6h3a3 3 0 0 1-3 3M12 12v5M9 21h6M10 17h4"/>',
+    bracket: '<path d="M4 5h6v5H4zM4 14h6v5H4zM14 9h6v6h-6z"/><path d="M10 7h2v5h2M10 16h2v-4"/>',
+    chat: '<path d="M4 6a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v5a4 4 0 0 1-4 4H9l-5 4v-4a4 4 0 0 1-2-3.5V6Z"/><path d="M8 8h8M8 12h5"/>',
+    shield: '<path d="M12 3 20 6v6c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6l8-3Z"/><path d="M12 7v10"/>',
+    settings: '<path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1v.2a2 2 0 0 1-4 0V21a1.7 1.7 0 0 0-1.4-1.6 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4h-.2a2 2 0 0 1 0-4H3a1.7 1.7 0 0 0 1.6-1.4 1.7 1.7 0 0 0-.34-1.88l-.06-.06A2 2 0 1 1 7.03 3.43l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1v-.2a2 2 0 0 1 4 0V3a1.7 1.7 0 0 0 1.4 1.6 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.28.36.5.78.6 1.25.1.48.1.99 0 1.47-.1.48-.32.9-.6 1.28Z"/>',
+    account: '<path d="M20 21a8 8 0 0 0-16 0"/><path d="M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/>',
+    bell: '<path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z"/><path d="M10 21h4"/>',
+    live: '<path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/><circle cx="12" cy="12" r="3"/>'
+  };
+  const body = icons[name] || icons.calendar;
+  return `<svg class="ucl321-svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+}
+
+function uclEscapeV321(value) {
+  return typeof escapeHtml === "function" ? escapeHtml(value) : String(value ?? "");
+}
+
+function uclOwnerNameV321() {
+  return String(currentProfile?.displayName || currentProfile?.name || currentProfile?.email || "Dono").trim() || "Dono";
+}
+
+function uclInitialsV321(name) {
+  const parts = String(name || "Dono").trim().split(/\s+/).filter(Boolean);
+  return (parts.length > 1 ? `${parts[0][0]}${parts[parts.length - 1][0]}` : (parts[0] || "D").slice(0, 2)).toUpperCase();
+}
+
+function uclLegacyPageKeyV321() {
+  return typeof UCL_APP_V320_KEY !== "undefined" ? UCL_APP_V320_KEY : "ucl_preview_active_page_v320";
+}
+
+function uclCurrentPageV321() {
+  try {
+    const page = localStorage.getItem(UCL_APP_V321_KEY) || localStorage.getItem(uclLegacyPageKeyV321()) || "calendar";
+    return UCL_APP_V321_PAGES[page] ? page : "calendar";
+  } catch {
+    return "calendar";
+  }
+}
+
+function setUclCurrentPageV321(page) {
+  const safe = UCL_APP_V321_PAGES[page] ? page : "calendar";
+  try {
+    localStorage.setItem(UCL_APP_V321_KEY, safe);
+    localStorage.setItem(uclLegacyPageKeyV321(), safe);
+  } catch {}
+  renderUclStandaloneAppV321();
+}
+
+function shouldShowUclStandaloneV321() {
+  return typeof isChampionsModeV318 === "function" && isChampionsModeV318() && typeof isOwner === "function" && isOwner();
+}
+
+function ensureUclStandaloneHostV321() {
+  let host = document.getElementById("uclPreviewAppV320");
+  if (!host) {
+    host = document.createElement("div");
+    host.id = "uclPreviewAppV320";
+    document.body.appendChild(host);
+  }
+  return host;
+}
+
+function ucl321Sidebar(activePage) {
+  const nav = Object.entries(UCL_APP_V321_PAGES).map(([id, info]) => `
+    <button type="button" class="ucl321-nav-item ${activePage === id ? "is-active" : ""} ${info.accent || ""}" data-ucl-page="${id}">
+      <span class="ucl321-nav-ico">${ucl321Icon(info.icon)}</span>
+      <span>${uclEscapeV321(info.label)}</span>
+      ${info.badge ? `<b>${uclEscapeV321(info.badge)}</b>` : ""}
+    </button>
+  `).join("");
+  return `
+    <aside class="ucl321-sidebar">
+      <div class="ucl321-brand">
+        <div class="ucl321-brand-mark"><span>LC</span></div>
+        <div>
+          <strong>Liga dos Campeões</strong>
+          <small>Modo privado do Dono</small>
+        </div>
+      </div>
+      <nav class="ucl321-nav" aria-label="Navegação Champions">${nav}</nav>
+      <section class="ucl321-side-card">
+        <span class="ucl321-side-orbit"></span>
+        <small>Champions League</small>
+        <strong>Modo privado</strong>
+        <p>Shell isolada pronta para receber jogos reais quando forem definidos.</p>
+      </section>
+    </aside>
+  `;
+}
+
+function ucl321Topbar() {
+  const name = uclOwnerNameV321();
+  return `
+    <header class="ucl321-topbar">
+      <div class="ucl321-sync-pill">${ucl321Icon("live")}<span>Sincronizado agora há 1 min</span><i></i></div>
+      <div class="ucl321-switch" aria-label="Trocar competição">
+        <button type="button" data-ucl-competition="mundial2026">Mundial 2026</button>
+        <button type="button" class="is-active" data-ucl-competition="champions">Liga dos Campeões</button>
+      </div>
+      <div class="ucl321-chat-status"><i></i> Chat ativo</div>
+      <div class="ucl321-profile-mini">
+        <span class="ucl321-bell">${ucl321Icon("bell")}<b>3</b></span>
+        <span class="ucl321-avatar-mini">${uclEscapeV321(uclInitialsV321(name))}</span>
+        <div><strong>${uclEscapeV321(name)}</strong><small>Dono · Nível Ouro</small></div>
+      </div>
+    </header>
+  `;
+}
+
+function ucl321PageTitle(title, subtitle, icon = "calendar") {
+  return `
+    <div class="ucl321-title-row">
+      <div class="ucl321-title-icon">${ucl321Icon(icon)}</div>
+      <div>
+        <h1>${uclEscapeV321(title)}</h1>
+        <p>${uclEscapeV321(subtitle)}</p>
+      </div>
+    </div>
+  `;
+}
+
+function ucl321Filters(items) {
+  return `<div class="ucl321-filter-row">${items.map((item, index) => `
+    <button type="button" class="${index === 0 ? "is-active" : ""} ${item.accent || ""}">
+      ${ucl321Icon(item.icon || "calendar")}
+      <span>${uclEscapeV321(item.label)}</span>
+      <b>${uclEscapeV321(item.count)}</b>
+    </button>
+  `).join("")}</div>`;
+}
+
+function ucl321MatchCard({ time = "--:--", date = "A definir", badge = "Jornada", phase = "Fase Liga", venue = "Estádio por definir", accent = "green" } = {}) {
+  const knockout = accent === "purple";
+  return `
+    <article class="ucl321-match-card ${knockout ? "is-knockout" : ""}">
+      <div class="ucl321-match-date">
+        <strong>${uclEscapeV321(time)}</strong>
+        <span>${uclEscapeV321(date)}</span>
+      </div>
+      <div class="ucl321-match-meta">
+        <b class="${knockout ? "purple" : ""}">${uclEscapeV321(badge)}</b>
+        <span>${uclEscapeV321(phase)}</span>
+        <small>${uclEscapeV321(venue)}</small>
+      </div>
+      <div class="ucl321-teams">
+        <div class="ucl321-team"><i></i><strong>A definir</strong></div>
+        <em>VS</em>
+        <div class="ucl321-team away"><i></i><strong>A definir</strong></div>
+      </div>
+      <div class="ucl321-match-actions">
+        <span class="ucl321-state">Próximo</span>
+        <button type="button">Ver apostas</button>
+        <button type="button" class="primary">Editar resultado</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderUclCalendarPageV321() {
+  return `
+    ${ucl321PageTitle("Calendário Champions", "Jogos placeholder até existirem confrontos reais da Liga dos Campeões.", "calendar")}
+    ${ucl321Filters([
+      { label: "Por colocar resultado", count: 8, icon: "calendar" },
+      { label: "Todos", count: 48, icon: "score" },
+      { label: "Já jogados", count: 0, icon: "shield" },
+      { label: "Fase Final", count: 0, icon: "trophy", accent: "purple" }
+    ])}
+    <section class="ucl321-day-block">
+      <h2>Hoje · A definir</h2>
+      ${ucl321MatchCard({ time: "18:45", date: "-- ---", badge: "Jornada 1" })}
+      ${ucl321MatchCard({ time: "21:00", date: "-- ---", badge: "Jornada 1" })}
+    </section>
+    <section class="ucl321-day-block">
+      <h2>Próxima data · A definir</h2>
+      ${ucl321MatchCard({ time: "18:45", date: "-- ---", badge: "Jornada 2" })}
+      ${ucl321MatchCard({ time: "21:00", date: "-- ---", badge: "Jornada 2" })}
+    </section>
+    <section class="ucl321-day-block">
+      <h2 class="purple">Fase Final · A definir</h2>
+      ${ucl321MatchCard({ time: "21:00", date: "-- ---", badge: "Oitavas de Final", phase: "Mata-mata", accent: "purple" })}
+      ${ucl321MatchCard({ time: "21:00", date: "-- ---", badge: "Oitavas de Final", phase: "Mata-mata", accent: "purple" })}
+    </section>
+    <p class="ucl321-note">Horários e confrontos serão definidos mais tarde.</p>
+  `;
+}
+
+function renderUclScorePageV321() {
+  const names = [uclOwnerNameV321(), "Jogador 2", "Jogador 3", "Jogador 4", "Jogador 5", "Jogador 6", "Jogador 7", "Jogador 8"];
+  const rows = names.map((name, index) => `
+    <article class="ucl321-rank-row ${index === 0 ? "top" : ""}">
+      <span class="ucl321-rank-pos">${index + 1}</span>
+      <div class="ucl321-rank-player"><i>${uclEscapeV321(uclInitialsV321(name))}</i><strong>${uclEscapeV321(name)}</strong><small>${index === 0 ? "Nível Ouro" : "Nível Prata"}</small></div>
+      <b>0</b><span>0</span><span>0</span><em><i></i><i></i><i></i><i></i></em>
+    </article>
+  `).join("");
+  return `
+    ${ucl321PageTitle("Pontuação", "Todos os jogadores começam a zero enquanto a Champions está em preparação.", "score")}
+    <div class="ucl321-stat-grid">
+      <article><span>Total de jogadores</span><strong>8</strong><small>Ativos na competição</small></article>
+      <article class="cyan"><span>Total de pontos</span><strong>0</strong><small>Soma de todos os jogadores</small></article>
+      <article class="gold"><span>Resultados exatos</span><strong>0</strong><small>Total de palpites exatos</small></article>
+      <article class="purple"><span>Média de pontos</span><strong>0,0</strong><small>Média por jogador</small></article>
+    </div>
+    <div class="ucl321-score-grid">
+      <section class="ucl321-panel">
+        <div class="ucl321-panel-head"><strong>Ranking Geral</strong><button type="button">Filtros</button></div>
+        <div class="ucl321-rank-head"><span>#</span><span>Jogador</span><span>Pontos</span><span>Exatos</span><span>Vencedores</span><span>Desempenho</span></div>
+        <div class="ucl321-rank-list">${rows}</div>
+      </section>
+      <aside class="ucl321-panel ucl321-player-detail">
+        <div class="ucl321-player-top">
+          <span class="ucl321-avatar-xl">${uclEscapeV321(uclInitialsV321(uclOwnerNameV321()))}</span>
+          <div><strong>${uclEscapeV321(uclOwnerNameV321())}</strong><small>Nível Ouro</small></div>
+          <b>0 pts</b>
+        </div>
+        <div class="ucl321-mini-kpis"><span><strong>0</strong>Exatos</span><span><strong>0</strong>Vencedores</span><span><strong>0%</strong>Aproveitamento</span></div>
+        <h3>Partidas recentes</h3>
+        <div class="ucl321-empty-games"><article><span>A definir</span><b>+0 pts</b></article><article><span>A definir</span><b>+0 pts</b></article><article><span>A definir</span><b>+0 pts</b></article></div>
+      </aside>
+    </div>
+  `;
+}
+
+function ucl321BracketCard(label = "A definir") {
+  return `<article class="ucl321-bracket-card"><small>-- --- · --:--</small><span><i></i>${uclEscapeV321(label)}</span><span><i></i>A definir</span><button type="button">Ver apostas</button></article>`;
+}
+
+function renderUclFinalPageV321() {
+  return `
+    <div class="ucl321-final-head">
+      ${ucl321PageTitle("Fase Final", "Bracket premium placeholder até serem definidos os apurados.", "trophy")}
+      <div class="ucl321-map-switch"><button class="is-active" type="button">Mapa</button><button type="button">Lista</button></div>
+    </div>
+    <section class="ucl321-bracket-board">
+      <div class="ucl321-bracket-col"><h2>Oitavas</h2>${ucl321BracketCard("1º do Grupo A")}${ucl321BracketCard("1º do Grupo C")}${ucl321BracketCard("Vencedor 1A")}${ucl321BracketCard("Vencedor 1E")}</div>
+      <div class="ucl321-bracket-col"><h2>Quartas</h2>${ucl321BracketCard("Vencedor Oitavas")}${ucl321BracketCard("Vencedor Oitavas")}</div>
+      <div class="ucl321-final-stage">
+        <h2>Final</h2>
+        <article>
+          <small>-- --- · --:--</small>
+          <div><i></i><strong>VS</strong><i></i></div>
+          <span>A definir</span>
+          <button type="button">Ver apostas</button>
+        </article>
+      </div>
+      <div class="ucl321-bracket-col"><h2>Semifinais</h2>${ucl321BracketCard("A definir")}${ucl321BracketCard("A definir")}</div>
+    </section>
+  `;
+}
+
+function renderUclBetsPageV321() {
+  return `
+    ${ucl321PageTitle("Apostas Eliminatórias", "Previsão visual para placares e qualificados, ainda em placeholder.", "bracket")}
+    <div class="ucl321-stat-grid compact">
+      <article><span>Pendentes</span><strong>5</strong><small>Apostas para preencher</small></article>
+      <article class="purple"><span>Guardadas</span><strong>0</strong><small>Apostas salvas</small></article>
+      <article class="green"><span>Pontuação total</span><strong>0</strong><small>pontos</small></article>
+    </div>
+    <section class="ucl321-bet-editor">
+      <header><b>Oitavas de Final</b><strong>A definir <span>VS</span> A definir</strong><em>Prazo: -- ---, --:--</em></header>
+      <div class="ucl321-bet-grid">
+        <div class="ucl321-editor-box">
+          <h3>Placar (90 minutos)</h3>
+          <div class="ucl321-score-editor"><button>-</button><strong>0</strong><button>+</button><span>X</span><button>-</button><strong>0</strong><button>+</button></div>
+          <small>Apenas o placar após 90 minutos. Prorrogação e pênaltis não contam.</small>
+        </div>
+        <div class="ucl321-editor-box">
+          <h3>Quem se classifica?</h3>
+          <div class="ucl321-qualifier"><button>A definir</button><button class="is-active">Empate</button><button>A definir</button></div>
+        </div>
+      </div>
+      <footer><span>Visual por enquanto.</span><button type="button" class="primary">Salvar aposta</button></footer>
+    </section>
+    <div class="ucl321-bet-list">
+      <article><b>Oitavas de Final</b><strong>A definir vs A definir</strong><span>Pendente</span></article>
+      <article><b>Quartas de Final</b><strong>Vencedor A vs Vencedor B</strong><span>Pendente</span></article>
+      <article><b>Semifinal</b><strong>A definir vs A definir</strong><span>Pendente</span></article>
+    </div>
+  `;
+}
+
+function renderUclChatPageV321() {
+  return `
+    <section class="ucl321-chat-grid">
+      <aside class="ucl321-chat-list">
+        <div class="ucl321-chat-head"><strong>Conversas</strong><span>12</span></div>
+        <input type="search" placeholder="Buscar conversas">
+        <article class="is-active"><i>⚽</i><div><strong>Geral - Champions</strong><small>Mensagem de preparação</small></div><b>3</b></article>
+        <article><i>G</i><div><strong>Grupo A</strong><small>Sem mensagens recentes</small></div><b>2</b></article>
+        <article><i>↗</i><div><strong>Apostas & Palpites</strong><small>Owner draft</small></div><b>5</b></article>
+        <article><i>●</i><div><strong>Resultados ao vivo</strong><small>Sem atividade ainda</small></div></article>
+        <div class="ucl321-online"><h3>Users online</h3><span>${uclEscapeV321(uclOwnerNameV321())}</span><span>Jogador 2</span><span>Jogador 3</span></div>
+      </aside>
+      <main class="ucl321-chat-main">
+        <header><div><strong>Geral - Liga dos Campeões</strong><small>128 membros online</small></div><span>${ucl321Icon("settings")}</span></header>
+        <div class="ucl321-messages">
+          <article><b>${uclEscapeV321(uclOwnerNameV321())}</b><p>Vamos preparar a Champions com este novo design. Os jogos ficam como A definir até existirem confrontos reais.</p></article>
+          <article class="alt"><b>Jogador 2</b><p>Perfeito. Assim a estrutura fica pronta para o sorteio.</p></article>
+          <article><b>Champions Bot</b><p>Próximos jogos: em breve.</p></article>
+        </div>
+        <footer><button type="button">＋</button><input placeholder="Escreva sua mensagem..."><button type="button" class="send">➤</button></footer>
+      </main>
+    </section>
+  `;
+}
+
+function renderUclAdminPageV321() {
+  const sections = ["Users", "Resultados", "Pontos", "Fase Final", "Sistema"];
+  return `
+    ${ucl321PageTitle("Admin Champions", "Gestão visual privada da Liga dos Campeões.", "shield")}
+    <section class="ucl321-admin-stack">
+      <article class="ucl321-admin-card is-open">
+        <header>${ucl321Icon("bell")}<div><strong>Aviso obrigatório</strong><small>Envie um aviso obrigatório aos utilizadores.</small></div><span>⌃</span></header>
+        <div class="ucl321-admin-body">
+          <label>Mensagem<textarea rows="5">Bem-vindos à Liga dos Campeões.</textarea></label>
+          <div><input value="A definir"><input value="Obrigatório"></div>
+          <footer><button type="button" class="primary">Salvar aviso</button><button type="button">Visualizar</button><button type="button" class="danger">Remover aviso</button></footer>
+        </div>
+      </article>
+      ${sections.map((section) => `<article class="ucl321-admin-card"><header>${ucl321Icon(section === "Fase Final" ? "trophy" : section === "Pontos" ? "score" : "settings")}<div><strong>${uclEscapeV321(section)}</strong><small>Secção preparada para configuração futura.</small></div><span>⌄</span></header></article>`).join("")}
+    </section>
+  `;
+}
+
+function renderUclSettingsPageV321() {
+  const menu = ["Geral", "Layout", "Regras de Pontuação", "Minutos antes do bloqueio", "Permissões", "Competições ocultas do Dono"];
+  return `
+    ${ucl321PageTitle("Configurações", "Preferências e regras da sua Liga dos Campeões.", "settings")}
+    <div class="ucl321-settings-grid">
+      <aside>${menu.map((item, index) => `<button type="button" class="${index === 0 ? "is-active" : ""}">${ucl321Icon(index === 0 ? "settings" : index === 2 ? "score" : index === 4 ? "account" : "shield")}<span>${uclEscapeV321(item)}</span></button>`).join("")}</aside>
+      <section class="ucl321-settings-panel">
+        <header><div>${ucl321Icon("settings")}<div><strong>Geral</strong><small>Configurações básicas da liga.</small></div></div><button type="button" class="primary">Salvar alterações</button></header>
+        <div class="ucl321-form-grid">
+          <label>Nome da liga<input value="Liga dos Campeões"></label>
+          <label>Idioma<input value="Português"></label>
+          <label>Moeda de pontuação<input value="Pontos"></label>
+          <label>Fuso horário<input value="Europe/Lisbon"></label>
+        </div>
+        <div class="ucl321-toggle-list">
+          <article><div><strong>Notificações por e-mail</strong><small>Enviar alertas aos participantes.</small></div><i class="on"></i></article>
+          <article><div><strong>Exibir tabelas públicas</strong><small>Permitir visualização das tabelas.</small></div><i class="on"></i></article>
+          <article><div><strong>Permitir convites</strong><small>Participantes podem convidar membros.</small></div><i></i></article>
+          <article><div><strong>Ativar chat global</strong><small>Chat global entre participantes.</small></div><i class="on"></i></article>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderUclAccountPageV321() {
+  const name = uclOwnerNameV321();
+  return `
+    ${ucl321PageTitle("Minha Conta", "Informações, preferências e estado do dispositivo.", "account")}
+    <section class="ucl321-account-hero">
+      <span class="ucl321-avatar-hero">${uclEscapeV321(uclInitialsV321(name))}</span>
+      <div><strong>${uclEscapeV321(name)}</strong><small>Dono atribuído · Conta ativa</small></div>
+      <b>Administrador</b><em>Membro desde 2026</em>
+    </section>
+    <div class="ucl321-account-grid">
+      <section class="ucl321-panel"><h3>Notificações</h3><div class="ucl321-toggle-list"><article><strong>E-mail</strong><i class="on"></i></article><article><strong>Push</strong><i class="on"></i></article><article><strong>Alertas ao vivo</strong><i class="on"></i></article><article><strong>Novidades</strong><i></i></article></div></section>
+      <section class="ucl321-panel"><h3>Preferências</h3><div class="ucl321-meta-list"><article><span>Tema</span><b>Escuro</b></article><article><span>Idioma</span><b>Português</b></article><article><span>Fuso horário</span><b>Europe/Lisbon</b></article></div></section>
+      <section class="ucl321-panel"><h3>Sessão</h3><div class="ucl321-meta-list"><article><span>Senha</span><b>Alterar</b></article><article><span>2FA</span><b>Ativada</b></article><article><span>Sessões ativas</span><b>Este dispositivo</b></article></div></section>
+      <section class="ucl321-panel wide"><h3>Atividade recente</h3><div class="ucl321-meta-list"><article><span>Login realizado</span><b>Hoje</b></article><article><span>Dispositivo</span><b>Browser / PWA</b></article><article><span>Localização</span><b>Portugal</b></article></div></section>
+      <section class="ucl321-panel"><h3>Dispositivo</h3><div class="ucl321-meta-list"><article><span>Navegador</span><b>Atual</b></article><article><span>Sistema</span><b>Detetado</b></article><article><span>Estado</span><b>Este dispositivo</b></article></div></section>
+    </div>
+    <div class="ucl321-logout-row"><button type="button">Sair da conta</button></div>
+  `;
+}
+
+function renderUclContentByPageV321(page) {
+  if (page === "calendar") return renderUclCalendarPageV321();
+  if (page === "score") return renderUclScorePageV321();
+  if (page === "final") return renderUclFinalPageV321();
+  if (page === "bets") return renderUclBetsPageV321();
+  if (page === "chat") return renderUclChatPageV321();
+  if (page === "admin") return renderUclAdminPageV321();
+  if (page === "settings") return renderUclSettingsPageV321();
+  return renderUclAccountPageV321();
+}
+
+function renderUclStandaloneAppV321() {
+  const host = ensureUclStandaloneHostV321();
+  const shouldShow = shouldShowUclStandaloneV321();
+  host.classList.toggle("active", shouldShow);
+  host.classList.toggle("ucl321-active", shouldShow);
+  document.body?.classList.toggle("ucl-standalone-active-v320", shouldShow);
+  document.body?.classList.toggle("ucl-standalone-active-v321", shouldShow);
+  if (!shouldShow) {
+    host.innerHTML = "";
+    return;
+  }
+  const page = uclCurrentPageV321();
+  host.innerHTML = `
+    <div class="ucl321-shell">
+      ${ucl321Sidebar(page)}
+      <section class="ucl321-workspace">
+        ${ucl321Topbar()}
+        <main class="ucl321-main">${renderUclContentByPageV321(page)}</main>
+      </section>
+    </div>
+  `;
+  host.querySelectorAll("[data-ucl-page]").forEach((button) => {
+    button.addEventListener("click", () => setUclCurrentPageV321(button.getAttribute("data-ucl-page")));
+  });
+  host.querySelectorAll("[data-ucl-competition]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.getAttribute("data-ucl-competition");
+      try { setCompetitionModeV318?.(id); } catch {}
+      setTimeout(renderUclStandaloneAppV321, 20);
+    });
+  });
+}
+
+(function installStandaloneUclAppV321() {
+  if (window.__standaloneUclAppV321) return;
+  window.__standaloneUclAppV321 = true;
+  try { renderUclStandaloneAppV320 = renderUclStandaloneAppV321; } catch {}
+  const rerender = () => setTimeout(renderUclStandaloneAppV321, 20);
+  const origSetMode = typeof setCompetitionModeV318 === "function" ? setCompetitionModeV318 : null;
+  if (origSetMode && !origSetMode.__uclStandaloneV321) {
+    setCompetitionModeV318 = function setCompetitionModeUclV321() {
+      const result = origSetMode.apply(this, arguments);
+      rerender();
+      return result;
+    };
+    setCompetitionModeV318.__uclStandaloneV321 = true;
+    window.setCompetitionModeV318 = setCompetitionModeV318;
+  }
+  window.renderUclStandaloneAppV321 = renderUclStandaloneAppV321;
+  window.addEventListener("load", rerender);
+  document.addEventListener("DOMContentLoaded", rerender);
+  setTimeout(rerender, 60);
+  setTimeout(rerender, 360);
 })();
 
 
@@ -26628,4 +27080,41 @@ function renderUclStandaloneAppV320() {
   document.addEventListener('DOMContentLoaded', rerender);
   setTimeout(rerender, 50);
   setTimeout(rerender, 350);
+})();
+
+(function finalizeStandaloneUclAppV321(){
+  if (window.__standaloneUclAppV321Final) return;
+  window.__standaloneUclAppV321Final = true;
+  if (typeof renderUclStandaloneAppV321 !== "function") return;
+  try { renderUclStandaloneAppV320 = renderUclStandaloneAppV321; } catch {}
+  const rerender = () => setTimeout(renderUclStandaloneAppV321, 20);
+  const origRenderAll = typeof renderAll === "function" ? renderAll : null;
+  if (origRenderAll && !origRenderAll.__uclStandaloneV321Final) {
+    renderAll = function renderAllWithUclV321Final() {
+      const result = origRenderAll.apply(this, arguments);
+      rerender();
+      return result;
+    };
+    renderAll.__uclStandaloneV321Final = true;
+    window.renderAll = renderAll;
+  }
+  const origSetMode = typeof setCompetitionModeV318 === "function" ? setCompetitionModeV318 : null;
+  if (origSetMode && !origSetMode.__uclStandaloneV321Final) {
+    setCompetitionModeV318 = function setCompetitionModeUclV321Final() {
+      const result = origSetMode.apply(this, arguments);
+      rerender();
+      return result;
+    };
+    setCompetitionModeV318.__uclStandaloneV321Final = true;
+    window.setCompetitionModeV318 = setCompetitionModeV318;
+  }
+  document.addEventListener("click", (event) => {
+    if (event.target.closest?.("[data-competition-switch-v318],#ownerCompetitionSwitchV318")) rerender();
+  }, true);
+  window.renderUclStandaloneAppV320 = renderUclStandaloneAppV321;
+  window.renderUclStandaloneAppV321 = renderUclStandaloneAppV321;
+  window.addEventListener("load", rerender);
+  document.addEventListener("DOMContentLoaded", rerender);
+  setTimeout(rerender, 80);
+  setTimeout(rerender, 420);
 })();
