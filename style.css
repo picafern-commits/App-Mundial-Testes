@@ -17967,3 +17967,115 @@ html.mp-ui-v317 *::-webkit-scrollbar-track{
     scroll-behavior:auto!important;
   }
 }
+
+
+/* v318 — Switch Dono: Mundial / Liga dos Campeões */
+.owner-competition-switch-top-v318{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px;
+  border-radius:999px;
+  border:1px solid rgba(96,165,250,.22);
+  background:rgba(2,8,23,.48);
+  box-shadow:0 10px 30px rgba(0,0,0,.16);
+  backdrop-filter:blur(14px);
+  margin-left:auto;
+  margin-right:12px;
+}
+
+.owner-switch-label-v318{
+  padding:0 8px;
+  color:#93a4bd;
+  font-size:11px;
+  font-weight:1000;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+
+.owner-competition-switch-top-v318 button{
+  min-height:32px!important;
+  padding:7px 12px!important;
+  border-radius:999px!important;
+  border:1px solid transparent!important;
+  background:transparent!important;
+  color:#cbd5e1!important;
+  font-size:12px!important;
+  font-weight:950!important;
+  box-shadow:none!important;
+}
+
+.owner-competition-switch-top-v318 button small{
+  margin-left:6px;
+  color:#c4b5fd!important;
+  font-size:10px;
+  font-weight:1000;
+  text-transform:uppercase;
+}
+
+.owner-competition-switch-top-v318 button.active{
+  color:#fff!important;
+  border-color:rgba(96,165,250,.38)!important;
+  background:linear-gradient(135deg,rgba(20,119,255,.34),rgba(56,189,248,.14))!important;
+  box-shadow:0 10px 24px rgba(20,119,255,.18)!important;
+}
+
+html.competition-champions-v318 .owner-competition-switch-top-v318{
+  border-color:rgba(139,92,246,.34);
+  background:rgba(18,10,38,.50);
+}
+
+html.competition-champions-v318 .owner-competition-switch-top-v318 button.active{
+  border-color:rgba(139,92,246,.46)!important;
+  background:linear-gradient(135deg,rgba(139,92,246,.42),rgba(56,189,248,.16))!important;
+  box-shadow:0 10px 28px rgba(139,92,246,.22)!important;
+}
+
+html.competition-champions-v318 body::after{
+  content:"Liga dos Campeões · privado";
+  position:fixed;
+  right:22px;
+  bottom:18px;
+  z-index:30;
+  padding:8px 11px;
+  border-radius:999px;
+  color:#e9d5ff;
+  background:rgba(88,28,135,.30);
+  border:1px solid rgba(168,85,247,.30);
+  font-size:11px;
+  font-weight:1000;
+  letter-spacing:.02em;
+  pointer-events:none;
+  backdrop-filter:blur(14px);
+}
+
+/* Mundial fica fora da nova camada v317 */
+html.competition-mundial-v318:not(.mp-ui-v317) body::after{
+  content:none;
+}
+
+@media(max-width:900px){
+  .owner-competition-switch-top-v318{
+    order:20;
+    width:100%;
+    justify-content:center;
+    margin:8px 0 0;
+  }
+}
+
+@media(max-width:620px){
+  .owner-competition-switch-top-v318{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    border-radius:16px;
+  }
+
+  .owner-switch-label-v318{
+    grid-column:1/-1;
+    text-align:center;
+  }
+
+  .owner-competition-switch-top-v318 button{
+    border-radius:12px!important;
+  }
+}

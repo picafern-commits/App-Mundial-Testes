@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v317";
+const APP_VERSION_LABEL = "v318";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -25613,5 +25613,231 @@ window.debugDesignSystemV317 = function debugDesignSystemV317() {
       modals: document.querySelectorAll(".mp-modal-card-v317").length,
       navItems: document.querySelectorAll(".mp-nav-item-v317").length
     }
+  };
+};
+
+
+/* v318 — Botão Mundial/Champions e design novo só na Liga dos Campeões */
+const APP_VERSION_V318_COMPETITION_SWITCH_SCOPED_DESIGN = "318.0";
+
+function isOwnerForCompetitionSwitchV318() {
+  try { return normalizeRole?.(currentProfile?.role || "") === "owner"; }
+  catch { return false; }
+}
+
+function competitionSwitchKeyV318() {
+  try { return OWNER_COMPETITION_DRAFT_KEY_V316 || `${STORAGE_KEY}_owner_working_competition_v316`; }
+  catch { return `${STORAGE_KEY}_owner_working_competition_v316`; }
+}
+
+function currentCompetitionIdV318() {
+  if (!isOwnerForCompetitionSwitchV318()) return "mundial2026";
+  try {
+    const comps = ensureCompetitionsV316?.();
+    return comps?.ownerWorkingId || localStorage.getItem(competitionSwitchKeyV318()) || "mundial2026";
+  } catch {
+    return localStorage.getItem(competitionSwitchKeyV318()) || "mundial2026";
+  }
+}
+
+function isChampionsModeV318() {
+  return isOwnerForCompetitionSwitchV318() && currentCompetitionIdV318() === "champions";
+}
+
+function setCompetitionModeV318(id) {
+  if (!isOwnerForCompetitionSwitchV318()) return;
+  const value = id === "champions" ? "champions" : "mundial2026";
+
+  try {
+    const comps = ensureCompetitionsV316?.();
+    if (comps) comps.ownerWorkingId = value;
+  } catch {}
+
+  try { localStorage.setItem(competitionSwitchKeyV318(), value); } catch {}
+
+  try { setOwnerWorkingCompetitionV316?.(value); } catch {}
+  applyCompetitionVisualModeV318();
+
+  try { renderOwnerCompetitionSwitchV318(); } catch {}
+  try { renderOwnerCompetitionsPanelV316?.(); } catch {}
+
+  toast?.(value === "champions" ? "Modo Liga dos Campeões privado ativado." : "Voltaste ao Mundial 2026.");
+}
+
+function removePhase1DesignClassesV318() {
+  const root = document.documentElement;
+  const body = document.body;
+  root.classList.remove("mp-ui-v317");
+  body?.classList.remove("mp-body-v317");
+  body?.removeAttribute("data-mp-page-v317");
+
+  document.querySelector(".app-shell")?.classList.remove("mp-shell-v317");
+  document.querySelector(".topbar")?.classList.remove("mp-topbar-v317");
+  document.querySelector(".sidebar")?.classList.remove("mp-sidebar-v317");
+  document.querySelector(".brand")?.classList.remove("mp-brand-v317");
+
+  document.querySelectorAll(".mp-nav-item-v317,.mp-card-v317,.mp-modal-card-v317,.mp-modal-overlay-v317,.mp-button-v317,.mp-button-primary-v317,.mp-button-secondary-v317,.mp-button-danger-v317,.mp-input-v317,.mp-chip-v317,.mp-title-v317")
+    .forEach(el => {
+      el.classList.remove(
+        "mp-nav-item-v317",
+        "mp-card-v317",
+        "mp-modal-card-v317",
+        "mp-modal-overlay-v317",
+        "mp-button-v317",
+        "mp-button-primary-v317",
+        "mp-button-secondary-v317",
+        "mp-button-danger-v317",
+        "mp-input-v317",
+        "mp-chip-v317",
+        "mp-title-v317"
+      );
+    });
+}
+
+function applyCompetitionVisualModeV318() {
+  const root = document.documentElement;
+  const body = document.body;
+  const champions = isChampionsModeV318();
+
+  root.classList.toggle("competition-champions-v318", champions);
+  root.classList.toggle("competition-mundial-v318", !champions);
+  body?.setAttribute("data-competition-v318", champions ? "champions" : "mundial2026");
+
+  if (champions) {
+    try { applyPhase1DesignClassesV317?.(); } catch {}
+    root.classList.add("mp-ui-v317");
+  } else {
+    removePhase1DesignClassesV318();
+  }
+}
+
+function competitionLabelV318(id = currentCompetitionIdV318()) {
+  return id === "champions" ? "Liga dos Campeões" : "Mundial 2026";
+}
+
+function renderOwnerCompetitionSwitchV318() {
+  const existing = document.getElementById("ownerCompetitionSwitchV318");
+  if (!isOwnerForCompetitionSwitchV318()) {
+    existing?.remove();
+    applyCompetitionVisualModeV318();
+    return;
+  }
+
+  const topbar = document.querySelector(".topbar") || document.querySelector("header") || document.body;
+  if (!topbar) return;
+
+  const current = currentCompetitionIdV318();
+  const html = `
+    <div id="ownerCompetitionSwitchV318" class="owner-competition-switch-top-v318" data-current="${escapeHtml(current)}">
+      <span class="owner-switch-label-v318">App</span>
+      <button type="button" class="${current === "mundial2026" ? "active" : ""}" data-competition-switch-v318="mundial2026">
+        Mundial 2026
+      </button>
+      <button type="button" class="${current === "champions" ? "active" : ""}" data-competition-switch-v318="champions">
+        Liga dos Campeões
+        <small>privado</small>
+      </button>
+    </div>
+  `;
+
+  if (existing) {
+    existing.outerHTML = html;
+  } else {
+    const userBox = topbar.querySelector(".session-box,.user-box,.topbar-user,.user-menu") || topbar.lastElementChild;
+    if (userBox && userBox.parentElement === topbar) {
+      userBox.insertAdjacentHTML("beforebegin", html);
+    } else {
+      topbar.insertAdjacentHTML("beforeend", html);
+    }
+  }
+
+  document.querySelectorAll("[data-competition-switch-v318]").forEach(button => {
+    if (button.dataset.boundV318 === "1") return;
+    button.dataset.boundV318 = "1";
+    button.addEventListener("click", () => setCompetitionModeV318(button.dataset.competitionSwitchV318));
+  });
+
+  applyCompetitionVisualModeV318();
+}
+
+(function installCompetitionSwitchScopedDesignV318() {
+  if (window.__competitionSwitchScopedDesignV318) return;
+  window.__competitionSwitchScopedDesignV318 = true;
+
+  // Desativa o efeito global do v317 no Mundial: qualquer aplicação do v317 passa a ser removida se não estivermos em Champions.
+  const previousApplyV317 = typeof applyPhase1DesignClassesV317 === "function" ? applyPhase1DesignClassesV317 : null;
+  if (previousApplyV317 && !previousApplyV317.__scopedV318) {
+    applyPhase1DesignClassesV317 = function applyPhase1DesignClassesScopedV318() {
+      if (!isChampionsModeV318()) {
+        removePhase1DesignClassesV318();
+        return;
+      }
+      return previousApplyV317.apply(this, arguments);
+    };
+    applyPhase1DesignClassesV317.__scopedV318 = true;
+    window.applyPhase1DesignClassesV317 = applyPhase1DesignClassesV317;
+  }
+
+  const originalRenderAll = typeof renderAll === "function" ? renderAll : null;
+  if (originalRenderAll && !originalRenderAll.__competitionSwitchV318) {
+    renderAll = function renderAllCompetitionSwitchV318() {
+      const result = originalRenderAll.apply(this, arguments);
+      requestAnimationFrame(() => {
+        renderOwnerCompetitionSwitchV318();
+        applyCompetitionVisualModeV318();
+      });
+      return result;
+    };
+    renderAll.__competitionSwitchV318 = true;
+    window.renderAll = renderAll;
+  }
+
+  const originalRenderActive = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+  if (originalRenderActive && !originalRenderActive.__competitionSwitchV318) {
+    renderActivePageV187 = function renderActivePageCompetitionSwitchV318() {
+      const result = originalRenderActive.apply(this, arguments);
+      requestAnimationFrame(() => {
+        renderOwnerCompetitionSwitchV318();
+        applyCompetitionVisualModeV318();
+      });
+      return result;
+    };
+    renderActivePageV187.__competitionSwitchV318 = true;
+    window.renderActivePageV187 = renderActivePageV187;
+  }
+
+  document.addEventListener("click", event => {
+    if (event.target.closest?.(".tab,[data-tab],#ownerCompetitionSwitchV318")) {
+      requestAnimationFrame(() => {
+        renderOwnerCompetitionSwitchV318();
+        applyCompetitionVisualModeV318();
+      });
+    }
+  }, true);
+
+  setTimeout(() => {
+    renderOwnerCompetitionSwitchV318();
+    applyCompetitionVisualModeV318();
+  }, 0);
+  requestAnimationFrame(() => {
+    renderOwnerCompetitionSwitchV318();
+    applyCompetitionVisualModeV318();
+  });
+})();
+
+window.debugSwitchCompeticaoV318 = function debugSwitchCompeticaoV318() {
+  return {
+    version: APP_VERSION_V318_COMPETITION_SWITCH_SCOPED_DESIGN,
+    isOwner: isOwnerForCompetitionSwitchV318(),
+    role: currentProfile?.role || "",
+    currentCompetition: currentCompetitionIdV318(),
+    championsMode: isChampionsModeV318(),
+    mundialMode: !isChampionsModeV318(),
+    switchVisible: Boolean(document.getElementById("ownerCompetitionSwitchV318")),
+    designClassActive: document.documentElement.classList.contains("mp-ui-v317"),
+    championsClassActive: document.documentElement.classList.contains("competition-champions-v318"),
+    mundialClassActive: document.documentElement.classList.contains("competition-mundial-v318"),
+    adminCanSeeChampions: false,
+    userCanSeeChampions: false
   };
 };
