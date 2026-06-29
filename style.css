@@ -16839,3 +16839,256 @@ html.app-clean-v311 body{
     width:100%!important;
   }
 }
+
+
+/* v312 — Pontuação clean, moderna e unificada */
+.score-clean-page-v312{
+  display:grid;
+  gap:14px;
+}
+
+.score-clean-toolbar-v312{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:14px 16px;
+  border:1px solid rgba(59,130,246,.22);
+  border-radius:18px;
+  background:linear-gradient(135deg,rgba(59,130,246,.10),rgba(15,23,42,.72));
+}
+
+.score-clean-toolbar-v312 strong{
+  display:block;
+  color:#fff;
+  font-size:18px;
+  font-weight:1000;
+}
+
+.score-clean-toolbar-v312 span{
+  display:block;
+  color:#aab8ce;
+  font-size:12px;
+  font-weight:850;
+  margin-top:3px;
+}
+
+.score-clean-chips-v312{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+.score-clean-chips-v312 span{
+  margin:0;
+  padding:7px 10px;
+  border-radius:999px;
+  color:#dbeafe;
+  background:rgba(59,130,246,.12);
+  border:1px solid rgba(59,130,246,.22);
+}
+
+.score-clean-player-card-v312{
+  overflow:hidden;
+}
+
+.score-clean-player-card-v312[open]{
+  border-color:rgba(59,130,246,.34)!important;
+  background:linear-gradient(135deg,rgba(15,23,42,.88),rgba(30,41,59,.72))!important;
+}
+
+.score-clean-player-meta-v312{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin:4px 0 12px;
+}
+
+.score-clean-player-meta-v312 span{
+  padding:6px 9px;
+  border-radius:999px;
+  color:#cbd5e1;
+  background:rgba(255,255,255,.055);
+  border:1px solid rgba(255,255,255,.08);
+  font-size:11px;
+  font-weight:950;
+}
+
+.score-clean-games-table-v312{
+  display:grid;
+  gap:6px;
+}
+
+.score-clean-game-row-v312{
+  display:grid;
+  grid-template-columns:minmax(260px,1.6fr) minmax(150px,.75fr) minmax(150px,.75fr) minmax(130px,.65fr) 58px;
+  gap:10px;
+  align-items:center;
+  padding:10px 12px;
+  border-radius:13px;
+  border:1px solid rgba(255,255,255,.075);
+  background:rgba(15,23,42,.48);
+}
+
+.score-clean-game-row-v312.head{
+  padding:6px 12px;
+  color:#8ea0bb;
+  background:transparent;
+  border:0;
+  font-size:11px;
+  font-weight:1000;
+  text-transform:uppercase;
+  letter-spacing:.03em;
+}
+
+.score-clean-game-main-v312{
+  min-width:0;
+}
+
+.score-clean-game-main-v312 strong{
+  display:block;
+  color:#fff;
+  font-size:13px;
+  font-weight:1000;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+
+.score-clean-game-main-v312 small{
+  display:block;
+  color:#8ea0bb;
+  font-size:11px;
+  font-weight:850;
+  margin-top:3px;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+
+.score-clean-pill-v312,
+.score-clean-type-v312{
+  min-height:30px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:6px 9px;
+  border-radius:999px;
+  background:rgba(255,255,255,.055);
+  color:#e5edf8;
+  font-size:12px;
+  font-weight:950;
+  text-align:center;
+}
+
+.score-clean-pill-v312.bet,
+.score-clean-pill-v312.result{
+  justify-content:flex-start;
+  text-align:left;
+  white-space:normal;
+  line-height:1.18;
+}
+
+.score-clean-type-v312 em{
+  font-style:normal;
+}
+
+.score-clean-points-v312{
+  color:#ffd45a;
+  font-size:17px;
+  text-align:right;
+}
+
+.score-clean-game-row-v312.exact .score-clean-type-v312{
+  color:#111827;
+  background:#ffd45a;
+}
+
+.score-clean-game-row-v312.winner .score-clean-type-v312{
+  color:#dcffef;
+  background:rgba(38,194,129,.25);
+}
+
+.score-clean-game-row-v312.miss .score-clean-type-v312{
+  color:#ffc0c0;
+  background:rgba(239,68,68,.18);
+}
+
+.score-clean-game-row-v312.pending .score-clean-type-v312{
+  color:#dbeafe;
+  background:rgba(59,130,246,.16);
+}
+
+.score-clean-game-row-v312.is-ko-v312{
+  border-color:rgba(45,212,191,.16);
+  background:linear-gradient(135deg,rgba(20,184,166,.055),rgba(15,23,42,.50));
+}
+
+.score-clean-game-row-v312.is-ko-v312 .score-clean-game-main-v312 small{
+  color:#99f6e4;
+}
+
+@media(max-width:900px){
+  .score-clean-toolbar-v312{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .score-clean-chips-v312{
+    justify-content:flex-start;
+  }
+
+  .score-clean-game-row-v312,
+  .score-clean-game-row-v312.head{
+    grid-template-columns:minmax(220px,1.4fr) minmax(130px,.8fr) minmax(130px,.8fr) minmax(110px,.7fr) 52px;
+    gap:8px;
+  }
+}
+
+@media(max-width:680px){
+  .score-clean-game-row-v312.head{
+    display:none;
+  }
+
+  .score-clean-game-row-v312{
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+
+  .score-clean-game-main-v312{
+    grid-column:1/-1;
+  }
+
+  .score-clean-pill-v312,
+  .score-clean-type-v312,
+  .score-clean-points-v312{
+    position:relative;
+    justify-content:flex-start;
+    min-height:46px;
+    padding:17px 10px 7px;
+    border-radius:12px;
+    text-align:left;
+  }
+
+  .score-clean-pill-v312::before,
+  .score-clean-type-v312::before,
+  .score-clean-points-v312::before{
+    content:attr(data-label);
+    position:absolute;
+    top:5px;
+    left:10px;
+    color:#8ea0bb;
+    font-size:9px;
+    font-weight:1000;
+    text-transform:uppercase;
+  }
+
+  .score-clean-type-v312{
+    grid-column:1/-1;
+  }
+
+  .score-clean-points-v312{
+    background:rgba(255,212,90,.09);
+  }
+}

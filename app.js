@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v313";
+const APP_VERSION_LABEL = "v312";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -17129,29 +17129,7 @@ if (playerGameRowsOriginalV259 && !playerGameRowsOriginalV259.__koCalendarV259) 
           String(item.playerName || "").trim().toLowerCase() === String(playerName || "").trim().toLowerCase()
         ));
         const points = bet ? pointsForKnockoutBet(bet, match) : 0;
-        const calendarGame = (games || []).find(item => String(item.id || "") === String(match.id || ""));
-        const koDateValue = match.matchDate || match.date || calendarGame?.matchDate || calendarGame?.date || "";
-        const koDateText = koDateValue ? `${dateHeader(koDateValue)} · ${timePortugal(koDateValue)}` : "";
-        const koRoundText = match.roundLabel || calendarGame?.group || knockoutRoundLabel?.(match.round) || "Fase Final";
-        const koGroupText = koDateText ? `${koRoundText} · ${koDateText}` : `${koRoundText}${match.index ? ` · Jogo ${match.index}` : ""}`;
-        return {
-          game: {
-            ...match,
-            ...(calendarGame || {}),
-            id: match.id,
-            homeTeam: match.homeTeam || calendarGame?.homeTeam || "",
-            awayTeam: match.awayTeam || calendarGame?.awayTeam || "",
-            group: koGroupText,
-            matchDate: koDateValue,
-            date: koDateValue,
-            phase: "Fase Final"
-          },
-          bet,
-          points,
-          label: bet ? knockoutBetResultLabel(bet, match) : "Sem aposta",
-          className: bet ? knockoutBetResultClass(bet, match) : "miss",
-          knockout: true
-        };
+        return { game: { ...match, phase: "Fase Final" }, bet, points, label: bet ? knockoutBetResultLabel(bet, match) : "Sem aposta", className: bet ? knockoutBetResultClass(bet, match) : "miss", knockout: true };
       });
     return [...groupRows, ...knockoutRows];
   };
@@ -24351,16 +24329,47 @@ function appQuickFixSafeV311() {
 })();
 
 
-/* v312 — Pontuação: mostrar data/hora nos jogos da Fase Final */
-const APP_VERSION_V312_SCORE_KO_DATE_LABEL = "312.0";
+/* v312 — Pontuação reconstruída de raiz: grupos + Fase Final no mesmo sistema */
+const APP_VERSION_V312_SCORE_CLEAN_REBUILD = "312.0";
 
-function scoreKoDateValueV312(match = {}, game = {}) {
-  return match.matchDate || match.date || match.kickoff || match.utcDate || match.footballDataUtcDate ||
-         game.matchDate || game.date || game.kickoff || game.utcDate || game.footballDataUtcDate || "";
+function scoreCleanParseDateV312(value) {
+  if (!value) return 0;
+  try {
+    const parsed = parsePortugalDate?.(value);
+    const ms = parsed?.getTime?.();
+    if (Number.isFinite(ms)) return ms;
+  } catch {}
+  const ms = new Date(value).getTime();
+  return Number.isFinite(ms) ? ms : 0;
 }
 
-function scoreKoDateLabelV312(match = {}, game = {}) {
-  const value = scoreKoDateValueV312(match, game);
+function scoreCleanDateSourcesV312(source = {}) {
+  return [
+    source.matchDate,
+    source.date,
+    source.kickoff,
+    source.utcDate,
+    source.footballDataUtcDate,
+    source.startAt,
+    source.startTime,
+    source.datetime
+  ].filter(Boolean);
+}
+
+function scoreCleanBestDateV312(...sources) {
+  for (const source of sources) {
+    for (const value of scoreCleanDateSourcesV312(source || {})) {
+      if (scoreCleanParseDateV312(value)) return value;
+    }
+  }
+  for (const source of sources) {
+    const fallback = scoreCleanDateSourcesV312(source || {})[0];
+    if (fallback) return fallback;
+  }
+  return "";
+}
+
+function scoreCleanDateLabelV312(value) {
   if (!value) return "";
   try {
     return `${dateHeader(value)} · ${timePortugal(value)}`;
@@ -24369,138 +24378,299 @@ function scoreKoDateLabelV312(match = {}, game = {}) {
   }
 }
 
-function scoreKoRoundLabelV312(match = {}, game = {}) {
-  return match.roundLabel || game.group || game.roundLabel || knockoutRoundLabel?.(match.round) || "Fase Final";
-}
-
-function scoreKoGameLabelV312(match = {}, game = {}) {
-  const round = scoreKoRoundLabelV312(match, game);
-  const date = scoreKoDateLabelV312(match, game);
-  if (date) return `${round} · ${date}`;
-  return `${round}${match.index ? ` · Jogo ${match.index}` : ""}`;
-}
-
-(function installScoreKoDateLabelV312() {
-  if (window.__scoreKoDateLabelV312) return;
-  window.__scoreKoDateLabelV312 = true;
-
-  const originalPlayerGameRows = typeof playerGameRows === "function" ? playerGameRows : null;
-  if (originalPlayerGameRows && !originalPlayerGameRows.__koDateLabelV312) {
-    playerGameRows = function playerGameRowsKoDateLabelV312(playerNameOrId) {
-      const rows = originalPlayerGameRows.apply(this, arguments) || [];
-      return rows.map(row => {
-        if (!row?.knockout) return row;
-
-        const matchId = row.match?.id || row.game?.id || row.bet?.gameId || "";
-        const match = row.match || knockoutMatchById?.(matchId) || (appSettings?.knockout?.matches || []).find(item => String(item.id || "") === String(matchId)) || {};
-        const game = (games || []).find(item => String(item.id || "") === String(matchId)) || row.game || {};
-        const dateValue = scoreKoDateValueV312(match, game);
-
-        return {
-          ...row,
-          game: {
-            ...(row.game || {}),
-            ...(game || {}),
-            id: matchId || row.game?.id,
-            homeTeam: row.game?.homeTeam || match.homeTeam || game.homeTeam || "",
-            awayTeam: row.game?.awayTeam || match.awayTeam || game.awayTeam || "",
-            group: scoreKoGameLabelV312(match, game),
-            matchDate: row.game?.matchDate || dateValue,
-            date: row.game?.date || dateValue,
-            phase: "Fase Final"
-          },
-          match: {
-            ...(match || {}),
-            matchDate: match.matchDate || dateValue,
-            date: match.date || dateValue
-          }
-        };
-      });
-    };
-    playerGameRows.__koDateLabelV312 = true;
-    window.playerGameRows = playerGameRows;
+function scoreCleanNumberV312(...values) {
+  for (const value of values) {
+    if (value === "" || value === null || value === undefined) continue;
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
   }
-})();
+  return null;
+}
 
-window.debugPontuacaoDataFinalV312 = function debugPontuacaoDataFinalV312(player = "") {
-  const id = player || leaderboard?.()[0]?.playerId || leaderboard?.()[0]?.playerName || "";
-  const rows = typeof playerGameRows === "function" ? playerGameRows(id) : [];
-  return {
-    version: APP_VERSION_V312_SCORE_KO_DATE_LABEL,
-    player: id,
-    knockoutRows: rows.filter(row => row.knockout).map(row => ({
-      game: `${row.game?.homeTeam || ""} - ${row.game?.awayTeam || ""}`,
-      group: row.game?.group || "",
-      matchDate: row.game?.matchDate || row.game?.date || ""
-    })).slice(0, 30)
-  };
+function scoreCleanGameHasFinalResultV312(game = {}) {
+  const h = scoreCleanNumberV312(game.homeScore, game.scoreHome, game.homeGoals, game.resultHome, game.goalsHome);
+  const a = scoreCleanNumberV312(game.awayScore, game.scoreAway, game.awayGoals, game.resultAway, game.goalsAway);
+  return h !== null && a !== null;
+}
+
+function scoreCleanScorePairV312(game = {}) {
+  const h = scoreCleanNumberV312(game.homeScore, game.scoreHome, game.homeGoals, game.resultHome, game.goalsHome);
+  const a = scoreCleanNumberV312(game.awayScore, game.scoreAway, game.awayGoals, game.resultAway, game.goalsAway);
+  return h === null || a === null ? null : { home: h, away: a };
+}
+
+function scoreCleanIsKoCalendarGameV312(game = {}) {
+  try { if (typeof isKnockoutCalendarGameV259 === "function" && isKnockoutCalendarGameV259(game)) return true; } catch {}
+  const text = `${game.phase || ""} ${game.group || ""} ${game.roundLabel || ""}`.toLowerCase();
+  return text.includes("fase final") || text.includes("16 avos") || text.includes("oitavos") || text.includes("quartos") || text.includes("meias") || text.includes("final");
+}
+
+function scoreCleanCalendarGameForMatchV312(match = {}) {
+  return (games || []).find(game => String(game.id || "") === String(match.id || "")) || null;
+}
+
+function scoreCleanBetForPlayerV312(playerName, playerId, gameId) {
+  const normalizedName = String(playerName || "").trim().toLowerCase();
+  const normalizedId = String(playerId || playerIdFromName?.(playerName || "") || "").trim();
+
+  return (bets || []).find(bet => {
+    if (String(bet.gameId || "") !== String(gameId || "")) return false;
+    const betId = String(bet.playerId || "").trim();
+    const betName = String(bet.playerName || "").trim();
+    return (
+      betId === normalizedId ||
+      playerIdFromName?.(betName) === normalizedId ||
+      betName.toLowerCase() === normalizedName
+    );
+  }) || null;
+}
+
+function scoreCleanKnockoutWinnerV312(match = {}, calendarGame = {}) {
+  try {
+    const direct = match.qualified || match.winnerTeam || match.winner || match.qualifiedTeam ||
+      calendarGame.qualified || calendarGame.winnerTeam || calendarGame.winner || calendarGame.qualifiedTeam || "";
+    if (direct) return direct;
+    return knockoutWinner?.(match) || "";
+  } catch {
+    return match.qualified || match.winnerTeam || match.winner || calendarGame.qualified || "";
+  }
+}
+
+function scoreCleanKnockoutResultV312(match = {}, calendarGame = {}) {
+  const source = { ...(calendarGame || {}), ...(match || {}) };
+  const score = scoreCleanScorePairV312(source);
+  if (!score) return "-";
+  const winner = scoreCleanKnockoutWinnerV312(match, calendarGame);
+  return winner ? `${score.home}-${score.away} · qual. ${winner}` : `${score.home}-${score.away}`;
+}
+
+function scoreCleanGroupResultV312(game = {}) {
+  const score = scoreCleanScorePairV312(game);
+  return score ? `${score.home}-${score.away}` : "-";
+}
+
+function scoreCleanBetDisplayV312(row = {}) {
+  if (!row.bet) return "-";
+  if (row.knockout) return knockoutBetDisplay?.(row.bet) || "-";
+  return `${row.bet.homeGuess ?? "-"}-${row.bet.awayGuess ?? "-"}`;
+}
+
+function scoreCleanRoundNameV312(match = {}, calendarGame = {}) {
+  return match.roundLabel || calendarGame.group || calendarGame.roundLabel || knockoutRoundLabel?.(match.round) || "Fase Final";
+}
+
+function scoreCleanBuildGroupRowsV312(playerName, playerId) {
+  return (games || [])
+    .filter(game => !scoreCleanIsKoCalendarGameV312(game))
+    .filter(game => scoreCleanGameHasFinalResultV312(game))
+    .map(game => {
+      const bet = scoreCleanBetForPlayerV312(playerName, playerId, game.id);
+      const dateValue = scoreCleanBestDateV312(game);
+      const points = bet ? pointsForBet(bet, game) : 0;
+      return {
+        id: game.id,
+        type: "group",
+        knockout: false,
+        dateValue,
+        dateMs: scoreCleanParseDateV312(dateValue),
+        title: `${game.homeTeam || ""} - ${game.awayTeam || ""}`,
+        subtitle: `${game.group || "Grupo"}${dateValue ? ` · ${scoreCleanDateLabelV312(dateValue)}` : ""}`,
+        game,
+        match: null,
+        bet,
+        points,
+        resultText: scoreCleanGroupResultV312(game),
+        betText: bet ? `${bet.homeGuess ?? "-"}-${bet.awayGuess ?? "-"}` : "-",
+        label: bet ? betResultLabel(bet, game) : "Sem aposta",
+        className: bet ? betResultClass(bet, game) : "miss"
+      };
+    });
+}
+
+function scoreCleanBuildKnockoutRowsV312(playerName, playerId) {
+  return (appSettings?.knockout?.matches || [])
+    .filter(match => match && match.id && (match.homeTeam || match.awayTeam))
+    .filter(match => {
+      try { return knockoutMatchHasResult?.(match); } catch { return scoreCleanGameHasFinalResultV312(match); }
+    })
+    .map(match => {
+      const calendarGame = scoreCleanCalendarGameForMatchV312(match);
+      const dateValue = scoreCleanBestDateV312(match, calendarGame || {});
+      const bet = scoreCleanBetForPlayerV312(playerName, playerId, match.id);
+      const points = bet ? pointsForKnockoutBet(bet, match) : 0;
+      const round = scoreCleanRoundNameV312(match, calendarGame || {});
+      const title = `${match.homeTeam || calendarGame?.homeTeam || ""} - ${match.awayTeam || calendarGame?.awayTeam || ""}`;
+      const subtitle = `${round}${dateValue ? ` · ${scoreCleanDateLabelV312(dateValue)}` : ""}`;
+
+      const mergedGame = {
+        ...(calendarGame || {}),
+        ...(match || {}),
+        id: match.id,
+        homeTeam: match.homeTeam || calendarGame?.homeTeam || "",
+        awayTeam: match.awayTeam || calendarGame?.awayTeam || "",
+        group: subtitle,
+        matchDate: dateValue,
+        date: dateValue,
+        phase: "Fase Final"
+      };
+
+      return {
+        id: match.id,
+        type: "knockout",
+        knockout: true,
+        dateValue,
+        dateMs: scoreCleanParseDateV312(dateValue),
+        title,
+        subtitle,
+        game: mergedGame,
+        match,
+        bet,
+        points,
+        resultText: scoreCleanKnockoutResultV312(match, calendarGame || {}),
+        betText: bet ? (knockoutBetDisplay?.(bet) || "-") : "-",
+        label: bet ? knockoutBetResultLabel(bet, match) : "Sem aposta",
+        className: bet ? knockoutBetResultClass(bet, match) : "miss"
+      };
+    });
+}
+
+function scoreCleanRowsForPlayerV312(playerName) {
+  const playerId = playerIdFromName?.(playerName || "") || String(playerName || "");
+  const rows = [
+    ...scoreCleanBuildGroupRowsV312(playerName, playerId),
+    ...scoreCleanBuildKnockoutRowsV312(playerName, playerId)
+  ];
+
+  return rows.sort((a, b) => {
+    const date = (b.dateMs || 0) - (a.dateMs || 0);
+    if (date !== 0) return date;
+    if (a.knockout !== b.knockout) return a.knockout ? -1 : 1;
+    return String(a.title || "").localeCompare(String(b.title || ""), "pt");
+  });
+}
+
+function scoreCleanRenderRowV312(row = {}) {
+  const cls = row.className || "miss";
+  return `
+    <article class="score-clean-game-row-v312 ${cls} ${row.knockout ? "is-ko-v312" : "is-group-v312"}">
+      <div class="score-clean-game-main-v312">
+        <strong>${escapeHtml(row.title || "")}</strong>
+        <small>${escapeHtml(row.subtitle || "")}</small>
+      </div>
+      <div class="score-clean-pill-v312 bet" data-label="Aposta">${escapeHtml(row.betText || "-")}</div>
+      <div class="score-clean-pill-v312 result" data-label="Resultado">${escapeHtml(row.resultText || "-")}</div>
+      <div class="score-clean-type-v312" data-label="Tipo"><em>${escapeHtml(row.label || "")}</em></div>
+      <strong class="score-clean-points-v312" data-label="Pontos">${row.points ?? 0}</strong>
+    </article>
+  `;
+}
+
+function renderScoreCleanV312() {
+  const rows = leaderboard?.() || [];
+  const target = $("scoreSummary");
+  if (!target) return;
+
+  if (!rows.length) {
+    target.innerHTML = `<div class="empty">Importa o Excel de Resultados para criar a classificação.</div>`;
+    return;
+  }
+
+  target.innerHTML = `
+    <div class="score-clean-page-v312">
+      <div class="score-clean-toolbar-v312">
+        <div>
+          <strong>Pontuação</strong>
+          <span>Jogos ordenados do mais recente para o mais antigo. Fase Final entra no dia certo.</span>
+        </div>
+        <div class="score-clean-chips-v312">
+          <span>${rows.length} jogadores</span>
+          <span>${(games || []).filter(game => scoreCleanGameHasFinalResultV312(game)).length} jogos grupos</span>
+          <span>${(appSettings?.knockout?.matches || []).filter(match => { try { return knockoutMatchHasResult?.(match); } catch { return false; } }).length} eliminatórias</span>
+        </div>
+      </div>
+
+      <div class="score-detail-list score-clean-list-v312">
+        ${rows.map((row, index) => {
+          const gameRows = scoreCleanRowsForPlayerV312(row.playerName);
+          const withBets = gameRows.filter(item => item.bet).length;
+          const koCount = gameRows.filter(item => item.knockout).length;
+          const groupCount = gameRows.length - koCount;
+
+          return `
+            <details class="player-score-card score-clean-player-card-v312">
+              <summary>
+                <div class="player-rank">${index + 1}</div>
+                <div class="player-score-main">
+                  <strong>${escapeHtml(row.playerName)}</strong>
+                  <span>${row.exact} exatos · ${row.winner} vencedor · ${row.penalties || 0} qualificada · ${gameRows.length} jogos com resultado · ${withBets} apostas</span>
+                </div>
+                <div class="player-total">${row.points} pts</div>
+                <div class="player-arrow"></div>
+              </summary>
+
+              <div class="score-clean-player-meta-v312">
+                <span>${groupCount} grupos</span>
+                <span>${koCount} fase final</span>
+                <span>${withBets} apostas</span>
+              </div>
+
+              <div class="score-clean-games-table-v312">
+                <div class="score-clean-game-row-v312 head">
+                  <span>Jogo</span>
+                  <span>Aposta</span>
+                  <span>Resultado</span>
+                  <span>Tipo</span>
+                  <span>Pontos</span>
+                </div>
+                ${gameRows.map(scoreCleanRenderRowV312).join("")}
+              </div>
+            </details>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
+}
+
+// Neutraliza a combinação antiga playerGameRows + renderScore apenas na página Pontuação.
+playerGameRows = function playerGameRowsCleanV312(playerName) {
+  return scoreCleanRowsForPlayerV312(playerName).map(row => ({
+    game: row.game,
+    match: row.match,
+    bet: row.bet,
+    points: row.points,
+    label: row.label,
+    className: row.className,
+    knockout: row.knockout,
+    dateMs: row.dateMs,
+    subtitle: row.subtitle
+  }));
 };
+window.playerGameRows = playerGameRows;
 
+renderScore = renderScoreCleanV312;
+window.renderScore = renderScore;
 
-/* v313 — Pontuação: fix real da data/hora nos jogos da Fase Final */
-const APP_VERSION_V313_SCORE_KO_DATE_REAL_FIX = "313.0";
-
-function scoreKoDateFromIdV313(matchId = "") {
-  const match = (appSettings?.knockout?.matches || []).find(item => String(item.id || "") === String(matchId || "")) || {};
-  const game = (games || []).find(item => String(item.id || "") === String(matchId || "")) || {};
-  const value = match.matchDate || match.date || match.kickoff || match.utcDate || match.footballDataUtcDate ||
-                game.matchDate || game.date || game.kickoff || game.utcDate || game.footballDataUtcDate || "";
-  if (!value) return "";
-  try { return `${dateHeader(value)} · ${timePortugal(value)}`; }
-  catch { return String(value || ""); }
-}
-
-function scoreKoRoundFromIdV313(matchId = "") {
-  const match = (appSettings?.knockout?.matches || []).find(item => String(item.id || "") === String(matchId || "")) || {};
-  const game = (games || []).find(item => String(item.id || "") === String(matchId || "")) || {};
-  return match.roundLabel || game.group || game.roundLabel || knockoutRoundLabel?.(match.round) || "Fase Final";
-}
-
-function scoreKoSubtitleFromRowV313(row = {}) {
-  const id = row.match?.id || row.game?.id || row.bet?.gameId || "";
-  const date = scoreKoDateFromIdV313(id);
-  const round = scoreKoRoundFromIdV313(id);
-  return date ? `${round} · ${date}` : "";
-}
-
-(function installScoreKoDateRealFixV313() {
-  if (window.__scoreKoDateRealFixV313) return;
-  window.__scoreKoDateRealFixV313 = true;
-
-  const previousPlayerGameRows = typeof playerGameRows === "function" ? playerGameRows : null;
-  if (previousPlayerGameRows && !previousPlayerGameRows.__koDateRealFixV313) {
-    playerGameRows = function playerGameRowsKoDateRealFixV313(playerId) {
-      const rows = previousPlayerGameRows.apply(this, arguments) || [];
-      return rows.map(row => {
-        if (!row?.knockout) return row;
-        const subtitle = scoreKoSubtitleFromRowV313(row);
-        if (!subtitle) return row;
-        return {
-          ...row,
-          game: {
-            ...(row.game || {}),
-            group: subtitle
-          }
-        };
-      });
-    };
-    playerGameRows.__koDateRealFixV313 = true;
-    window.playerGameRows = playerGameRows;
-  }
-})();
-
-window.debugPontuacaoDataFinalV313 = function debugPontuacaoDataFinalV313(player = "") {
-  const id = player || leaderboard?.()[0]?.playerId || leaderboard?.()[0]?.playerName || "";
-  const rows = typeof playerGameRows === "function" ? playerGameRows(id) : [];
+window.debugPontuacaoCleanV312 = function debugPontuacaoCleanV312(playerName = "") {
+  const first = playerName || leaderboard?.()[0]?.playerName || "";
+  const rows = scoreCleanRowsForPlayerV312(first);
   return {
-    version: APP_VERSION_V313_SCORE_KO_DATE_REAL_FIX,
-    replacedDirectBlock: 1,
-    player: id,
-    knockoutRows: rows.filter(row => row.knockout).map(row => ({
-      game: `${row.game?.homeTeam || ""} - ${row.game?.awayTeam || ""}`,
-      group: row.game?.group || "",
-      matchDate: row.game?.matchDate || row.game?.date || "",
-      id: row.game?.id || row.match?.id || ""
-    })).slice(0, 30)
+    version: APP_VERSION_V312_SCORE_CLEAN_REBUILD,
+    base: "v311",
+    oldSystemsNeutralized: ["playerGameRows", "renderScore"],
+    player: first,
+    total: rows.length,
+    groupRows: rows.filter(row => !row.knockout).length,
+    knockoutRows: rows.filter(row => row.knockout).length,
+    first20: rows.slice(0, 20).map(row => ({
+      dateMs: row.dateMs,
+      date: row.dateValue,
+      title: row.title,
+      subtitle: row.subtitle,
+      knockout: row.knockout,
+      bet: row.betText,
+      result: row.resultText,
+      points: row.points
+    }))
   };
 };
