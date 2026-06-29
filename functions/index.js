@@ -20,37 +20,6 @@ const FOOTBALL_SYSTEM_ACTOR_V151 = { uid: "scheduler", email: "sistema@app-mundi
 const QUIET_TZ = "Europe/Lisbon";
 const DEFAULT_QUIET_START_HOUR = 23;
 const DEFAULT_QUIET_END_HOUR = 9;
-
-function defaultGlobalNotificationSettingsV264() {
-  return {
-    gameStart: true,
-    goals: true,
-    gameEnd: true,
-    results: true,
-    knockout: true,
-    chatGeneral: true,
-    chatAdmin: true,
-    mentions: true
-  };
-}
-
-let globalNotificationCacheV264 = { loadedAt: 0, settings: defaultGlobalNotificationSettingsV264() };
-
-async function globalNotificationSettingsV264(force = false) {
-  const now = Date.now();
-  if (!force && now - globalNotificationCacheV264.loadedAt < 15000) return globalNotificationCacheV264.settings;
-  try {
-    const snap = await db.collection("settings").doc("main").get();
-    const data = snap.exists ? (snap.data() || {}) : {};
-    const settings = { ...defaultGlobalNotificationSettingsV264(), ...(data.globalNotifications || {}) };
-    globalNotificationCacheV264 = { loadedAt: now, settings };
-    return settings;
-  } catch (error) {
-    logger.warn("Nao consegui ler notificacoes globais; vou usar defaults", error);
-    return globalNotificationCacheV264.settings || defaultGlobalNotificationSettingsV264();
-  }
-}
-
 function cleanString(value, fallback = "") {
   return String(value || fallback).trim();
 }
@@ -160,9 +129,7 @@ function tokenInQuietHours(tokenData) {
   return isHourInRange(lisbonHourNow(), start, end);
 }
 
-async function loadEnabledTokens({ room = "", pref = "", adminOnly = false, excludeUid = "", onlyUid = "", ignoreQuietHours = false, ignoreGlobal = false } = {}) {
-  const globalSettings = ignoreGlobal ? defaultGlobalNotificationSettingsV264() : await globalNotificationSettingsV264();
-  if (pref && globalSettings[pref] === false) return [];
+async function loadEnabledTokens({ room = "", pref = "", adminOnly = false, excludeUid = "", onlyUid = "", ignoreQuietHours = false } = {}) {
   const snap = await db.collection("notificationTokens").where("enabled", "==", true).get();
   return snap.docs
     .map(doc => ({ id: doc.id, ref: doc.ref, data: doc.data() || {} }))
@@ -343,30 +310,16 @@ exports.notifyGameLiveEvents = onDocumentWritten("games/{gameId}", async event =
 
 function knockoutSignal(settings) {
   const knockout = settings?.knockout || {};
-  const required = settings?.knockoutRequired || {};
   return JSON.stringify({
     adminUnlocked: Boolean(knockout.adminUnlocked),
     matches: Array.isArray(knockout.matches) ? knockout.matches.map(match => ({
       id: match.id || "",
-      round: match.round || "",
-      index: match.index || "",
       homeTeam: match.homeTeam || "",
       awayTeam: match.awayTeam || "",
-      matchDate: match.matchDate || match.date || match.kickoff || "",
       homeScore: match.homeScore ?? "",
       awayScore: match.awayScore ?? "",
       homePenalties: match.homePenalties ?? "",
-      awayPenalties: match.awayPenalties ?? "",
-      qualified: match.qualified || match.winnerTeam || match.winner || ""
-    })) : [],
-    requiredItems: Array.isArray(required.items) ? required.items.map(item => ({
-      id: item.id || "",
-      matchId: item.matchId || "",
-      playerId: item.playerId || "",
-      homeTeam: item.homeTeam || "",
-      awayTeam: item.awayTeam || "",
-      matchDate: item.matchDate || "",
-      active: item.active !== false
+      awayPenalties: match.awayPenalties ?? ""
     })) : []
   });
 }
@@ -376,12 +329,8 @@ exports.notifyKnockoutUpdated = onDocumentWritten("settings/main", async event =
   const after = event.data?.after?.data() || {};
   if (!after.knockout || knockoutSignal(before) === knockoutSignal(after)) return;
 
-  const beforeRequired = Array.isArray(before?.knockoutRequired?.items) ? before.knockoutRequired.items.length : 0;
-  const afterRequired = Array.isArray(after?.knockoutRequired?.items) ? after.knockoutRequired.items.length : 0;
-  const title = afterRequired > beforeRequired ? "Aposta obrigatória da Fase Final" : "Fase final atualizada";
-  const body = afterRequired > beforeRequired
-    ? "Abre a app para escolher o resultado e a equipa qualificada."
-    : "A fase final do Mundial Pontos 2026 foi alterada.";
+  const title = "Fase final atualizada";
+  const body = "A fase final do Mundial Pontos 2026 foi alterada.";
   const tokens = await loadEnabledTokens({ pref: "knockout", excludeUid: after.updatedBy || "" });
 
   const sent = await sendTokenNotifications(tokens, () => ({
@@ -511,45 +460,21 @@ function footballApiTeamName(team) {
   return cleanString(team?.name || team?.shortName || team?.tla || "");
 }
 
-function footballApiQualifiedSideV268(match) {
-  const score = match?.score || {};
-  const directWinner = cleanString(score.winner || match?.winner || "").toUpperCase();
-  if (["HOME_TEAM", "HOME", "HOME_TEAM_WIN"].includes(directWinner)) return "HOME_TEAM";
-  if (["AWAY_TEAM", "AWAY", "AWAY_TEAM_WIN"].includes(directWinner)) return "AWAY_TEAM";
-
-  const full = score.fullTime || {};
-  const penalties = score.penalties || {};
-  const fullHome = Number(full.home);
-  const fullAway = Number(full.away);
-  if (Number.isFinite(fullHome) && Number.isFinite(fullAway) && fullHome !== fullAway) {
-    return fullHome > fullAway ? "HOME_TEAM" : "AWAY_TEAM";
-  }
-
-  const penHome = Number(penalties.home);
-  const penAway = Number(penalties.away);
-  if (Number.isFinite(penHome) && Number.isFinite(penAway) && penHome !== penAway) {
-    return penHome > penAway ? "HOME_TEAM" : "AWAY_TEAM";
-  }
-
-  return "";
-}
-
 function footballApiScore(match) {
   const full = match?.score?.fullTime || {};
   const regular = match?.score?.regularTime || {};
+  const penalties = match?.score?.penalties || {};
 
-  // v268: para a pontuação da Fase Final, o resultado guardado é sempre o dos
-  // 90 minutos + compensação. A equipa qualificada é calculada à parte pela API
-  // usando vencedor final, prolongamento ou penáltis.
-  const home = regular.home ?? full.home;
-  const away = regular.away ?? full.away;
+  const home = full.home ?? regular.home;
+  const away = full.away ?? regular.away;
 
   if (home === null || home === undefined || away === null || away === undefined) return null;
 
   return {
     homeScore: Number(home),
     awayScore: Number(away),
-    qualifiedSide: footballApiQualifiedSideV268(match)
+    homePenalties: penalties.home === null || penalties.home === undefined ? null : Number(penalties.home),
+    awayPenalties: penalties.away === null || penalties.away === undefined ? null : Number(penalties.away)
   };
 }
 
@@ -558,271 +483,31 @@ function footballMatchDateMillis(value) {
   return Number.isFinite(millis) ? millis : 0;
 }
 
-function footballMatchOrientationV263(apiMatch, localMatch) {
+function footballSamePair(apiMatch, localMatch) {
   const apiHome = footballTeamKey(footballApiTeamName(apiMatch.homeTeam));
   const apiAway = footballTeamKey(footballApiTeamName(apiMatch.awayTeam));
   const localHome = footballTeamKey(localMatch.homeTeam);
   const localAway = footballTeamKey(localMatch.awayTeam);
-
-  if (!apiHome || !apiAway || !localHome || !localAway) return "";
-  if (apiHome === localHome && apiAway === localAway) return "direct";
-  if (apiHome === localAway && apiAway === localHome) return "reversed";
-  return "";
-}
-
-function footballSamePair(apiMatch, localMatch) {
-  return footballMatchOrientationV263(apiMatch, localMatch) === "direct";
-}
-
-function footballApplyMatchOrientationV263(apiMatch, localMatch) {
-  if (!localMatch) return localMatch;
-  const orientation = footballMatchOrientationV263(apiMatch, localMatch) || "direct";
-  localMatch.__footballDataReversed = orientation === "reversed";
-  localMatch.__footballDataOrientation = orientation;
-  return localMatch;
-}
-
-function footballScoreForLocalMatchV263(apiScore, localMatch) {
-  if (!apiScore) return null;
-  if (!localMatch?.__footballDataReversed) return apiScore;
-  return {
-    homeScore: apiScore.awayScore,
-    awayScore: apiScore.homeScore,
-    qualifiedSide: apiScore.qualifiedSide === "HOME_TEAM" ? "AWAY_TEAM" : apiScore.qualifiedSide === "AWAY_TEAM" ? "HOME_TEAM" : ""
-  };
-}
-
-function footballQualifiedTeamFromScoreV268(localMatch = {}, localScore = {}) {
-  const side = cleanString(localScore.qualifiedSide || "").toUpperCase();
-  if (side === "HOME_TEAM") return cleanString(localMatch.homeTeam || "");
-  if (side === "AWAY_TEAM") return cleanString(localMatch.awayTeam || "");
-
-  // Fallback apenas para jogos decididos aos 90 minutos + compensação.
-  const home = Number(localScore.homeScore);
-  const away = Number(localScore.awayScore);
-  if (Number.isFinite(home) && Number.isFinite(away)) {
-    if (home > away) return cleanString(localMatch.homeTeam || "");
-    if (away > home) return cleanString(localMatch.awayTeam || "");
-  }
-  return "";
-}
-
-function footballApplyQualifiedFieldsV268(target = {}, qualifiedTeam = "") {
-  const winner = cleanString(qualifiedTeam);
-  if (!winner) return false;
-  let changed = false;
-  ["winner", "winnerTeam", "qualified", "qualifiedTeam"].forEach(key => {
-    if (target[key] !== winner) {
-      target[key] = winner;
-      changed = true;
-    }
-  });
-  return changed;
+  return apiHome && apiAway && apiHome === localHome && apiAway === localAway;
 }
 
 function footballFindLocalMatch(apiMatch, localMatches) {
   const apiId = String(apiMatch.id || "");
   if (apiId) {
     const byExternal = localMatches.find(match => String(match.footballDataId || match.externalId || "") === apiId);
-    if (byExternal) return footballApplyMatchOrientationV263(apiMatch, byExternal);
+    if (byExternal) return byExternal;
   }
 
-  // v263: a API nem sempre devolve a mesma ordem casa/fora da app.
-  // Antes só aceitava Casa-Fora exatamente igual, por isso vários resultados nunca eram encontrados.
-  const sameTeams = localMatches.filter(match => footballMatchOrientationV263(apiMatch, match));
+  const sameTeams = localMatches.filter(match => footballSamePair(apiMatch, match));
   if (!sameTeams.length) return null;
-  if (sameTeams.length === 1) return footballApplyMatchOrientationV263(apiMatch, sameTeams[0]);
+  if (sameTeams.length === 1) return sameTeams[0];
 
   const apiDate = footballMatchDateMillis(apiMatch.utcDate);
-  if (!apiDate) return footballApplyMatchOrientationV263(apiMatch, sameTeams[0]);
+  if (!apiDate) return sameTeams[0];
 
-  const selected = sameTeams
+  return sameTeams
     .map(match => ({ match, diff: Math.abs(footballMatchDateMillis(match.matchDate || match.utcDate || match.date) - apiDate) }))
     .sort((a, b) => a.diff - b.diff)[0]?.match || sameTeams[0];
-  return footballApplyMatchOrientationV263(apiMatch, selected);
-}
-
-
-// v271 — a API também deve preencher o calendário/base da Fase Final mesmo antes de existirem equipas locais.
-// Antes só tentava casar eliminatórias por equipa/ID; com cards vazios/"A definir" isso nunca acontecia.
-function footballKnockoutRoundFromApiV271(apiMatch = {}) {
-  const raw = cleanString(apiMatch.stage || apiMatch.group || apiMatch.matchday || "").toUpperCase();
-  const value = raw.replace(/[\s-]+/g, "_");
-
-  if (["LAST_32", "ROUND_OF_32", "R32", "STAGE_LAST_32"].includes(value) || value.includes("32")) return "r32";
-  if (["LAST_16", "ROUND_OF_16", "R16", "STAGE_LAST_16"].includes(value) || value.includes("16")) return "r16";
-  if (["QUARTER_FINALS", "QUARTER_FINAL", "QUARTERFINALS", "QF"].includes(value) || value.includes("QUARTER")) return "qf";
-  if (["SEMI_FINALS", "SEMI_FINAL", "SEMIFINALS", "SF"].includes(value) || value.includes("SEMI")) return "sf";
-  if (["FINAL"].includes(value) || value === "FINAL_STAGE") return "final";
-
-  // Third place / bronze não faz parte da árvore principal da app.
-  if (value.includes("THIRD") || value.includes("BRONZE") || value.includes("PLACE")) return "";
-  if (value.includes("GROUP")) return "";
-  return "";
-}
-
-function footballApiTeamIsRealV271(name = "") {
-  const text = cleanString(name);
-  const key = footballTeamKey(text);
-  if (!key) return false;
-  return !(
-    key === "tbd" ||
-    key === "a determinar" ||
-    key === "a determ" ||
-    key.includes("determinar") ||
-    key.includes("a definir") ||
-    key.includes("winner") ||
-    key.includes("vencedor") ||
-    key.includes("runner") ||
-    key.includes("2nd") ||
-    key.includes("second") ||
-    key.includes("grupo") ||
-    key.includes("group") ||
-    key.includes("w") && /^w\d+/.test(key)
-  );
-}
-
-function footballSortApiMatchesV271(a = {}, b = {}) {
-  const da = footballMatchDateMillis(a.utcDate);
-  const db = footballMatchDateMillis(b.utcDate);
-  if (da && db && da !== db) return da - db;
-  if (da && !db) return -1;
-  if (!da && db) return 1;
-  return Number(a.id || 0) - Number(b.id || 0);
-}
-
-function footballApplyApiKnockoutScheduleV271(apiMatches = [], knockoutMatches = [], actor = {}) {
-  const byRound = new Map();
-  (Array.isArray(apiMatches) ? apiMatches : []).forEach(apiMatch => {
-    const round = footballKnockoutRoundFromApiV271(apiMatch);
-    if (!round) return;
-    if (!byRound.has(round)) byRound.set(round, []);
-    byRound.get(round).push(apiMatch);
-  });
-
-  const result = { checked: 0, updated: 0, withTeams: 0, withDate: 0, matched: [] };
-
-  byRound.forEach((apiList, round) => {
-    const sortedApi = [...apiList].sort(footballSortApiMatchesV271);
-    const localRound = (Array.isArray(knockoutMatches) ? knockoutMatches : [])
-      .filter(match => String(match.round || "") === round)
-      .sort((a, b) => Number(a.index || 0) - Number(b.index || 0));
-
-    const used = new Set();
-
-    sortedApi.forEach((apiMatch, idx) => {
-      result.checked += 1;
-      const apiId = String(apiMatch.id || "");
-      let target = null;
-      if (apiId) {
-        target = localRound.find(match => String(match.footballDataId || match.externalId || "") === apiId);
-      }
-      if (!target) {
-        target = localRound.find(match => !used.has(match.id) && !String(match.footballDataId || match.externalId || ""));
-      }
-      if (!target) {
-        target = localRound[idx] || null;
-      }
-      if (!target || used.has(target.id)) return;
-      used.add(target.id);
-
-      const before = JSON.stringify({
-        footballDataId: target.footballDataId || "",
-        matchDate: target.matchDate || target.date || target.kickoff || target.startAt || target.time || "",
-        homeTeam: target.homeTeam || "",
-        awayTeam: target.awayTeam || "",
-        status: target.footballDataStatus || ""
-      });
-
-      const apiUtcDate = cleanString(apiMatch.utcDate);
-      const apiHome = footballApiTeamName(apiMatch.homeTeam);
-      const apiAway = footballApiTeamName(apiMatch.awayTeam);
-      const homeIsReal = footballApiTeamIsRealV271(apiHome);
-      const awayIsReal = footballApiTeamIsRealV271(apiAway);
-
-      if (apiId) target.footballDataId = apiId;
-      target.externalId = target.externalId || apiId;
-      target.footballDataStatus = cleanString(apiMatch.status);
-      target.footballDataStage = cleanString(apiMatch.stage);
-      target.footballDataGroup = cleanString(apiMatch.group);
-      target.footballDataUtcDate = apiUtcDate;
-      target.footballDataLocked = footballShouldLockMatch(apiMatch);
-      target.footballDataUpdatedBy = actor.email || "api";
-      target.source = "football-data.org";
-      target.updatedAt = new Date().toISOString();
-      target.apiAutoMapped = true;
-
-      if (apiUtcDate) {
-        target.matchDate = apiUtcDate;
-        target.date = apiUtcDate;
-        target.kickoff = apiUtcDate;
-        target.startAt = apiUtcDate;
-        target.time = apiUtcDate;
-        result.withDate += 1;
-      }
-
-      // Só troca equipas quando a API já tem nomes reais. Assim não mete "TBD/Winner" nos cards.
-      if (homeIsReal) target.homeTeam = apiHome;
-      if (awayIsReal) target.awayTeam = apiAway;
-      if (homeIsReal || awayIsReal) result.withTeams += 1;
-
-      const after = JSON.stringify({
-        footballDataId: target.footballDataId || "",
-        matchDate: target.matchDate || target.date || target.kickoff || target.startAt || target.time || "",
-        homeTeam: target.homeTeam || "",
-        awayTeam: target.awayTeam || "",
-        status: target.footballDataStatus || ""
-      });
-
-      if (before !== after) result.updated += 1;
-      result.matched.push({
-        localId: target.id,
-        round,
-        index: target.index || "",
-        footballDataId: apiId,
-        utcDate: apiUtcDate,
-        apiHome,
-        apiAway,
-        localHome: target.homeTeam || "",
-        localAway: target.awayTeam || "",
-        status: target.footballDataStatus || ""
-      });
-    });
-  });
-
-  return result;
-}
-
-function footballKnockoutCalendarPayloadFromMatchV271(match = {}) {
-  const matchDate = cleanString(match.matchDate || match.footballDataUtcDate || match.date || match.kickoff || match.startAt || match.time);
-  const homeTeam = cleanString(match.homeTeam);
-  const awayTeam = cleanString(match.awayTeam);
-  if (!match.id || !matchDate || !homeTeam || !awayTeam) return null;
-  return {
-    id: String(match.id),
-    knockoutMatchId: String(match.id),
-    type: "knockout",
-    phase: "Fase Final",
-    group: match.roundLabel || match.round || "Fase Final",
-    round: match.round || "",
-    roundLabel: match.roundLabel || match.round || "Fase Final",
-    index: match.index || "",
-    homeTeam,
-    awayTeam,
-    matchDate,
-    date: matchDate,
-    kickoff: matchDate,
-    startAt: matchDate,
-    time: matchDate,
-    footballDataId: match.footballDataId || "",
-    footballDataStatus: match.footballDataStatus || "",
-    footballDataStage: match.footballDataStage || "",
-    footballDataGroup: match.footballDataGroup || "",
-    footballDataUtcDate: match.footballDataUtcDate || matchDate,
-    source: "FaseFinal",
-    updatedAt: match.updatedAt || new Date().toISOString(),
-    firebaseUpdatedAt: FieldValue.serverTimestamp()
-  };
 }
 
 async function assertFootballDataAdminV147(req) {
@@ -906,7 +591,8 @@ function footballMatchSummary(match) {
     awayTeam: footballApiTeamName(match.awayTeam),
     homeScore: score?.homeScore ?? null,
     awayScore: score?.awayScore ?? null,
-    qualifiedSide: score?.qualifiedSide || ""
+    homePenalties: score?.homePenalties ?? null,
+    awayPenalties: score?.awayPenalties ?? null
   };
 }
 
@@ -924,19 +610,25 @@ function footballReadableSyncMode(mode) {
 
 
 function footballApiAnyScoreV153(match) {
-  const finalScore = footballApiScore(match);
-  if (finalScore) return finalScore;
-
   const score = match?.score || {};
-  const half = score.halfTime || {};
-  const home = half.home;
-  const away = half.away;
-  if (home !== null && home !== undefined && away !== null && away !== undefined) {
-    return {
-      homeScore: Number(home),
-      awayScore: Number(away),
-      qualifiedSide: footballApiQualifiedSideV268(match)
-    };
+  const candidates = [
+    score.fullTime,
+    score.regularTime,
+    score.halfTime
+  ].filter(Boolean);
+
+  for (const item of candidates) {
+    const home = item.home;
+    const away = item.away;
+    if (home !== null && home !== undefined && away !== null && away !== undefined) {
+      const penalties = score.penalties || {};
+      return {
+        homeScore: Number(home),
+        awayScore: Number(away),
+        homePenalties: penalties.home === null || penalties.home === undefined ? null : Number(penalties.home),
+        awayPenalties: penalties.away === null || penalties.away === undefined ? null : Number(penalties.away)
+      };
+    }
   }
 
   return null;
@@ -963,6 +655,8 @@ function footballMatchPayloadV153(apiMatch, actor, score = null) {
   if (score) {
     payload.homeScore = score.homeScore;
     payload.awayScore = score.awayScore;
+    if (score.homePenalties !== null && score.homePenalties !== undefined) payload.homePenalties = score.homePenalties;
+    if (score.awayPenalties !== null && score.awayPenalties !== undefined) payload.awayPenalties = score.awayPenalties;
   }
 
   return payload;
@@ -972,20 +666,13 @@ function footballMatchPayloadV153(apiMatch, actor, score = null) {
 function footballMatchPayloadV158(apiMatch, actor, score = null) {
   const apiStatus = String(apiMatch?.status || "").toUpperCase();
   const isFinished = ["FINISHED", "AWARDED"].includes(apiStatus);
-  const apiUtcDate = cleanString(apiMatch.utcDate);
 
   const payload = {
     footballDataId: String(apiMatch.id || ""),
     footballDataStatus: cleanString(apiMatch.status),
     footballDataStage: cleanString(apiMatch.stage),
     footballDataGroup: cleanString(apiMatch.group),
-    footballDataUtcDate: apiUtcDate,
-    // v261: a API passa também a corrigir/preencher a hora usada pela app.
-    matchDate: apiUtcDate,
-    date: apiUtcDate,
-    kickoff: apiUtcDate,
-    startAt: apiUtcDate,
-    time: apiUtcDate,
+    footballDataUtcDate: cleanString(apiMatch.utcDate),
     footballDataLocked: footballShouldLockMatch(apiMatch),
     footballDataUpdatedBy: actor.email,
     source: "football-data.org",
@@ -998,6 +685,8 @@ function footballMatchPayloadV158(apiMatch, actor, score = null) {
     payload.awayScore = score.awayScore;
     payload.liveHomeScore = FieldValue.delete();
     payload.liveAwayScore = FieldValue.delete();
+    if (score.homePenalties !== null && score.homePenalties !== undefined) payload.homePenalties = score.homePenalties;
+    if (score.awayPenalties !== null && score.awayPenalties !== undefined) payload.awayPenalties = score.awayPenalties;
   } else if (score) {
     payload.liveHomeScore = score.homeScore;
     payload.liveAwayScore = score.awayScore;
@@ -1010,27 +699,7 @@ function footballMatchPayloadV158(apiMatch, actor, score = null) {
 
 const SMART_SYNC_PRE_START_MS_V201 = 5 * 60 * 1000;
 const SMART_SYNC_POST_FINISH_MS_V201 = 5 * 60 * 1000;
-const SMART_SYNC_LATE_CONFIRM_MS_V201 = 12 * 60 * 60 * 1000;
-
-
-function footballIsKnockoutCalendarDocV261(game = {}) {
-  const id = cleanString(game.id || game.knockoutMatchId || "").toLowerCase();
-  const type = cleanString(game.type || game.phase || game.group || "").toLowerCase();
-  return id.startsWith("ko_") || type.includes("knockout") || type.includes("fase final");
-}
-
-function footballApplyWinnerFieldsV261(target = {}) {
-  const winner = footballSmartWinnerV201(target);
-  if (!winner) return false;
-  let changed = false;
-  ["winner", "winnerTeam", "qualified", "qualifiedTeam"].forEach(key => {
-    if (target[key] !== winner) {
-      target[key] = winner;
-      changed = true;
-    }
-  });
-  return changed;
-}
+const SMART_SYNC_LATE_CONFIRM_MS_V201 = 6 * 60 * 60 * 1000;
 
 function footballSmartStatusV201(game = {}) {
   return cleanString(game.footballDataStatus || game.statusApi || game.status).toUpperCase();
@@ -1064,15 +733,14 @@ function footballSmartWinnerV201(match = {}) {
   if (home > away) return match.homeTeam;
   if (away > home) return match.awayTeam;
 
-  // v268: nos empates aos 90+compensação, a equipa que avança vem da API
-  // (prolongamento ou penáltis) e fica guardada em qualified/winnerTeam.
-  const direct = cleanString(match.qualified || match.qualifiedTeam || match.winnerTeam || match.winner || "");
-  if (direct) {
-    const normalized = footballTeamKey(direct);
-    if (normalized === footballTeamKey(match.homeTeam)) return match.homeTeam;
-    if (normalized === footballTeamKey(match.awayTeam)) return match.awayTeam;
-  }
-
+  const hp = match.homePenalties;
+  const ap = match.awayPenalties;
+  if (hp === null || hp === undefined || hp === "" || ap === null || ap === undefined || ap === "") return "";
+  const homePens = Number(hp);
+  const awayPens = Number(ap);
+  if (!Number.isFinite(homePens) || !Number.isFinite(awayPens)) return "";
+  if (homePens > awayPens) return match.homeTeam;
+  if (awayPens > homePens) return match.awayTeam;
   return "";
 }
 
@@ -1081,17 +749,8 @@ function footballSmartPropagateKnockoutV201(matches = []) {
   let changed = false;
 
   for (const match of matches) {
-    const winner = footballSmartWinnerV201(match);
-    if (winner) {
-      ["winner", "winnerTeam", "qualified", "qualifiedTeam"].forEach(key => {
-        if (match[key] !== winner) {
-          match[key] = winner;
-          match.updatedAt = new Date().toISOString();
-          changed = true;
-        }
-      });
-    }
     if (!match?.nextMatchId || !match.nextSlot) continue;
+    const winner = footballSmartWinnerV201(match);
     if (!winner) continue;
     const next = byId.get(match.nextMatchId);
     if (!next) continue;
@@ -1134,14 +793,12 @@ function footballSmartGameReasonV201(game = {}, now = Date.now(), collection = "
   const justFinished = finished && Number.isFinite(finishedAt) && now - finishedAt <= SMART_SYNC_POST_FINISH_MS_V201;
   const nearStart = start && start - now <= SMART_SYNC_PRE_START_MS_V201 && now - start <= SMART_SYNC_LATE_CONFIRM_MS_V201 && !finalScore;
   const recentlyStartedWithoutFinal = start && now >= start && now - start <= SMART_SYNC_LATE_CONFIRM_MS_V201 && !finalScore;
-  const knockoutNeedsApiDate = collection === "knockout" && !game.footballDataId && (!start || !game.homeTeam || !game.awayTeam);
   const finishedMissingFinal = finished && !finalScore;
   const scoreNotConfirmed = finished && finalScore && game.scoreConfirmed !== true;
   const pointsNotConfirmed = finished && finalScore && game.pointsConfirmed !== true;
   const knockoutNotPropagated = collection === "knockout" && finished && finalScore && !footballSmartKnockoutPropagationOkV201(game, allKnockout);
 
   if (lastError) return { active: true, reason: `erro pendente: ${lastError}`, minutesToStart };
-  if (knockoutNeedsApiDate) return { active: true, reason: "fase final sem enquadramento da API", minutesToStart };
   if (live) return { active: true, reason: "jogo a decorrer", minutesToStart };
   if (nearStart) return { active: true, reason: "jogo perto de começar", minutesToStart };
   if (justFinished) return { active: true, reason: "jogo terminou há menos de 5 minutos", minutesToStart };
@@ -1260,8 +917,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
   const syncMode = cleanString(options.mode || "smart");
   const windowDaysBefore = Number(options.daysBefore ?? 1);
   const windowDaysAfter = Number(options.daysAfter ?? 7);
-  const dryRun = options.dryRun === true || options.preview === true || ["diagnostic", "diagnostico", "dry-run", "preview"].includes(syncMode);
-  const forceSync = options.force === true || syncMode === "manual" || dryRun;
+  const forceSync = options.force === true || syncMode === "manual";
 
   const precheck = await footballSmartPrecheckV201({ actor, mode: syncMode, competition, season });
 
@@ -1350,6 +1006,12 @@ async function runFootballDataSyncCoreV151(options = {}) {
     .filter(match => !["FINISHED", "AWARDED"].includes(String(match.status || "").toUpperCase()))
     .slice(0, 12)
     .map(footballMatchSummary);
+  const knockoutFixtures = matches
+    .filter(match => String(match.stage || "").toUpperCase() !== "GROUP_STAGE")
+    .filter(match => footballApiTeamName(match.homeTeam) && footballApiTeamName(match.awayTeam))
+    .sort((a, b) => footballMatchDateMillis(a.utcDate) - footballMatchDateMillis(b.utcDate))
+    .map(footballMatchSummary)
+    .slice(0, 48);
   const liveOrLocked = matches
     .filter(footballShouldLockMatch)
     .map(footballMatchSummary);
@@ -1370,34 +1032,17 @@ async function runFootballDataSyncCoreV151(options = {}) {
   let liveUpdated = 0;
   let knockoutPropagationChanged = false;
 
-  // v271: antes de tentar casar por equipas, preencher a própria árvore da Fase Final
-  // com os jogos eliminatórios que a API já conhece (ID, data/hora, status e equipas quando reais).
-  const knockoutApiScheduleV271 = footballApplyApiKnockoutScheduleV271(matches, knockoutMatches, actor);
-
   const matchedGamesStatusV153 = [];
-  const unmatchedApiMatchesV269 = [];
-  const diagnosticMatchesV269 = [];
 
   matches.forEach(apiMatch => {
-    const apiScore = footballApiAnyScoreV153(apiMatch);
+    const score = footballApiAnyScoreV153(apiMatch);
     const apiStatus = String(apiMatch.status || "").toUpperCase();
     const isFinished = footballIsFinishedV153(apiMatch);
     const isGroupStage = String(apiMatch.stage || "").toUpperCase() === "GROUP_STAGE";
     const groupTarget = footballFindLocalMatch(apiMatch, localGames);
     const knockoutTarget = !isGroupStage ? footballFindLocalMatch(apiMatch, knockoutMatches) : null;
 
-    diagnosticMatchesV269.push({
-      api: footballMatchSummary(apiMatch),
-      matchedCalendar: groupTarget ? { id: groupTarget.id, homeTeam: groupTarget.homeTeam || "", awayTeam: groupTarget.awayTeam || "", orientation: groupTarget.__footballDataOrientation || "direct" } : null,
-      matchedKnockout: knockoutTarget ? { id: knockoutTarget.id, round: knockoutTarget.round || knockoutTarget.phase || knockoutTarget.stage || "", homeTeam: knockoutTarget.homeTeam || "", awayTeam: knockoutTarget.awayTeam || "", orientation: knockoutTarget.__footballDataOrientation || "direct" } : null
-    });
-
-    if (!groupTarget && !knockoutTarget && unmatchedApiMatchesV269.length < 80) {
-      unmatchedApiMatchesV269.push(footballMatchSummary(apiMatch));
-    }
-
     if (groupTarget) {
-      const score = footballScoreForLocalMatchV263(apiScore, groupTarget);
       const payload = footballMatchPayloadV158(apiMatch, actor, score);
       payload.lastApiCheckAt = FieldValue.serverTimestamp();
       payload.lastApiStatus = cleanString(apiMatch.status);
@@ -1412,14 +1057,6 @@ async function runFootballDataSyncCoreV151(options = {}) {
         payload.syncEndedAt = groupTarget.syncEndedAt || new Date().toISOString();
         payload.syncConfirmedAt = new Date().toISOString();
         payload.syncActive = false;
-        if (footballIsKnockoutCalendarDocV261(groupTarget)) {
-          payload.homePenalties = FieldValue.delete();
-          payload.awayPenalties = FieldValue.delete();
-          const qualified = footballQualifiedTeamFromScoreV268(groupTarget, score);
-          if (qualified) {
-            footballApplyQualifiedFieldsV268(payload, qualified);
-          }
-        }
         finalConfirmed += 1;
       } else if (score) {
         payload.scoreConfirmed = false;
@@ -1427,10 +1064,8 @@ async function runFootballDataSyncCoreV151(options = {}) {
         liveUpdated += 1;
       }
 
-      if (!dryRun) {
-        batch.set(db.collection("games").doc(groupTarget.id), payload, { merge: true });
-        writes += 1;
-      }
+      batch.set(db.collection("games").doc(groupTarget.id), payload, { merge: true });
+      writes += 1;
 
       const updatePayload = {
         id: groupTarget.id,
@@ -1439,7 +1074,6 @@ async function runFootballDataSyncCoreV151(options = {}) {
         ...payload,
         status: payload.footballDataStatus,
         stage: payload.footballDataStage,
-        footballDataOrientation: groupTarget.__footballDataOrientation || "direct",
         firebaseUpdatedAt: null
       };
 
@@ -1449,7 +1083,6 @@ async function runFootballDataSyncCoreV151(options = {}) {
     }
 
     if (knockoutTarget) {
-      const score = footballScoreForLocalMatchV263(apiScore, knockoutTarget);
       const payload = footballMatchPayloadV158(apiMatch, actor, score);
       Object.assign(knockoutTarget, {
         footballDataId: payload.footballDataId,
@@ -1473,10 +1106,8 @@ async function runFootballDataSyncCoreV151(options = {}) {
         knockoutTarget.awayScore = score.awayScore;
         knockoutTarget.liveHomeScore = null;
         knockoutTarget.liveAwayScore = null;
-        knockoutTarget.homePenalties = null;
-        knockoutTarget.awayPenalties = null;
-        const qualified = footballQualifiedTeamFromScoreV268(knockoutTarget, score);
-        if (qualified) footballApplyQualifiedFieldsV268(knockoutTarget, qualified);
+        knockoutTarget.homePenalties = score.homePenalties;
+        knockoutTarget.awayPenalties = score.awayPenalties;
         knockoutTarget.scoreConfirmed = true;
         knockoutTarget.pointsConfirmed = true;
         knockoutTarget.syncEndedAt = knockoutTarget.syncEndedAt || new Date().toISOString();
@@ -1503,12 +1134,12 @@ async function runFootballDataSyncCoreV151(options = {}) {
         footballDataUtcDate: knockoutTarget.footballDataUtcDate,
         footballDataLocked: knockoutTarget.footballDataLocked,
         source: knockoutTarget.source,
-        matchDate: knockoutTarget.matchDate || knockoutTarget.footballDataUtcDate || "",
-        qualified: knockoutTarget.qualified || knockoutTarget.winnerTeam || knockoutTarget.winner || "",
         homeScore: knockoutTarget.homeScore ?? null,
         awayScore: knockoutTarget.awayScore ?? null,
         liveHomeScore: knockoutTarget.liveHomeScore ?? null,
         liveAwayScore: knockoutTarget.liveAwayScore ?? null,
+        homePenalties: knockoutTarget.homePenalties ?? null,
+        awayPenalties: knockoutTarget.awayPenalties ?? null,
         scoreConfirmed: knockoutTarget.scoreConfirmed === true,
         pointsConfirmed: knockoutTarget.pointsConfirmed === true,
         updatedAt: knockoutTarget.updatedAt,
@@ -1523,7 +1154,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
   }
 
   const syncMetaRef = db.collection("settings").doc("footballData");
-  if (!dryRun) batch.set(syncMetaRef, {
+  batch.set(syncMetaRef, {
     syncMode: "smart",
     provider: "football-data",
     mode: "Inteligente",
@@ -1547,10 +1178,6 @@ async function runFootballDataSyncCoreV151(options = {}) {
     updatedGames: updatedGames.length,
     matchedGamesStatus: matchedGamesStatusV153.length,
     updatedKnockoutMatches: updatedKnockoutMatches.length,
-    knockoutApiScheduleUpdated: knockoutApiScheduleV271.updated,
-    knockoutApiScheduleChecked: knockoutApiScheduleV271.checked,
-    knockoutApiScheduleWithTeams: knockoutApiScheduleV271.withTeams,
-    knockoutApiScheduleWithDate: knockoutApiScheduleV271.withDate,
     finalConfirmed,
     liveUpdated,
     knockoutPropagationChanged,
@@ -1559,14 +1186,13 @@ async function runFootballDataSyncCoreV151(options = {}) {
     nextSyncGame: precheck.meta.nextSyncGame,
     nextSyncStartsAt: precheck.meta.nextSyncStartsAt,
     upcoming,
+    knockoutFixtures,
     liveOrLocked,
     lastError: FieldValue.delete()
   }, { merge: true });
-  if (!dryRun) writes += 1;
+  writes += 1;
 
-  // v271: se a API preencheu datas/equipas/IDs das eliminatórias, guardar a Fase Final
-  // mesmo que ainda não exista resultado. Antes só gravava se houvesse resultado/propagação.
-  if (!dryRun && (updatedKnockoutMatches.length || knockoutPropagationChanged || knockoutApiScheduleV271.updated)) {
+  if (updatedKnockoutMatches.length || knockoutPropagationChanged) {
     const nextSettings = {
       ...settings,
       knockout: {
@@ -1574,30 +1200,15 @@ async function runFootballDataSyncCoreV151(options = {}) {
         matches: knockoutMatches
       },
       footballDataLastSyncAt: FieldValue.serverTimestamp(),
-      footballDataLastSyncBy: actor.email,
-      footballDataKnockoutScheduleV271: {
-        updated: knockoutApiScheduleV271.updated,
-        checked: knockoutApiScheduleV271.checked,
-        withDate: knockoutApiScheduleV271.withDate,
-        withTeams: knockoutApiScheduleV271.withTeams,
-        lastRunIso: new Date().toISOString()
-      }
+      footballDataLastSyncBy: actor.email
     };
     batch.set(settingsRef, nextSettings, { merge: true });
     writes += 1;
-
-    // Também prepara os jogos da Fase Final no Calendário normal quando já houver equipas + data.
-    knockoutMatches.forEach(match => {
-      const gamePayload = footballKnockoutCalendarPayloadFromMatchV271(match);
-      if (!gamePayload) return;
-      batch.set(db.collection("games").doc(String(match.id)), gamePayload, { merge: true });
-      writes += 1;
-    });
   }
 
-  if (!dryRun && writes > 0) await batch.commit();
+  if (writes > 0) await batch.commit();
 
-  if (!dryRun) await db.collection("systemLogs").add({
+  await db.collection("systemLogs").add({
     action: "Football-data smart sync",
     detail: `Sync inteligente: ${updatedGames.length} grupo(s), ${updatedKnockoutMatches.length} fase final, ${liveUpdated} live, ${finalConfirmed} final confirmado.`,
     createdAt: FieldValue.serverTimestamp(),
@@ -1620,10 +1231,9 @@ async function runFootballDataSyncCoreV151(options = {}) {
 
   return {
     ok: true,
-    dryRun,
     competition,
     season,
-    mode: dryRun ? "diagnostic" : "smart",
+    mode: "smart",
     provider: "football-data",
     status: "active",
     reason: precheck.meta.lastActiveReason,
@@ -1635,20 +1245,9 @@ async function runFootballDataSyncCoreV151(options = {}) {
     finalConfirmed,
     liveUpdated,
     knockoutPropagationChanged,
-    knockoutApiSchedule: knockoutApiScheduleV271,
     upcoming,
+    knockoutFixtures,
     liveOrLocked,
-    diagnostics: {
-      dryRun,
-      apiMatches: matches.length,
-      localCalendarGames: localGames.length,
-      localKnockoutMatches: knockoutMatches.length,
-      matchedCalendar: matchedGamesStatusV153.length,
-      matchedKnockout: updatedKnockoutMatches.length,
-      knockoutApiSchedule: knockoutApiScheduleV271,
-      unmatchedApiMatches: unmatchedApiMatchesV269,
-      matches: diagnosticMatchesV269.slice(0, 120)
-    },
     lastSyncIso: new Date().toISOString()
   };
 }
@@ -1680,9 +1279,7 @@ exports.syncFootballDataWorldCup = onRequest({
       season: req.body?.season || "2026",
       mode: req.body?.mode || "manual",
       daysBefore: req.body?.daysBefore ?? 1,
-      daysAfter: req.body?.daysAfter ?? 7,
-      force: req.body?.force === true,
-      dryRun: req.body?.dryRun === true || req.body?.preview === true
+      daysAfter: req.body?.daysAfter ?? 7
     });
     res.json(result);
   } catch (error) {
