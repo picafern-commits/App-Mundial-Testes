@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v313";
+const APP_VERSION_LABEL = "v314";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -24886,5 +24886,152 @@ window.debugEstabilidadeV313 = function debugEstabilidadeV313() {
     visibleButtons: [...document.querySelectorAll("button")].filter(btn => btn.offsetParent !== null).length,
     hiddenButtons: [...document.querySelectorAll("button")].filter(btn => btn.offsetParent === null).length,
     activeCards: [...document.querySelectorAll(".match-row,.admin-card,.player-score-card,.modal-card")].filter(el => el.offsetParent !== null).length
+  };
+};
+
+
+/* v314 — Design system global + Calendário clean, sem alterar regras */
+const APP_VERSION_V314_DESIGN_CALENDAR_CLEAN = "314.0";
+
+function calendarModernGameTypeV314(game = {}) {
+  try {
+    if (typeof isKnockoutCalendarGameV259 === "function" && isKnockoutCalendarGameV259(game)) return "knockout";
+  } catch {}
+  const text = `${game.phase || ""} ${game.group || ""} ${game.round || ""} ${game.roundLabel || ""}`.toLowerCase();
+  if (text.includes("fase final") || text.includes("oitavos") || text.includes("quartos") || text.includes("meias") || text.includes("final")) return "knockout";
+  return "group";
+}
+
+function calendarModernStatusV314(game = {}) {
+  try {
+    const state = statusOf?.(game);
+    const text = String(state?.text || "").toLowerCase();
+    if (text.includes("decorrer") || text.includes("live")) return "live";
+    if (text.includes("resultado") || text.includes("falta")) return "missing";
+    if (text.includes("jogado") || text.includes("final") || text.includes("termin")) return "played";
+    return String(state?.className || "upcoming");
+  } catch {
+    return "upcoming";
+  }
+}
+
+function applyModernCalendarClassesV314() {
+  const shell = document.querySelector(".app-shell");
+  const calendar = document.getElementById("calendarTab");
+  const list = document.getElementById("gamesList");
+
+  document.documentElement.classList.add("app-modern-v314");
+  shell?.classList.add("app-shell-modern-v314");
+
+  if (!calendar || !list) return;
+  calendar.classList.add("calendar-modern-v314");
+  list.classList.add("games-list-modern-v314");
+
+  list.querySelectorAll(".day-block").forEach(day => {
+    day.classList.add("day-block-modern-v314");
+  });
+
+  list.querySelectorAll(".match-row").forEach(row => {
+    row.classList.add("match-row-modern-v314");
+
+    const gameId = row.dataset?.gameId || row.getAttribute("data-game-id") || row.querySelector("[data-bets-game]")?.dataset?.betsGame || row.querySelector("[data-ko-calendar-game-v259]")?.dataset?.koCalendarGameV259 || "";
+    const game = (games || []).find(item => String(item.id || "") === String(gameId || "")) || null;
+
+    if (game) {
+      row.dataset.calendarTypeV314 = calendarModernGameTypeV314(game);
+      row.dataset.calendarStateV314 = calendarModernStatusV314(game);
+    }
+
+    const actions = row.querySelector(".bet-inputs,.calendar-actions,.match-actions");
+    actions?.classList.add("match-actions-modern-v314");
+
+    const score = row.querySelector(".score-vs");
+    score?.classList.add("score-modern-v314");
+  });
+}
+
+function applyModernGlobalClassesV314() {
+  document.documentElement.classList.add("app-modern-v314");
+  document.querySelectorAll(".modal-card").forEach(el => el.classList.add("modal-card-modern-v314"));
+  document.querySelectorAll(".admin-card,.player-score-card,.top-card,.settings-card,.score-card").forEach(el => el.classList.add("surface-modern-v314"));
+  document.querySelectorAll("button.primary,.primary").forEach(el => el.classList.add("btn-modern-primary-v314"));
+  document.querySelectorAll("button.secondary,.secondary").forEach(el => el.classList.add("btn-modern-secondary-v314"));
+  document.querySelectorAll(".tab").forEach(el => el.classList.add("tab-modern-v314"));
+}
+
+(function installDesignCalendarCleanV314() {
+  if (window.__designCalendarCleanV314) return;
+  window.__designCalendarCleanV314 = true;
+
+  const originalRenderCalendar = typeof renderCalendar === "function" ? renderCalendar : null;
+  if (originalRenderCalendar && !originalRenderCalendar.__modernV314) {
+    renderCalendar = function renderCalendarModernV314() {
+      const result = originalRenderCalendar.apply(this, arguments);
+      requestAnimationFrame(() => {
+        applyModernGlobalClassesV314();
+        applyModernCalendarClassesV314();
+      });
+      return result;
+    };
+    renderCalendar.__modernV314 = true;
+    window.renderCalendar = renderCalendar;
+  }
+
+  const originalRenderAll = typeof renderAll === "function" ? renderAll : null;
+  if (originalRenderAll && !originalRenderAll.__modernV314) {
+    renderAll = function renderAllModernV314() {
+      const result = originalRenderAll.apply(this, arguments);
+      requestAnimationFrame(() => {
+        applyModernGlobalClassesV314();
+        applyModernCalendarClassesV314();
+      });
+      return result;
+    };
+    renderAll.__modernV314 = true;
+    window.renderAll = renderAll;
+  }
+
+  const originalRenderActive = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+  if (originalRenderActive && !originalRenderActive.__modernV314) {
+    renderActivePageV187 = function renderActivePageModernV314() {
+      const result = originalRenderActive.apply(this, arguments);
+      requestAnimationFrame(() => {
+        applyModernGlobalClassesV314();
+        applyModernCalendarClassesV314();
+      });
+      return result;
+    };
+    renderActivePageV187.__modernV314 = true;
+    window.renderActivePageV187 = renderActivePageV187;
+  }
+
+  document.addEventListener("click", event => {
+    if (event.target.closest?.(".tab,[data-tab],#calendarTab button")) {
+      requestAnimationFrame(() => {
+        applyModernGlobalClassesV314();
+        applyModernCalendarClassesV314();
+      });
+    }
+  }, true);
+
+  requestAnimationFrame(() => {
+    applyModernGlobalClassesV314();
+    applyModernCalendarClassesV314();
+  });
+})();
+
+window.debugDesignCalendarioV314 = function debugDesignCalendarioV314() {
+  return {
+    version: APP_VERSION_V314_DESIGN_CALENDAR_CLEAN,
+    base: "v313",
+    htmlModern: document.documentElement.classList.contains("app-modern-v314"),
+    calendarModern: document.getElementById("calendarTab")?.classList.contains("calendar-modern-v314") || false,
+    visibleMatchRows: [...document.querySelectorAll("#gamesList .match-row")].filter(row => row.offsetParent !== null).length,
+    sampleRows: [...document.querySelectorAll("#gamesList .match-row")].slice(0, 8).map(row => ({
+      className: row.className,
+      type: row.dataset.calendarTypeV314 || "",
+      state: row.dataset.calendarStateV314 || "",
+      score: row.querySelector(".score-vs")?.textContent?.trim() || ""
+    }))
   };
 };
