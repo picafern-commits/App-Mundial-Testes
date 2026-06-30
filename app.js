@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v351";
+const APP_VERSION_LABEL = "v352";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -30999,3 +30999,258 @@ window.debugPrivateBetsV351 = function debugPrivateBetsV351(gameId = "") {
     v348
   };
 };
+
+
+
+/* v352 — correção de performance: loops antigos e Firebase modular */
+const APP_VERSION_V352_PERFORMANCE_FIX = "352.0";
+
+(function installPerformanceFixV352() {
+  if (window.__performanceFixV352) return;
+  window.__performanceFixV352 = true;
+
+  const metrics = window.__performanceMetricsV352 = {
+    version: APP_VERSION_V352_PERFORMANCE_FIX,
+    installedAt: new Date().toISOString(),
+    footballStartCalls: 0,
+    footballRetriesScheduled: 0,
+    footballModularListener: false,
+    footballCompatListener: false,
+    footballDisabledReason: "",
+    searchIntervalsStopped: 0,
+    searchButtonCallsBlocked: 0,
+    legacySearchButtonsRemoved: 0,
+    renderAllCalls: 0,
+    renderCalendarCalls: 0,
+    lastRenderAllMs: 0,
+    maxRenderAllMs: 0,
+    lastRenderCalendarMs: 0,
+    maxRenderCalendarMs: 0
+  };
+
+  function activeVisibleTabIdV352() {
+    try { return document.querySelector(".tab-panel.active")?.id || ""; }
+    catch { return ""; }
+  }
+
+  function removeLegacySearchButtonsV352() {
+    let removed = 0;
+    try {
+      document.querySelectorAll("#gamesList [data-search-result-game], #calendarTab [data-search-result-game], .match-row [data-search-result-game], [data-game-id] > [data-search-result-game]").forEach(btn => {
+        removed += 1;
+        btn.remove();
+      });
+    } catch {}
+    metrics.legacySearchButtonsRemoved += removed;
+    return removed;
+  }
+
+  function stopLegacySearchIntervalsV352() {
+    try {
+      if (typeof v115PesquisarTodosInterval !== "undefined" && v115PesquisarTodosInterval) {
+        clearInterval(v115PesquisarTodosInterval);
+        v115PesquisarTodosInterval = null;
+        metrics.searchIntervalsStopped += 1;
+      }
+    } catch {}
+
+    try {
+      if (typeof v117PesquisarReapply !== "undefined" && v117PesquisarReapply) {
+        clearInterval(v117PesquisarReapply);
+        v117PesquisarReapply = null;
+        metrics.searchIntervalsStopped += 1;
+      }
+    } catch {}
+
+    removeLegacySearchButtonsV352();
+  }
+
+  // As versões antigas injetavam/removiam botões "Pesquisar" nos cards a cada 4/5s.
+  // Como a v315 já decidiu remover esses botões dos jogos, a v352 bloqueia a reinjeção na origem.
+  try {
+    const originalAddSearchButtonsV352 = typeof addSearchButtonsToResultCards === "function" ? addSearchButtonsToResultCards : null;
+    if (originalAddSearchButtonsV352 && !originalAddSearchButtonsV352.__performanceV352) {
+      addSearchButtonsToResultCards = function addSearchButtonsPerformanceV352() {
+        metrics.searchButtonCallsBlocked += 1;
+        stopLegacySearchIntervalsV352();
+        return removeLegacySearchButtonsV352();
+      };
+      addSearchButtonsToResultCards.__performanceV352 = true;
+      window.addSearchButtonsToResultCards = addSearchButtonsToResultCards;
+    }
+  } catch {}
+
+  document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(stopLegacySearchIntervalsV352, 0);
+    setTimeout(stopLegacySearchIntervalsV352, 700);
+    setTimeout(stopLegacySearchIntervalsV352, 1800);
+  });
+
+  // Corrige o loop antigo do painel de sync/API.
+  // A versão v156 tentava usar db.collection(...), que só existe no Firebase compat.
+  // Nesta app o Firestore é modular; sem este patch ficava a remarcar arranque a cada 800ms.
+  let footballRetryTimerV352 = null;
+  let footballRetryAttemptsV352 = 0;
+  const MAX_FOOTBALL_RETRIES_V352 = 8;
+
+  function scheduleFootballRetryV352(reason = "firebase ainda não pronto") {
+    metrics.footballDisabledReason = reason;
+    if (footballRealtimeSyncUnsubV156 || footballRetryTimerV352) return;
+    if (footballRetryAttemptsV352 >= MAX_FOOTBALL_RETRIES_V352) return;
+    footballRetryAttemptsV352 += 1;
+    metrics.footballRetriesScheduled += 1;
+    footballRetryTimerV352 = setTimeout(() => {
+      footballRetryTimerV352 = null;
+      try { footballRealtimeSyncStartV156(); } catch (error) { console.warn("football sync v352 retry falhou:", error); }
+    }, Math.min(15000, 1500 * footballRetryAttemptsV352));
+  }
+
+  function renderFootballSyncErrorV352(text) {
+    try {
+      const box = typeof footballRealtimeSyncEnsureBoxV156 === "function" ? footballRealtimeSyncEnsureBoxV156() : null;
+      const pill = document.getElementById("footballRealtimeSyncPillV156");
+      const sub = document.getElementById("footballRealtimeSyncSubV156");
+      if (pill) {
+        pill.className = "football-realtime-sync-pill-v156 warning";
+        const label = pill.querySelector("span");
+        if (label) label.textContent = "Em espera";
+      }
+      if (sub) sub.textContent = text;
+      if (box) box.dataset.state = "warning";
+    } catch {}
+  }
+
+  try {
+    const originalFootballRenderV352 = typeof footballRealtimeSyncRenderV156 === "function" ? footballRealtimeSyncRenderV156 : null;
+    if (originalFootballRenderV352 && !originalFootballRenderV352.__performanceV352) {
+      footballRealtimeSyncRenderV156 = function footballRealtimeSyncRenderPerformanceV352(data = null) {
+        // Evita trabalho visual quando a página está escondida e o painel nem está aberto.
+        if (document.hidden && activeVisibleTabIdV352() !== "dashboardTab") return;
+        return originalFootballRenderV352.apply(this, arguments);
+      };
+      footballRealtimeSyncRenderV156.__performanceV352 = true;
+      window.footballRealtimeSyncRenderV156 = footballRealtimeSyncRenderV156;
+    }
+  } catch {}
+
+  try {
+    footballRealtimeSyncStartV156 = function footballRealtimeSyncStartPerformanceV352() {
+      metrics.footballStartCalls += 1;
+
+      try {
+        if (footballRealtimeSyncUnsubV156) return;
+        if (!db || storageMode !== "firebase") {
+          scheduleFootballRetryV352("Firestore ainda não está ligado");
+          return;
+        }
+
+        const hasModularFirestore = firebaseApi && typeof firebaseApi.doc === "function" && typeof firebaseApi.onSnapshot === "function";
+        const hasCompatFirestore = db && typeof db.collection === "function";
+
+        if (hasModularFirestore) {
+          const ref = firebaseApi.doc(db, "settings", "footballData");
+          footballRealtimeSyncUnsubV156 = firebaseApi.onSnapshot(ref, snapshot => {
+            const data = snapshot.exists() ? (snapshot.data() || {}) : {};
+            footballRealtimeSyncRenderV156(data);
+          }, error => {
+            console.warn("Sync tempo real modular indisponível:", error);
+            renderFootballSyncErrorV352("Não foi possível ler settings/footballData.");
+          });
+          metrics.footballModularListener = true;
+          metrics.footballDisabledReason = "";
+        } else if (hasCompatFirestore) {
+          footballRealtimeSyncUnsubV156 = db.collection("settings").doc("footballData").onSnapshot(snapshot => {
+            const data = snapshot.exists ? (snapshot.data() || {}) : {};
+            footballRealtimeSyncRenderV156(data);
+          }, error => {
+            console.warn("Sync tempo real compat indisponível:", error);
+            renderFootballSyncErrorV352("Não foi possível ler settings/footballData.");
+          });
+          metrics.footballCompatListener = true;
+          metrics.footballDisabledReason = "";
+        } else {
+          scheduleFootballRetryV352("Firestore modular ainda sem doc/onSnapshot");
+          return;
+        }
+
+        // O estado da sync não precisa de render a cada 10s; 60s chega e reduz trabalho parado.
+        if (!footballRealtimeSyncTimerV156) {
+          footballRealtimeSyncTimerV156 = setInterval(() => {
+            if (!document.hidden) footballRealtimeSyncRenderV156();
+          }, 60000);
+        }
+
+        footballRealtimeSyncRenderV156();
+      } catch (error) {
+        console.warn("footballRealtimeSyncStart v352 falhou:", error);
+        scheduleFootballRetryV352("erro ao iniciar painel de sync");
+      }
+    };
+    window.footballRealtimeSyncStartV156 = footballRealtimeSyncStartV156;
+  } catch {}
+
+  // Métricas leves para confirmar se o problema voltou, sem alterar dados/Firebase/apostas.
+  try {
+    const originalRenderAllV352 = typeof renderAll === "function" ? renderAll : null;
+    if (originalRenderAllV352 && !originalRenderAllV352.__performanceMetricsV352) {
+      renderAll = function renderAllPerformanceMetricsV352() {
+        const start = performance.now?.() || Date.now();
+        try {
+          return originalRenderAllV352.apply(this, arguments);
+        } finally {
+          const elapsed = Math.round(((performance.now?.() || Date.now()) - start) * 10) / 10;
+          metrics.renderAllCalls += 1;
+          metrics.lastRenderAllMs = elapsed;
+          metrics.maxRenderAllMs = Math.max(metrics.maxRenderAllMs, elapsed);
+        }
+      };
+      renderAll.__performanceMetricsV352 = true;
+      window.renderAll = renderAll;
+    }
+  } catch {}
+
+  try {
+    const originalRenderCalendarV352 = typeof renderCalendar === "function" ? renderCalendar : null;
+    if (originalRenderCalendarV352 && !originalRenderCalendarV352.__performanceMetricsV352) {
+      renderCalendar = function renderCalendarPerformanceMetricsV352() {
+        const start = performance.now?.() || Date.now();
+        try {
+          return originalRenderCalendarV352.apply(this, arguments);
+        } finally {
+          const elapsed = Math.round(((performance.now?.() || Date.now()) - start) * 10) / 10;
+          metrics.renderCalendarCalls += 1;
+          metrics.lastRenderCalendarMs = elapsed;
+          metrics.maxRenderCalendarMs = Math.max(metrics.maxRenderCalendarMs, elapsed);
+        }
+      };
+      renderCalendar.__performanceMetricsV352 = true;
+      window.renderCalendar = renderCalendar;
+    }
+  } catch {}
+
+  window.debugPerformanceV352 = function debugPerformanceV352() {
+    stopLegacySearchIntervalsV352();
+    return {
+      ...metrics,
+      activeTab: activeVisibleTabIdV352(),
+      legacySearchIntervals: {
+        v115: (() => { try { return Boolean(v115PesquisarTodosInterval); } catch { return null; } })(),
+        v117: (() => { try { return Boolean(v117PesquisarReapply); } catch { return null; } })()
+      },
+      football: {
+        hasUnsubscribe: Boolean(footballRealtimeSyncUnsubV156),
+        hasTimer: Boolean(footballRealtimeSyncTimerV156),
+        retryPending: Boolean(footballRetryTimerV352),
+        retryAttempts: footballRetryAttemptsV352,
+        modularListener: metrics.footballModularListener,
+        compatListener: metrics.footballCompatListener,
+        disabledReason: metrics.footballDisabledReason
+      },
+      dom: {
+        gameCards: document.querySelectorAll("#gamesList [data-game-id], #gamesList .match-row").length,
+        searchButtonsInCalendar: document.querySelectorAll("#gamesList [data-search-result-game], #calendarTab [data-search-result-game]").length,
+        openModals: document.querySelectorAll(".modal:not(.hidden)").length
+      }
+    };
+  };
+})();
