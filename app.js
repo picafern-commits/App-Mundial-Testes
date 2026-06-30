@@ -1,4 +1,4 @@
-// v139 football-data resultados automaticos via Firebase Function
+﻿// v139 football-data resultados automaticos via Firebase Function
 const APP_CONFIG = window.MUNDIAL_CONFIG || {};
 const ADMIN_PIN = APP_CONFIG.adminPin || "1234";
 const STORAGE_KEY = "mundial_pontos_2026_import_id_jogo_v32";
@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v355";
+const APP_VERSION_LABEL = "v356";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -76,7 +76,7 @@ const MATCH_ROWS = [
   ["Grupo E", "Costa do Marfim", "Equador", "2026-06-15T00:00"],
   ["Grupo F", "Suécia", "Tunsia", "2026-06-15T03:00"],
   ["Grupo H", "Espanha", "Cabo Verde", "2026-06-15T17:00"],
-  ["Grupo G", "Blgica", "Egito", "2026-06-15T20:00"],
+  ["Grupo G", "Bélgica", "Egito", "2026-06-15T20:00"],
   ["Grupo H", "Arbia Saudita", "Uruguai", "2026-06-15T23:00"],
   ["Grupo G", "Irão", "Nova Zelândia", "2026-06-16T02:00"],
   ["Grupo I", "França", "Senegal", "2026-06-16T20:00"],
@@ -100,7 +100,7 @@ const MATCH_ROWS = [
   ["Grupo E", "Equador", "Curaçao", "2026-06-21T01:00"],
   ["Grupo F", "Tunsia", "Japão", "2026-06-21T05:00"],
   ["Grupo H", "Espanha", "Arbia Saudita", "2026-06-21T17:00"],
-  ["Grupo G", "Blgica", "Irão", "2026-06-21T20:00"],
+  ["Grupo G", "Bélgica", "Irão", "2026-06-21T20:00"],
   ["Grupo H", "Uruguai", "Cabo Verde", "2026-06-21T23:00"],
   ["Grupo G", "Nova Zelândia", "Egito", "2026-06-22T02:00"],
   ["Grupo J", "Argentina", "Áustria", "2026-06-22T18:00"],
@@ -127,7 +127,7 @@ const MATCH_ROWS = [
   ["Grupo I", "Senegal", "Iraque", "2026-06-26T20:00"],
   ["Grupo H", "Cabo Verde", "Arbia Saudita", "2026-06-27T01:00"],
   ["Grupo H", "Uruguai", "Espanha", "2026-06-27T01:00"],
-  ["Grupo G", "Nova Zelândia", "Blgica", "2026-06-27T04:00"],
+  ["Grupo G", "Nova Zelândia", "Bélgica", "2026-06-27T04:00"],
   ["Grupo G", "Egito", "Irão", "2026-06-27T04:00"],
   ["Grupo L", "Panamá", "Inglaterra", "2026-06-27T22:00"],
   ["Grupo L", "Crocia", "Gana", "2026-06-27T22:00"],
@@ -165,7 +165,7 @@ const FLAGS = {
   "Tunsia": "",
   "Espanha": "",
   "Cabo Verde": "",
-  "Blgica": "",
+  "Bélgica": "",
   "Egito": "",
   "Arbia Saudita": "",
   "Uruguai": "",
@@ -198,7 +198,7 @@ const TEAM_ALIASES = {
   "paises baixos": "Países Baixos", "holanda": "Países Baixos", "netherlands": "Países Baixos", "pases baixos": "Países Baixos", "japao": "Japão", "japo": "Japão",
   "costa do marfim": "Costa do Marfim", "equador": "Equador", "suecia": "Suécia", "sucia": "Suécia",
   "tunisia": "Tunsia", "tunsia": "Tunsia", "espanha": "Espanha", "cabo verde": "Cabo Verde",
-  "belgica": "Blgica", "blgica": "Blgica", "egito": "Egito", "arabia saudita": "Arbia Saudita", "arbia saudita": "Arbia Saudita",
+  "belgica": "Bélgica", "bélgica": "Bélgica", "egito": "Egito", "arabia saudita": "Arbia Saudita", "arbia saudita": "Arbia Saudita",
   "uruguai": "Uruguai", "irao": "Irão", "iro": "Irão", "nova zelandia": "Nova Zelândia", "nova zelndia": "Nova Zelândia",
   "franca": "França", "frana": "França", "senegal": "Senegal", "iraque": "Iraque", "noruega": "Noruega",
   "argentina": "Argentina", "argelia": "Argélia", "arglia": "Argélia", "austria": "Áustria", "Áustria": "Áustria",
@@ -218,7 +218,7 @@ const SEED_GAMES = MATCH_ROWS.map(([group, homeTeam, awayTeam, matchDate], index
 const $ = id => document.getElementById(id);
 const clone = value => JSON.parse(JSON.stringify(value));
 const hasResult = game => game.homeScore !== null && game.homeScore !== undefined && game.awayScore !== null && game.awayScore !== undefined;
-const flag = team => FLAGS[team] || "ï";
+const flag = team => FLAGS[team] || "";
 const outcome = (home, away) => Number(home) > Number(away) ? "home" : Number(home) < Number(away) ? "away" : "draw";
 const normalizeKey = value => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const normalizeComparable = value => normalizeKey(value);
@@ -1026,7 +1026,7 @@ async function loadData(options = {}) {
       bets = localBets.length ? localBets : bets;
       appSettings = localSettings || appSettings;
       ensureKnockoutSettings();
-      setFirebaseStatus("error", `Firebase: ligação instvel (${shortFirebaseError(error)}). A usar cache e vou tentar novamente.`);
+      setFirebaseStatus("error", `Firebase: ligação instável (${shortFirebaseError(error)}). A usar cache e vou tentar novamente.`);
       renderAll();
       scheduleFirebaseReconnect(options.reason || "loadData erro", 4500);
     }
@@ -1428,7 +1428,7 @@ function filteredGames() {
   return base.sort((a, b) => {
     const diff = timeValue(a) - timeValue(b);
 
-    // J jogaram: mais recente para o mais antigo.
+    // Já jogaram: mais recente para o mais antigo.
     if (calendarViewMode === "played") return -diff;
 
     // Faltam resultados e Todos os jogos: ordem natural do calendário.
@@ -1724,8 +1724,8 @@ function setLoginStatus(message, type = "info") {
   box.textContent = message;
 }
 
-// v275  Login estvel + loading de arranque ps-login.
-// Mantm o login visvel sem flicker e s revela a app quando o primeiro load/render assentou.
+// v275  Login estvel + loading de arranque pós-login.
+// Mantém o login visível sem flicker e s revela a app quando o primeiro load/render assentou.
 let appBootLoadingV275 = false;
 let appBootLoadingTimerV275 = null;
 
@@ -1754,7 +1754,7 @@ function setAppBootLoadingV275(isLoading, message = "A carregar a app...") {
   }
 }
 
-function scheduleAppReadyV275(message = "A preparar dimenses...") {
+function scheduleAppReadyV275(message = "A preparar dimensões...") {
   clearTimeout(appBootLoadingTimerV275);
   setAppBootLoadingV275(true, message);
   appBootLoadingTimerV275 = setTimeout(() => {
@@ -1957,8 +1957,8 @@ function renderPermissionsUsers() {
           </div>
           <div class="permission-user-actions">
             <label class="permission-name-label">
-              Nome visvel
-              <input class="permission-name-input" type="text" data-name-email="${escapeHtml(email)}" value="${escapeHtml(visibleName)}" placeholder="Nome visvel" />
+              Nome visível
+              <input class="permission-name-input" type="text" data-name-email="${escapeHtml(email)}" value="${escapeHtml(visibleName)}" placeholder="Nome visível" />
             </label>
             <select data-role-email="${escapeHtml(email)}">
               <option value="user" ${role === "user" ? "selected" : ""}>User normal</option>
@@ -3362,7 +3362,7 @@ function renderChatMessages() {
   const visibleMessages = chatMessagesCache.filter(chatMessageMatchesSearch);
 
   if (!visibleMessages.length) {
-    box.innerHTML = `<div class="empty small-empty">${chatSearchTerm ? "Nenhuma mensagem encontrada." : "Ainda no h mensagens. Escreve a primeira "}</div>`;
+    box.innerHTML = `<div class="empty small-empty">${chatSearchTerm ? "Nenhuma mensagem encontrada." : "Ainda não há mensagens. Escreve a primeira "}</div>`;
     updateChatUnreadBadge();
     chatNotifyNewMessages();
     renderChatPinnedMessage();
@@ -3719,7 +3719,7 @@ function setupAuthGate() {
     }
 
     try { applyPermissionsToUi(); } catch (error) { console.warn("applyPermissionsToUi falhou sem derrubar login:", error); }
-    try { renderAll(); } catch (error) { console.warn("renderAll ps-login falhou sem derrubar login:", error); }
+    try { renderAll(); } catch (error) { console.warn("renderAll pós-login falhou sem derrubar login:", error); }
     try { forceShowAppAfterLoginV213(); } catch {}
     finishAppReadyV275?.(720);
     setLoginBusyV275?.(false);
@@ -3730,11 +3730,11 @@ function setupAuthGate() {
     try { startOnlineFeaturesSafe(); } catch (error) { console.warn("Online users no iniciou:", error); }
 
     setTimeout(() => {
-      try { setupPushForCurrentUserV182(); } catch (error) { console.warn("Push ps-login falhou:", error); }
+      try { setupPushForCurrentUserV182(); } catch (error) { console.warn("Push pós-login falhou:", error); }
     }, 900);
 
     try {
-      addSystemLog("Sesso iniciada", `${currentProfile.name || currentUser.email} entrou na app.`, { email: currentUser.email }, { sync: true });
+      addSystemLog("Sessão iniciada", `${currentProfile.name || currentUser.email} entrou na app.`, { email: currentUser.email }, { sync: true });
     } catch (logError) {
       console.warn("Log de sesso falhou sem bloquear login:", logError);
     }
@@ -3743,9 +3743,9 @@ function setupAuthGate() {
 
 async function logout() {
   if (!firebaseAuthApi || !firebaseAuth) return;
-  addSystemLog("Sesso terminada", `${currentProfile?.name || currentUser?.email || "User"} saiu da app.`, { email: currentUser?.email || "" }, { sync: true });
+  addSystemLog("Sessão terminada", `${currentProfile?.name || currentUser?.email || "User"} saiu da app.`, { email: currentUser?.email || "" }, { sync: true });
   await firebaseAuthApi.signOut(firebaseAuth);
-  toast("Sesso terminada.");
+  toast("Sessão terminada.");
 }
 
 const KNOCKOUT_ROUNDS = [
@@ -4477,7 +4477,7 @@ function renderKnockoutMobileV121() {
             ${renderKnockoutInlineEditor(match, "mobile")}
           </article>`;
       }).join("")
-    : `<div class="ko-mobile-empty">Ainda no h jogos nesta ronda.</div>`;
+    : `<div class="ko-mobile-empty">Ainda não há jogos nesta ronda.</div>`;
 
   host.innerHTML = `
     <div class="ko-mobile-header ko-mobile-header-v137">
@@ -5206,15 +5206,15 @@ function renderCalendarFilterState() {
   if (missingBtn) {
     missingBtn.classList.toggle("active-filter", calendarViewMode === "missing");
     missingBtn.innerHTML = `Faltam resultados <span class="filter-count">${missingCount}</span>`;
-    missingBtn.title = "Mostra apenas jogos que ainda no tm resultado colocado.";
+    missingBtn.title = "Mostra apenas jogos que ainda não têm resultado colocado.";
     missingBtn.setAttribute("aria-label", `Faltam resultados: ${missingCount} jogos`);
   }
 
   if (playedBtn) {
     playedBtn.classList.toggle("active-filter", calendarViewMode === "played");
-    playedBtn.innerHTML = `J jogaram <span class="filter-count">${playedCount}</span>`;
-    playedBtn.title = "Mostra apenas jogos que j tm resultado, do mais recente para o mais antigo.";
-    playedBtn.setAttribute("aria-label", `J jogaram: ${playedCount} jogos, do mais recente para o mais antigo`);
+    playedBtn.innerHTML = `Já jogaram <span class="filter-count">${playedCount}</span>`;
+    playedBtn.title = "Mostra apenas jogos que já têm resultado, do mais recente para o mais antigo.";
+    playedBtn.setAttribute("aria-label", `Já jogaram: ${playedCount} jogos, do mais recente para o mais antigo`);
   }
 
   if (allBtn) {
@@ -5229,7 +5229,7 @@ function renderCalendar() {
   const container = $("gamesList");
   const groups = groupByDate(filteredGames());
   const days = [...groups.entries()].sort((a, b) => {
-    // J jogaram: dias mais recentes primeiro.
+    // Já jogaram: dias mais recentes primeiro.
     if (calendarViewMode === "played") return b[0].localeCompare(a[0]);
 
     // Todos os jogos e Faltam resultados: por data/calendário.
@@ -5237,7 +5237,7 @@ function renderCalendar() {
   });
 
   if (!days.length) {
-    container.innerHTML = `<div class="empty">No h jogos para mostrar neste filtro.</div>${knockoutEntryButtonHtml()}`;
+    container.innerHTML = `<div class="empty">Não há jogos para mostrar neste filtro.</div>${knockoutEntryButtonHtml()}`;
     renderCalendarFilterState();
     return;
   }
@@ -5463,7 +5463,7 @@ function renderScore() {
   if (!target) return;
 
   if (!rows.length) {
-    target.innerHTML = `<div class="empty">Importa o Excel de Resultados para criar a classificao.</div>`;
+    target.innerHTML = `<div class="empty">Importa o Excel de Resultados para criar a classificação.</div>`;
     return;
   }
 
@@ -6280,7 +6280,7 @@ async function setResult(gameId, homeScore, awayScore) {
     markGamePending(game.id);
     saveLocalData("resultado pendente firebase");
     setFirebaseStatus("error", `Firebase: resultado pendente (${shortFirebaseError(error)})`);
-    toast("Resultado ficou guardado localmente e ser reenviado.");
+    toast("Resultado ficou guardado localmente e será reenviado.");
   });
 
   return true;
@@ -6313,7 +6313,7 @@ async function clearResult(gameId) {
     markGamePending(game.id);
     saveLocalData("limpar resultado pendente firebase");
     setFirebaseStatus("error", `Firebase: limpeza pendente (${shortFirebaseError(error)})`);
-    toast("Alterao ficou guardada localmente e ser reenviada.");
+    toast("Alteração ficou guardada localmente e será reenviada.");
   });
 
   return true;
@@ -6322,12 +6322,12 @@ async function clearResult(gameId) {
 function todayGames() { const key = todayKey(); return games.filter(game => dateKey(game.matchDate) === key); }
 function scoreText() {
   const rows = leaderboard();
-  if (!rows.length) return "⭐ Classificao Mundial 2026\n\nAinda no h apostas importadas.";
-  return "⭐ Classificao Mundial 2026\n\n" + rows.map((row, index) => `${index + 1}. ${row.playerName} - ${row.points} pts`).join("\n");
+  if (!rows.length) return "⭐ Classificação Mundial 2026\n\nAinda não há apostas importadas.";
+  return "⭐ Classificação Mundial 2026\n\n" + rows.map((row, index) => `${index + 1}. ${row.playerName} - ${row.points} pts`).join("\n");
 }
 function todayText() {
   const list = todayGames();
-  if (!list.length) return "⭐ Jogos de Hoje\n\nHoje no h jogos registados.";
+  if (!list.length) return "⭐ Jogos de Hoje\n\nHoje não há jogos registados.";
   const grouped = [...groupByGroup(list).entries()];
   return "⭐ Jogos de Hoje\n\n" + grouped.map(([group, rows]) => {
     const lines = rows.map(game => `${game.homeTeam} vs ${game.awayTeam} - ${timePortugal(game.matchDate)}`);
@@ -6335,7 +6335,7 @@ function todayText() {
   }).join("\n\n");
 }
 function groupsText() {
-  return "⭐ Classificao dos Grupos\n\n" + buildStandings().map(({ group, rows }) => {
+  return "⭐ Classificação dos Grupos\n\n" + buildStandings().map(({ group, rows }) => {
     const lines = rows.map((row, index) => `${index + 1}. ${row.team} - ${row.points} pts`);
     return `${group}\n${lines.join("\n")}`;
   }).join("\n\n");
@@ -6641,7 +6641,7 @@ async function confirmExcelImport() {
   $("confirmExcelImportBtn").disabled = true;
   renderAll();
   setImportStatus("success", "Excel importado e guardado", "As apostas foram gravadas. Podes atualizar a página sem perder os dados.");
-  toast("Excel importado. Classificao recalculada.");
+  toast("Excel importado. Classificação recalculada.");
 }
 async function savePointsSettings() {
   if (!hasPermission("editPoints")) { toast("Sem permissão."); return; }
@@ -6991,7 +6991,7 @@ function openResultModal(gameId) {
 
   $("resultGameIdInput").value = game.id;
   $("resultModalTitle").textContent = hasResult(game) ? "Editar resultado" : "Adicionar resultado";
-  $("resultModalSubtitle").textContent = "Ao guardar, a app compara as apostas dos users e recalcula a classificao.";
+  $("resultModalSubtitle").textContent = "Ao guardar, a app compara as apostas dos users e recalcula a classificação.";
   $("resultHomeFlag").textContent = "";
   $("resultAwayFlag").textContent = "";
   $("resultHomeTeam").textContent = game.homeTeam;
@@ -7185,7 +7185,7 @@ $("calendarAllGamesBtn")?.addEventListener("click", () => {
   renderCalendarFilterState();
 });
 
-$("copyScoreBtn")?.addEventListener("click", () => copyText(scoreText(), "Classificao copiada."));
+$("copyScoreBtn")?.addEventListener("click", () => copyText(scoreText(), "Classificação copiada."));
 $("addUserBtn")?.addEventListener("click", addUser);
 $("newUserNameInput")?.addEventListener("keydown", event => { if (event.key === "Enter") addUser(); });
 $("exportResultadosBtn")?.addEventListener("click", exportResultadosExcel);
@@ -9992,7 +9992,7 @@ function renderSystemLogs() {
   renderLogsSummaryV162(logs, allLogs.length);
 
   if (!logs.length) {
-    container.innerHTML = `<div class="empty small-empty">No h logs para este filtro.</div>`;
+    container.innerHTML = `<div class="empty small-empty">Não há logs para este filtro.</div>`;
     return;
   }
 
@@ -10018,7 +10018,7 @@ function renderSystemLogs() {
 function exportSystemLogsCsv() {
   if (!isLogsUnlocked()) return toast("Desbloqueia os logs com PIN.");
   const logs = filteredSystemLogsV162();
-  if (!logs.length) return toast("No h logs para exportar neste filtro.");
+  if (!logs.length) return toast("Não há logs para exportar neste filtro.");
 
   const rows = [
     ["Data", "Tipo", "Ao", "Detalhe", "Utilizador", "Email", "Dados"],
@@ -10212,7 +10212,7 @@ function renderNotificationsCenterV164() {
   `;
 
   if (!notes.length) {
-    list.innerHTML = `<div class="empty small-empty">Ainda no h notificações.</div>`;
+    list.innerHTML = `<div class="empty small-empty">Ainda não há notificações.</div>`;
     return;
   }
 
@@ -11394,7 +11394,7 @@ function renderOrganizationPanelV213() {
     <div class="settings-org-head-v213">
       <div>
         <strong>Organizao da app</strong>
-        <span>Escolhe o que fica visvel.</span>
+        <span>Escolhe o que fica visível.</span>
       </div>
       <button type="button" class="secondary small" data-admin-layout-reset-v213>Repor</button>
     </div>
@@ -12820,8 +12820,8 @@ if (renderPermissionsUsersOriginalV241 && !window.__renderPermissionsPlayerLinkV
               </div>
               <div class="permission-user-actions">
                 <label class="permission-name-label">
-                  Nome visvel
-                  <input class="permission-name-input" type="text" data-name-email="${escapeHtml(email)}" value="${escapeHtml(visibleName)}" placeholder="Nome visvel" />
+                  Nome visível
+                  <input class="permission-name-input" type="text" data-name-email="${escapeHtml(email)}" value="${escapeHtml(visibleName)}" placeholder="Nome visível" />
                 </label>
                 <label class="permission-player-label-v241">
                   Jogador ligado
@@ -13467,7 +13467,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 // v245  Pgina inicial com boto obrigatrio para apostas/resultados da Fase Final.
-// Substitui a dependncia do modal automático por uma zona visvel e persistente no Calendário.
+// Substitui a dependncia do modal automático por uma zona visível e persistente no Calendário.
 function isPrivilegedKnockoutAdminV245() {
   try { return Boolean(isAdmin || isAdminProfile()); } catch { return Boolean(isAdmin); }
 }
@@ -14876,7 +14876,7 @@ if (!window.__koMandatoryModalV252) {
     };
   } catch {}
 
-  // Substitui os checks antigos por uma entrada nica e previsvel.
+  // Substitui os checks antigos por uma entrada nica e previsível.
   if (typeof runKnockoutMandatoryCheckV247 === "function") {
     runKnockoutMandatoryCheckV247 = function runKnockoutMandatoryCheckV252Adapter() {
       return runKnockoutMandatoryCheckV252();
@@ -16276,7 +16276,7 @@ function koV258Report(now = Date.now()) {
   };
   if (!dataReady || currentProfile?.active === false) return report;
 
-  // Mantm a store local coerente, mas s o Admin a persiste no wrapper de save.
+  // Mantém a store local coerente, mas s o Admin a persiste no wrapper de save.
   const store = koV258RequiredStore();
   const explicitItems = (store.items || []).filter(item => koV258ItemForPlayer(item, player));
   report.explicitItems = explicitItems.length;
@@ -16294,7 +16294,7 @@ function koV258Report(now = Date.now()) {
     else if (state.key === "done") report.done.push(entry);
   });
 
-  // Fallback: se ainda no houver store explcita no Firebase, calcula diretamente a partir dos jogos.
+  // Fallback: se ainda não háouver store explcita no Firebase, calcula diretamente a partir dos jogos.
   koV258Matches().forEach(match => {
     if (!match?.id || seenMatchIds.has(String(match.id))) return;
     const state = koV258StateForMatch(match, player, now);
@@ -19270,7 +19270,7 @@ const APP_VERSION_V273 = "274.0";
 })();
 
 
-/* v276  Calendário mobile dimenses certas */
+/* v276  Calendário mobile dimensões certas */
 const APP_VERSION_V276_CAL_MOBILE = "276.0";
 window.debugCalendarioMobileV276 = function debugCalendarioMobileV276() {
   const card = document.querySelector("#calendarTab .match-row");
@@ -20021,7 +20021,7 @@ window.debugCentralApostasFaseFinalV284 = function debugCentralApostasFaseFinalV
 };
 
 
-/* v285  Calendário: dias mistos no herdam cor da Fase Final */
+/* v285  Calendário: dias mistos não háerdam cor da Fase Final */
 const APP_VERSION_V285_MIXED_DAY_COLOR_FIX = "285.0";
 
 (function installCalendarMixedDayColorFixV285() {
@@ -20356,7 +20356,7 @@ const APP_VERSION_V287_UI_FILTER_CLEAN = "287.0";
       // Remove o banner grande dentro do Calendário.
       document.querySelectorAll(".ko-bet-calendar-banner-v284").forEach(el => el.remove());
 
-      // Mantm/atualiza apenas o boto compacto no topo.
+      // Mantém/atualiza apenas o boto compacto no topo.
       const topbar = document.querySelector(".topbar");
       if (topbar && html) {
         let mount = topbar.querySelector(".ko-bet-entry-topbar-v284");
@@ -22732,7 +22732,7 @@ function freezeCalendarCardsV302() {
 
       freezeCalendarCardsV302();
 
-      // Mantm a posio se o render veio de sync/refresh e no de troca de filtro.
+      // Mantém a posio se o render veio de sync/refresh e no de troca de filtro.
       if (active && scrollY > 0) {
         requestAnimationFrame(() => {
           try { window.scrollTo({ top: scrollY, left: 0, behavior: "auto" }); } catch { window.scrollTo(0, scrollY); }
@@ -22913,7 +22913,7 @@ function resolveLinkedPlayerForProfileV303(profile = currentProfile) {
     if (byEmail) return playerObjectV303(byEmail, mergedProfile);
   }
 
-  // Muitos users antigos tinham apenas o "Nome visvel" igual ao jogador.
+  // Muitos users antigos tinham apenas o "Nome visível" igual ao jogador.
   const visibleName = String(mergedProfile.name || displayNameFromEmail(email) || "").trim();
   if (visibleName) {
     const visibleNorm = normalizePlayerCompareV303(visibleName);
@@ -22945,7 +22945,7 @@ function enrichProfileWithLinkedPlayerV303(profile, user = currentUser) {
     merged.linkedPlayerId = player.id || player.playerId || merged.linkedPlayerId;
     merged.linkedPlayerName = player.name || player.playerName || merged.linkedPlayerName;
 
-    // No fora o nome visvel se o Admin definiu outro nome, mas garante que no fica vazio.
+    // No fora o nome visível se o Admin definiu outro nome, mas garante que no fica vazio.
     if (!String(merged.name || "").trim()) merged.name = merged.linkedPlayerName;
   }
 
@@ -23623,7 +23623,7 @@ function koModalRenderEditBoxV307(gameId, betId) {
   box.innerHTML = `
     <div class="ko-modal-edit-head-v307">
       <div>
-        <strong>️ Editar aposta</strong>
+        <strong>ï¸ Editar aposta</strong>
         <span>${escapeHtml(bet.playerName || bet.playerId || "Jogador")}  ${escapeHtml(match.homeTeam || "")} vs ${escapeHtml(match.awayTeam || "")}</span>
       </div>
       <button class="icon-button" type="button" id="koModalCloseEditV307" aria-label="Fechar edição">x</button>
@@ -23771,7 +23771,7 @@ function koModalInjectPencilButtonsV307(gameId) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "ko-pencil-edit-v307";
-    btn.textContent = "️";
+    btn.textContent = "ï¸";
     btn.title = "Editar ou limpar aposta";
     btn.dataset.gameId = gameId;
     btn.dataset.betId = koModalBetIdV307(bet, gameId);
@@ -23789,7 +23789,7 @@ function koModalPatchAfterShowV307(gameId) {
       const hint = document.createElement("div");
       hint.id = "koModalOwnerHintV307";
       hint.className = "ko-modal-owner-hint-v307";
-      hint.textContent = "Modo Dono desbloqueado: usa ️ para editar ou limpar apostas.";
+      hint.textContent = "Modo Dono desbloqueado: usa ï¸ para editar ou limpar apostas.";
       body.prepend(hint);
     }
   });
@@ -23953,7 +23953,7 @@ function showKnockoutBetsModalDirectPencilV308(gameId) {
     `;
   } else {
     body.innerHTML = `
-      ${canEdit ? `<div id="koModalOwnerHintV307" class="ko-modal-owner-hint-v307">Modo Dono desbloqueado: usa ️ para editar ou limpar apostas.</div>` : ""}
+      ${canEdit ? `<div id="koModalOwnerHintV307" class="ko-modal-owner-hint-v307">Modo Dono desbloqueado: usa ï¸ para editar ou limpar apostas.</div>` : ""}
       <div class="bets-list-head ${canEdit ? "ko-list-head-edit-v308" : ""}">
         <span>Jogador</span>
         <span>Aposta</span>
@@ -23983,7 +23983,7 @@ function showKnockoutBetsModalDirectPencilV308(gameId) {
                   title="Editar ou limpar aposta"
                   data-game-id="${escapeHtml(game.id)}"
                   data-bet-id="${escapeHtml(betId)}"
-                >️</button>
+                >ï¸</button>
               ` : ""}
             </article>
           `;
@@ -24571,7 +24571,7 @@ function renderScoreCleanV312() {
   if (!target) return;
 
   if (!rows.length) {
-    target.innerHTML = `<div class="empty">Importa o Excel de Resultados para criar a classificao.</div>`;
+    target.innerHTML = `<div class="empty">Importa o Excel de Resultados para criar a classificação.</div>`;
     return;
   }
 
@@ -25061,7 +25061,7 @@ function isCalendarGameCardSearchTargetV315(element) {
   const originalAddSearchButtons = typeof addSearchButtonsToResultCards === "function" ? addSearchButtonsToResultCards : null;
   if (originalAddSearchButtons && !originalAddSearchButtons.__noCardsV315) {
     addSearchButtonsToResultCards = function addSearchButtonsNoGameCardsV315() {
-      // Mantm o boto global "Pesquisar todos" e pesquisa fora dos cards.
+      // Mantém o boto global "Pesquisar todos" e pesquisa fora dos cards.
       // Nos cards do calendário, o boto antigo era injetado por interval/setTimeout e causava piscar.
       const before = document.querySelectorAll("#gamesList [data-search-result-game], #calendarTab [data-search-result-game]").length;
 
@@ -25108,7 +25108,7 @@ function isCalendarGameCardSearchTargetV315(element) {
     }
   }, true);
 
-  // Como h intervalos antigos a tentar reinjetar o boto, este observador remove antes de ficar visvel.
+  // Como h intervalos antigos a tentar reinjetar o boto, este observador remove antes de ficar visível.
   const target = document.getElementById("calendarTab") || document.body;
   try {
     const observer = new MutationObserver(mutations => {
@@ -26455,7 +26455,7 @@ function injectOwnerEditButtonsIntoBetsModalV331() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "ko-owner-edit-btn-v331";
-    btn.textContent = "️";
+    btn.textContent = "ï¸";
     btn.title = "Editar aposta como Dono";
     btn.dataset.gameId = game.id;
     btn.dataset.playerId = playerId;
@@ -26663,7 +26663,7 @@ function injectOwnerEditButtonsIntoBetsModalV332(forceGameId = "") {
   modal.dataset.ownerEditGameV332 = game.id;
   modal.dataset.ownerEditV331 = "1";
 
-  // barra superior sempre visvel para o Dono
+  // barra superior sempre visível para o Dono
   let bar = document.getElementById("koOwnerAddMissingV331");
   if (!bar) {
     bar = document.createElement("div");
@@ -26695,7 +26695,7 @@ function injectOwnerEditButtonsIntoBetsModalV332(forceGameId = "") {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "ko-owner-edit-btn-v331 ko-owner-edit-btn-v332";
-    btn.textContent = "️";
+    btn.textContent = "ï¸";
     btn.title = "Editar aposta como Dono";
     btn.dataset.gameId = game.id;
     btn.dataset.playerId = player?.id || koBetPlayerIdV332(bet) || name;
@@ -27280,7 +27280,7 @@ function showOwnerEditBetsModalV334(gameId) {
                   title="Editar aposta como Dono"
                   data-game-id="${escapeHtml(resolved.realGameId)}"
                   data-player-id="${escapeHtml(playerId)}"
-                >️</button>
+                >ï¸</button>
               ` : ""}
             </article>
           `;
@@ -28728,7 +28728,7 @@ if (typeof renderSettingsForm === "function" && !renderSettingsForm.__backupV340
 setTimeout(renderBackupPanelV340, 800);
 
 
-/* v343 — Exportar/Importar TODAS as apostas em Excel.
+/* v343 - Exportar/Importar TODAS as apostas em Excel.
    Backup seguro: não mistura com o Excel Resultados antigo.
    Importa criando/atualizando por id ou playerId+gameId, sem apagar por defeito.
 */
@@ -29130,7 +29130,7 @@ window.debugAllBetsExcelV343 = function debugAllBetsExcelV343() {
 };
 
 
-/* v344 — Proteção definitiva das equipas manuais da Fase Final.
+/* v344 - Proteção definitiva das equipas manuais da Fase Final.
    Protege contra:
    1) propagação automática;
    2) Firebase settings antigo;
@@ -29456,7 +29456,7 @@ try { propagateKnockoutWinners(false); } catch {}
 koProtectCurrentManualSlotsV344();
 
 
-/* v345 — Privacidade no modal "Ver apostas".
+/* v345 - Privacidade no modal "Ver apostas".
    Antes do fecho do prazo, users normais só veem a própria aposta.
    Admin/Dono continuam a ver tudo sempre.
 */
@@ -29654,7 +29654,7 @@ function privateBetsScoreDisplayV345(bet, info) {
   const home = bet.homeGuess ?? bet.homeScore ?? bet.homeGoals ?? "-";
   const away = bet.awayGuess ?? bet.awayScore ?? bet.awayGoals ?? "-";
   const qualified = bet.qualifiedTeam || bet.winnerTeam || bet.winner || bet.predictedWinner || "";
-  return `${home}-${away}${qualified ? ` · ${qualified}` : ""}`;
+  return `${home}-${away}${qualified ? `  -  ${qualified}` : ""}`;
 }
 
 function privateBetsTitleV345(info) {
@@ -29670,7 +29670,7 @@ function privateBetsSubtitleV345(info) {
   const deadline = info.deadline
     ? info.deadline.toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })
     : "hora não definida";
-  return `${phase} · Apostas privadas até ${deadline}`;
+  return `${phase}  -  Apostas privadas até ${deadline}`;
 }
 
 function showPrivateBetsModalV345(gameId, info) {
@@ -29792,7 +29792,7 @@ window.debugPrivateBetsViewV345 = function debugPrivateBetsViewV345(gameId = "")
 };
 
 
-/* v346 — Corrige nomes das equipas com acentos.
+/* v346 - Corrige nomes das equipas com acentos.
    Também normaliza nomes antigos vindos do Firebase/localStorage que ficaram sem letras acentuadas.
 */
 const APP_VERSION_V346_TEAM_NAMES_FIX = "346.0";
@@ -29886,7 +29886,7 @@ window.debugTeamNamesV346 = function debugTeamNamesV346() {
 };
 
 
-/* v347 — Correção ortográfica visual.
+/* v347 - Correção ortográfica visual.
    Corrige palavras que ficaram sem letras/acentos depois da limpeza de encoding.
    Não mexe em lógica, pontuação, Firebase ou permissões.
 */
@@ -29913,7 +29913,7 @@ const SPELLING_FIXES_V347 = {
   "Vitoria": "Vitória",
   "Penaltis": "Penáltis",
   "Calendario": "Calendário",
-  "Calendrio": "Calendário",
+  "Calendário": "Calendário",
   "Descricao": "Descrição",
   "Descrio": "Descrição",
   "Informacao": "Informação",
@@ -30064,7 +30064,7 @@ window.debugOrtografiaV347 = function debugOrtografiaV347() {
 };
 
 
-/* v348 — "Ver apostas" realmente privado até o jogo começar.
+/* v348 - "Ver apostas" realmente privado até o jogo começar.
    Corrige a v345: o filtro agora é aplicado no último ponto da cadeia e não usa permissões largas.
    Regra:
    - User normal antes do jogo começar: só vê a sua aposta.
@@ -30263,7 +30263,7 @@ function betsPrivacyDisplayV348(bet, info) {
   const home = bet.homeGuess ?? bet.homeScore ?? bet.homeGoals ?? "-";
   const away = bet.awayGuess ?? bet.awayScore ?? bet.awayGoals ?? "-";
   const qualified = bet.qualifiedTeam || bet.winnerTeam || bet.winner || bet.predictedWinner || "";
-  return `${home}-${away}${qualified ? ` · ${qualified}` : ""}`;
+  return `${home}-${away}${qualified ? `  -  ${qualified}` : ""}`;
 }
 
 function betsPrivacyShowOwnOnlyV348(gameId) {
@@ -30287,7 +30287,7 @@ function betsPrivacyShowOwnOnlyV348(gameId) {
   }
 
   title.textContent = `${home} - ${away}`;
-  subtitle.textContent = `Apostas privadas até o jogo começar${info.start ? ` · início: ${info.start.toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}` : ""}`;
+  subtitle.textContent = `Apostas privadas até o jogo começar${info.start ? `  -  início: ${info.start.toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}` : ""}`;
 
   summary.innerHTML = `
     <div class="bets-summary-card main">
@@ -30397,7 +30397,7 @@ window.debugPrivateBetsV348 = function debugPrivateBetsV348(gameId = "") {
 };
 
 
-/* v349 — Auditoria, fluidez e limpeza segura.
+/* v349 - Auditoria, fluidez e limpeza segura.
    Não muda regras de pontuação, Firebase/Auth ou dados.
    Objetivo:
    - reduzir trabalho repetido de patches antigos quando a app está escondida;
@@ -30612,7 +30612,7 @@ window.debugAppSaudeV349 = function debugAppSaudeV349() {
 };
 
 
-/* v350 — Bandeiras bonitas ao lado das seleções nos jogos.
+/* v350 - Bandeiras bonitas ao lado das seleções nos jogos.
    Usa emoji flags no visual, mas mantém os valores reais sem emoji para não partir:
    - apostas
    - pontuação
@@ -30622,54 +30622,54 @@ window.debugAppSaudeV349 = function debugAppSaudeV349() {
 const APP_VERSION_V350_FLAGS_IN_MATCHES = "350.0";
 
 const TEAM_FLAGS_V350 = {
-  "Alemanha": "🇩🇪",
-  "África do Sul": "🇿🇦",
-  "Arábia Saudita": "🇸🇦",
-  "Argélia": "🇩🇿",
-  "Argentina": "🇦🇷",
-  "Austrália": "🇦🇺",
-  "Áustria": "🇦🇹",
-  "Bélgica": "🇧🇪",
-  "Bósnia": "🇧🇦",
-  "Brasil": "🇧🇷",
-  "Cabo Verde": "🇨🇻",
-  "Canadá": "🇨🇦",
-  "Chéquia": "🇨🇿",
-  "Colômbia": "🇨🇴",
-  "Coreia do Sul": "🇰🇷",
-  "Costa do Marfim": "🇨🇮",
-  "Croácia": "🇭🇷",
-  "Curaçao": "🇨🇼",
-  "Egito": "🇪🇬",
-  "Equador": "🇪🇨",
-  "Escócia": "🏴",
-  "Espanha": "🇪🇸",
-  "Estados Unidos": "🇺🇸",
-  "França": "🇫🇷",
-  "Gana": "🇬🇭",
-  "Haiti": "🇭🇹",
-  "Inglaterra": "🏴",
-  "Iraque": "🇮🇶",
-  "Irão": "🇮🇷",
-  "Japão": "🇯🇵",
-  "Jordânia": "🇯🇴",
-  "Marrocos": "🇲🇦",
-  "México": "🇲🇽",
-  "Noruega": "🇳🇴",
-  "Nova Zelândia": "🇳🇿",
-  "Países Baixos": "🇳🇱",
-  "Panamá": "🇵🇦",
-  "Paraguai": "🇵🇾",
-  "Portugal": "🇵🇹",
-  "Qatar": "🇶🇦",
-  "RD Congo": "🇨🇩",
-  "Senegal": "🇸🇳",
-  "Suécia": "🇸🇪",
-  "Suíça": "🇨🇭",
-  "Tunísia": "🇹🇳",
-  "Turquia": "🇹🇷",
-  "Uruguai": "🇺🇾",
-  "Uzbequistão": "🇺🇿"
+  "Alemanha": "",
+  "África do Sul": "",
+  "Arábia Saudita": "",
+  "Argélia": "",
+  "Argentina": "",
+  "Austrália": "",
+  "Áustria": "",
+  "Bélgica": "",
+  "Bósnia": "",
+  "Brasil": "",
+  "Cabo Verde": "",
+  "Canadá": "",
+  "Chéquia": "",
+  "Colômbia": "",
+  "Coreia do Sul": "",
+  "Costa do Marfim": "",
+  "Croácia": "",
+  "Curaçao": "",
+  "Egito": "",
+  "Equador": "",
+  "Escócia": "",
+  "Espanha": "",
+  "Estados Unidos": "",
+  "França": "",
+  "Gana": "",
+  "Haiti": "",
+  "Inglaterra": "",
+  "Iraque": "",
+  "Irão": "",
+  "Japão": "",
+  "Jordânia": "",
+  "Marrocos": "",
+  "México": "",
+  "Noruega": "",
+  "Nova Zelândia": "",
+  "Países Baixos": "",
+  "Panamá": "",
+  "Paraguai": "",
+  "Portugal": "",
+  "Qatar": "",
+  "RD Congo": "",
+  "Senegal": "",
+  "Suécia": "",
+  "Suíça": "",
+  "Tunísia": "",
+  "Turquia": "",
+  "Uruguai": "",
+  "Uzbequistão": ""
 };
 
 const TEAM_NAME_ALIASES_V350 = {
@@ -30682,7 +30682,7 @@ const TEAM_NAME_ALIASES_V350 = {
   "escocia": "Escócia",
   "austrlia": "Austrália",
   "australia": "Austrália",
-  "blgica": "Bélgica",
+  "bélgica": "Bélgica",
   "belgica": "Bélgica",
   "arbia saudita": "Arábia Saudita",
   "arabia saudita": "Arábia Saudita",
@@ -30754,13 +30754,13 @@ function teamFlagHtmlV350(team) {
     return `<span class="team-name-v350 muted">${escapeHtml(clean || "A definir")}</span>`;
   }
 
-  return `<span class="team-with-flag-v350"><span class="flag-chip-v350" aria-hidden="true">${escapeHtml(flagIcon || "🏳️")}</span><span class="team-name-v350">${escapeHtml(clean)}</span></span>`;
+  return `<span class="team-with-flag-v350"><span class="flag-chip-v350" aria-hidden="true">${escapeHtml(flagIcon || "")}</span><span class="team-name-v350">${escapeHtml(clean)}</span></span>`;
 }
 
 function teamFlagTextV350(team) {
   const clean = teamCleanNameV350(team);
   const flagIcon = teamFlagV350(clean);
-  return clean && clean !== "A definir" ? `${flagIcon || "🏳️"} ${clean}` : (clean || "A definir");
+  return clean && clean !== "A definir" ? `${flagIcon || ""} ${clean}`.trim() : (clean || "A definir");
 }
 
 function normalizeTeamDataNamesV350() {
@@ -30861,7 +30861,7 @@ function decorateExistingFlagsV350() {
     document.querySelectorAll(".match-row .team strong, .ko-team > span").forEach(el => {
       if (el.dataset.flagsV350 === "1") return;
       const text = String(el.textContent || "").trim();
-      if (!text || text.includes("🇧🇷") || text.includes("🇵🇹") || text === "A definir") return;
+      if (!text || text === "A definir" || el.querySelector(".flag-chip-v350")) return;
 
       const flagIcon = teamFlagV350(text);
       if (!flagIcon) return;
@@ -30912,7 +30912,7 @@ window.debugBandeirasV350 = function debugBandeirasV350() {
 };
 
 
-/* v351 — Bloqueio final do "Ver apostas" antes do jogo começar.
+/* v351 - Bloqueio final do "Ver apostas" antes do jogo começar.
    Base: v350.
    Corrige o bypass antigo da Fase Final: o modal direto do lápis v308 podia voltar a abrir
    a lista completa depois do bloqueio privado v348. Não mexe em Firebase/Auth/pontuação/dados. */
@@ -31002,7 +31002,7 @@ window.debugPrivateBetsV351 = function debugPrivateBetsV351(gameId = "") {
 
 
 
-/* v352 — correção de performance: loops antigos e Firebase modular */
+/* v352 - correção de performance: loops antigos e Firebase modular */
 const APP_VERSION_V352_PERFORMANCE_FIX = "352.0";
 
 (function installPerformanceFixV352() {
@@ -31256,7 +31256,7 @@ const APP_VERSION_V352_PERFORMANCE_FIX = "352.0";
 })();
 
 
-/* v353 — Fase Final com equipas 100% manuais.
+/* v353 - Fase Final com equipas 100% manuais.
    A API pode atualizar status/live/resultados, mas nunca decide/substitui equipas.
 */
 const APP_VERSION_V353_KO_MANUAL_TEAMS_ONLY = "353.0";
@@ -31709,7 +31709,7 @@ window.debugFaseFinalManualV353 = function debugFaseFinalManualV353() {
 };
 
 
-/* v354 — Modal de edição da Fase Final maior e sem herdar overlay interno */
+/* v354 - Modal de edição da Fase Final maior e sem herdar overlay interno */
 window.debugKnockoutModalV354 = function debugKnockoutModalV354() {
   const modal = document.getElementById("knockoutRecordModal");
   const card = modal?.querySelector?.(".knockout-record-card");
@@ -31729,7 +31729,7 @@ window.debugKnockoutModalV354 = function debugKnockoutModalV354() {
   return info;
 };
 
-/* v355 — 16 avos manuais; vencedores avançam automaticamente até à final.
+/* v355 - 16 avos manuais; vencedores avançam automaticamente até à final.
    A API continua proibida de definir equipas: só status/live/resultados.
 */
 const APP_VERSION_V355_KO_R32_MANUAL_AUTO_AFTER = "355.0";
@@ -32318,3 +32318,325 @@ try {
   window.debugFaseFinalManualV353 = window.debugFaseFinalAutoV355;
   window.debugFaseFinalManualV355 = window.debugFaseFinalAutoV355;
 } catch {}
+
+/* v356 - Performance, arranque limpo e anti-flash.
+   Mantem Firebase/Auth/API/pontuacao/apostas/match.id intactos.
+*/
+const APP_VERSION_V356_PERFORMANCE_CLEAN_FLASH = "356.0";
+const CACHE_NAME_V356 = "mundial-pontos-2026-v356-performance-clean-flash-fix";
+
+const performanceStateV356 = {
+  appBootReady: false,
+  appDataReady: false,
+  authReady: false,
+  loadingReason: "arranque",
+  renderAllCount: 0,
+  renderAllSkipped: 0,
+  activePageRenderCount: 0,
+  activePageSkipped: 0,
+  realtimeRenderCount: 0,
+  modalCleanups: 0,
+  lastRenderedPage: "",
+  lastRenderReason: "",
+  renderAllTimer: null,
+  activePageTimer: null,
+  pendingRenderAllArgs: null,
+  pendingActivePage: "",
+  cacheNames: [],
+  cacheV356Ready: false,
+  serviceWorkerController: false,
+  serviceWorkerUpdatedAt: "",
+  oldCachesRemoved: 0
+};
+
+function setBootStateV356({ bootReady, dataReady, authReady, reason } = {}) {
+  if (typeof bootReady === "boolean") performanceStateV356.appBootReady = bootReady;
+  if (typeof dataReady === "boolean") performanceStateV356.appDataReady = dataReady;
+  if (typeof authReady === "boolean") performanceStateV356.authReady = authReady;
+  if (reason) performanceStateV356.loadingReason = reason;
+
+  const loading = Boolean(currentUser && (!performanceStateV356.appBootReady || !performanceStateV356.appDataReady));
+  document.documentElement.classList.toggle("app-boot-guard-v356", loading);
+  document.body?.classList.toggle("app-data-loading-v356", loading);
+  if (loading) setAppBootLoadingV275?.(true, reason || "A carregar dados...");
+}
+
+function activePageV356() {
+  try { return document.querySelector(".tab-panel.active")?.id || activeTabIdV187?.() || "calendarTab"; }
+  catch { return "calendarTab"; }
+}
+
+function appCanRenderV356() {
+  return !currentUser || performanceStateV356.appDataReady === true;
+}
+
+function closeStaleModalsV356(reason = "arranque") {
+  if (!currentUser) return;
+  document.querySelectorAll(".modal:not(.hidden),.knockout-record-modal:not(.hidden),.owner-edit-bet-backdrop-v334:not(.hidden)").forEach(modal => {
+    modal.classList.add("hidden");
+    modal.removeAttribute("data-owner-edit-game-v334");
+    modal.removeAttribute("data-owner-edit-game-v332");
+    modal.removeAttribute("data-owner-edit-game-v331");
+    performanceStateV356.modalCleanups += 1;
+  });
+  performanceStateV356.lastRenderReason = reason;
+}
+
+function knownTimersV356() {
+  const timers = {
+    fullSyncTimer: Boolean(typeof fullSyncTimer !== "undefined" && fullSyncTimer),
+    firebaseReconnectTimer: Boolean(typeof firebaseReconnectTimer !== "undefined" && firebaseReconnectTimer),
+    realtimeRenderTimer: Boolean(typeof realtimeRenderTimer !== "undefined" && realtimeRenderTimer),
+    appBootLoadingTimer: Boolean(typeof appBootLoadingTimerV275 !== "undefined" && appBootLoadingTimerV275),
+    presenceInterval: Boolean(typeof presenceIntervalId !== "undefined" && presenceIntervalId),
+    onlineUsersInterval: Boolean(typeof onlineUsersIntervalId !== "undefined" && onlineUsersIntervalId),
+    chatTypingTimer: Boolean(typeof chatTypingTimer !== "undefined" && chatTypingTimer),
+    chatLongPressTimer: Boolean(typeof chatLongPressTimer !== "undefined" && chatLongPressTimer),
+    renderAllTimer: Boolean(performanceStateV356.renderAllTimer),
+    activePageTimer: Boolean(performanceStateV356.activePageTimer)
+  };
+  timers.totalActive = Object.values(timers).filter(Boolean).length;
+  return timers;
+}
+
+function knownListenersV356() {
+  return {
+    realtime: Array.isArray(realtimeUnsubscribers) ? realtimeUnsubscribers.length : 0,
+    chat: Boolean(chatUnsubscribe),
+    chatPinned: Boolean(chatPinnedUnsubscribe),
+    chatTyping: Boolean(chatTypingUnsubscribe),
+    presence: Boolean(presenceIntervalId),
+    onlineUsers: Boolean(onlineUsersIntervalId),
+    possibleDuplicateRealtime: Array.isArray(realtimeUnsubscribers) && realtimeUnsubscribers.length > 6
+  };
+}
+
+async function refreshCacheStatusV356() {
+  try {
+    performanceStateV356.serviceWorkerController = Boolean(navigator.serviceWorker?.controller);
+    if ("serviceWorker" in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration?.update) {
+        await registration.update().catch(() => null);
+        performanceStateV356.serviceWorkerUpdatedAt = new Date().toISOString();
+      }
+    }
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      const old = keys.filter(key =>
+        key.startsWith("mundial-pontos-2026-v") &&
+        key !== CACHE_NAME_V356 &&
+        !key.includes("notification")
+      );
+      await Promise.all(old.map(key => caches.delete(key).then(ok => {
+        if (ok) performanceStateV356.oldCachesRemoved += 1;
+      })));
+      performanceStateV356.cacheNames = await caches.keys();
+      performanceStateV356.cacheV356Ready = performanceStateV356.cacheNames.includes(CACHE_NAME_V356);
+    }
+  } catch (error) {
+    console.warn("Cache/service worker v356 nao confirmou:", error);
+  }
+}
+
+function installFlagOverridesV356() {
+  try {
+    const flags = {
+      "África do Sul": "\uD83C\uDDFF\uD83C\uDDE6", "Arábia Saudita": "\uD83C\uDDF8\uD83C\uDDE6",
+      "Argélia": "\uD83C\uDDE9\uD83C\uDDFF", "Argentina": "\uD83C\uDDE6\uD83C\uDDF7",
+      "Austrália": "\uD83C\uDDE6\uD83C\uDDFA", "Áustria": "\uD83C\uDDE6\uD83C\uDDF9",
+      "Bélgica": "\uD83C\uDDE7\uD83C\uDDEA", "Bósnia": "\uD83C\uDDE7\uD83C\uDDE6",
+      "Brasil": "\uD83C\uDDE7\uD83C\uDDF7", "Cabo Verde": "\uD83C\uDDE8\uD83C\uDDFB",
+      "Canadá": "\uD83C\uDDE8\uD83C\uDDE6", "Chéquia": "\uD83C\uDDE8\uD83C\uDDFF",
+      "Colômbia": "\uD83C\uDDE8\uD83C\uDDF4", "Coreia do Sul": "\uD83C\uDDF0\uD83C\uDDF7",
+      "Costa do Marfim": "\uD83C\uDDE8\uD83C\uDDEE", "Croácia": "\uD83C\uDDED\uD83C\uDDF7",
+      "Curaçao": "\uD83C\uDDE8\uD83C\uDDFC", "Egito": "\uD83C\uDDEA\uD83C\uDDEC",
+      "Equador": "\uD83C\uDDEA\uD83C\uDDE8", "Escócia": "\uD83C\uDFF4",
+      "Espanha": "\uD83C\uDDEA\uD83C\uDDF8", "Estados Unidos": "\uD83C\uDDFA\uD83C\uDDF8",
+      "França": "\uD83C\uDDEB\uD83C\uDDF7", "Gana": "\uD83C\uDDEC\uD83C\uDDED",
+      "Haiti": "\uD83C\uDDED\uD83C\uDDF9", "Inglaterra": "\uD83C\uDFF4",
+      "Iraque": "\uD83C\uDDEE\uD83C\uDDF6", "Irão": "\uD83C\uDDEE\uD83C\uDDF7",
+      "Japão": "\uD83C\uDDEF\uD83C\uDDF5", "Jordânia": "\uD83C\uDDEF\uD83C\uDDF4",
+      "Marrocos": "\uD83C\uDDF2\uD83C\uDDE6", "México": "\uD83C\uDDF2\uD83C\uDDFD",
+      "Noruega": "\uD83C\uDDF3\uD83C\uDDF4", "Nova Zelândia": "\uD83C\uDDF3\uD83C\uDDFF",
+      "Países Baixos": "\uD83C\uDDF3\uD83C\uDDF1", "Panamá": "\uD83C\uDDF5\uD83C\uDDE6",
+      "Paraguai": "\uD83C\uDDF5\uD83C\uDDFE", "Portugal": "\uD83C\uDDF5\uD83C\uDDF9",
+      "Qatar": "\uD83C\uDDF6\uD83C\uDDE6", "RD Congo": "\uD83C\uDDE8\uD83C\uDDE9",
+      "Senegal": "\uD83C\uDDF8\uD83C\uDDF3", "Suécia": "\uD83C\uDDF8\uD83C\uDDEA",
+      "Suíça": "\uD83C\uDDE8\uD83C\uDDED", "Tunísia": "\uD83C\uDDF9\uD83C\uDDF3",
+      "Turquia": "\uD83C\uDDF9\uD83C\uDDF7", "Uruguai": "\uD83C\uDDFA\uD83C\uDDFE",
+      "Uzbequistão": "\uD83C\uDDFA\uD83C\uDDFF"
+    };
+    if (typeof TEAM_FLAGS_V350 === "object") Object.assign(TEAM_FLAGS_V350, flags);
+    if (typeof FLAGS === "object") Object.assign(FLAGS, flags);
+  } catch {}
+}
+
+function installPerformanceCleanFlashV356() {
+  if (window.__performanceCleanFlashV356) return;
+  window.__performanceCleanFlashV356 = true;
+  installFlagOverridesV356();
+  setBootStateV356({ bootReady: false, dataReady: false, reason: "A preparar a app..." });
+
+  const originalShowLoginV356 = typeof showLoginScreen === "function" ? showLoginScreen : null;
+  if (originalShowLoginV356 && !originalShowLoginV356.__v356) {
+    showLoginScreen = function showLoginScreenCleanV356() {
+      performanceStateV356.appBootReady = false;
+      performanceStateV356.appDataReady = false;
+      performanceStateV356.authReady = false;
+      document.documentElement.classList.remove("app-boot-guard-v356");
+      document.body?.classList.remove("app-data-loading-v356");
+      return originalShowLoginV356.apply(this, arguments);
+    };
+    showLoginScreen.__v356 = true;
+    window.showLoginScreen = showLoginScreen;
+  }
+
+  const originalShowAppV356 = typeof showAppScreen === "function" ? showAppScreen : null;
+  if (originalShowAppV356 && !originalShowAppV356.__v356) {
+    showAppScreen = function showAppScreenCleanV356() {
+      performanceStateV356.authReady = true;
+      performanceStateV356.appBootReady = false;
+      performanceStateV356.appDataReady = false;
+      closeStaleModalsV356("login");
+      setBootStateV356({ bootReady: false, dataReady: false, authReady: true, reason: "A carregar dados..." });
+      return originalShowAppV356.apply(this, arguments);
+    };
+    showAppScreen.__v356 = true;
+    window.showAppScreen = showAppScreen;
+  }
+
+  const originalLoadDataV356 = typeof loadData === "function" ? loadData : null;
+  if (originalLoadDataV356 && !originalLoadDataV356.__v356) {
+    loadData = async function loadDataCleanV356(options = {}) {
+      if (!options?.background) {
+        setBootStateV356({ bootReady: false, dataReady: false, reason: "A sincronizar dados..." });
+        closeStaleModalsV356("loadData");
+      }
+      try {
+        return await originalLoadDataV356.apply(this, arguments);
+      } finally {
+        if (!options?.background) {
+          performanceStateV356.appDataReady = true;
+          performanceStateV356.appBootReady = true;
+          setBootStateV356({ bootReady: true, dataReady: true, authReady: true, reason: "Pronto" });
+          clearTimeout(performanceStateV356.renderAllTimer);
+          performanceStateV356.renderAllTimer = setTimeout(() => {
+            performanceStateV356.renderAllTimer = null;
+            try { renderAll?.("dados prontos v356"); } catch (error) { console.warn("render final v356 falhou:", error); }
+            try { finishAppReadyV275?.(160); } catch {}
+          }, 60);
+        }
+      }
+    };
+    loadData.__v356 = true;
+    window.loadData = loadData;
+  }
+
+  const originalRenderAllV356 = typeof renderAll === "function" ? renderAll : null;
+  if (originalRenderAllV356 && !originalRenderAllV356.__v356) {
+    renderAll = function renderAllCleanV356(reason = "renderAll") {
+      performanceStateV356.lastRenderReason = String(reason || "renderAll");
+      if (!appCanRenderV356()) {
+        performanceStateV356.renderAllSkipped += 1;
+        return;
+      }
+      performanceStateV356.pendingRenderAllArgs = arguments;
+      if (performanceStateV356.renderAllTimer) {
+        performanceStateV356.renderAllSkipped += 1;
+        return;
+      }
+      performanceStateV356.renderAllTimer = setTimeout(() => {
+        performanceStateV356.renderAllTimer = null;
+        performanceStateV356.renderAllCount += 1;
+        try {
+          originalRenderAllV356.apply(this, performanceStateV356.pendingRenderAllArgs || []);
+          performanceStateV356.lastRenderedPage = activePageV356();
+        } finally {
+          requestAnimationFrame(() => {
+            document.documentElement.classList.remove("render-stabilizing-v313");
+          });
+        }
+      }, 55);
+    };
+    renderAll.__v356 = true;
+    window.renderAll = renderAll;
+  }
+
+  const originalRenderActiveV356 = typeof renderActivePageV187 === "function" ? renderActivePageV187 : null;
+  if (originalRenderActiveV356 && !originalRenderActiveV356.__v356) {
+    renderActivePageV187 = function renderActivePageCleanV356(tabId = activePageV356()) {
+      performanceStateV356.pendingActivePage = tabId || activePageV356();
+      if (!appCanRenderV356()) {
+        performanceStateV356.activePageSkipped += 1;
+        return;
+      }
+      clearTimeout(performanceStateV356.activePageTimer);
+      performanceStateV356.activePageTimer = setTimeout(() => {
+        performanceStateV356.activePageTimer = null;
+        performanceStateV356.activePageRenderCount += 1;
+        performanceStateV356.lastRenderedPage = performanceStateV356.pendingActivePage || activePageV356();
+        originalRenderActiveV356.call(this, performanceStateV356.lastRenderedPage);
+      }, 35);
+    };
+    renderActivePageV187.__v356 = true;
+    window.renderActivePageV187 = renderActivePageV187;
+  }
+
+  const originalQueueRealtimeV356 = typeof queueRealtimeRender === "function" ? queueRealtimeRender : null;
+  if (originalQueueRealtimeV356 && !originalQueueRealtimeV356.__v356) {
+    queueRealtimeRender = function queueRealtimeRenderCleanV356(reason = "firebase realtime") {
+      performanceStateV356.realtimeRenderCount += 1;
+      if (!performanceStateV356.appDataReady) return;
+      clearTimeout(realtimeRenderTimer);
+      realtimeRenderTimer = setTimeout(() => {
+        realtimeRenderTimer = null;
+        try { saveLocalData?.(reason); } catch {}
+        try { renderActivePageV187?.(activePageV356()); } catch {}
+        try { renderCalendarFilterState?.(); } catch {}
+      }, 260);
+    };
+    queueRealtimeRender.__v356 = true;
+    window.queueRealtimeRender = queueRealtimeRender;
+  }
+
+  refreshCacheStatusV356();
+  setTimeout(refreshCacheStatusV356, 1400);
+}
+
+installPerformanceCleanFlashV356();
+
+window.debugPerformanceV356 = function debugPerformanceV356() {
+  refreshCacheStatusV356();
+  const legacy = typeof window.debugPerformanceV352 === "function" ? window.debugPerformanceV352() : {};
+  return {
+    version: APP_VERSION_V356_PERFORMANCE_CLEAN_FLASH,
+    appVersion: APP_VERSION_LABEL,
+    cacheName: CACHE_NAME_V356,
+    authReady: performanceStateV356.authReady,
+    appBootReady: performanceStateV356.appBootReady,
+    appDataReady: performanceStateV356.appDataReady,
+    serviceWorker: {
+      supported: "serviceWorker" in navigator,
+      controlled: performanceStateV356.serviceWorkerController,
+      cacheV356Ready: performanceStateV356.cacheV356Ready,
+      cacheNames: performanceStateV356.cacheNames,
+      oldCachesRemoved: performanceStateV356.oldCachesRemoved,
+      lastUpdateCheck: performanceStateV356.serviceWorkerUpdatedAt
+    },
+    listeners: knownListenersV356(),
+    timers: knownTimersV356(),
+    renders: {
+      renderAll: performanceStateV356.renderAllCount,
+      renderAllSkipped: performanceStateV356.renderAllSkipped,
+      activePage: performanceStateV356.activePageRenderCount,
+      activePageSkipped: performanceStateV356.activePageSkipped,
+      realtime: performanceStateV356.realtimeRenderCount,
+      legacyV352RenderAll: legacy.renderAllCalls,
+      legacyV352Calendar: legacy.renderCalendarCalls
+    },
+    lastRenderedPage: performanceStateV356.lastRenderedPage || activePageV356(),
+    lastRenderReason: performanceStateV356.lastRenderReason,
+    modalCleanups: performanceStateV356.modalCleanups
+  };
+};

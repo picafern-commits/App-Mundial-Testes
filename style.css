@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #070b13;
   --panel: #0d1522;
   --panel-soft: #111c2c;
@@ -1408,10 +1408,10 @@ h2 {
 }
 
 .import-status-box.success strong::before{
-  content:"✓ ";
+  content:"âœ“ ";
 }
 .import-status-box.error strong::before{
-  content:"⚠ ";
+  content:"âš  ";
 }
 
 .firebase-status-box{
@@ -6842,12 +6842,12 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
 }
 
 #calendarMissingResultsBtn::before{
-  content:"⚠️";
+  content:"âš ï¸";
   font-size:.95em;
 }
 
 #calendarAllGamesBtn::before{
-  content:"📅";
+  content:"ðŸ“…";
   font-size:.95em;
 }
 
@@ -6880,7 +6880,7 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
 }
 
 #calendarPlayedGamesBtn::before{
-  content:"✅";
+  content:"âœ…";
   font-size:.95em;
 }
 
@@ -6903,7 +6903,7 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
 }
 
 .firebase-status-box::after{
-  content:" · modo económico";
+  content:"  -  modo económico";
   opacity:.68;
   font-weight:700;
 }
@@ -6923,7 +6923,7 @@ body.chat-image-viewer-open #chatImageViewer.hidden{
 
 .search-result-btn::before,
 .search-result-btn-v115::before{
-  content:"🔎";
+  content:"ðŸ”Ž";
   font-size:.95em;
 }
 
@@ -6955,7 +6955,7 @@ input[data-no-persist-v116]{
 
 .search-game-result-btn::before,
 .search-result-btn-v117::before{
-  content:"🔎";
+  content:"ðŸ”Ž";
   font-size:.95em;
 }
 
@@ -8479,7 +8479,7 @@ summary:focus-visible{
 }
 
 .football-automatic-main-v157 .football-realtime-sync-top-v156 strong::before{
-  content:"●";
+  content:"â—";
   display:inline-block;
   margin-right:8px;
   color:#83ffbf;
@@ -9902,7 +9902,7 @@ button,
   font-size:18px;
 }
 .settings-section-v205[open] summary::after{
-  content:"−";
+  content:"âˆ’";
 }
 .settings-section-v205 summary span{
   font-size:15px;
@@ -10601,7 +10601,7 @@ textarea:focus{
 }
 
 
-/* v214 — janela Users sempre por cima das tabs/topbar/cards */
+/* v214 - janela Users sempre por cima das tabs/topbar/cards */
 .topbar{
   position:relative!important;
 }
@@ -10657,7 +10657,7 @@ body.online-users-open-v214 #onlineUsersPanel{
 }
 
 
-/* v220 — Users popup em portal no body, fora da topbar */
+/* v220 - Users popup em portal no body, fora da topbar */
 body > #onlineUsersList.online-users-portal-v220{
   position:fixed!important;
   right:auto!important;
@@ -10717,7 +10717,7 @@ body.online-users-open-v220 .tab-panel{
 }
 
 
-/* v221 — botões de filtro mudam cor conforme o filtro aberto */
+/* v221 - botões de filtro mudam cor conforme o filtro aberto */
 .copy-actions #calendarMissingResultsBtn,
 .copy-actions #calendarPlayedGamesBtn,
 .copy-actions #calendarAllGamesBtn{
@@ -11384,7 +11384,7 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
 }
 
 
-/* v241 — Ligação Users ↔ Jogadores + apostas Fase Final */
+/* v241 - Ligação Users â†” Jogadores + apostas Fase Final */
 .player-link-summary-v241{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:linear-gradient(180deg,rgba(99,102,241,.12),rgba(15,23,42,.55));margin-bottom:12px}
 .player-link-summary-v241 strong{display:block;color:var(--gold,#ffd45a)}
 .player-link-summary-v241 span{display:block;color:var(--muted,#a8b3c7);font-size:12px;margin-top:3px}
@@ -11421,7 +11421,7 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
 .danger-soft-v241{border-color:rgba(239,68,68,.35)!important;color:#fecaca!important}
 @media(max-width:760px){.permission-user-actions{width:100%}.permission-player-label-v241{width:100%}.knockout-bet-match-v241{grid-template-columns:1fr}}
 
-/* v243 — Data/hora e modal automático da Fase Final */
+/* v243 - Data/hora e modal automático da Fase Final */
 .ko-match-date-label-v243{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted,#a8b3c7);font-weight:900;min-width:165px}
 .ko-match-date-label-v243 input{min-height:34px;border-radius:10px}
 .ko-match-date-line-v243{margin-top:6px;padding:5px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.18);background:rgba(15,23,42,.62);color:var(--muted,#a8b3c7);font-size:11px;font-weight:900;text-align:center}
@@ -11432,13 +11432,13 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right:not(.round-sf) 
 .knockout-bet-qualified-v243 select{min-height:42px;border-radius:12px;font-weight:900}
 @media(max-width:760px){.ko-match-date-label-v243{width:100%;min-width:0}.ko-match-date-label-v243 input{width:100%}}
 
-/* v244 — botão visível para abrir modal de resultado na Fase Final */
+/* v244 - botão visível para abrir modal de resultado na Fase Final */
 .ko-record-open-btn-v244{margin-top:8px;width:100%;justify-content:center;border-radius:12px;font-weight:900}
 .ko-record-open-btn-v244.mobile{margin-top:10px}
 .knockout-match .ko-record-open-btn-v244{position:relative;z-index:4}
 
 
-/* v245 — Botão obrigatório de apostas/resultados da Fase Final na página inicial */
+/* v245 - Botão obrigatório de apostas/resultados da Fase Final na página inicial */
 .ko-required-home-v245{margin:0 0 18px;padding:18px;border-radius:24px;border:1px solid rgba(148,163,184,.22);background:linear-gradient(135deg,rgba(15,23,42,.96),rgba(2,6,23,.92));box-shadow:0 22px 60px rgba(0,0,0,.22)}
 .ko-required-home-v245.urgent{border-color:rgba(248,113,113,.55);background:linear-gradient(135deg,rgba(127,29,29,.58),rgba(15,23,42,.96) 52%,rgba(2,6,23,.94))}
 .ko-required-home-v245.pulse-v245{animation:koRequiredPulseV245 1.25s ease both}
@@ -11688,7 +11688,7 @@ body.ko-mandatory-open-v247{
 }
 
 
-/* v246 — Fase Final em ecrã total, sem moldura centrada */
+/* v246 - Fase Final em ecrã total, sem moldura centrada */
 @media(min-width:761px){
   body.knockout-layout-active{
     width:100vw!important;
@@ -12064,7 +12064,7 @@ body.ko-mandatory-open-v247{
   }
 }
 
-/* v255 — estado visível de apostas obrigatórias na Fase Final */
+/* v255 - estado visível de apostas obrigatórias na Fase Final */
 .ko-user-status-v255{
   position:relative;
   z-index:5;
@@ -12113,7 +12113,7 @@ body.knockout-layout-active #knockoutBracket .ko-user-status-v255{display:block!
 }
 
 
-/* v260 — Fase Final em lista simples e legível */
+/* v260 - Fase Final em lista simples e legível */
 body.knockout-layout-active #knockoutBracket.ko-list-root-v260,
 #knockoutBracket.ko-list-root-v260{
   width:100%!important;
@@ -12466,7 +12466,7 @@ body.knockout-layout-active #knockoutBracket.ko-list-root-v260,
 }
 
 
-/* v261 — cores progressivas na Fase Final: 16 avos → Final */
+/* v261 - cores progressivas na Fase Final: 16 avos â†’ Final */
 .knockout-calendar-row-v259.ko-round-r32-v261,
 #knockoutBracket [data-ko-round-v260="r32"] .ko-list-card-v260{
   border-color:rgba(59,130,246,.28)!important;
@@ -12546,7 +12546,7 @@ body.knockout-layout-active #knockoutBracket.ko-list-root-v260,
 #knockoutBracket [data-ko-round-v260="sf"] .ko-list-score-v260{background:linear-gradient(135deg,#d8b4fe,#f3e8ff)!important;color:#210b34!important;}
 #knockoutBracket [data-ko-round-v260="final"] .ko-list-score-v260{background:linear-gradient(135deg,#facc15,#fef3c7)!important;color:#1d1300!important;}
 
-/* v262 — barras de data do Calendário com as cores da Fase Final */
+/* v262 - barras de data do Calendário com as cores da Fase Final */
 .day-block.ko-calendar-day-v262{
   border-color:rgba(148,163,184,.20)!important;
   box-shadow:0 16px 42px rgba(0,0,0,.24)!important;
@@ -12860,7 +12860,7 @@ body > #onlineUsersList.online-users-portal-v220{
   }
 }
 
-/* v269 — Diagnóstico API sem aplicar alterações */
+/* v269 - Diagnóstico API sem aplicar alterações */
 .football-api-diagnostic-v269 {
   margin-top: 14px;
   padding: 14px;
@@ -12910,7 +12910,7 @@ body > #onlineUsersList.online-users-portal-v220{
 .football-api-diagnostic-v269 li { margin: 7px 0; }
 .football-api-diagnostic-v269 li small { display:block; opacity:.72; margin-top:2px; }
 
-/* v270 — Fase Final: botão lista/mapa e mapa visual estilo oficial */
+/* v270 - Fase Final: botão lista/mapa e mapa visual estilo oficial */
 .ko-view-toggle-v270 {
   display: flex;
   align-items: center;
@@ -13164,7 +13164,7 @@ body > #onlineUsersList.online-users-portal-v220{
 .ko-road-card-v270.ko-round-sf-v261 { --ko-round-accent:#a78bfa; }
 .ko-road-card-v270.ko-round-final-v261 { --ko-round-accent:#facc15; }
 
-/* v273 — estabilidade visual: reduzir saltos dos cards ao abrir páginas */
+/* v273 - estabilidade visual: reduzir saltos dos cards ao abrir páginas */
 :root{
   --stable-match-row-height-v273: 78px;
   --stable-ko-road-card-height-v273: 104px;
@@ -13318,7 +13318,7 @@ body.page-stabilizing-v273 *{
 }
 
 
-/* v274 — mapa oficial: esconder etiqueta Mxx e espelhar/alinhar o lado direito */
+/* v274 - mapa oficial: esconder etiqueta Mxx e espelhar/alinhar o lado direito */
 body.knockout-layout-active #knockoutBracket .bracket-photo-grid-split .knockout-match-title{
   color: transparent !important;
   user-select: none !important;
@@ -13349,7 +13349,7 @@ body.knockout-layout-active #knockoutBracket .bracket-side-right .knockout-match
 }
 
 
-/* v275 — Login estável + loading pós-login */
+/* v275 - Login estável + loading pós-login */
 #loginScreen.login-screen{
   min-height:100dvh!important;
   display:grid!important;
@@ -13477,14 +13477,14 @@ body.app-boot-loading-v275{
   overflow:hidden!important;
 }
 
-/* Evita que o shell apareça “a saltar” logo após login antes das dimensões assentarem. */
+/* Evita que o shell apareça â€œa saltarâ€ logo após login antes das dimensões assentarem. */
 body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden){
   min-height:100dvh!important;
 }
 
 
 
-/* v276 — Calendário mobile: corrigir dimensões reais dos cards .match-row */
+/* v276 - Calendário mobile: corrigir dimensões reais dos cards .match-row */
 @media (max-width: 760px){
   #calendarTab .day-block{
     border-radius:16px!important;
@@ -13734,7 +13734,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 
 
 
-/* v277 — Fase Final web: ajustar mapa oficial à altura real do browser */
+/* v277 - Fase Final web: ajustar mapa oficial à altura real do browser */
 @media (min-width: 761px){
   body.knockout-layout-active{
     height:100dvh!important;
@@ -13974,7 +13974,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 
 
 
-/* v278 — Calendário mobile: formato compacto igual ao pretendido */
+/* v278 - Calendário mobile: formato compacto igual ao pretendido */
 @media (max-width: 760px){
   #calendarTab .calendar-list{
     gap:12px!important;
@@ -14295,7 +14295,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 
 
 
-/* v279 — Fase Final: remover cabeçalho interno e esticar mapa */
+/* v279 - Fase Final: remover cabeçalho interno e esticar mapa */
 @media (min-width: 761px){
   body.knockout-layout-active #knockoutTab .bracket-title-row{
     display:none!important;
@@ -14450,7 +14450,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 
 
 
-/* v280 — Fase Final mobile abre sempre em lista */
+/* v280 - Fase Final mobile abre sempre em lista */
 @media (max-width: 760px){
   #knockoutTab .ko-view-toggle-v270{
     display:grid!important;
@@ -14496,7 +14496,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 }
 
 
-/* v281 — Fase Final web: remover hero do mapa e usar altura máxima */
+/* v281 - Fase Final web: remover hero do mapa e usar altura máxima */
 @media (min-width: 761px){
   body.knockout-layout-active #knockoutBracket .ko-road-root-v270,
   body.knockout-layout-active #knockoutBracket .ko-road-page-v270{
@@ -14549,7 +14549,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 }
 
 
-/* v282 — barra de navegação da Fase Final igual à barra das outras páginas */
+/* v282 - barra de navegação da Fase Final igual à barra das outras páginas */
 @media (min-width: 761px){
   body.knockout-layout-active .app-shell,
   body.knockout-layout-active .app-shell.knockout-screen-active{
@@ -14628,7 +14628,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 
 
 
-/* v283 — Fase Final: sem aposta obrigatória = 0 pontos */
+/* v283 - Fase Final: sem aposta obrigatória = 0 pontos */
 .player-game-row.ko-mandatory-zero-v283,
 .player-game-row.miss.ko-mandatory-zero-v283{
   border-color:rgba(251,113,133,.24)!important;
@@ -14650,7 +14650,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 
 
 
-/* v284 — Central de Apostas Fase Final */
+/* v284 - Central de Apostas Fase Final */
 .ko-bet-entry-mount-v284{
   display:flex;
   align-items:center;
@@ -14993,7 +14993,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 
 
 
-/* v285 — Calendário: dia misto mantém barra normal, só o card da Fase Final fica colorido */
+/* v285 - Calendário: dia misto mantém barra normal, só o card da Fase Final fica colorido */
 .day-block.calendar-day-mixed-v285{
   border-color:var(--line)!important;
 }
@@ -15006,7 +15006,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 
 
 
-/* v286 — Filtro Fase Final + jogos bloqueados até poder apostar */
+/* v286 - Filtro Fase Final + jogos bloqueados até poder apostar */
 #calendarKnockoutGamesBtn{
   border:1px solid rgba(34,184,207,.26);
 }
@@ -15066,12 +15066,12 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 
 
 
-/* v287 — remover banner Apostas FF no calendário */
+/* v287 - remover banner Apostas FF no calendário */
 #calendarTab .ko-bet-calendar-banner-v284{
   display:none!important;
 }
 
-/* v287 — botão Fase Final igual aos restantes botões do topo/filtros */
+/* v287 - botão Fase Final igual aos restantes botões do topo/filtros */
 #calendarKnockoutGamesBtn,
 #calendarKnockoutGamesBtn.top-stat-card-like-v287{
   min-height:42px!important;
@@ -15129,7 +15129,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 
 
 
-/* v288 — remover bloco visível do topo do Calendário */
+/* v288 - remover bloco visível do topo do Calendário */
 .calendar-search-holder-v288{
   display:block;
   height:0;
@@ -15149,7 +15149,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 }
 
 
-/* v289 — Fase Final mobile sem scroll lateral */
+/* v289 - Fase Final mobile sem scroll lateral */
 @media (max-width: 760px){
   html,
   body{
@@ -15237,7 +15237,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 
 
 
-/* v290 — Users online: scroll próprio e sem mexer a página atrás */
+/* v290 - Users online: scroll próprio e sem mexer a página atrás */
 #onlineUsersList,
 .online-users-popup-v266,
 .online-users-content-v266{
@@ -15269,7 +15269,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 }
 
 
-/* v291 — Apostas Fase Final mobile em página fixa */
+/* v291 - Apostas Fase Final mobile em página fixa */
 @media(max-width:760px){
   body.ko-bet-mobile-page-open-v291{
     overflow:hidden!important;
@@ -15465,7 +15465,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 }
 
 
-/* v292 — Apostas Fase Final mobile: cards sem sobreposição */
+/* v292 - Apostas Fase Final mobile: cards sem sobreposição */
 @media(max-width:760px){
   #knockoutBetHubV284.ko-bet-mobile-page-v291 .ko-bet-hub-body-v284{
     display:block!important;
@@ -15654,7 +15654,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 
 
 
-/* v293 — Configuração do bloqueio das apostas da Fase Final */
+/* v293 - Configuração do bloqueio das apostas da Fase Final */
 .ko-lock-config-panel-v293{
   display:grid;
   grid-template-columns:minmax(0,1fr) 220px auto auto;
@@ -15731,7 +15731,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 
 
 
-/* v294 — aposta guardada fica bloqueada imediatamente */
+/* v294 - aposta guardada fica bloqueada imediatamente */
 .ko-bet-card-v284.ko-bet-saved-locked-v294,
 .ko-bet-saved-locked-v294 .knockout-bet-card-v241{
   border-color:rgba(34,197,94,.32)!important;
@@ -15760,7 +15760,7 @@ body.app-authenticated-v213:not(.app-boot-ready-v275) #appShell:not(.auth-hidden
 
 
 
-/* v295 — Aviso obrigatório com confirmação */
+/* v295 - Aviso obrigatório com confirmação */
 body.mandatory-notice-open-v295{
   overflow:hidden!important;
 }
@@ -16035,7 +16035,7 @@ body.mandatory-notice-open-v295{
 
 
 
-/* v296 — checkbox do aviso obrigatório clicável */
+/* v296 - checkbox do aviso obrigatório clicável */
 .mandatory-notice-check-v295,
 .mandatory-notice-check-v295 *,
 #mandatoryNoticeReadCheckV295,
@@ -16054,7 +16054,7 @@ body.mandatory-notice-open-v295{
 }
 
 
-/* v298 — Toggle de notificações por user */
+/* v298 - Toggle de notificações por user */
 .user-notifications-toggle-v298{
   display:grid;
   grid-template-columns:minmax(0,1fr) auto auto;
@@ -16111,7 +16111,7 @@ body.mandatory-notice-open-v295{
 }
 
 
-/* v299 — Página Minha Conta / Configurações do User */
+/* v299 - Página Minha Conta / Configurações do User */
 .user-settings-panel-v299{
   display:grid;
   gap:14px;
@@ -16262,7 +16262,7 @@ body.mandatory-notice-open-v295{
 }
 
 
-/* v301 — páginas escondidas não aparecem na barra */
+/* v301 - páginas escondidas não aparecem na barra */
 .page-hidden-v301,
 .tabs .tab.page-hidden-v301,
 #knockoutTab [data-tab].page-hidden-v301{
@@ -16270,7 +16270,7 @@ body.mandatory-notice-open-v295{
 }
 
 
-/* v302 — Calendário estável: sem cards a ajeitar sozinhos */
+/* v302 - Calendário estável: sem cards a ajeitar sozinhos */
 #calendarTab.calendar-stable-v302,
 #calendarTab.calendar-stable-v302 #gamesList,
 #calendarTab.calendar-stable-v302 .day-block,
@@ -16319,7 +16319,7 @@ body.mandatory-notice-open-v295{
 }
 
 
-/* v303 — chip jogador ligado mais claro */
+/* v303 - chip jogador ligado mais claro */
 .session-player-link-v241.linked{
   color:#bbf7d0!important;
   border-color:rgba(34,197,94,.30)!important;
@@ -16327,7 +16327,7 @@ body.mandatory-notice-open-v295{
 }
 
 
-/* v305 — só no Calendário > filtro Fase Final: impedir flash amarelo */
+/* v305 - só no Calendário > filtro Fase Final: impedir flash amarelo */
 #gamesList.calendar-ko-filter-active-v305 .day-block.calendar-ko-filter-day-v305 > h3{
   color:#eaf6ff!important;
   box-shadow:none!important;
@@ -16361,7 +16361,7 @@ body.mandatory-notice-open-v295{
 }
 
 
-/* v306 — Gestão limpa das apostas eliminatórias só para o Dono */
+/* v306 - Gestão limpa das apostas eliminatórias só para o Dono */
 .owner-ko-unlock-panel-v306{
   display:grid;
   gap:12px;
@@ -16469,7 +16469,7 @@ body.mandatory-notice-open-v295{
 }
 
 
-/* v307 — lápis de edição no Ver apostas da Fase Final */
+/* v307 - lápis de edição no Ver apostas da Fase Final */
 .bet-user-row.ko-editable-row-v307{
   grid-template-columns:minmax(180px,1fr) minmax(190px,1.15fr) minmax(120px,.7fr) 54px 42px!important;
   gap:8px!important;
@@ -16599,7 +16599,7 @@ body.mandatory-notice-open-v295{
 }
 
 
-/* v308 — modal Fase Final com lápis direto e coluna de aposta maior */
+/* v308 - modal Fase Final com lápis direto e coluna de aposta maior */
 .bets-list-head.ko-list-head-edit-v308{
   grid-template-columns:minmax(180px,1fr) minmax(230px,1.35fr) minmax(120px,.75fr) 56px 54px!important;
 }
@@ -16646,7 +16646,7 @@ body.mandatory-notice-open-v295{
 }
 
 
-/* v309 — marcador live no Calendário */
+/* v309 - marcador live no Calendário */
 .match-row.live-score-row-v309 .score-vs,
 .score-vs.live-score-v309{
   border-color:rgba(34,197,94,.42)!important;
@@ -16666,7 +16666,7 @@ body.mandatory-notice-open-v295{
 }
 
 
-/* v310 — coluna Aposta mais larga no modal Ver apostas (Calendário > Fase Final) */
+/* v310 - coluna Aposta mais larga no modal Ver apostas (Calendário > Fase Final) */
 #betsModal .bets-list-head.ko-list-head-edit-v308{
   grid-template-columns:minmax(170px,.9fr) minmax(360px,1.9fr) minmax(150px,.8fr) 64px 52px!important;
 }
@@ -16716,7 +16716,7 @@ body.mandatory-notice-open-v295{
 }
 
 
-/* v311 — limpeza visual global segura */
+/* v311 - limpeza visual global segura */
 html.app-clean-v311,
 html.app-clean-v311 body{
   overflow-x:hidden!important;
@@ -16750,7 +16750,7 @@ html.app-clean-v311 body{
   scrollbar-width:thin;
 }
 
-/* v311 — Ver apostas: coluna Aposta larga em TODOS os modos, com ou sem lápis */
+/* v311 - Ver apostas: coluna Aposta larga em TODOS os modos, com ou sem lápis */
 #betsModal .bets-modal-card{
   width:min(1180px, calc(100vw - 32px))!important;
   max-width:1180px!important;
@@ -16841,7 +16841,7 @@ html.app-clean-v311 body{
 }
 
 
-/* v312 — Pontuação clean, moderna e unificada */
+/* v312 - Pontuação clean, moderna e unificada */
 .score-clean-page-v312{
   display:grid;
   gap:14px;
@@ -17094,7 +17094,7 @@ html.app-clean-v311 body{
 }
 
 
-/* v313 — estabilidade visual: evita flashes, saltos e animações durante renders */
+/* v313 - estabilidade visual: evita flashes, saltos e animações durante renders */
 html.render-stabilizing-v313 *,
 html.render-stabilizing-v313 *::before,
 html.render-stabilizing-v313 *::after{
@@ -17149,7 +17149,7 @@ button,
 }
 
 
-/* v314 — Design system global: clean, premium, consistente */
+/* v314 - Design system global: clean, premium, consistente */
 :root{
   --modern-bg:#07111f;
   --modern-bg-soft:#0b1728;
@@ -17268,7 +17268,7 @@ html.app-modern-v314 .tab[aria-selected="true"]{
   color:#fff!important;
 }
 
-/* v314 — Calendário clean */
+/* v314 - Calendário clean */
 .calendar-modern-v314 .calendar-filters,
 .calendar-modern-v314 .calendar-mode-tabs,
 .calendar-modern-v314 .filter-row{
@@ -17412,7 +17412,7 @@ html.app-modern-v314 .tab[aria-selected="true"]{
 }
 
 
-/* v315 — garantia visual: o botão Pesquisar não aparece dentro dos jogos do Calendário */
+/* v315 - garantia visual: o botão Pesquisar não aparece dentro dos jogos do Calendário */
 #calendarTab .match-row [data-search-result-game],
 #gamesList .match-row [data-search-result-game],
 #calendarTab [data-game-id] [data-search-result-game],
@@ -17433,7 +17433,7 @@ html.app-modern-v314 .tab[aria-selected="true"]{
 }
 
 
-/* v327 — Desbloqueio global das apostas da Fase Final */
+/* v327 - Desbloqueio global das apostas da Fase Final */
 .owner-ko-global-unlock-v327{
   margin-top:12px;
   padding:12px;
@@ -17478,7 +17478,7 @@ html.app-modern-v314 .tab[aria-selected="true"]{
 }
 
 
-/* v328 — painel real de desbloqueio de apostas */
+/* v328 - painel real de desbloqueio de apostas */
 .real-unlock-bets-v328{
   display:flex;
   align-items:center;
@@ -17518,7 +17518,7 @@ html.app-modern-v314 .tab[aria-selected="true"]{
 }
 
 
-/* v329 — painel compatível de desbloqueio global */
+/* v329 - painel compatível de desbloqueio global */
 .ko-global-unlock-panel-v329{
   display:flex;
   align-items:center;
@@ -17558,7 +17558,7 @@ html.app-modern-v314 .tab[aria-selected="true"]{
 }
 
 
-/* v330 — painel de desbloqueio persistente */
+/* v330 - painel de desbloqueio persistente */
 .ko-unlock-panel-v330{
   display:flex;
   align-items:center;
@@ -17598,7 +17598,7 @@ html.app-modern-v314 .tab[aria-selected="true"]{
 }
 
 
-/* v331 — edição manual de apostas da Fase Final pelo Dono */
+/* v331 - edição manual de apostas da Fase Final pelo Dono */
 .ko-owner-edit-btn-v331{
   width:38px!important;
   height:38px!important;
@@ -17755,7 +17755,7 @@ html.app-modern-v314 .tab[aria-selected="true"]{
 }
 
 
-/* v332 — lápis garantido e Admin > Fase Final limpo */
+/* v332 - lápis garantido e Admin > Fase Final limpo */
 #betsModal .bets-list-head.ko-owner-head-v332{
   grid-template-columns:minmax(170px,.9fr) minmax(330px,1.8fr) minmax(140px,.75fr) 64px 56px!important;
   align-items:center!important;
@@ -18375,7 +18375,7 @@ select.ko-away-team{
   }
 }
 
-/* v353 — Fase Final com equipas manuais */
+/* v353 - Fase Final com equipas manuais */
 .ko-manual-only-notice-v353{
   border-style: dashed;
 }
@@ -18390,7 +18390,7 @@ select.ko-away-team{
 }
 
 
-/* v354 — Modal maior para editar jogos da Fase Final
+/* v354 - Modal maior para editar jogos da Fase Final
    Corrige também a classe interna .modal que deixava o formulário pequeno/fixo no ecrã. */
 .knockout-record-modal{
   align-items:center!important;
@@ -18489,4 +18489,28 @@ select.ko-away-team{
     min-height:52px!important;
     font-size:16px!important;
   }
+}
+
+/* v356 - anti-flash e skeleton discreto */
+html.app-boot-guard-v356 body.app-data-loading-v356 #appShell:not(.auth-hidden) {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+html.app-boot-guard-v356 .modal:not(.force-visible-v356),
+body.app-data-loading-v356 .knockout-record-modal:not(.force-visible-v356) {
+  display: none !important;
+}
+html.app-boot-guard-v356 #appBootLoaderV275 {
+  display: grid !important;
+}
+body.app-data-loading-v356 {
+  overflow: hidden !important;
+  background: #070b13 !important;
+}
+body.app-data-loading-v356 #appBootLoaderV275 .app-boot-loader-card-v275 {
+  transform: translateZ(0);
+}
+html:not(.app-boot-guard-v356) #appShell:not(.auth-hidden) {
+  transition: opacity .16s ease, filter .16s ease;
 }

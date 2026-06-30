@@ -1,4 +1,4 @@
-const admin = require("firebase-admin");
+﻿const admin = require("firebase-admin");
 
 
 if (!admin.apps.length) admin.initializeApp();
@@ -498,7 +498,7 @@ function footballNormalize(value) {
   return cleanString(value)
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[’']/g, " ")
+    .replace(/['']/g, " ")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
@@ -645,7 +645,7 @@ function footballFindLocalMatch(apiMatch, localMatches) {
 }
 
 
-// v271 — a API também deve preencher o calendário/base da Fase Final mesmo antes de existirem equipas locais.
+// v271 - a API também deve preencher o calendário/base da Fase Final mesmo antes de existirem equipas locais.
 // Antes só tentava casar eliminatórias por equipa/ID; com cards vazios/"A definir" isso nunca acontecia.
 function footballKnockoutRoundFromApiV271(apiMatch = {}) {
   const raw = cleanString(apiMatch.stage || apiMatch.group || apiMatch.matchday || "").toUpperCase();
