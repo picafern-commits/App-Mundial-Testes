@@ -18022,8 +18022,51 @@ html.app-modern-v314 .tab[aria-selected="true"]{
   }
 }
 
+/* v338-fase-final-ids-limpos-sem-reset */
 
-/* v335-esquema-fase-final-oficial */
-.knockout-match-title{
-  letter-spacing:.01em;
+/* v339-fase-final-manual-slots */
+.ko-manual-state-v339{
+  display:flex!important;
+  flex-wrap:wrap;
+  gap:6px;
+  align-items:center;
+  margin:6px 0;
+}
+.ko-manual-state-v339 b{
+  display:inline-flex;
+  align-items:center;
+  min-height:22px;
+  padding:3px 8px;
+  border-radius:999px;
+  font-size:10px;
+  line-height:1;
+  font-weight:950;
+  text-transform:uppercase;
+  letter-spacing:.02em;
+}
+.ko-manual-state-v339 b.manual{
+  color:#fde68a;
+  border:1px solid rgba(245,158,11,.34);
+  background:rgba(245,158,11,.12);
+}
+.ko-manual-state-v339 b.auto{
+  color:#bae6fd;
+  border:1px solid rgba(14,165,233,.28);
+  background:rgba(14,165,233,.10);
+}
+#knockoutAdminPanel .ko-home-team-v339,
+#knockoutAdminPanel .ko-away-team-v339{
+  min-width:0;
+  width:100%;
+}
+#knockoutAdminPanel .ko-auto-slot-btn-v339{
+  white-space:nowrap;
+}
+.knockout-match .ko-manual-state-v339{
+  margin:4px 0 6px;
+}
+.knockout-match .ko-manual-state-v339 b{
+  min-height:18px;
+  padding:2px 6px;
+  font-size:9px;
 }
