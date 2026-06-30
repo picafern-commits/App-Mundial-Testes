@@ -18374,3 +18374,17 @@ select.ko-away-team{
     justify-content:flex-start;
   }
 }
+
+/* v353 — Fase Final com equipas manuais */
+.ko-manual-only-notice-v353{
+  border-style: dashed;
+}
+.ko-manual-help-v353{
+  display:block;
+  margin:.35rem 0 .75rem;
+  opacity:.78;
+  font-weight:700;
+}
+.ko-team-manual-v353{
+  min-width: 170px;
+}

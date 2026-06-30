@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v352";
+const APP_VERSION_LABEL = "v353";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -31254,3 +31254,456 @@ const APP_VERSION_V352_PERFORMANCE_FIX = "352.0";
     };
   };
 })();
+
+
+/* v353 — Fase Final com equipas 100% manuais.
+   A API pode atualizar status/live/resultados, mas nunca decide/substitui equipas.
+*/
+const APP_VERSION_V353_KO_MANUAL_TEAMS_ONLY = "353.0";
+
+function koManualTeamsOnlyV353() {
+  try {
+    if (!appSettings || typeof appSettings !== "object") return true;
+    if (!appSettings.knockout || typeof appSettings.knockout !== "object") appSettings.knockout = {};
+    appSettings.knockout.manualTeamsOnly = true;
+  } catch {}
+  return true;
+}
+
+function koTeamControlHtmlV353(match, slot, ariaLabel = "Equipa") {
+  const value = String(match?.[slot] || "").trim();
+  const cls = slot === "awayTeam" ? "ko-away-team ko-away-team-v339 ko-team-manual-v353" : "ko-home-team ko-home-team-v339 ko-team-manual-v353";
+  return `<select class="${cls}" data-ko-team-slot="${escapeHtml(slot)}" aria-label="${escapeHtml(ariaLabel)}">${knockoutTeamOptionsHtml(value)}</select>`;
+}
+
+function koSetManualSlotV353(match, slot, value, reason = "manual-v353") {
+  if (!match || (slot !== "homeTeam" && slot !== "awayTeam")) return;
+  const clean = String(value || "").trim();
+
+  try {
+    if (typeof koLockManualSlotV344 === "function") {
+      koLockManualSlotV344(match, slot, clean, reason);
+      return;
+    }
+  } catch {}
+
+  const manualField = slot === "awayTeam" ? "manualAwayTeam" : "manualHomeTeam";
+  const lockField = slot === "awayTeam" ? "manualAwayTeamLocked" : "manualHomeTeamLocked";
+  const originField = slot === "awayTeam" ? "awayTeamOrigin" : "homeTeamOrigin";
+  match[slot] = clean;
+  match[manualField] = clean;
+  match[lockField] = Boolean(clean);
+  match[originField] = clean ? "manual" : "";
+  match.manualTeamsUpdatedAt = new Date().toISOString();
+  match.manualTeamsUpdatedBy = currentUser?.email || currentProfile?.email || currentUser?.uid || "admin";
+  match.manualTeamsReason = reason;
+}
+
+function koReadTeamValueV353(row, slot, fallback = "") {
+  const selector = slot === "awayTeam"
+    ? ".ko-away-team,.ko-away-team-v339,[data-ko-team-slot='awayTeam']"
+    : ".ko-home-team,.ko-home-team-v339,[data-ko-team-slot='homeTeam']";
+  return String(row?.querySelector?.(selector)?.value ?? fallback ?? "").trim();
+}
+
+function koNormalizeDateFieldsV353(match, value = "") {
+  const clean = typeof normalizeKnockoutMatchDateV243 === "function"
+    ? normalizeKnockoutMatchDateV243(value || "")
+    : String(value || "").trim();
+  ["matchDate", "date", "kickoff", "startAt", "time"].forEach(key => { match[key] = clean; });
+  return clean;
+}
+
+function koValidIntegerOrNullV353(raw, label) {
+  const value = String(raw ?? "").trim();
+  if (value === "") return { ok: true, value: null };
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0 || !Number.isInteger(number)) {
+    return { ok: false, message: `${label} tem de ser um número inteiro válido.` };
+  }
+  return { ok: true, value: number };
+}
+
+function koClearResultFieldsV353(match) {
+  match.homeScore = null;
+  match.awayScore = null;
+  match.homePenalties = null;
+  match.awayPenalties = null;
+  match.liveHomeScore = null;
+  match.liveAwayScore = null;
+  match.winner = "";
+  match.winnerTeam = "";
+  match.qualified = "";
+  match.qualifiedTeam = "";
+}
+
+function koWinnerFromManualResultV353(match) {
+  try {
+    const winner = typeof knockoutWinner === "function" ? knockoutWinner({ ...match }) : "";
+    return String(winner || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function koApplyManualOnlyNoticeV353() {
+  try {
+    const panel = document.getElementById("knockoutAdminPanel");
+    if (!panel || document.getElementById("koManualOnlyNoticeV353")) return;
+    panel.insertAdjacentHTML("afterbegin", `
+      <div id="koManualOnlyNoticeV353" class="ko-admin-note ko-manual-only-notice-v353">
+        <strong>Modo manual ativo:</strong> escolhes as equipas de todos os jogos da Fase Final. A API só atualiza estados, live e resultados.
+      </div>
+    `);
+  } catch {}
+}
+
+function koEnableManualControlsV353() {
+  try { koManualTeamsOnlyV353(); } catch {}
+
+  document.querySelectorAll("#knockoutAdminPanel [data-ko-admin], #knockoutRecordModal [data-ko-admin]").forEach(row => {
+    const matchId = row.dataset.koAdmin || "";
+    const match = typeof knockoutMatchById === "function" ? knockoutMatchById(matchId) : null;
+    if (!match) return;
+
+    try { if (typeof koRestoreManualSlotsV344 === "function") koRestoreManualSlotsV344(match); } catch {}
+
+    const readonly = row.querySelectorAll(".ko-readonly-team");
+    if (readonly[0]) readonly[0].outerHTML = koTeamControlHtmlV353(match, "homeTeam", "Equipa da casa");
+    if (readonly[1]) readonly[1].outerHTML = koTeamControlHtmlV353(match, "awayTeam", "Equipa visitante");
+
+    const home = row.querySelector(".ko-home-team,[data-ko-team-slot='homeTeam']");
+    const away = row.querySelector(".ko-away-team,[data-ko-team-slot='awayTeam']");
+    if (home) {
+      home.disabled = false;
+      home.dataset.koTeamSlot = "homeTeam";
+      home.classList.add("ko-home-team", "ko-home-team-v339", "ko-team-manual-v353");
+      if (!home.value && match.homeTeam) home.value = match.homeTeam;
+    }
+    if (away) {
+      away.disabled = false;
+      away.dataset.koTeamSlot = "awayTeam";
+      away.classList.add("ko-away-team", "ko-away-team-v339", "ko-team-manual-v353");
+      if (!away.value && match.awayTeam) away.value = match.awayTeam;
+    }
+
+    row.querySelectorAll("[data-ko-auto-slot-v339]").forEach(btn => btn.remove());
+    row.querySelectorAll(".ko-home-score,.ko-away-score,.ko-home-penalties,.ko-away-penalties,.ko-qualified-team-v247").forEach(input => {
+      input.disabled = false;
+    });
+
+    row.querySelectorAll("[data-ko-save]").forEach(btn => {
+      btn.textContent = "Guardar equipas/resultado";
+      btn.title = "Guarda equipas manuais e resultado deste jogo";
+    });
+  });
+
+  koApplyManualOnlyNoticeV353();
+}
+
+try {
+  const originalRenderKnockoutAdminV353 = typeof renderKnockoutAdmin === "function" ? renderKnockoutAdmin : null;
+  if (originalRenderKnockoutAdminV353 && !originalRenderKnockoutAdminV353.__manualTeamsOnlyV353) {
+    renderKnockoutAdmin = function renderKnockoutAdminManualTeamsOnlyV353() {
+      const result = originalRenderKnockoutAdminV353.apply(this, arguments);
+      koEnableManualControlsV353();
+      requestAnimationFrame(() => koEnableManualControlsV353());
+      return result;
+    };
+    renderKnockoutAdmin.__manualTeamsOnlyV353 = true;
+    window.renderKnockoutAdmin = renderKnockoutAdmin;
+  }
+} catch {}
+
+try {
+  renderKnockoutRecordForm = function renderKnockoutRecordFormManualTeamsOnlyV353(match) {
+    const teamsReady = Boolean(match?.homeTeam && match?.awayTeam);
+    return `
+      <div class="ko-card-editor modal ko-manual-only-editor-v353" data-ko-admin="${escapeHtml(match.id)}">
+        <div class="ko-card-editor-teams">
+          ${koTeamControlHtmlV353(match, "homeTeam", "Equipa da casa")}
+          ${koTeamControlHtmlV353(match, "awayTeam", "Equipa visitante")}
+        </div>
+        <small class="ko-manual-help-v353">As equipas são sempre manuais. Podes guardar sem data; as apostas só abrem quando houver data/hora.</small>
+        <label class="ko-match-date-label-v243">Data/hora do jogo
+          <input class="ko-match-date-v243" type="datetime-local" value="${escapeHtml(knockoutMatchDateInputValueV243(match))}" />
+        </label>
+        <div class="ko-card-editor-scores">
+          <label>Resultado aos 90 minutos + compensação
+            <span class="ko-score-pair">
+              <input class="ko-home-score" type="number" min="0" inputmode="numeric" value="${match.homeScore ?? ""}" placeholder="0" />
+              <em>-</em>
+              <input class="ko-away-score" type="number" min="0" inputmode="numeric" value="${match.awayScore ?? ""}" placeholder="0" />
+            </span>
+          </label>
+          <label>Penáltis / desempate
+            <span class="ko-score-pair">
+              <input class="ko-home-penalties" type="number" min="0" inputmode="numeric" value="${match.homePenalties ?? ""}" placeholder="" />
+              <em>-</em>
+              <input class="ko-away-penalties" type="number" min="0" inputmode="numeric" value="${match.awayPenalties ?? ""}" placeholder="" />
+            </span>
+          </label>
+          ${renderKnockoutQualifiedControl(match)}
+        </div>
+        <button class="primary small ko-card-save" type="button" data-ko-save="${escapeHtml(match.id)}">Guardar equipas/resultado</button>
+      </div>
+    `;
+  };
+  window.renderKnockoutRecordForm = renderKnockoutRecordForm;
+} catch {}
+
+function propagateKnockoutWinnersManualTeamsOnlyV353(shouldSave = true) {
+  try { koManualTeamsOnlyV353(); } catch {}
+  try {
+    const matches = appSettings?.knockout?.matches || [];
+    matches.forEach(match => {
+      try { if (typeof koRestoreManualSlotsV344 === "function") koRestoreManualSlotsV344(match); } catch {}
+      try { if (typeof koRestoreManualSlotsV339 === "function") koRestoreManualSlotsV339(match); } catch {}
+    });
+    // Não preenche equipas da ronda seguinte. A Fase Final fica com equipas manuais como fonte da verdade.
+    if (shouldSave) {
+      try { markSettingsPending?.(); } catch {}
+      try { saveLocalData?.("fase final manual sem propagação de equipas v353"); } catch {}
+      try { scheduleFullSync?.("fase final manual sem propagação de equipas", 350); } catch {}
+    }
+  } catch (error) {
+    console.warn("v353: proteção manual da Fase Final falhou", error);
+  }
+}
+
+try {
+  propagateKnockoutWinners = propagateKnockoutWinnersManualTeamsOnlyV353;
+  window.propagateKnockoutWinners = propagateKnockoutWinners;
+} catch {}
+try {
+  propagateKnockoutWinnersV339 = propagateKnockoutWinnersManualTeamsOnlyV353;
+  window.propagateKnockoutWinnersV339 = propagateKnockoutWinnersV339;
+} catch {}
+
+try {
+  if (typeof mergeFootballDataKnockoutV139 === "function" && !mergeFootballDataKnockoutV139.__manualTeamsOnlyV353) {
+    const originalMergeFootballDataKnockoutV353 = mergeFootballDataKnockoutV139;
+    mergeFootballDataKnockoutV139 = function mergeFootballDataKnockoutManualTeamsOnlyV353(knockoutUpdates = []) {
+      const beforeTeams = new Map((appSettings?.knockout?.matches || []).map(match => [String(match.id || ""), {
+        homeTeam: match.homeTeam || "",
+        awayTeam: match.awayTeam || "",
+        manualHomeTeam: match.manualHomeTeam || "",
+        manualAwayTeam: match.manualAwayTeam || "",
+        manualHomeTeamLocked: Boolean(match.manualHomeTeamLocked),
+        manualAwayTeamLocked: Boolean(match.manualAwayTeamLocked),
+        homeTeamOrigin: match.homeTeamOrigin || "",
+        awayTeamOrigin: match.awayTeamOrigin || ""
+      }]));
+
+      const safeUpdates = (Array.isArray(knockoutUpdates) ? knockoutUpdates : []).map(update => {
+        const copy = { ...(update || {}) };
+        delete copy.homeTeam;
+        delete copy.awayTeam;
+        delete copy.manualHomeTeam;
+        delete copy.manualAwayTeam;
+        delete copy.manualHomeTeamLocked;
+        delete copy.manualAwayTeamLocked;
+        delete copy.homeTeamOrigin;
+        delete copy.awayTeamOrigin;
+        return copy;
+      });
+
+      const result = originalMergeFootballDataKnockoutV353.call(this, safeUpdates);
+
+      (appSettings?.knockout?.matches || []).forEach(match => {
+        const saved = beforeTeams.get(String(match.id || ""));
+        if (!saved) return;
+        Object.assign(match, saved);
+        try { if (typeof koRestoreManualSlotsV344 === "function") koRestoreManualSlotsV344(match); } catch {}
+      });
+
+      return result;
+    };
+    mergeFootballDataKnockoutV139.__manualTeamsOnlyV353 = true;
+    window.mergeFootballDataKnockoutV139 = mergeFootballDataKnockoutV139;
+  }
+} catch {}
+
+saveKnockoutMatchFromAdmin = async function saveKnockoutMatchFromAdminManualTeamsOnlyV353(matchId, sourceElement = null) {
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
+
+  ensureKnockoutSettings?.();
+  koManualTeamsOnlyV353();
+  koEnableManualControlsV353();
+
+  const row = sourceElement?.closest?.(`[data-ko-admin="${CSS.escape(matchId)}"]`) ||
+    document.querySelector(`[data-ko-admin="${CSS.escape(matchId)}"]`);
+  const sourceModal = sourceElement?.closest?.("#knockoutRecordModal");
+  const match = typeof knockoutMatchById === "function" ? knockoutMatchById(matchId) : null;
+  if (!row || !match) return;
+
+  const beforeMatch = {
+    homeTeam: match.homeTeam || "",
+    awayTeam: match.awayTeam || "",
+    manualHomeTeam: match.manualHomeTeam || "",
+    manualAwayTeam: match.manualAwayTeam || "",
+    homeScore: match.homeScore ?? null,
+    awayScore: match.awayScore ?? null,
+    homePenalties: match.homePenalties ?? null,
+    awayPenalties: match.awayPenalties ?? null,
+    matchDate: match.matchDate || "",
+    qualified: match.qualified || match.winnerTeam || match.winner || ""
+  };
+
+  const nextHome = koReadTeamValueV353(row, "homeTeam", match.homeTeam || "");
+  const nextAway = koReadTeamValueV353(row, "awayTeam", match.awayTeam || "");
+  koSetManualSlotV353(match, "homeTeam", nextHome, "admin-save-v353");
+  koSetManualSlotV353(match, "awayTeam", nextAway, "admin-save-v353");
+
+  koNormalizeDateFieldsV353(match, row.querySelector(".ko-match-date-v243")?.value || match.matchDate || "");
+
+  const hasBothTeams = Boolean(match.homeTeam && match.awayTeam);
+  if (!hasBothTeams) {
+    koClearResultFieldsV353(match);
+  } else {
+    const homeScore = koValidIntegerOrNullV353(row.querySelector(".ko-home-score")?.value ?? "", "Resultado da casa");
+    const awayScore = koValidIntegerOrNullV353(row.querySelector(".ko-away-score")?.value ?? "", "Resultado de fora");
+    const homePens = koValidIntegerOrNullV353(row.querySelector(".ko-home-penalties")?.value ?? "", "Penáltis da casa");
+    const awayPens = koValidIntegerOrNullV353(row.querySelector(".ko-away-penalties")?.value ?? "", "Penáltis de fora");
+
+    for (const check of [homeScore, awayScore, homePens, awayPens]) {
+      if (!check.ok) { toast(check.message); return; }
+    }
+
+    if ((homeScore.value === null) !== (awayScore.value === null)) {
+      toast("Preenche os dois campos do resultado ou deixa os dois vazios.");
+      return;
+    }
+    if ((homePens.value === null) !== (awayPens.value === null)) {
+      toast("Preenche os dois campos dos penáltis/desempate ou deixa os dois vazios.");
+      return;
+    }
+
+    match.homeScore = homeScore.value;
+    match.awayScore = awayScore.value;
+    match.homePenalties = homePens.value;
+    match.awayPenalties = awayPens.value;
+    match.liveHomeScore = null;
+    match.liveAwayScore = null;
+
+    const hasScore = match.homeScore !== null && match.awayScore !== null;
+    const isDraw = hasScore && Number(match.homeScore) === Number(match.awayScore);
+    const qualifiedValue = row.querySelector(".ko-qualified-team-v247")?.value || "";
+
+    if (qualifiedValue) {
+      const normalizedQualified = normalizeComparable(qualifiedValue);
+      const homeQualified = normalizedQualified === normalizeComparable(match.homeTeam);
+      const awayQualified = normalizedQualified === normalizeComparable(match.awayTeam);
+      if (!homeQualified && !awayQualified) {
+        toast("Escolhe uma das duas equipas como qualificada.");
+        return;
+      }
+      if (hasScore && !isDraw && ((match.homeScore > match.awayScore && !homeQualified) || (match.awayScore > match.homeScore && !awayQualified))) {
+        toast("A equipa qualificada não bate certo com o resultado.");
+        return;
+      }
+      if (isDraw && match.homePenalties !== null && match.awayPenalties !== null && ((match.homePenalties > match.awayPenalties && !homeQualified) || (match.awayPenalties > match.homePenalties && !awayQualified))) {
+        toast("A equipa qualificada não bate certo com os penáltis.");
+        return;
+      }
+      match.winner = qualifiedValue;
+      match.winnerTeam = qualifiedValue;
+      match.qualified = qualifiedValue;
+    } else if (hasScore) {
+      const winner = koWinnerFromManualResultV353(match);
+      if (isDraw && !winner) {
+        toast("Jogo empatado. Preenche os penáltis/desempate ou escolhe a equipa qualificada.");
+        return;
+      }
+      match.winner = winner;
+      match.winnerTeam = winner;
+      match.qualified = winner;
+    } else {
+      match.winner = "";
+      match.winnerTeam = "";
+      match.qualified = "";
+    }
+    match.qualifiedTeam = match.qualified || match.winnerTeam || match.winner || "";
+  }
+
+  match.updatedAt = new Date().toISOString();
+  propagateKnockoutWinnersManualTeamsOnlyV353(false);
+
+  addSystemLog?.("Jogo Fase Final guardado", `${match.roundLabel || knockoutRoundLabel?.(match.round) || "Fase Final"} ${match.index}: ${match.homeTeam || "A definir"} ${match.homeScore ?? ""}-${match.awayScore ?? ""} ${match.awayTeam || "A definir"}`, {
+    matchId: match.id,
+    round: match.round,
+    index: match.index,
+    manualMode: true,
+    before: beforeMatch,
+    after: {
+      homeTeam: match.homeTeam || "",
+      awayTeam: match.awayTeam || "",
+      manualHomeTeam: match.manualHomeTeam || "",
+      manualAwayTeam: match.manualAwayTeam || "",
+      homeScore: match.homeScore ?? null,
+      awayScore: match.awayScore ?? null,
+      matchDate: match.matchDate || "",
+      qualified: match.qualified || ""
+    }
+  }, { sync: true });
+
+  try { markSettingsPending?.(); } catch {}
+  try { saveLocalData?.("fase final manual guardada v353"); } catch {}
+  try { if (match.homeTeam && match.awayTeam && match.matchDate) syncKnockoutCalendarGameV259?.(match, { persist: false, reason: "fase final manual v353" }); } catch {}
+  try { ensureKnockoutCalendarGamesV259?.({ persist: false, reason: "fase final manual v353" }); } catch {}
+
+  try { renderKnockout?.(); } catch {}
+  try { renderKnockoutAdmin?.(); } catch {}
+  try { if (document.querySelector(".tab-panel.active")?.id === "knockoutTab") applyKnockoutLayoutFromSettings?.(); } catch {}
+  try { if (sourceModal) closeKnockoutRecordModal?.(); } catch {}
+
+  try {
+    await saveSettingsFastToFirebase?.("fase final manual guardada v353");
+    try { if (match.homeTeam && match.awayTeam && match.matchDate) await ensureKnockoutCalendarGamesV259?.({ persist: true, reason: "fase final manual v353" }); } catch {}
+    setFirebaseStatus?.("success", "Firebase: Fase Final manual guardada");
+  } catch (error) {
+    console.error("Falhou guardar Fase Final manual:", error);
+    try { scheduleFullSync?.("fase final manual guardada v353", 600); } catch {}
+    try { setFirebaseStatus?.("error", `Firebase: Fase Final pendente (${shortFirebaseError?.(error) || error.message || "erro"})`); } catch {}
+  }
+
+  toast?.(hasBothTeams ? "Jogo guardado. Equipas manuais protegidas." : "Jogo guardado sem equipas/resultados.");
+};
+window.saveKnockoutMatchFromAdmin = saveKnockoutMatchFromAdmin;
+
+try {
+  koManualTeamsOnlyV353();
+  propagateKnockoutWinnersManualTeamsOnlyV353(false);
+} catch {}
+
+window.debugFaseFinalManualV353 = function debugFaseFinalManualV353() {
+  try { ensureKnockoutSettings?.(); } catch {}
+  try { koManualTeamsOnlyV353(); } catch {}
+  const rows = (appSettings?.knockout?.matches || []).map(match => ({
+    id: match.id,
+    round: match.round,
+    index: match.index,
+    homeTeam: match.homeTeam || "",
+    awayTeam: match.awayTeam || "",
+    manualHomeTeam: match.manualHomeTeam || "",
+    manualAwayTeam: match.manualAwayTeam || "",
+    homeManual: Boolean(match.manualHomeTeamLocked),
+    awayManual: Boolean(match.manualAwayTeamLocked),
+    homeScore: match.homeScore ?? null,
+    awayScore: match.awayScore ?? null,
+    liveHomeScore: match.liveHomeScore ?? null,
+    liveAwayScore: match.liveAwayScore ?? null,
+    status: match.footballDataStatus || "",
+    matchDate: match.matchDate || "",
+    qualified: match.qualified || match.winnerTeam || match.winner || ""
+  }));
+  console.table(rows);
+  return {
+    version: APP_VERSION_V353_KO_MANUAL_TEAMS_ONLY,
+    appVersion: APP_VERSION_LABEL,
+    manualTeamsOnly: true,
+    apiCanChangeTeams: false,
+    autoPropagationChangesTeams: false,
+    matches: rows
+  };
+};

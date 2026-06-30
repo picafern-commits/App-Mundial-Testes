@@ -17,6 +17,8 @@ const messaging = getMessaging();
 const auth = getAuth();
 const ADMIN_EMAILS = new Set(["pica.fern@gmail.com"]);
 const FOOTBALL_SYSTEM_ACTOR_V151 = { uid: "scheduler", email: "sistema@app-mundial2026" };
+
+const FOOTBALL_KNOCKOUT_MANUAL_TEAMS_ONLY_V353 = true;
 const QUIET_TZ = "Europe/Lisbon";
 const DEFAULT_QUIET_START_HOUR = 23;
 const DEFAULT_QUIET_END_HOUR = 9;
@@ -761,10 +763,12 @@ function footballApplyApiKnockoutScheduleV271(apiMatches = [], knockoutMatches =
         result.withDate += 1;
       }
 
-      // Só troca equipas quando a API já tem nomes reais. Assim não mete "TBD/Winner" nos cards.
-      if (homeIsReal) target.homeTeam = apiHome;
-      if (awayIsReal) target.awayTeam = apiAway;
-      if (homeIsReal || awayIsReal) result.withTeams += 1;
+      // v353: equipas da Fase Final são 100% manuais na app.
+      // A API só pode atualizar ID/data/status/live/resultados, nunca homeTeam/awayTeam.
+      if (homeIsReal || awayIsReal) {
+        target.apiHomeTeam = apiHome;
+        target.apiAwayTeam = apiAway;
+      }
 
       const after = JSON.stringify({
         footballDataId: target.footballDataId || "",
@@ -1519,7 +1523,8 @@ async function runFootballDataSyncCoreV151(options = {}) {
   });
 
   if (updatedKnockoutMatches.length) {
-    knockoutPropagationChanged = footballSmartPropagateKnockoutV201(knockoutMatches);
+    // v353: não propagar equipas automaticamente. O Dono/Admin define todas as equipas manualmente.
+    knockoutPropagationChanged = false;
   }
 
   const syncMetaRef = db.collection("settings").doc("footballData");
