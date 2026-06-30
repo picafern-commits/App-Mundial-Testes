@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v354";
+const APP_VERSION_LABEL = "v355";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -31728,3 +31728,593 @@ window.debugKnockoutModalV354 = function debugKnockoutModalV354() {
   console.table(info);
   return info;
 };
+
+/* v355 — 16 avos manuais; vencedores avançam automaticamente até à final.
+   A API continua proibida de definir equipas: só status/live/resultados.
+*/
+const APP_VERSION_V355_KO_R32_MANUAL_AUTO_AFTER = "355.0";
+
+function koIsFirstRoundV355(match) {
+  return String(match?.round || "").trim().toLowerCase() === "r32";
+}
+
+function koManualFieldV355(slot) {
+  return slot === "awayTeam" ? "manualAwayTeam" : "manualHomeTeam";
+}
+
+function koManualLockFieldV355(slot) {
+  return slot === "awayTeam" ? "manualAwayTeamLocked" : "manualHomeTeamLocked";
+}
+
+function koOriginFieldV355(slot) {
+  return slot === "awayTeam" ? "awayTeamOrigin" : "homeTeamOrigin";
+}
+
+function koPairKeyV355(home = "", away = "") {
+  return `${String(home || "").trim()}|${String(away || "").trim()}`;
+}
+
+function koMatchPairKeyV355(match) {
+  return koPairKeyV355(match?.homeTeam, match?.awayTeam);
+}
+
+function koSetModeV355() {
+  if (!appSettings || typeof appSettings !== "object") return;
+  if (!appSettings.knockout || typeof appSettings.knockout !== "object") appSettings.knockout = {};
+  appSettings.knockout.manualTeamsOnly = false;
+  appSettings.knockout.firstRoundManualAutoAfter = true;
+}
+
+function koUnlockAutoSlotV355(match, slot) {
+  if (!match || (slot !== "homeTeam" && slot !== "awayTeam")) return;
+  match[koManualFieldV355(slot)] = "";
+  match[koManualLockFieldV355(slot)] = false;
+  if (match[koOriginFieldV355(slot)] === "manual") match[koOriginFieldV355(slot)] = "auto";
+}
+
+function koSetManualR32SlotV355(match, slot, value, reason = "r32-manual-v355") {
+  if (!match || (slot !== "homeTeam" && slot !== "awayTeam")) return;
+  const clean = String(value || "").trim();
+  try {
+    if (typeof koLockManualSlotV344 === "function") {
+      koLockManualSlotV344(match, slot, clean, reason);
+      return;
+    }
+  } catch {}
+  match[slot] = clean;
+  match[koManualFieldV355(slot)] = clean;
+  match[koManualLockFieldV355(slot)] = Boolean(clean);
+  match[koOriginFieldV355(slot)] = clean ? "manual" : "";
+  match.manualTeamsUpdatedAt = new Date().toISOString();
+  match.manualTeamsUpdatedBy = currentProfile?.email || currentUser?.email || currentProfile?.uid || currentUser?.uid || "admin";
+  match.manualTeamsReason = reason;
+}
+
+function koSetAutoSlotV355(match, slot, value) {
+  if (!match || (slot !== "homeTeam" && slot !== "awayTeam")) return;
+  const clean = String(value || "").trim();
+  koUnlockAutoSlotV355(match, slot);
+  match[slot] = clean;
+  match[koOriginFieldV355(slot)] = clean ? "auto" : "";
+}
+
+function koClearResultFieldsV355(match) {
+  if (!match) return;
+  match.homeScore = null;
+  match.awayScore = null;
+  match.homePenalties = null;
+  match.awayPenalties = null;
+  match.liveHomeScore = null;
+  match.liveAwayScore = null;
+  match.winner = "";
+  match.winnerTeam = "";
+  match.qualified = "";
+  match.qualifiedTeam = "";
+}
+
+function koNormalizeAutoRoundLocksV355() {
+  const matches = appSettings?.knockout?.matches || [];
+  matches.forEach(match => {
+    if (koIsFirstRoundV355(match)) return;
+    ["homeTeam", "awayTeam"].forEach(slot => koUnlockAutoSlotV355(match, slot));
+  });
+}
+
+function koWinnerForShadowV355(match, shadowPair, originalPairKey) {
+  if (!match || !shadowPair?.home || !shadowPair?.away) return "";
+
+  // Se as equipas propagadas mudaram, o resultado antigo já não pertence a este jogo.
+  if (!koIsFirstRoundV355(match) && koPairKeyV355(shadowPair.home, shadowPair.away) !== originalPairKey) return "";
+
+  try {
+    return String(knockoutWinner?.({
+      ...match,
+      homeTeam: shadowPair.home,
+      awayTeam: shadowPair.away
+    }) || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function propagateKnockoutWinnersV355(shouldSave = true) {
+  if (!appSettings?.knockout || !Array.isArray(appSettings.knockout.matches)) return;
+  koSetModeV355();
+
+  const matches = appSettings.knockout.matches;
+  const byId = new Map(matches.map(match => [String(match.id || ""), match]));
+  const originalPairs = new Map(matches.map(match => [String(match.id || ""), koMatchPairKeyV355(match)]));
+
+  koNormalizeAutoRoundLocksV355();
+
+  // Mapa virtual: só os 16 avos são fonte manual; as rondas seguintes nascem vazias.
+  const shadowTeams = new Map(matches.map(match => [String(match.id || ""), {
+    home: koIsFirstRoundV355(match) ? String(match.homeTeam || "").trim() : "",
+    away: koIsFirstRoundV355(match) ? String(match.awayTeam || "").trim() : ""
+  }]));
+
+  const roundOrder = ["r32", "r16", "qf", "sf", "final"];
+  roundOrder.forEach(roundKey => {
+    matches
+      .filter(match => String(match.round || "") === roundKey)
+      .sort((a, b) => Number(a.index || 0) - Number(b.index || 0))
+      .forEach(match => {
+        const pair = shadowTeams.get(String(match.id || "")) || { home: "", away: "" };
+        const winner = koWinnerForShadowV355(match, pair, originalPairs.get(String(match.id || "")) || "|");
+        if (!winner || !match.nextMatchId || !match.nextSlot) return;
+        const nextPair = shadowTeams.get(String(match.nextMatchId || ""));
+        if (!nextPair) return;
+        if (match.nextSlot === "awayTeam") nextPair.away = winner;
+        else nextPair.home = winner;
+      });
+  });
+
+  let changed = false;
+
+  matches.forEach(match => {
+    const pair = shadowTeams.get(String(match.id || "")) || { home: "", away: "" };
+
+    if (koIsFirstRoundV355(match)) {
+      try { if (typeof koRestoreManualSlotsV344 === "function") koRestoreManualSlotsV344(match); } catch {}
+      return;
+    }
+
+    const before = koMatchPairKeyV355(match);
+    koSetAutoSlotV355(match, "homeTeam", pair.home);
+    koSetAutoSlotV355(match, "awayTeam", pair.away);
+    const after = koMatchPairKeyV355(match);
+
+    if (before !== after) {
+      koClearResultFieldsV355(match);
+      changed = true;
+    }
+  });
+
+  // Atualiza o vencedor/qualificada de cada jogo sem mexer nas equipas.
+  matches.forEach(match => {
+    const winner = (() => {
+      try { return String(knockoutWinner?.(match) || "").trim(); } catch { return ""; }
+    })();
+    if (winner) {
+      match.winner = winner;
+      match.winnerTeam = winner;
+      match.qualified = winner;
+      match.qualifiedTeam = winner;
+    } else if (match.homeScore === null || match.homeScore === undefined || match.homeScore === "" || match.awayScore === null || match.awayScore === undefined || match.awayScore === "") {
+      match.winner = "";
+      match.winnerTeam = "";
+      match.qualified = "";
+      match.qualifiedTeam = "";
+    }
+  });
+
+  if (shouldSave || changed) {
+    try { markSettingsPending?.(); } catch {}
+    if (shouldSave) {
+      try { saveLocalData?.("fase final 16avos manual auto v355"); } catch {}
+      try { scheduleFullSync?.("fase final 16avos manual auto v355", 350); } catch {}
+    }
+  }
+}
+
+// Compatibilidade: a v353 chamava este nome para forçar tudo manual. Agora ele ativa o modo correto.
+try {
+  koManualTeamsOnlyV353 = function koManualTeamsOnlyDisabledByV355() {
+    koSetModeV355();
+    return false;
+  };
+  window.koManualTeamsOnlyV353 = koManualTeamsOnlyV353;
+} catch {}
+
+try {
+  propagateKnockoutWinners = propagateKnockoutWinnersV355;
+  window.propagateKnockoutWinners = propagateKnockoutWinners;
+} catch {}
+try {
+  propagateKnockoutWinnersV339 = propagateKnockoutWinnersV355;
+  window.propagateKnockoutWinnersV339 = propagateKnockoutWinnersV339;
+} catch {}
+try {
+  propagateKnockoutWinnersManualTeamsOnlyV353 = propagateKnockoutWinnersV355;
+  window.propagateKnockoutWinnersManualTeamsOnlyV353 = propagateKnockoutWinnersManualTeamsOnlyV353;
+} catch {}
+
+function koTeamControlHtmlV355(match, slot, editable) {
+  const value = String(match?.[slot] || "").trim();
+  if (editable) {
+    const cls = slot === "awayTeam" ? "ko-away-team ko-away-team-v339 ko-team-r32-v355" : "ko-home-team ko-home-team-v339 ko-team-r32-v355";
+    return `<select class="${cls}" data-ko-team-slot="${escapeHtml(slot)}" aria-label="${slot === "awayTeam" ? "Equipa visitante" : "Equipa da casa"}">${knockoutTeamOptionsHtml(value)}</select>`;
+  }
+  return `<input class="ko-readonly-team ko-auto-team-v355" type="text" value="${escapeHtml(value || "A definir automaticamente")}" disabled data-ko-team-slot="${escapeHtml(slot)}" />`;
+}
+
+function koPatchAdminControlsV355() {
+  try { koSetModeV355(); } catch {}
+  try { propagateKnockoutWinnersV355(false); } catch {}
+
+  const panel = document.getElementById("knockoutAdminPanel");
+  if (panel) {
+    document.getElementById("koManualOnlyNoticeV353")?.remove();
+    if (!document.getElementById("koAutoFlowNoticeV355")) {
+      panel.insertAdjacentHTML("afterbegin", `
+        <div id="koAutoFlowNoticeV355" class="ko-admin-note ko-auto-flow-notice-v355">
+          <strong>Regra ativa:</strong> editas manualmente as equipas dos <strong>16 avos</strong>. Depois, os vencedores avançam automaticamente até à final. A API só atualiza live/resultados.
+        </div>
+      `);
+    }
+  }
+
+  document.querySelectorAll("#knockoutAdminPanel [data-ko-admin], #knockoutRecordModal [data-ko-admin]").forEach(row => {
+    const matchId = row.dataset.koAdmin || "";
+    const match = typeof knockoutMatchById === "function" ? knockoutMatchById(matchId) : null;
+    if (!match) return;
+
+    const firstRound = koIsFirstRoundV355(match);
+    const canScore = Boolean(match.homeTeam && match.awayTeam);
+
+    const currentHomeControl = row.querySelector(".ko-home-team,[data-ko-team-slot='homeTeam']");
+    const currentAwayControl = row.querySelector(".ko-away-team,[data-ko-team-slot='awayTeam']");
+
+    if (currentHomeControl) currentHomeControl.outerHTML = koTeamControlHtmlV355(match, "homeTeam", firstRound);
+    if (currentAwayControl) currentAwayControl.outerHTML = koTeamControlHtmlV355(match, "awayTeam", firstRound);
+
+    row.querySelectorAll("[data-ko-auto-slot-v339]").forEach(btn => btn.remove());
+
+    row.querySelectorAll(".ko-home-score,.ko-away-score,.ko-home-penalties,.ko-away-penalties,.ko-qualified-team-v247").forEach(input => {
+      input.disabled = !canScore;
+    });
+
+    row.classList.toggle("manual-round", firstRound);
+    row.classList.toggle("auto-round", !firstRound);
+
+    row.querySelectorAll("[data-ko-save]").forEach(btn => {
+      btn.textContent = firstRound ? "Guardar 16 avos" : "Guardar resultado";
+      btn.title = firstRound ? "Guarda as equipas manuais dos 16 avos e o resultado" : "Guarda apenas data/resultado; as equipas vêm dos vencedores anteriores";
+    });
+
+    const help = row.querySelector(".ko-manual-help-v353,.ko-flow-help-v355");
+    if (help) {
+      help.className = "ko-flow-help-v355";
+      help.textContent = firstRound
+        ? "16 avos editáveis manualmente. Podes guardar sem data; as apostas só abrem quando houver data/hora."
+        : "Equipas automáticas: chegam dos vencedores da ronda anterior.";
+    }
+  });
+}
+
+try {
+  koEnableManualControlsV353 = koPatchAdminControlsV355;
+  window.koEnableManualControlsV353 = koEnableManualControlsV353;
+} catch {}
+
+try {
+  const originalEnsureKnockoutSettingsV355 = typeof ensureKnockoutSettings === "function" ? ensureKnockoutSettings : null;
+  if (originalEnsureKnockoutSettingsV355 && !originalEnsureKnockoutSettingsV355.__r32ManualAutoV355) {
+    ensureKnockoutSettings = function ensureKnockoutSettingsR32ManualAutoV355() {
+      const result = originalEnsureKnockoutSettingsV355.apply(this, arguments);
+      try { koSetModeV355(); } catch {}
+      try { propagateKnockoutWinnersV355(false); } catch {}
+      return result;
+    };
+    ensureKnockoutSettings.__r32ManualAutoV355 = true;
+    window.ensureKnockoutSettings = ensureKnockoutSettings;
+  }
+} catch {}
+
+try {
+  const originalRenderKnockoutAdminV355 = typeof renderKnockoutAdmin === "function" ? renderKnockoutAdmin : null;
+  if (originalRenderKnockoutAdminV355 && !originalRenderKnockoutAdminV355.__r32ManualAutoV355) {
+    renderKnockoutAdmin = function renderKnockoutAdminR32ManualAutoV355() {
+      try { propagateKnockoutWinnersV355(false); } catch {}
+      const result = originalRenderKnockoutAdminV355.apply(this, arguments);
+      koPatchAdminControlsV355();
+      requestAnimationFrame(() => koPatchAdminControlsV355());
+      return result;
+    };
+    renderKnockoutAdmin.__r32ManualAutoV355 = true;
+    window.renderKnockoutAdmin = renderKnockoutAdmin;
+  }
+} catch {}
+
+try {
+  renderKnockoutRecordForm = function renderKnockoutRecordFormR32ManualAutoV355(match) {
+    const firstRound = koIsFirstRoundV355(match);
+    const teamsReady = Boolean(match?.homeTeam && match?.awayTeam);
+    return `
+      <div class="ko-card-editor ko-flow-editor-v355" data-ko-admin="${escapeHtml(match.id)}">
+        <div class="ko-card-editor-teams">
+          ${koTeamControlHtmlV355(match, "homeTeam", firstRound)}
+          ${koTeamControlHtmlV355(match, "awayTeam", firstRound)}
+        </div>
+        <small class="ko-flow-help-v355">${firstRound ? "16 avos editáveis manualmente. Depois, o vencedor segue automaticamente." : "Equipas automáticas: chegam dos vencedores da ronda anterior."}</small>
+        <label class="ko-match-date-label-v243">Data/hora do jogo
+          <input class="ko-match-date-v243" type="datetime-local" value="${escapeHtml(knockoutMatchDateInputValueV243(match))}" />
+        </label>
+        <div class="ko-card-editor-scores">
+          <label>Resultado aos 90 minutos + compensação
+            <span class="ko-score-pair">
+              <input class="ko-home-score" type="number" min="0" inputmode="numeric" value="${match.homeScore ?? ""}" placeholder="0" ${teamsReady ? "" : "disabled"} />
+              <em>-</em>
+              <input class="ko-away-score" type="number" min="0" inputmode="numeric" value="${match.awayScore ?? ""}" placeholder="0" ${teamsReady ? "" : "disabled"} />
+            </span>
+          </label>
+          <label>Penáltis / desempate
+            <span class="ko-score-pair">
+              <input class="ko-home-penalties" type="number" min="0" inputmode="numeric" value="${match.homePenalties ?? ""}" placeholder="" ${teamsReady ? "" : "disabled"} />
+              <em>-</em>
+              <input class="ko-away-penalties" type="number" min="0" inputmode="numeric" value="${match.awayPenalties ?? ""}" placeholder="" ${teamsReady ? "" : "disabled"} />
+            </span>
+          </label>
+          ${renderKnockoutQualifiedControl(match)}
+        </div>
+        <button class="primary small ko-card-save" type="button" data-ko-save="${escapeHtml(match.id)}">${firstRound ? "Guardar 16 avos" : "Guardar resultado"}</button>
+      </div>
+    `;
+  };
+  window.renderKnockoutRecordForm = renderKnockoutRecordForm;
+} catch {}
+
+function koReadTeamFromRowV355(row, slot, fallback = "") {
+  const selector = slot === "awayTeam"
+    ? ".ko-away-team,[data-ko-team-slot='awayTeam']"
+    : ".ko-home-team,[data-ko-team-slot='homeTeam']";
+  const element = row?.querySelector?.(selector);
+  if (!element || element.disabled) return String(fallback || "").trim();
+  return String(element.value || fallback || "").trim();
+}
+
+function koIntegerOrNullV355(raw, label) {
+  const value = String(raw ?? "").trim();
+  if (value === "") return { ok: true, value: null };
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0 || !Number.isInteger(number)) {
+    return { ok: false, message: `${label} tem de ser um número inteiro válido.` };
+  }
+  return { ok: true, value: number };
+}
+
+function koNormalizeMatchDateV355(match, raw = "") {
+  const clean = typeof normalizeKnockoutMatchDateV243 === "function"
+    ? normalizeKnockoutMatchDateV243(raw || "")
+    : String(raw || "").trim();
+  ["matchDate", "date", "kickoff", "startAt", "time"].forEach(key => { match[key] = clean; });
+  return clean;
+}
+
+saveKnockoutMatchFromAdmin = async function saveKnockoutMatchFromAdminR32ManualAutoV355(matchId, sourceElement = null) {
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
+
+  try { ensureKnockoutSettings?.(); } catch {}
+  try { koSetModeV355(); } catch {}
+  try { propagateKnockoutWinnersV355(false); } catch {}
+
+  const row = sourceElement?.closest?.(`[data-ko-admin="${CSS.escape(matchId)}"]`) ||
+    document.querySelector(`[data-ko-admin="${CSS.escape(matchId)}"]`);
+  const sourceModal = sourceElement?.closest?.("#knockoutRecordModal");
+  const match = typeof knockoutMatchById === "function" ? knockoutMatchById(matchId) : null;
+  if (!row || !match) return;
+
+  const firstRound = koIsFirstRoundV355(match);
+  const beforeMatch = {
+    homeTeam: match.homeTeam || "",
+    awayTeam: match.awayTeam || "",
+    homeScore: match.homeScore ?? null,
+    awayScore: match.awayScore ?? null,
+    homePenalties: match.homePenalties ?? null,
+    awayPenalties: match.awayPenalties ?? null,
+    matchDate: match.matchDate || "",
+    qualified: match.qualified || match.winnerTeam || match.winner || ""
+  };
+
+  if (firstRound) {
+    const nextHome = koReadTeamFromRowV355(row, "homeTeam", match.homeTeam || "");
+    const nextAway = koReadTeamFromRowV355(row, "awayTeam", match.awayTeam || "");
+    koSetManualR32SlotV355(match, "homeTeam", nextHome, "admin-r32-v355");
+    koSetManualR32SlotV355(match, "awayTeam", nextAway, "admin-r32-v355");
+  } else {
+    ["homeTeam", "awayTeam"].forEach(slot => koUnlockAutoSlotV355(match, slot));
+  }
+
+  koNormalizeMatchDateV355(match, row.querySelector(".ko-match-date-v243")?.value || match.matchDate || "");
+
+  const hasBothTeams = Boolean(match.homeTeam && match.awayTeam);
+  if (!hasBothTeams) {
+    koClearResultFieldsV355(match);
+  } else {
+    const homeScore = koIntegerOrNullV355(row.querySelector(".ko-home-score")?.value ?? "", "Resultado da casa");
+    const awayScore = koIntegerOrNullV355(row.querySelector(".ko-away-score")?.value ?? "", "Resultado de fora");
+    const homePens = koIntegerOrNullV355(row.querySelector(".ko-home-penalties")?.value ?? "", "Penáltis da casa");
+    const awayPens = koIntegerOrNullV355(row.querySelector(".ko-away-penalties")?.value ?? "", "Penáltis de fora");
+
+    for (const check of [homeScore, awayScore, homePens, awayPens]) {
+      if (!check.ok) { toast(check.message); return; }
+    }
+
+    if ((homeScore.value === null) !== (awayScore.value === null)) {
+      toast("Preenche os dois campos do resultado ou deixa os dois vazios.");
+      return;
+    }
+    if ((homePens.value === null) !== (awayPens.value === null)) {
+      toast("Preenche os dois campos dos penáltis/desempate ou deixa os dois vazios.");
+      return;
+    }
+
+    match.homeScore = homeScore.value;
+    match.awayScore = awayScore.value;
+    match.homePenalties = homePens.value;
+    match.awayPenalties = awayPens.value;
+    match.liveHomeScore = null;
+    match.liveAwayScore = null;
+
+    const hasScore = match.homeScore !== null && match.awayScore !== null;
+    const isDraw = hasScore && Number(match.homeScore) === Number(match.awayScore);
+    const qualifiedValue = row.querySelector(".ko-qualified-team-v247")?.value || "";
+
+    if (qualifiedValue) {
+      const normalizedQualified = normalizeComparable(qualifiedValue);
+      const homeQualified = normalizedQualified === normalizeComparable(match.homeTeam);
+      const awayQualified = normalizedQualified === normalizeComparable(match.awayTeam);
+      if (!homeQualified && !awayQualified) {
+        toast("Escolhe uma das duas equipas como qualificada.");
+        return;
+      }
+      if (hasScore && !isDraw && ((match.homeScore > match.awayScore && !homeQualified) || (match.awayScore > match.homeScore && !awayQualified))) {
+        toast("A equipa qualificada não bate certo com o resultado.");
+        return;
+      }
+      if (isDraw && match.homePenalties !== null && match.awayPenalties !== null && ((match.homePenalties > match.awayPenalties && !homeQualified) || (match.awayPenalties > match.homePenalties && !awayQualified))) {
+        toast("A equipa qualificada não bate certo com os penáltis.");
+        return;
+      }
+      match.winner = qualifiedValue;
+      match.winnerTeam = qualifiedValue;
+      match.qualified = qualifiedValue;
+      match.qualifiedTeam = qualifiedValue;
+    } else if (hasScore) {
+      const winner = String(knockoutWinner?.(match) || "").trim();
+      if (isDraw && !winner) {
+        toast("Jogo empatado. Preenche os penáltis/desempate ou escolhe a equipa qualificada.");
+        return;
+      }
+      match.winner = winner;
+      match.winnerTeam = winner;
+      match.qualified = winner;
+      match.qualifiedTeam = winner;
+    } else {
+      match.winner = "";
+      match.winnerTeam = "";
+      match.qualified = "";
+      match.qualifiedTeam = "";
+    }
+  }
+
+  match.updatedAt = new Date().toISOString();
+  propagateKnockoutWinnersV355(false);
+
+  addSystemLog?.("Jogo Fase Final guardado", `${match.roundLabel || knockoutRoundLabel?.(match.round) || "Fase Final"} ${match.index}: ${match.homeTeam || "A definir"} ${match.homeScore ?? ""}-${match.awayScore ?? ""} ${match.awayTeam || "A definir"}`, {
+    matchId: match.id,
+    round: match.round,
+    index: match.index,
+    mode: firstRound ? "r32-manual" : "auto-after-r32",
+    before: beforeMatch,
+    after: {
+      homeTeam: match.homeTeam || "",
+      awayTeam: match.awayTeam || "",
+      homeScore: match.homeScore ?? null,
+      awayScore: match.awayScore ?? null,
+      homePenalties: match.homePenalties ?? null,
+      awayPenalties: match.awayPenalties ?? null,
+      matchDate: match.matchDate || "",
+      qualified: match.qualified || ""
+    }
+  }, { sync: true });
+
+  try { markSettingsPending?.(); } catch {}
+  try { saveLocalData?.("fase final 16avos manual auto v355"); } catch {}
+  try { ensureKnockoutCalendarGamesV259?.({ persist: false, reason: "fase final 16avos manual auto v355" }); } catch {}
+
+  try { renderKnockout?.(); } catch {}
+  try { renderKnockoutAdmin?.(); } catch {}
+  try { if (document.querySelector(".tab-panel.active")?.id === "knockoutTab") applyKnockoutLayoutFromSettings?.(); } catch {}
+  try { if (sourceModal) closeKnockoutRecordModal?.(); } catch {}
+
+  try {
+    await saveSettingsFastToFirebase?.("fase final 16avos manual auto v355");
+    try { await ensureKnockoutCalendarGamesV259?.({ persist: true, reason: "fase final 16avos manual auto v355" }); } catch {}
+    setFirebaseStatus?.("success", "Firebase: Fase Final guardada");
+  } catch (error) {
+    console.error("Falhou guardar Fase Final:", error);
+    try { scheduleFullSync?.("fase final 16avos manual auto v355", 600); } catch {}
+    try { setFirebaseStatus?.("error", `Firebase: Fase Final pendente (${shortFirebaseError?.(error) || error.message || "erro"})`); } catch {}
+  }
+
+  toast?.(firstRound ? "16 avos guardados. Vencedores avançam automaticamente." : (hasBothTeams ? "Resultado guardado. Vencedor avançou automaticamente." : "Jogo guardado. Fica à espera dos vencedores anteriores."));
+};
+window.saveKnockoutMatchFromAdmin = saveKnockoutMatchFromAdmin;
+
+try {
+  if (typeof mergeFootballDataKnockoutV139 === "function" && !mergeFootballDataKnockoutV139.__r32ManualAutoV355) {
+    const originalMergeFootballDataKnockoutV355 = mergeFootballDataKnockoutV139;
+    mergeFootballDataKnockoutV139 = function mergeFootballDataKnockoutR32ManualAutoV355(knockoutUpdates = []) {
+      const safeUpdates = (Array.isArray(knockoutUpdates) ? knockoutUpdates : []).map(update => {
+        const copy = { ...(update || {}) };
+        delete copy.homeTeam;
+        delete copy.awayTeam;
+        delete copy.manualHomeTeam;
+        delete copy.manualAwayTeam;
+        delete copy.manualHomeTeamLocked;
+        delete copy.manualAwayTeamLocked;
+        delete copy.homeTeamOrigin;
+        delete copy.awayTeamOrigin;
+        return copy;
+      });
+      const result = originalMergeFootballDataKnockoutV355.call(this, safeUpdates);
+      try { propagateKnockoutWinnersV355(false); } catch {}
+      return result;
+    };
+    mergeFootballDataKnockoutV139.__r32ManualAutoV355 = true;
+    window.mergeFootballDataKnockoutV139 = mergeFootballDataKnockoutV139;
+  }
+} catch {}
+
+try {
+  koSetModeV355();
+  propagateKnockoutWinnersV355(false);
+} catch {}
+
+window.debugFaseFinalAutoV355 = function debugFaseFinalAutoV355() {
+  try { ensureKnockoutSettings?.(); } catch {}
+  try { propagateKnockoutWinnersV355(false); } catch {}
+  const rows = (appSettings?.knockout?.matches || []).map(match => ({
+    id: match.id,
+    round: match.round,
+    index: match.index,
+    homeTeam: match.homeTeam || "",
+    awayTeam: match.awayTeam || "",
+    homeOrigin: match.homeTeamOrigin || "",
+    awayOrigin: match.awayTeamOrigin || "",
+    homeManual: Boolean(match.manualHomeTeamLocked),
+    awayManual: Boolean(match.manualAwayTeamLocked),
+    homeScore: match.homeScore ?? null,
+    awayScore: match.awayScore ?? null,
+    penalties: match.homePenalties !== null && match.awayPenalties !== null ? `${match.homePenalties}-${match.awayPenalties}` : "",
+    qualified: match.qualified || match.winnerTeam || match.winner || "",
+    nextMatchId: match.nextMatchId || "",
+    nextSlot: match.nextSlot || "",
+    status: match.footballDataStatus || ""
+  }));
+  console.table(rows);
+  return {
+    version: APP_VERSION_V355_KO_R32_MANUAL_AUTO_AFTER,
+    appVersion: APP_VERSION_LABEL,
+    rule: "16 avos manuais; rondas seguintes automáticas até à final",
+    apiCanChangeTeams: false,
+    manualRounds: ["r32"],
+    autoRounds: ["r16", "qf", "sf", "final"],
+    matches: rows
+  };
+};
+try {
+  window.debugFaseFinalManualV353 = window.debugFaseFinalAutoV355;
+  window.debugFaseFinalManualV355 = window.debugFaseFinalAutoV355;
+} catch {}
