@@ -18212,3 +18212,34 @@ html.app-modern-v314 .tab[aria-selected="true"]{
 }
 
 /* v344-proteger-equipas-fase-final */
+
+
+/* v345-privacidade-ver-apostas */
+.private-bets-warning-v345{
+  display:grid!important;
+  gap:6px!important;
+  margin:0 0 14px!important;
+  padding:14px!important;
+  border-radius:18px!important;
+  border:1px solid rgba(255,212,90,.28)!important;
+  background:rgba(255,212,90,.10)!important;
+  color:#ffe390!important;
+}
+.private-bets-warning-v345 strong{
+  font-size:14px!important;
+  font-weight:950!important;
+}
+.private-bets-warning-v345 span{
+  color:rgba(255,255,255,.74)!important;
+  line-height:1.45!important;
+}
+.private-bets-card-v345 strong{
+  color:#ffe390!important;
+}
+.private-bets-own-row-v345{
+  border-color:rgba(255,212,90,.26)!important;
+  background:rgba(255,212,90,.06)!important;
+}
+.private-bets-empty-v345{
+  border:1px dashed rgba(255,255,255,.16)!important;
+}

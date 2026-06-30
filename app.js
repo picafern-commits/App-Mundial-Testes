@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v344";
+const APP_VERSION_LABEL = "v345";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -29454,3 +29454,339 @@ window.debugFaseFinalEquipas = function debugFaseFinalEquipas() {
 koProtectCurrentManualSlotsV344();
 try { propagateKnockoutWinners(false); } catch {}
 koProtectCurrentManualSlotsV344();
+
+
+/* v345 — Privacidade no modal "Ver apostas".
+   Antes do fecho do prazo, users normais só veem a própria aposta.
+   Admin/Dono continuam a ver tudo sempre.
+*/
+const APP_VERSION_V345_PRIVATE_BETS_VIEW = "345.0";
+
+function privateBetsIsElevatedV345() {
+  try {
+    const role = typeof normalizeRole === "function" ? normalizeRole(currentProfile?.role || "") : String(currentProfile?.role || "").toLowerCase();
+    if (role === "owner" || role === "admin") return true;
+  } catch {}
+  try {
+    if (typeof hasPermission === "function" && (hasPermission("admin") || hasPermission("editKnockout") || hasPermission("managePermissions"))) return true;
+  } catch {}
+  return false;
+}
+
+function privateBetsNormalizeV345(value) {
+  try {
+    if (typeof normalizeComparable === "function") return normalizeComparable(value || "");
+  } catch {}
+  return String(value || "").trim().toLowerCase();
+}
+
+function privateBetsCurrentPlayerV345() {
+  try {
+    const linked = typeof linkedPlayerForCurrentUserV241 === "function" ? linkedPlayerForCurrentUserV241() : null;
+    if (linked) {
+      return {
+        id: String(linked.id || linked.playerId || ""),
+        name: String(linked.name || linked.playerName || ""),
+        email: normalizeEmail(currentUser?.email || currentProfile?.email || "")
+      };
+    }
+  } catch {}
+
+  const email = (() => {
+    try { return normalizeEmail(currentUser?.email || currentProfile?.email || ""); } catch { return String(currentUser?.email || currentProfile?.email || ""); }
+  })();
+
+  const name = String(currentProfile?.linkedPlayerName || currentProfile?.playerName || currentProfile?.name || displayNameFromEmail?.(email) || email || "").trim();
+  let id = String(currentProfile?.linkedPlayerId || currentProfile?.playerId || "").trim();
+  if (!id && name) {
+    try { id = playerIdFromName(name); } catch { id = name; }
+  }
+
+  return { id, name, email };
+}
+
+function privateBetsBetBelongsToCurrentV345(bet) {
+  const player = privateBetsCurrentPlayerV345();
+  if (!bet || (!player.id && !player.name && !player.email)) return false;
+
+  const betIds = [
+    bet.playerId,
+    bet.userId,
+    bet.uid,
+    bet.email
+  ].map(value => String(value || "").trim()).filter(Boolean);
+
+  const playerIds = [
+    player.id,
+    currentProfile?.linkedPlayerId,
+    currentProfile?.playerId,
+    currentUser?.uid,
+    currentProfile?.uid,
+    player.email
+  ].map(value => String(value || "").trim()).filter(Boolean);
+
+  if (betIds.some(id => playerIds.includes(id))) return true;
+
+  const betName = privateBetsNormalizeV345(bet.playerName || bet.name || bet.userName || "");
+  const playerNames = [
+    player.name,
+    currentProfile?.linkedPlayerName,
+    currentProfile?.playerName,
+    currentProfile?.name,
+    displayNameFromEmail?.(player.email || "")
+  ].map(privateBetsNormalizeV345).filter(Boolean);
+
+  return Boolean(betName && playerNames.includes(betName));
+}
+
+function privateBetsDateFromGameV345(game) {
+  const raw = game?.matchDate || game?.date || game?.kickoffAt || game?.kickoff || game?.startAt || game?.time || "";
+  if (!raw) return null;
+  try {
+    const parsed = typeof parsePortugalDate === "function" ? parsePortugalDate(raw) : new Date(raw);
+    if (parsed && Number.isFinite(parsed.getTime())) return parsed;
+  } catch {}
+  const fallback = new Date(raw);
+  return Number.isFinite(fallback.getTime()) ? fallback : null;
+}
+
+function privateBetsKnockoutLockDateV345(match) {
+  const raw = match?.kickoffAt || match?.matchDate || match?.date || match?.kickoff || match?.startAt || match?.time || "";
+  const date = privateBetsDateFromGameV345({ matchDate: raw });
+  if (!date) return null;
+
+  // Se existir uma regra global própria, respeita-a. Caso contrário, Fase Final fecha 5 minutos antes.
+  try {
+    if (typeof KNOCKOUT_BET_LOCK_MINUTES_V242 !== "undefined") {
+      return new Date(date.getTime() - Number(KNOCKOUT_BET_LOCK_MINUTES_V242 || 5) * 60 * 1000);
+    }
+  } catch {}
+
+  return new Date(date.getTime() - 5 * 60 * 1000);
+}
+
+function privateBetsNormalDeadlineV345(game) {
+  const date = privateBetsDateFromGameV345(game);
+  return date || null;
+}
+
+function privateBetsResolveGameV345(gameId) {
+  const id = String(gameId || "");
+  let game = null;
+  let match = null;
+
+  try { game = (games || []).find(item => String(item.id || "") === id) || null; } catch {}
+
+  try {
+    if (game && typeof isKnockoutCalendarGameV259 === "function" && isKnockoutCalendarGameV259(game) && typeof knockoutMatchFromCalendarGameV259 === "function") {
+      match = knockoutMatchFromCalendarGameV259(game);
+    }
+  } catch {}
+
+  try {
+    if (!match && typeof knockoutMatchById === "function") match = knockoutMatchById(id);
+  } catch {}
+
+  try {
+    if (!match && typeof ownerEditResolveGameV334 === "function") {
+      const resolved = ownerEditResolveGameV334(id);
+      if (resolved?.match) {
+        match = resolved.match;
+        game = game || resolved.game || null;
+      }
+    }
+  } catch {}
+
+  return { game, match };
+}
+
+function privateBetsIsKnockoutV345(game, match) {
+  if (match) return true;
+  if (!game) return false;
+  try {
+    if (typeof isKnockoutCalendarGameV259 === "function" && isKnockoutCalendarGameV259(game)) return true;
+  } catch {}
+  const text = String(`${game.group || ""} ${game.phase || ""} ${game.round || ""} ${game.type || ""}`).toLowerCase();
+  return text.includes("fase final") || text.includes("knockout") || text.includes("oitavos") || text.includes("quartos") || text.includes("meias");
+}
+
+function privateBetsDeadlineInfoV345(gameId) {
+  const { game, match } = privateBetsResolveGameV345(gameId);
+  const isKnockout = privateBetsIsKnockoutV345(game, match);
+
+  let closed = false;
+  let deadline = null;
+  let hasResultAlready = false;
+
+  if (isKnockout && match) {
+    try { hasResultAlready = typeof knockoutMatchHasResult === "function" && knockoutMatchHasResult(match); } catch {}
+    deadline = privateBetsKnockoutLockDateV345(match);
+    closed = hasResultAlready || Boolean(deadline && Date.now() >= deadline.getTime());
+  } else if (game) {
+    try { hasResultAlready = (typeof hasFinalResult === "function" && hasFinalResult(game)) || (typeof hasResult === "function" && hasResult(game)); } catch {}
+    deadline = privateBetsNormalDeadlineV345(game);
+    closed = hasResultAlready || Boolean(deadline && Date.now() >= deadline.getTime());
+  }
+
+  return { game, match, isKnockout, closed, deadline, hasResultAlready };
+}
+
+function privateBetsRowsForGameV345(gameId, info) {
+  try {
+    if (info?.isKnockout && typeof ownerEditResolveGameV334 === "function" && typeof ownerEditBetsForGameV334 === "function") {
+      const resolved = ownerEditResolveGameV334(gameId);
+      if (resolved?.match) return ownerEditBetsForGameV334(resolved);
+    }
+  } catch {}
+
+  try {
+    if (typeof betsForGame === "function") return betsForGame(gameId);
+  } catch {}
+
+  return (bets || []).filter(bet => String(bet.gameId || bet.matchId || bet.knockoutMatchId || "") === String(gameId || ""));
+}
+
+function privateBetsScoreDisplayV345(bet, info) {
+  if (!bet) return "-";
+  try {
+    if (info?.isKnockout && typeof knockoutBetDisplay === "function") return knockoutBetDisplay(bet);
+  } catch {}
+  const home = bet.homeGuess ?? bet.homeScore ?? bet.homeGoals ?? "-";
+  const away = bet.awayGuess ?? bet.awayScore ?? bet.awayGoals ?? "-";
+  const qualified = bet.qualifiedTeam || bet.winnerTeam || bet.winner || bet.predictedWinner || "";
+  return `${home}-${away}${qualified ? ` · ${qualified}` : ""}`;
+}
+
+function privateBetsTitleV345(info) {
+  const item = info.match || info.game || {};
+  const home = item.homeTeam || item.home || "Equipa";
+  const away = item.awayTeam || item.away || "Equipa";
+  return `${home} - ${away}`;
+}
+
+function privateBetsSubtitleV345(info) {
+  const item = info.game || info.match || {};
+  const phase = item.group || item.roundLabel || item.round || item.phase || (info.isKnockout ? "Fase Final" : "Jogo");
+  const deadline = info.deadline
+    ? info.deadline.toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })
+    : "hora não definida";
+  return `${phase} · Apostas privadas até ${deadline}`;
+}
+
+function showPrivateBetsModalV345(gameId, info) {
+  const modal = $("betsModal");
+  const title = $("betsModalTitle");
+  const subtitle = $("betsModalSubtitle");
+  const summary = $("betsGameSummary");
+  const body = $("betsModalBody");
+
+  if (!modal || !title || !subtitle || !summary || !body) {
+    alert("As apostas dos outros jogadores ficam escondidas até fechar o prazo deste jogo.");
+    return true;
+  }
+
+  const rows = privateBetsRowsForGameV345(gameId, info);
+  const ownRows = rows.filter(privateBetsBetBelongsToCurrentV345);
+  const ownBet = ownRows[0] || null;
+
+  title.textContent = privateBetsTitleV345(info);
+  subtitle.textContent = privateBetsSubtitleV345(info);
+
+  summary.innerHTML = `
+    <div class="bets-summary-card main private-bets-card-v345">
+      <span>Privacidade</span>
+      <strong>Ativa</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>A tua aposta</span>
+      <strong>${ownBet ? "Guardada" : "Sem aposta"}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Visível para todos</span>
+      <strong>Depois do fecho</strong>
+    </div>
+  `;
+
+  body.innerHTML = `
+    <div class="private-bets-warning-v345">
+      <strong>Apostas escondidas até fechar o prazo</strong>
+      <span>Para manter o jogo justo, antes do fecho só consegues ver a tua própria aposta. As apostas dos outros jogadores aparecem automaticamente depois do prazo terminar.</span>
+    </div>
+
+    ${ownBet ? `
+      <div class="bets-list-head private-bets-head-v345">
+        <span>Jogador</span>
+        <span>Aposta</span>
+        <span>Estado</span>
+        <span>Pontos</span>
+      </div>
+      <div class="bets-list">
+        <article class="bet-user-row pending private-bets-own-row-v345">
+          <div class="bet-user-main" data-label="Jogador">
+            <span class="bet-position">1</span>
+            <strong title="${escapeHtml(ownBet.playerName || "A tua aposta")}">${escapeHtml(ownBet.playerName || "A tua aposta")}</strong>
+          </div>
+          <div class="bet-score-pill" data-label="Aposta">${escapeHtml(privateBetsScoreDisplayV345(ownBet, info))}</div>
+          <div class="bet-type-pill" data-label="Estado">A tua aposta</div>
+          <b data-label="Pontos">-</b>
+        </article>
+      </div>
+    ` : `
+      <div class="empty private-bets-empty-v345">
+        Ainda não tens uma aposta guardada para este jogo.
+      </div>
+    `}
+  `;
+
+  modal.dataset.privateBetsV345 = "1";
+  modal.dataset.privateBetsGameV345 = String(gameId || "");
+  modal.classList.remove("hidden");
+  return true;
+}
+
+function installPrivateBetsViewV345() {
+  if (window.__privateBetsViewV345) return;
+  window.__privateBetsViewV345 = true;
+
+  const previousShowGameBetsV345 = typeof showGameBets === "function" ? showGameBets : null;
+  if (!previousShowGameBetsV345) return;
+
+  showGameBets = function showGameBetsPrivateViewV345(gameId) {
+    const info = privateBetsDeadlineInfoV345(gameId);
+
+    // Admin/Dono vê tudo sempre. Depois do prazo, todos veem tudo.
+    if (privateBetsIsElevatedV345() || info.closed) {
+      return previousShowGameBetsV345.apply(this, arguments);
+    }
+
+    // Se o jogo existe e ainda não fechou, user normal vê apenas a própria aposta.
+    if (info.game || info.match) {
+      return showPrivateBetsModalV345(gameId, info);
+    }
+
+    return previousShowGameBetsV345.apply(this, arguments);
+  };
+
+  showGameBets.__privateBetsViewV345 = true;
+  window.showGameBets = showGameBets;
+}
+
+installPrivateBetsViewV345();
+
+window.debugPrivateBetsViewV345 = function debugPrivateBetsViewV345(gameId = "") {
+  const info = privateBetsDeadlineInfoV345(gameId);
+  const rows = privateBetsRowsForGameV345(gameId, info);
+  const ownRows = rows.filter(privateBetsBetBelongsToCurrentV345);
+
+  return {
+    version: APP_VERSION_V345_PRIVATE_BETS_VIEW,
+    gameId,
+    isElevated: privateBetsIsElevatedV345(),
+    isKnockout: info.isKnockout,
+    closed: info.closed,
+    deadline: info.deadline?.toISOString?.() || "",
+    totalRowsInternal: rows.length,
+    ownRows: ownRows.length,
+    currentPlayer: privateBetsCurrentPlayerV345()
+  };
+};
