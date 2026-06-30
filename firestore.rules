@@ -1,36 +1,16 @@
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    match /notificationTokens/{docId} {
-      allow read: if signedIn();
-      allow create, update, delete: if false;
-    }
-
-    match /notificationPreferences/{docId} {
-      allow read: if signedIn();
-      allow create, update, delete: if false;
-    }
-
-    match /notificationTests/{docId} {
-      allow read, create: if signedIn();
-      allow update, delete: if false;
-    }
-
-    match /presence/{docId} {
-      allow read: if true;
-      allow create, update, delete: if signedIn();
-    }
-
-
-
-    match /{document=**} {
-      allow read: if true;
-      allow write: if signedIn();
-    }
+window.MUNDIAL_CONFIG = {
+  appVersion: "338.0",
+  adminPin: "1234",
+  adminEmails: ["pica.fern@gmail.com"],
+  firebase: {
+    apiKey: "AIzaSyCOyW5rfwF8iZxcVN6jxR4VqZ6pNdNmFRA",
+    authDomain: "app-mundial2026.firebaseapp.com",
+    projectId: "app-mundial2026",
+    storageBucket: "app-mundial2026.firebasestorage.app",
+    messagingSenderId: "143980254410",
+    appId: "1:143980254410:web:0f48873c3aa4c9ad201033"
+  },
+  messaging: {
+    vapidKey: ""
   }
-}
+};

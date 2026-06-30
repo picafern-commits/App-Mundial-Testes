@@ -1,25 +1,36 @@
-Para a app gravar no Firebase:
+rules_version = '2';
 
-1. No Firebase Console, abre Authentication > Sign-in method.
-2. Ativa o provider Anonymous.
-3. Abre Firestore Database e confirma que a base de dados existe.
-4. Publica as regras deste projeto:
-   firebase deploy --only firestore:rules
-5. Se usares Firebase Hosting, publica tambem o site:
-   firebase deploy --only hosting
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
 
-Nota: o PIN desta app protege apenas a interface. Como e uma app esttica no browser,
-as regras do Firestore nao conseguem validar esse PIN. Por isso a escrita fica
-protegida por autenticacao anonima do Firebase.
+    match /notificationTokens/{docId} {
+      allow read: if signedIn();
+      allow create, update, delete: if false;
+    }
 
-Nesta versao, os botoes de guardar nao ficam a espera do Firebase. A app grava
-primeiro no browser e tenta sincronizar em segundo plano. Se aparecer
-"sincronizacao pendente", confirma os passos 1 a 4 acima e volta a abrir a app.
+    match /notificationPreferences/{docId} {
+      allow read: if signedIn();
+      allow create, update, delete: if false;
+    }
 
-A sincronizacao em segundo plano grava em lotes pequenos e nao le a colecao
-inteira de apostas, para evitar erros de "tempo esgotado" quando houver muitos
-registos no Firestore.
+    match /notificationTests/{docId} {
+      allow read, create: if signedIn();
+      allow update, delete: if false;
+    }
 
-Se o Firebase Console mostrar que o projeto ultrapassou os limites gratis, a app
-pode continuar a guardar no browser, mas o Firestore pode bloquear leituras e
-gravacoes ate a quota renovar ou ate mudares para um plano pago.
+    match /presence/{docId} {
+      allow read: if true;
+      allow create, update, delete: if signedIn();
+    }
+
+
+
+    match /{document=**} {
+      allow read: if true;
+      allow write: if signedIn();
+    }
+  }
+}
