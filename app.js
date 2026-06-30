@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v339";
+const APP_VERSION_LABEL = "v340";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -28411,3 +28411,318 @@ window.debugKnockout = function debugKnockout() {
 window.updateKnockoutMatch = updateKnockoutMatch;
 koNormalizeManualFieldsV339();
 propagateKnockoutWinnersV339(false);
+
+/* v340 - Backup seguro de jogos, apostas e Fase Final */
+const BACKUP_HISTORY_KEY_V340 = `${STORAGE_KEY}_backup_history_v340`;
+let pendingBackupImportV340 = null;
+
+function backupActorV340() {
+  const email = normalizeEmail(currentUser?.email || currentProfile?.email || "");
+  const name = String(currentProfile?.name || displayNameFromEmail?.(email) || email || "Sistema").trim();
+  return { name, email, uid: currentUser?.uid || currentProfile?.uid || "" };
+}
+
+function backupHashV340(value) {
+  const text = JSON.stringify(value || {});
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function backupPayloadV340(reason = "manual") {
+  ensureKnockoutSettings?.();
+  const data = {
+    games: clone(games || []),
+    bets: clone(bets || []),
+    settings: clone(appSettings || defaultSettings())
+  };
+  const payload = {
+    type: "mundial-pontos-2026-backup",
+    schemaVersion: 2,
+    appVersion: APP_VERSION_LABEL,
+    createdAt: new Date().toISOString(),
+    reason,
+    actor: backupActorV340(),
+    counts: {
+      games: data.games.length,
+      bets: data.bets.length,
+      users: Array.isArray(data.settings?.users) ? data.settings.users.length : 0,
+      knockoutMatches: Array.isArray(data.settings?.knockout?.matches) ? data.settings.knockout.matches.length : 0,
+      logs: Array.isArray(data.settings?.logs) ? data.settings.logs.length : 0
+    },
+    data
+  };
+  payload.checksum = backupHashV340(payload.data);
+  return payload;
+}
+
+function backupHistoryV340() {
+  try {
+    const list = JSON.parse(localStorage.getItem(BACKUP_HISTORY_KEY_V340) || "[]");
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveBackupHistoryV340(list) {
+  localStorage.setItem(BACKUP_HISTORY_KEY_V340, JSON.stringify(list.slice(0, 8)));
+}
+
+function storeLocalBackupSnapshotV340(reason = "snapshot") {
+  const payload = backupPayloadV340(reason);
+  const key = `${BACKUP_HISTORY_KEY_V340}_${Date.now()}`;
+  localStorage.setItem(key, JSON.stringify(payload));
+  saveBackupHistoryV340([
+    { key, createdAt: payload.createdAt, reason, checksum: payload.checksum, counts: payload.counts },
+    ...backupHistoryV340()
+  ]);
+  return payload;
+}
+
+function backupFileNameV340(payload) {
+  const stamp = String(payload?.createdAt || new Date().toISOString()).replace(/[:.]/g, "-").slice(0, 19);
+  return `mundial-pontos-backup-${stamp}.json`;
+}
+
+function downloadBackupV340(payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = backupFileNameV340(payload);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+
+function normalizeBackupPayloadV340(raw) {
+  const payload = raw?.data?.games || raw?.data?.bets || raw?.data?.settings ? raw : {
+    type: "mundial-pontos-2026-backup",
+    schemaVersion: 1,
+    createdAt: raw?.savedAt || new Date().toISOString(),
+    data: { games: raw?.games, bets: raw?.bets, settings: raw?.settings || raw?.appSettings }
+  };
+  const data = payload.data || {};
+  const normalized = {
+    ...payload,
+    data: {
+      games: Array.isArray(data.games) ? data.games : [],
+      bets: Array.isArray(data.bets) ? data.bets : [],
+      settings: mergeSettings(data.settings || data.appSettings || defaultSettings())
+    }
+  };
+  normalized.counts = {
+    games: normalized.data.games.length,
+    bets: normalized.data.bets.length,
+    users: Array.isArray(normalized.data.settings?.users) ? normalized.data.settings.users.length : 0,
+    knockoutMatches: Array.isArray(normalized.data.settings?.knockout?.matches) ? normalized.data.settings.knockout.matches.length : 0,
+    logs: Array.isArray(normalized.data.settings?.logs) ? normalized.data.settings.logs.length : 0
+  };
+  normalized.checksum = normalized.checksum || backupHashV340(normalized.data);
+  return normalized;
+}
+
+function validateBackupPayloadV340(payload) {
+  const errors = [];
+  const warnings = [];
+  if (!payload || typeof payload !== "object") errors.push("Ficheiro invalido.");
+  if (!Array.isArray(payload?.data?.games)) errors.push("Backup sem lista de jogos.");
+  if (!Array.isArray(payload?.data?.bets)) errors.push("Backup sem lista de apostas.");
+  if (!payload?.data?.settings || typeof payload.data.settings !== "object") errors.push("Backup sem configuracoes.");
+  if (payload?.data?.games?.some(game => !game?.id)) errors.push("Existem jogos sem id.");
+  if (payload?.data?.bets?.some(bet => !bet?.id || !bet?.gameId || !(bet?.playerId || bet?.playerName))) warnings.push("Algumas apostas incompletas podem ser ignoradas pela app.");
+  if (!payload?.data?.settings?.knockout) warnings.push("Backup sem Fase Final nas configuracoes.");
+  if (payload?.checksum && backupHashV340(payload.data) !== payload.checksum) errors.push("Checksum do backup nao corresponde aos dados.");
+  return { ok: errors.length === 0, errors, warnings };
+}
+
+function backupSummaryHtmlV340(payload, validation = validateBackupPayloadV340(payload)) {
+  if (!payload) return `<div class="backup-empty-v340">Seleciona um ficheiro JSON de backup.</div>`;
+  const date = shortDateTimeV187?.(payload.createdAt) || payload.createdAt || "";
+  return `
+    <div class="backup-preview-v340 ${validation.ok ? "ok" : "bad"}">
+      <strong>${validation.ok ? "Backup pronto para restaurar" : "Backup com problemas"}</strong>
+      <span>${escapeHtml(date)} - ${escapeHtml(payload.appVersion || "sem versao")} - ${escapeHtml(payload.checksum || "")}</span>
+      <div class="backup-counts-v340">
+        <b>${payload.counts.games}</b><small>jogos</small>
+        <b>${payload.counts.bets}</b><small>apostas</small>
+        <b>${payload.counts.knockoutMatches}</b><small>fase final</small>
+        <b>${payload.counts.users}</b><small>users</small>
+      </div>
+      ${validation.errors.length ? `<p class="error-line">${validation.errors.map(escapeHtml).join("<br>")}</p>` : ""}
+      ${validation.warnings.length ? `<p class="warning-line">${validation.warnings.map(escapeHtml).join("<br>")}</p>` : ""}
+    </div>
+  `;
+}
+
+function renderBackupPanelV340() {
+  let panel = document.getElementById("backupPanelV340");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "backupPanelV340";
+    panel.className = "backup-panel-v340";
+  }
+  const target = typeof settingsSectionContentV213 === "function" ? settingsSectionContentV213("system") : $("settingsTab");
+  if (target && panel.parentElement !== target) target.appendChild(panel);
+
+  const history = backupHistoryV340();
+  const currentCounts = backupPayloadV340("preview").counts;
+  panel.innerHTML = `
+    <div class="backup-head-v340">
+      <div>
+        <span>Backup seguro</span>
+        <strong>Jogos, apostas e Fase Final</strong>
+        <p>Exporta tudo para JSON e restaura com snapshot automatico antes de mexer nos dados.</p>
+      </div>
+      <button id="downloadBackupBtnV340" class="primary" type="button">Exportar backup</button>
+    </div>
+    <div class="backup-grid-v340">
+      <article><span>Jogos</span><strong>${currentCounts.games}</strong><p>Calendario e resultados.</p></article>
+      <article><span>Apostas</span><strong>${currentCounts.bets}</strong><p>Grupo + Fase Final.</p></article>
+      <article><span>Fase Final</span><strong>${currentCounts.knockoutMatches}</strong><p>Jogos, equipas e locks manuais.</p></article>
+      <article><span>Snapshots locais</span><strong>${history.length}</strong><p>Guardados neste dispositivo.</p></article>
+    </div>
+    <div class="backup-actions-v340">
+      <input id="backupFileInputV340" type="file" accept="application/json,.json" />
+      <button id="previewBackupBtnV340" class="secondary" type="button">Pre-visualizar ficheiro</button>
+      <button id="restoreBackupBtnV340" class="danger-soft" type="button" disabled>Restaurar backup</button>
+    </div>
+    <label class="check-row backup-confirm-v340">
+      <input id="backupConfirmInputV340" type="checkbox" />
+      Confirmo que quero substituir jogos, apostas e configuracoes por este backup.
+    </label>
+    <div id="backupPreviewV340" class="backup-preview-wrap-v340">${backupSummaryHtmlV340(null)}</div>
+    <div class="backup-history-v340">
+      <strong>Ultimos snapshots locais</strong>
+      ${history.length ? history.map(item => `
+        <button type="button" data-backup-history-v340="${escapeHtml(item.key)}">
+          <span>${escapeHtml(shortDateTimeV187?.(item.createdAt) || item.createdAt || "")}</span>
+          <small>${escapeHtml(item.reason || "snapshot")} - ${escapeHtml(item.checksum || "")}</small>
+        </button>
+      `).join("") : `<p>Ainda nao ha snapshots locais.</p>`}
+    </div>
+  `;
+}
+
+async function readBackupFileV340() {
+  const file = $("backupFileInputV340")?.files?.[0];
+  if (!file) throw new Error("Escolhe primeiro um ficheiro JSON de backup.");
+  const text = await file.text();
+  return normalizeBackupPayloadV340(JSON.parse(text));
+}
+
+async function previewBackupFileV340() {
+  try {
+    pendingBackupImportV340 = await readBackupFileV340();
+    const validation = validateBackupPayloadV340(pendingBackupImportV340);
+    const preview = $("backupPreviewV340");
+    if (preview) preview.innerHTML = backupSummaryHtmlV340(pendingBackupImportV340, validation);
+    const restoreBtn = $("restoreBackupBtnV340");
+    if (restoreBtn) restoreBtn.disabled = !validation.ok;
+    toast(validation.ok ? "Backup validado." : "Backup invalido.");
+  } catch (error) {
+    pendingBackupImportV340 = null;
+    const preview = $("backupPreviewV340");
+    if (preview) preview.innerHTML = `<p class="error-line">${escapeHtml(error.message || error)}</p>`;
+    const restoreBtn = $("restoreBackupBtnV340");
+    if (restoreBtn) restoreBtn.disabled = true;
+    toast("Nao consegui ler o backup.");
+  }
+}
+
+async function restoreBackupV340(payload = pendingBackupImportV340) {
+  if (!hasPermission("admin")) return toast("Sem permissao Admin.");
+  const validation = validateBackupPayloadV340(payload);
+  if (!validation.ok) return toast("Backup invalido.");
+  if (!$("backupConfirmInputV340")?.checked) return toast("Confirma a caixa antes de restaurar.");
+
+  const snapshot = storeLocalBackupSnapshotV340("antes de restaurar backup");
+  const previousBetIds = new Set((bets || []).map(bet => bet.id).filter(Boolean));
+  const nextBetIds = new Set((payload.data.bets || []).map(bet => bet.id).filter(Boolean));
+  const staleBetIds = [...previousBetIds].filter(id => !nextBetIds.has(id));
+
+  games = normalizeGames(payload.data.games || []);
+  bets = normalizeBets(payload.data.bets || []);
+  appSettings = mergeSettings(payload.data.settings || defaultSettings());
+  ensureKnockoutSettings?.();
+
+  games.forEach(game => markGamePending(game.id));
+  markBetsPending(bets.map(bet => bet.id).filter(Boolean));
+  markBetsForDelete(staleBetIds);
+  markSettingsPending();
+  saveLocalData("backup restaurado v340");
+  addSystemLog?.("Backup restaurado", `Backup ${payload.checksum || ""} restaurado. Snapshot anterior: ${snapshot.checksum || ""}.`, {
+    backupChecksum: payload.checksum || "",
+    snapshotChecksum: snapshot.checksum || "",
+    games: games.length,
+    bets: bets.length,
+    deletedBets: staleBetIds.length
+  }, { sync: true });
+
+  renderAll?.();
+  scheduleFullSync?.("restaurar backup", 250);
+  pendingBackupImportV340 = null;
+  toast("Backup restaurado e sincronizacao iniciada.");
+}
+
+function restoreLocalSnapshotV340(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return toast("Snapshot local nao encontrado.");
+    pendingBackupImportV340 = normalizeBackupPayloadV340(JSON.parse(raw));
+    const preview = $("backupPreviewV340");
+    if (preview) preview.innerHTML = backupSummaryHtmlV340(pendingBackupImportV340);
+    const restoreBtn = $("restoreBackupBtnV340");
+    if (restoreBtn) restoreBtn.disabled = false;
+    toast("Snapshot carregado. Confirma para restaurar.");
+  } catch (error) {
+    console.warn("Snapshot invalido:", error);
+    toast("Nao consegui abrir este snapshot.");
+  }
+}
+
+document.addEventListener("click", event => {
+  const exportBtn = event.target.closest?.("#downloadBackupBtnV340");
+  if (exportBtn) {
+    const payload = backupPayloadV340("exportacao manual");
+    storeLocalBackupSnapshotV340("exportacao manual");
+    downloadBackupV340(payload);
+    addSystemLog?.("Backup exportado", `Backup ${payload.checksum} exportado.`, payload.counts, { sync: true });
+    toast("Backup exportado.");
+    renderBackupPanelV340();
+    return;
+  }
+
+  if (event.target.closest?.("#previewBackupBtnV340")) {
+    previewBackupFileV340();
+    return;
+  }
+
+  if (event.target.closest?.("#restoreBackupBtnV340")) {
+    restoreBackupV340();
+    return;
+  }
+
+  const historyBtn = event.target.closest?.("[data-backup-history-v340]");
+  if (historyBtn) {
+    restoreLocalSnapshotV340(historyBtn.dataset.backupHistoryV340 || "");
+  }
+});
+
+if (typeof renderSettingsForm === "function" && !renderSettingsForm.__backupV340) {
+  const originalRenderSettingsFormV340 = renderSettingsForm;
+  renderSettingsForm = function renderSettingsFormBackupV340() {
+    const result = originalRenderSettingsFormV340.apply(this, arguments);
+    renderBackupPanelV340();
+    return result;
+  };
+  renderSettingsForm.__backupV340 = true;
+  window.renderSettingsForm = renderSettingsForm;
+}
+
+setTimeout(renderBackupPanelV340, 800);
