@@ -18247,3 +18247,9 @@ html.app-modern-v314 .tab[aria-selected="true"]{
 /* v346-corrigir-nomes-equipas */
 
 /* v347-correcao-ortografia */
+
+
+/* v348-ver-apostas-privado-real */
+.private-bets-warning-v345{
+  border-color:rgba(255,212,90,.32)!important;
+}

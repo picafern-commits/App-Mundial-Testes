@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v345";
+const APP_VERSION_LABEL = "v348";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -30060,5 +30060,338 @@ window.debugOrtografiaV347 = function debugOrtografiaV347() {
     version: APP_VERSION_V347_SPELLING_FIX,
     stillFound: found,
     totalFixes: Object.keys(SPELLING_FIXES_V347).length
+  };
+};
+
+
+/* v348 — "Ver apostas" realmente privado até o jogo começar.
+   Corrige a v345: o filtro agora é aplicado no último ponto da cadeia e não usa permissões largas.
+   Regra:
+   - User normal antes do jogo começar: só vê a sua aposta.
+   - A partir da hora do jogo começar: vê todos.
+   - Admin/Dono: vê todos sempre.
+*/
+const APP_VERSION_V348_PRIVATE_BETS_ENFORCED = "348.0";
+
+function betsPrivacyRoleV348() {
+  try {
+    const role = typeof normalizeRole === "function" ? normalizeRole(currentProfile?.role || "") : String(currentProfile?.role || "").toLowerCase();
+    return role;
+  } catch {
+    return String(currentProfile?.role || "").toLowerCase();
+  }
+}
+
+function betsPrivacyCanSeeAllV348() {
+  const role = betsPrivacyRoleV348();
+  return role === "owner" || role === "admin";
+}
+
+function betsPrivacyDateV348(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+
+  try {
+    const parsed = typeof parsePortugalDate === "function" ? parsePortugalDate(raw) : new Date(raw);
+    if (parsed && Number.isFinite(parsed.getTime())) return parsed;
+  } catch {}
+
+  const fallback = new Date(raw);
+  return Number.isFinite(fallback.getTime()) ? fallback : null;
+}
+
+function betsPrivacyGameStartV348(gameId) {
+  const id = String(gameId || "");
+  let game = null;
+  let match = null;
+
+  try { game = (games || []).find(item => String(item.id || "") === id) || null; } catch {}
+
+  try {
+    if (game && typeof isKnockoutCalendarGameV259 === "function" && isKnockoutCalendarGameV259(game) && typeof knockoutMatchFromCalendarGameV259 === "function") {
+      match = knockoutMatchFromCalendarGameV259(game);
+    }
+  } catch {}
+
+  try {
+    if (!match && typeof knockoutMatchById === "function") match = knockoutMatchById(id);
+  } catch {}
+
+  try {
+    if (!match && typeof ownerEditResolveGameV334 === "function") {
+      const resolved = ownerEditResolveGameV334(id);
+      match = resolved?.match || null;
+      game = game || resolved?.game || null;
+    }
+  } catch {}
+
+  const source = match || game || {};
+  const start =
+    betsPrivacyDateV348(source.matchDate) ||
+    betsPrivacyDateV348(source.kickoffAt) ||
+    betsPrivacyDateV348(source.date) ||
+    betsPrivacyDateV348(source.kickoff) ||
+    betsPrivacyDateV348(source.startAt) ||
+    betsPrivacyDateV348(game?.matchDate) ||
+    betsPrivacyDateV348(game?.date);
+
+  const isKnockout = Boolean(match) || (() => {
+    try { return game && typeof isKnockoutCalendarGameV259 === "function" && isKnockoutCalendarGameV259(game); } catch { return false; }
+  })();
+
+  return { game, match, source, start, isKnockout };
+}
+
+function betsPrivacyHasStartedV348(gameId) {
+  const info = betsPrivacyGameStartV348(gameId);
+
+  // Se não há hora definida, mantém privado para users normais.
+  if (!info.start) return false;
+
+  return Date.now() >= info.start.getTime();
+}
+
+function betsPrivacyCurrentPlayerV348() {
+  try {
+    const linked = typeof linkedPlayerForCurrentUserV241 === "function" ? linkedPlayerForCurrentUserV241() : null;
+    if (linked) return {
+      id: String(linked.id || linked.playerId || ""),
+      name: String(linked.name || linked.playerName || ""),
+      email: String(currentUser?.email || currentProfile?.email || "")
+    };
+  } catch {}
+
+  const email = String(currentUser?.email || currentProfile?.email || "").trim();
+  const name = String(currentProfile?.linkedPlayerName || currentProfile?.playerName || currentProfile?.name || email || "").trim();
+  let id = String(currentProfile?.linkedPlayerId || currentProfile?.playerId || "").trim();
+  if (!id && name) {
+    try { id = playerIdFromName(name); } catch { id = name; }
+  }
+
+  return { id, name, email };
+}
+
+function betsPrivacyNormV348(value) {
+  try { return normalizeComparable(value || ""); } catch {}
+  return String(value || "").trim().toLowerCase();
+}
+
+function betsPrivacyIsMineV348(bet) {
+  const player = betsPrivacyCurrentPlayerV348();
+  if (!bet) return false;
+
+  const candidateIds = [
+    player.id,
+    player.email,
+    currentUser?.uid,
+    currentProfile?.uid,
+    currentProfile?.linkedPlayerId,
+    currentProfile?.playerId
+  ].map(value => String(value || "").trim()).filter(Boolean);
+
+  const betIds = [
+    bet.playerId,
+    bet.userId,
+    bet.uid,
+    bet.email
+  ].map(value => String(value || "").trim()).filter(Boolean);
+
+  if (betIds.some(id => candidateIds.includes(id))) return true;
+
+  const candidateNames = [
+    player.name,
+    currentProfile?.linkedPlayerName,
+    currentProfile?.playerName,
+    currentProfile?.name
+  ].map(betsPrivacyNormV348).filter(Boolean);
+
+  const betName = betsPrivacyNormV348(bet.playerName || bet.name || bet.userName || "");
+  return Boolean(betName && candidateNames.includes(betName));
+}
+
+function betsPrivacyIdsForGameV348(gameId) {
+  const info = betsPrivacyGameStartV348(gameId);
+  const ids = [
+    gameId,
+    info.game?.id,
+    info.game?.gameId,
+    info.game?.matchId,
+    info.game?.knockoutMatchId,
+    info.game?.sourceMatchId,
+    info.match?.id,
+    info.match?.gameId,
+    info.match?.matchId,
+    info.match?.knockoutMatchId,
+    info.match?.cleanId,
+    info.match?.publicId
+  ].map(value => String(value || "").trim()).filter(Boolean);
+
+  return [...new Set(ids)];
+}
+
+function betsPrivacyRowsV348(gameId) {
+  const ids = betsPrivacyIdsForGameV348(gameId);
+
+  let rows = [];
+  try {
+    ids.forEach(id => {
+      if (typeof betsForGame === "function") rows.push(...(betsForGame(id) || []));
+    });
+  } catch {}
+
+  try {
+    rows.push(...(bets || []).filter(bet => {
+      const betIds = [bet.gameId, bet.matchId, bet.knockoutMatchId, bet.fixtureId].map(value => String(value || "").trim()).filter(Boolean);
+      return betIds.some(id => ids.includes(id));
+    }));
+  } catch {}
+
+  const seen = new Set();
+  return rows.filter(bet => {
+    const key = String(bet.id || `${bet.playerId || bet.playerName}_${bet.gameId || bet.matchId || bet.knockoutMatchId}`);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function betsPrivacyDisplayV348(bet, info) {
+  if (!bet) return "-";
+  try {
+    if (info?.isKnockout && typeof knockoutBetDisplay === "function") return knockoutBetDisplay(bet);
+  } catch {}
+  const home = bet.homeGuess ?? bet.homeScore ?? bet.homeGoals ?? "-";
+  const away = bet.awayGuess ?? bet.awayScore ?? bet.awayGoals ?? "-";
+  const qualified = bet.qualifiedTeam || bet.winnerTeam || bet.winner || bet.predictedWinner || "";
+  return `${home}-${away}${qualified ? ` · ${qualified}` : ""}`;
+}
+
+function betsPrivacyShowOwnOnlyV348(gameId) {
+  const modal = $("betsModal");
+  const title = $("betsModalTitle");
+  const subtitle = $("betsModalSubtitle");
+  const summary = $("betsGameSummary");
+  const body = $("betsModalBody");
+
+  const info = betsPrivacyGameStartV348(gameId);
+  const item = info.match || info.game || {};
+  const home = item.homeTeam || item.home || "Equipa";
+  const away = item.awayTeam || item.away || "Equipa";
+  const rows = betsPrivacyRowsV348(gameId);
+  const ownRows = rows.filter(betsPrivacyIsMineV348);
+  const own = ownRows[0] || null;
+
+  if (!modal || !title || !summary || !body) {
+    alert(own ? `A tua aposta: ${betsPrivacyDisplayV348(own, info)}` : "As apostas dos outros ficam escondidas até o jogo começar.");
+    return true;
+  }
+
+  title.textContent = `${home} - ${away}`;
+  subtitle.textContent = `Apostas privadas até o jogo começar${info.start ? ` · início: ${info.start.toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}` : ""}`;
+
+  summary.innerHTML = `
+    <div class="bets-summary-card main">
+      <span>Privacidade</span>
+      <strong>Ativa</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>A tua aposta</span>
+      <strong>${own ? "Guardada" : "Sem aposta"}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Outras apostas</span>
+      <strong>Ao começar</strong>
+    </div>
+  `;
+
+  body.innerHTML = `
+    <div class="private-bets-warning-v345">
+      <strong>Apostas escondidas até o jogo começar</strong>
+      <span>Antes do início do jogo, só consegues ver a tua própria aposta. Quando o jogo começar, as apostas de todos aparecem automaticamente.</span>
+    </div>
+
+    ${own ? `
+      <div class="bets-list-head private-bets-head-v345">
+        <span>Jogador</span>
+        <span>Aposta</span>
+        <span>Estado</span>
+        <span>Pontos</span>
+      </div>
+      <div class="bets-list">
+        <article class="bet-user-row pending private-bets-own-row-v345">
+          <div class="bet-user-main" data-label="Jogador">
+            <span class="bet-position">1</span>
+            <strong title="${escapeHtml(own.playerName || "A tua aposta")}">${escapeHtml(own.playerName || "A tua aposta")}</strong>
+          </div>
+          <div class="bet-score-pill" data-label="Aposta">${escapeHtml(betsPrivacyDisplayV348(own, info))}</div>
+          <div class="bet-type-pill" data-label="Estado">A tua aposta</div>
+          <b data-label="Pontos">-</b>
+        </article>
+      </div>
+    ` : `
+      <div class="empty private-bets-empty-v345">Ainda não tens uma aposta guardada para este jogo.</div>
+    `}
+  `;
+
+  modal.dataset.privateBetsV348 = "1";
+  modal.dataset.privateBetsGameV348 = String(gameId || "");
+  modal.classList.remove("hidden");
+  return true;
+}
+
+function shouldShowPrivateBetsV348(gameId) {
+  if (betsPrivacyCanSeeAllV348()) return false;
+  return !betsPrivacyHasStartedV348(gameId);
+}
+
+function installPrivateBetsEnforcedV348() {
+  if (window.__privateBetsEnforcedV348) return;
+  window.__privateBetsEnforcedV348 = true;
+
+  const previousShowGameBetsV348 = typeof showGameBets === "function" ? showGameBets : null;
+  if (previousShowGameBetsV348) {
+    showGameBets = function showGameBetsPrivateEnforcedV348(gameId) {
+      if (shouldShowPrivateBetsV348(gameId)) {
+        return betsPrivacyShowOwnOnlyV348(gameId);
+      }
+      return previousShowGameBetsV348.apply(this, arguments);
+    };
+    window.showGameBets = showGameBets;
+  }
+
+  // Captura o clique antes de outros listeners antigos abrirem o modal completo.
+  document.addEventListener("click", event => {
+    const btn = event.target.closest?.("[data-bets-game]");
+    if (!btn) return;
+    const gameId = btn.dataset.betsGame || btn.getAttribute("data-bets-game") || "";
+    if (!gameId) return;
+
+    if (shouldShowPrivateBetsV348(gameId)) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      betsPrivacyShowOwnOnlyV348(gameId);
+    }
+  }, true);
+}
+
+installPrivateBetsEnforcedV348();
+
+window.debugPrivateBetsV348 = function debugPrivateBetsV348(gameId = "") {
+  const info = betsPrivacyGameStartV348(gameId);
+  const rows = betsPrivacyRowsV348(gameId);
+  const ownRows = rows.filter(betsPrivacyIsMineV348);
+  return {
+    version: APP_VERSION_V348_PRIVATE_BETS_ENFORCED,
+    gameId,
+    role: betsPrivacyRoleV348(),
+    canSeeAll: betsPrivacyCanSeeAllV348(),
+    hasStarted: betsPrivacyHasStartedV348(gameId),
+    shouldShowPrivate: shouldShowPrivateBetsV348(gameId),
+    start: info.start?.toISOString?.() || "",
+    isKnockout: info.isKnockout,
+    totalBetsInternal: rows.length,
+    ownBetsVisible: ownRows.length,
+    currentPlayer: betsPrivacyCurrentPlayerV348()
   };
 };
