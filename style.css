@@ -18388,3 +18388,105 @@ select.ko-away-team{
 .ko-team-manual-v353{
   min-width: 170px;
 }
+
+
+/* v354 — Modal maior para editar jogos da Fase Final
+   Corrige também a classe interna .modal que deixava o formulário pequeno/fixo no ecrã. */
+.knockout-record-modal{
+  align-items:center!important;
+  justify-content:center!important;
+  padding:clamp(16px,3vw,42px)!important;
+}
+
+.knockout-record-card{
+  width:min(940px, calc(100vw - 56px))!important;
+  max-width:940px!important;
+  max-height:calc(88dvh - env(safe-area-inset-bottom,0px))!important;
+  padding:24px!important;
+  border-radius:24px!important;
+}
+
+.knockout-record-card .ko-card-editor,
+.knockout-record-card .ko-card-editor.modal{
+  position:static!important;
+  inset:auto!important;
+  z-index:auto!important;
+  width:100%!important;
+  min-height:0!important;
+  height:auto!important;
+  display:grid!important;
+  place-items:stretch!important;
+  padding:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  gap:18px!important;
+}
+
+.knockout-record-card .modal-head{
+  margin-bottom:20px!important;
+}
+
+.knockout-record-card .modal-head strong{
+  font-size:24px!important;
+}
+
+.knockout-record-card .ko-card-editor-teams{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  gap:16px!important;
+}
+
+.knockout-record-card .ko-card-editor-scores{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  gap:16px!important;
+}
+
+.knockout-record-card .ko-card-editor select,
+.knockout-record-card .ko-card-editor input{
+  min-height:54px!important;
+  border-radius:16px!important;
+  padding:13px 14px!important;
+  font-size:17px!important;
+}
+
+.knockout-record-card .ko-card-editor label{
+  gap:8px!important;
+  font-size:13px!important;
+}
+
+.knockout-record-card .ko-manual-help-v353{
+  font-size:13px!important;
+  line-height:1.45!important;
+  margin:0!important;
+}
+
+.knockout-record-card .ko-card-save{
+  min-height:54px!important;
+  font-size:16px!important;
+  border-radius:17px!important;
+}
+
+@media(max-width:760px){
+  .knockout-record-modal{
+    align-items:end!important;
+    padding:10px!important;
+  }
+
+  .knockout-record-card{
+    width:100%!important;
+    max-width:none!important;
+    max-height:calc(94dvh - env(safe-area-inset-bottom,0px))!important;
+    padding:18px!important;
+    border-radius:24px 24px 16px 16px!important;
+  }
+
+  .knockout-record-card .ko-card-editor-teams,
+  .knockout-record-card .ko-card-editor-scores{
+    grid-template-columns:1fr!important;
+  }
+
+  .knockout-record-card .ko-card-editor select,
+  .knockout-record-card .ko-card-editor input{
+    min-height:52px!important;
+    font-size:16px!important;
+  }
+}

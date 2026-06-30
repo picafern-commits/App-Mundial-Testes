@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v353";
+const APP_VERSION_LABEL = "v354";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -31419,7 +31419,7 @@ try {
   renderKnockoutRecordForm = function renderKnockoutRecordFormManualTeamsOnlyV353(match) {
     const teamsReady = Boolean(match?.homeTeam && match?.awayTeam);
     return `
-      <div class="ko-card-editor modal ko-manual-only-editor-v353" data-ko-admin="${escapeHtml(match.id)}">
+      <div class="ko-card-editor ko-manual-only-editor-v353" data-ko-admin="${escapeHtml(match.id)}">
         <div class="ko-card-editor-teams">
           ${koTeamControlHtmlV353(match, "homeTeam", "Equipa da casa")}
           ${koTeamControlHtmlV353(match, "awayTeam", "Equipa visitante")}
@@ -31706,4 +31706,25 @@ window.debugFaseFinalManualV353 = function debugFaseFinalManualV353() {
     autoPropagationChangesTeams: false,
     matches: rows
   };
+};
+
+
+/* v354 — Modal de edição da Fase Final maior e sem herdar overlay interno */
+window.debugKnockoutModalV354 = function debugKnockoutModalV354() {
+  const modal = document.getElementById("knockoutRecordModal");
+  const card = modal?.querySelector?.(".knockout-record-card");
+  const editor = modal?.querySelector?.(".ko-card-editor");
+  const cardBox = card?.getBoundingClientRect?.();
+  const editorBox = editor?.getBoundingClientRect?.();
+  const info = {
+    version: typeof APP_VERSION_LABEL !== "undefined" ? APP_VERSION_LABEL : "",
+    modalOpen: Boolean(modal),
+    cardWidth: cardBox ? Math.round(cardBox.width) : null,
+    cardHeight: cardBox ? Math.round(cardBox.height) : null,
+    editorPosition: editor ? getComputedStyle(editor).position : null,
+    editorWidth: editorBox ? Math.round(editorBox.width) : null,
+    editorHeight: editorBox ? Math.round(editorBox.height) : null
+  };
+  console.table(info);
+  return info;
 };
