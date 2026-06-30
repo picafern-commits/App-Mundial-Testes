@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v349";
+const APP_VERSION_LABEL = "v351";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -30609,4 +30609,393 @@ window.debugAppSaudeV349 = function debugAppSaudeV349() {
   };
   console.table(result);
   return result;
+};
+
+
+/* v350 — Bandeiras bonitas ao lado das seleções nos jogos.
+   Usa emoji flags no visual, mas mantém os valores reais sem emoji para não partir:
+   - apostas
+   - pontuação
+   - API
+   - Firebase
+*/
+const APP_VERSION_V350_FLAGS_IN_MATCHES = "350.0";
+
+const TEAM_FLAGS_V350 = {
+  "Alemanha": "🇩🇪",
+  "África do Sul": "🇿🇦",
+  "Arábia Saudita": "🇸🇦",
+  "Argélia": "🇩🇿",
+  "Argentina": "🇦🇷",
+  "Austrália": "🇦🇺",
+  "Áustria": "🇦🇹",
+  "Bélgica": "🇧🇪",
+  "Bósnia": "🇧🇦",
+  "Brasil": "🇧🇷",
+  "Cabo Verde": "🇨🇻",
+  "Canadá": "🇨🇦",
+  "Chéquia": "🇨🇿",
+  "Colômbia": "🇨🇴",
+  "Coreia do Sul": "🇰🇷",
+  "Costa do Marfim": "🇨🇮",
+  "Croácia": "🇭🇷",
+  "Curaçao": "🇨🇼",
+  "Egito": "🇪🇬",
+  "Equador": "🇪🇨",
+  "Escócia": "🏴",
+  "Espanha": "🇪🇸",
+  "Estados Unidos": "🇺🇸",
+  "França": "🇫🇷",
+  "Gana": "🇬🇭",
+  "Haiti": "🇭🇹",
+  "Inglaterra": "🏴",
+  "Iraque": "🇮🇶",
+  "Irão": "🇮🇷",
+  "Japão": "🇯🇵",
+  "Jordânia": "🇯🇴",
+  "Marrocos": "🇲🇦",
+  "México": "🇲🇽",
+  "Noruega": "🇳🇴",
+  "Nova Zelândia": "🇳🇿",
+  "Países Baixos": "🇳🇱",
+  "Panamá": "🇵🇦",
+  "Paraguai": "🇵🇾",
+  "Portugal": "🇵🇹",
+  "Qatar": "🇶🇦",
+  "RD Congo": "🇨🇩",
+  "Senegal": "🇸🇳",
+  "Suécia": "🇸🇪",
+  "Suíça": "🇨🇭",
+  "Tunísia": "🇹🇳",
+  "Turquia": "🇹🇷",
+  "Uruguai": "🇺🇾",
+  "Uzbequistão": "🇺🇿"
+};
+
+const TEAM_NAME_ALIASES_V350 = {
+  "canad": "Canadá",
+  "canada": "Canadá",
+  "bsnia": "Bósnia",
+  "bosnia": "Bósnia",
+  "bosnia e herzegovina": "Bósnia",
+  "esccia": "Escócia",
+  "escocia": "Escócia",
+  "austrlia": "Austrália",
+  "australia": "Austrália",
+  "blgica": "Bélgica",
+  "belgica": "Bélgica",
+  "arbia saudita": "Arábia Saudita",
+  "arabia saudita": "Arábia Saudita",
+  "crocia": "Croácia",
+  "croacia": "Croácia",
+  "tunisia": "Tunísia",
+  "tunsia": "Tunísia",
+  "sucia": "Suécia",
+  "suecia": "Suécia",
+  "sua": "Suíça",
+  "suica": "Suíça",
+  "frana": "França",
+  "franca": "França",
+  "japo": "Japão",
+  "japao": "Japão",
+  "mxico": "México",
+  "mexico": "México",
+  "pases baixos": "Países Baixos",
+  "paises baixos": "Países Baixos",
+  "frica do sul": "África do Sul",
+  "africa do sul": "África do Sul",
+  "chquia": "Chéquia",
+  "chequia": "Chéquia",
+  "colmbia": "Colômbia",
+  "colombia": "Colômbia",
+  "curaao": "Curaçao",
+  "curacao": "Curaçao",
+  "iro": "Irão",
+  "irao": "Irão",
+  "jordnia": "Jordânia",
+  "jordania": "Jordânia",
+  "nova zelndia": "Nova Zelândia",
+  "nova zelandia": "Nova Zelândia",
+  "panam": "Panamá",
+  "panama": "Panamá",
+  "uzbequisto": "Uzbequistão",
+  "uzbequistao": "Uzbequistão",
+  "arglia": "Argélia",
+  "argelia": "Argélia",
+  "austria": "Áustria",
+  "rd congo": "RD Congo",
+  "r d congo": "RD Congo",
+  "r.d. congo": "RD Congo",
+  "dr congo": "RD Congo"
+};
+
+function teamKeyV350(team) {
+  try { return normalizeKey(team); } catch {}
+  return String(team || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function teamCleanNameV350(team) {
+  const raw = String(team || "").trim();
+  if (!raw || raw === "A definir") return raw;
+  const key = teamKeyV350(raw);
+  return TEAM_NAME_ALIASES_V350[key] || raw;
+}
+
+function teamFlagV350(team) {
+  const clean = teamCleanNameV350(team);
+  return TEAM_FLAGS_V350[clean] || "";
+}
+
+function teamFlagHtmlV350(team) {
+  const clean = teamCleanNameV350(team);
+  const flagIcon = teamFlagV350(clean);
+
+  if (!clean || clean === "A definir") {
+    return `<span class="team-name-v350 muted">${escapeHtml(clean || "A definir")}</span>`;
+  }
+
+  return `<span class="team-with-flag-v350"><span class="flag-chip-v350" aria-hidden="true">${escapeHtml(flagIcon || "🏳️")}</span><span class="team-name-v350">${escapeHtml(clean)}</span></span>`;
+}
+
+function teamFlagTextV350(team) {
+  const clean = teamCleanNameV350(team);
+  const flagIcon = teamFlagV350(clean);
+  return clean && clean !== "A definir" ? `${flagIcon || "🏳️"} ${clean}` : (clean || "A definir");
+}
+
+function normalizeTeamDataNamesV350() {
+  try {
+    (games || []).forEach(game => {
+      if (typeof game.homeTeam === "string") game.homeTeam = teamCleanNameV350(game.homeTeam);
+      if (typeof game.awayTeam === "string") game.awayTeam = teamCleanNameV350(game.awayTeam);
+    });
+  } catch {}
+
+  try {
+    (appSettings?.knockout?.matches || []).forEach(match => {
+      ["homeTeam", "awayTeam", "manualHomeTeam", "manualAwayTeam", "winnerTeam", "qualifiedTeam"].forEach(key => {
+        if (typeof match[key] === "string") match[key] = teamCleanNameV350(match[key]);
+      });
+    });
+  } catch {}
+
+  try {
+    (bets || []).forEach(bet => {
+      ["homeTeam", "awayTeam", "winnerTeam", "qualifiedTeam", "qualified", "qualifier", "winner", "predictedWinner"].forEach(key => {
+        if (typeof bet[key] === "string") bet[key] = teamCleanNameV350(bet[key]);
+      });
+    });
+  } catch {}
+}
+
+// Atualiza o mapa antigo, se existir, sem depender dele.
+try {
+  Object.assign(FLAGS, TEAM_FLAGS_V350);
+  Object.entries(TEAM_NAME_ALIASES_V350).forEach(([alias, clean]) => { TEAM_ALIASES[alias] = clean; });
+} catch {}
+
+if (typeof renderMatchRow === "function" && !renderMatchRow.__flagsV350) {
+  const originalRenderMatchRowV350 = renderMatchRow;
+  renderMatchRow = function renderMatchRowFlagsV350(game) {
+    if (game) {
+      game.homeTeam = teamCleanNameV350(game.homeTeam);
+      game.awayTeam = teamCleanNameV350(game.awayTeam);
+    }
+
+    let html = originalRenderMatchRowV350.apply(this, arguments);
+
+    try {
+      const homePlain = `<div class="team home"><strong>${escapeHtml(game.homeTeam)}</strong></div>`;
+      const awayPlain = `<div class="team away"><strong>${escapeHtml(game.awayTeam)}</strong></div>`;
+
+      html = html
+        .replace(homePlain, `<div class="team home team-flag-cell-v350"><strong>${teamFlagHtmlV350(game.homeTeam)}</strong></div>`)
+        .replace(awayPlain, `<div class="team away team-flag-cell-v350"><strong>${teamFlagHtmlV350(game.awayTeam)}</strong></div>`);
+    } catch {}
+
+    return html;
+  };
+  renderMatchRow.__flagsV350 = true;
+}
+
+if (typeof renderKnockoutMatch === "function" && !renderKnockoutMatch.__flagsV350) {
+  const originalRenderKnockoutMatchV350 = renderKnockoutMatch;
+  renderKnockoutMatch = function renderKnockoutMatchFlagsV350(match, layoutKey = "") {
+    if (match) {
+      match.homeTeam = teamCleanNameV350(match.homeTeam);
+      match.awayTeam = teamCleanNameV350(match.awayTeam);
+    }
+
+    let html = originalRenderKnockoutMatchV350.apply(this, arguments);
+
+    try {
+      const homeLabel = escapeHtml(match.homeTeam || "A definir");
+      const awayLabel = escapeHtml(match.awayTeam || "A definir");
+      html = html
+        .replace(`<span>${homeLabel}</span>`, `<span>${teamFlagHtmlV350(match.homeTeam || "A definir")}</span>`)
+        .replace(`<span>${awayLabel}</span>`, `<span>${teamFlagHtmlV350(match.awayTeam || "A definir")}</span>`);
+    } catch {}
+
+    return html;
+  };
+  renderKnockoutMatch.__flagsV350 = true;
+}
+
+if (typeof knockoutTeamOptionsHtml === "function" && !knockoutTeamOptionsHtml.__flagsV350) {
+  const originalKnockoutTeamOptionsHtmlV350 = knockoutTeamOptionsHtml;
+  knockoutTeamOptionsHtml = function knockoutTeamOptionsHtmlFlagsV350(selectedTeam = "") {
+    try {
+      const teams = knockoutTeamOptions().map(teamCleanNameV350);
+      const selected = teamCleanNameV350(selectedTeam);
+      return `<option value="">A definir</option>${teams.map(team => `<option value="${escapeHtml(team)}" ${team === selected ? "selected" : ""}>${escapeHtml(teamFlagTextV350(team))}</option>`).join("")}`;
+    } catch {
+      return originalKnockoutTeamOptionsHtmlV350.apply(this, arguments);
+    }
+  };
+  knockoutTeamOptionsHtml.__flagsV350 = true;
+}
+
+function decorateExistingFlagsV350() {
+  // Para elementos já renderizados por versões antigas.
+  try {
+    document.querySelectorAll(".match-row .team strong, .ko-team > span").forEach(el => {
+      if (el.dataset.flagsV350 === "1") return;
+      const text = String(el.textContent || "").trim();
+      if (!text || text.includes("🇧🇷") || text.includes("🇵🇹") || text === "A definir") return;
+
+      const flagIcon = teamFlagV350(text);
+      if (!flagIcon) return;
+
+      el.innerHTML = teamFlagHtmlV350(text);
+      el.dataset.flagsV350 = "1";
+    });
+  } catch {}
+
+  try {
+    document.querySelectorAll("select.ko-home-team option, select.ko-away-team option").forEach(option => {
+      if (option.dataset.flagsV350 === "1") return;
+      const value = teamCleanNameV350(option.value || option.textContent || "");
+      if (!value) return;
+      option.value = value;
+      option.textContent = teamFlagTextV350(value);
+      option.dataset.flagsV350 = "1";
+    });
+  } catch {}
+}
+
+if (typeof renderAll === "function" && !renderAll.__flagsV350) {
+  const originalRenderAllFlagsV350 = renderAll;
+  renderAll = function renderAllFlagsV350() {
+    normalizeTeamDataNamesV350();
+    const result = originalRenderAllFlagsV350.apply(this, arguments);
+    requestAnimationFrame(decorateExistingFlagsV350);
+    return result;
+  };
+  renderAll.__flagsV350 = true;
+}
+
+normalizeTeamDataNamesV350();
+requestAnimationFrame(decorateExistingFlagsV350);
+
+window.debugBandeirasV350 = function debugBandeirasV350() {
+  const names = new Set();
+  try { (games || []).forEach(game => { names.add(game.homeTeam); names.add(game.awayTeam); }); } catch {}
+  try { (appSettings?.knockout?.matches || []).forEach(match => { names.add(match.homeTeam); names.add(match.awayTeam); }); } catch {}
+
+  const missing = [...names].filter(name => name && name !== "A definir" && !teamFlagV350(name));
+  return {
+    version: APP_VERSION_V350_FLAGS_IN_MATCHES,
+    totalMapped: Object.keys(TEAM_FLAGS_V350).length,
+    missingFlags: missing,
+    renderedFlags: document.querySelectorAll(".flag-chip-v350").length
+  };
+};
+
+
+/* v351 — Bloqueio final do "Ver apostas" antes do jogo começar.
+   Base: v350.
+   Corrige o bypass antigo da Fase Final: o modal direto do lápis v308 podia voltar a abrir
+   a lista completa depois do bloqueio privado v348. Não mexe em Firebase/Auth/pontuação/dados. */
+const APP_VERSION_V351_PRIVATE_BETS_HARD_LOCK = "351.0";
+
+function betsPrivacyShouldHideAllV351(gameId) {
+  try {
+    if (typeof shouldShowPrivateBetsV348 === "function") {
+      return shouldShowPrivateBetsV348(gameId) === true;
+    }
+  } catch (error) {
+    console.warn("Privacidade apostas v351: não consegui validar estado privado.", error);
+  }
+  return false;
+}
+
+function betsPrivacyShowOwnOnlyV351(gameId) {
+  try {
+    if (typeof betsPrivacyShowOwnOnlyV348 === "function") {
+      return betsPrivacyShowOwnOnlyV348(gameId);
+    }
+  } catch (error) {
+    console.warn("Privacidade apostas v351: não consegui abrir vista privada.", error);
+  }
+  return false;
+}
+
+(function installPrivateBetsHardLockV351() {
+  if (window.__privateBetsHardLockV351) return;
+  window.__privateBetsHardLockV351 = true;
+
+  const previousShowGameBetsV351 = typeof showGameBets === "function" ? showGameBets : null;
+  if (previousShowGameBetsV351 && !previousShowGameBetsV351.__privateHardLockV351) {
+    showGameBets = function showGameBetsPrivateHardLockV351(gameId) {
+      if (betsPrivacyShouldHideAllV351(gameId)) {
+        return betsPrivacyShowOwnOnlyV351(gameId);
+      }
+      return previousShowGameBetsV351.apply(this, arguments);
+    };
+    showGameBets.__privateHardLockV351 = true;
+    window.showGameBets = showGameBets;
+  }
+
+  const previousDirectKoModalV351 = typeof showKnockoutBetsModalDirectPencilV308 === "function" ? showKnockoutBetsModalDirectPencilV308 : null;
+  if (previousDirectKoModalV351 && !previousDirectKoModalV351.__privateHardLockV351) {
+    showKnockoutBetsModalDirectPencilV308 = function showKnockoutBetsModalDirectPencilPrivateV351(gameId) {
+      if (betsPrivacyShouldHideAllV351(gameId)) {
+        return betsPrivacyShowOwnOnlyV351(gameId);
+      }
+      return previousDirectKoModalV351.apply(this, arguments);
+    };
+    showKnockoutBetsModalDirectPencilV308.__privateHardLockV351 = true;
+    window.showKnockoutBetsModalDirectPencilV308 = showKnockoutBetsModalDirectPencilV308;
+  }
+
+  // Guarda extra no início da cadeia de eventos: impede listeners antigos no document
+  // de agendarem a abertura completa do modal antes de o bloqueio privado atuar.
+  window.addEventListener("click", event => {
+    const btn = event.target?.closest?.("[data-bets-game]");
+    if (!btn) return;
+
+    const gameId = btn.dataset?.betsGame || btn.getAttribute?.("data-bets-game") || "";
+    if (!gameId || !betsPrivacyShouldHideAllV351(gameId)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    betsPrivacyShowOwnOnlyV351(gameId);
+  }, true);
+})();
+
+window.debugPrivateBetsV351 = function debugPrivateBetsV351(gameId = "") {
+  const v348 = (() => {
+    try { return typeof debugPrivateBetsV348 === "function" ? debugPrivateBetsV348(gameId) : null; }
+    catch (error) { return { error: String(error?.message || error) }; }
+  })();
+
+  return {
+    version: APP_VERSION_V351_PRIVATE_BETS_HARD_LOCK,
+    gameId,
+    shouldHideAll: betsPrivacyShouldHideAllV351(gameId),
+    wrappedShowGameBets: Boolean(showGameBets?.__privateHardLockV351),
+    wrappedDirectKnockoutModal: Boolean(showKnockoutBetsModalDirectPencilV308?.__privateHardLockV351),
+    v348
+  };
 };
