@@ -17,8 +17,6 @@ const messaging = getMessaging();
 const auth = getAuth();
 const ADMIN_EMAILS = new Set(["pica.fern@gmail.com"]);
 const FOOTBALL_SYSTEM_ACTOR_V151 = { uid: "scheduler", email: "sistema@app-mundial2026" };
-
-const FOOTBALL_KNOCKOUT_MANUAL_TEAMS_ONLY_V353 = false;
 const QUIET_TZ = "Europe/Lisbon";
 const DEFAULT_QUIET_START_HOUR = 23;
 const DEFAULT_QUIET_END_HOUR = 9;
@@ -498,7 +496,7 @@ function footballNormalize(value) {
   return cleanString(value)
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/['']/g, " ")
+    .replace(/[’']/g, " ")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
@@ -645,7 +643,7 @@ function footballFindLocalMatch(apiMatch, localMatches) {
 }
 
 
-// v271 - a API também deve preencher o calendário/base da Fase Final mesmo antes de existirem equipas locais.
+// v271 — a API também deve preencher o calendário/base da Fase Final mesmo antes de existirem equipas locais.
 // Antes só tentava casar eliminatórias por equipa/ID; com cards vazios/"A definir" isso nunca acontecia.
 function footballKnockoutRoundFromApiV271(apiMatch = {}) {
   const raw = cleanString(apiMatch.stage || apiMatch.group || apiMatch.matchday || "").toUpperCase();
@@ -661,6 +659,168 @@ function footballKnockoutRoundFromApiV271(apiMatch = {}) {
   if (value.includes("THIRD") || value.includes("BRONZE") || value.includes("PLACE")) return "";
   if (value.includes("GROUP")) return "";
   return "";
+}
+
+
+
+const FOOTBALL_KNOCKOUT_CLEAN_IDS_V339 = {
+  r32: ["M61","M62","M63","M64","M65","M66","M67","M68","M69","M610","M611","M612","M613","M614","M615","M616"],
+  r16: ["M71","M72","M73","M74","M75","M76","M77","M78"],
+  qf: ["M81","M82","M83","M84"],
+  sf: ["M91","M92"],
+  final: ["M101"]
+};
+
+const FOOTBALL_KNOCKOUT_BRACKET_MAP_V339 = {
+  M61: { next: "M71", slot: "homeTeam" }, M63: { next: "M71", slot: "awayTeam" },
+  M62: { next: "M72", slot: "homeTeam" }, M64: { next: "M72", slot: "awayTeam" },
+  M65: { next: "M73", slot: "homeTeam" }, M67: { next: "M73", slot: "awayTeam" },
+  M66: { next: "M74", slot: "homeTeam" }, M68: { next: "M74", slot: "awayTeam" },
+  M69: { next: "M75", slot: "homeTeam" }, M611: { next: "M75", slot: "awayTeam" },
+  M610: { next: "M76", slot: "homeTeam" }, M612: { next: "M76", slot: "awayTeam" },
+  M613: { next: "M77", slot: "homeTeam" }, M615: { next: "M77", slot: "awayTeam" },
+  M614: { next: "M78", slot: "homeTeam" }, M616: { next: "M78", slot: "awayTeam" },
+  M71: { next: "M81", slot: "homeTeam" }, M72: { next: "M81", slot: "awayTeam" },
+  M73: { next: "M82", slot: "homeTeam" }, M74: { next: "M82", slot: "awayTeam" },
+  M75: { next: "M83", slot: "homeTeam" }, M76: { next: "M83", slot: "awayTeam" },
+  M77: { next: "M84", slot: "homeTeam" }, M78: { next: "M84", slot: "awayTeam" },
+  M81: { next: "M91", slot: "homeTeam" }, M82: { next: "M91", slot: "awayTeam" },
+  M83: { next: "M92", slot: "homeTeam" }, M84: { next: "M92", slot: "awayTeam" },
+  M91: { next: "M101", slot: "homeTeam" }, M92: { next: "M101", slot: "awayTeam" }
+};
+
+function footballCleanKnockoutRoundV339(match = {}) {
+  const raw = cleanString(match.round || match.roundKey || match.phase || match.fase || "").toLowerCase();
+  if (raw.includes("r32") || raw.includes("32") || raw.includes("16 avos") || raw.includes("16avos")) return "r32";
+  if (raw.includes("r16") || raw.includes("oitav")) return "r16";
+  if (raw.includes("qf") || raw.includes("quart")) return "qf";
+  if (raw.includes("sf") || raw.includes("meia") || raw.includes("semi")) return "sf";
+  if (raw.includes("final")) return "final";
+  return cleanString(match.round || "");
+}
+
+function footballCleanKnockoutIdV339(match = {}) {
+  const existing = cleanString(match.cleanId || match.cleanMatchId || match.publicId || "").toUpperCase();
+  if (/^M\d+$/.test(existing)) return existing;
+  const round = footballCleanKnockoutRoundV339(match);
+  const list = FOOTBALL_KNOCKOUT_CLEAN_IDS_V339[round] || [];
+  const index = Math.max(1, Number(match.index || match.officialOrder || match.displayOrder || 1));
+  return list[index - 1] || "";
+}
+
+function footballApplyKnockoutBracketMapV339(matches = []) {
+  const byClean = new Map();
+  (Array.isArray(matches) ? matches : []).forEach(match => {
+    const cleanId = footballCleanKnockoutIdV339(match);
+    if (!cleanId) return;
+    match.cleanId = cleanId;
+    match.cleanMatchId = cleanId;
+    match.publicId = cleanId;
+    match.matchNumber = Number(cleanId.replace(/^M/i, "")) || match.matchNumber || null;
+    match.bracketSlot = cleanId;
+    match.bracketMapVersion = "v339";
+    byClean.set(cleanId, match);
+  });
+  (Array.isArray(matches) ? matches : []).forEach(match => {
+    const cleanId = footballCleanKnockoutIdV339(match);
+    const next = FOOTBALL_KNOCKOUT_BRACKET_MAP_V339[cleanId];
+    if (!next) {
+      match.nextMatchId = "";
+      match.nextSlot = "";
+      match.nextCleanId = "";
+      return;
+    }
+    const nextMatch = byClean.get(next.next);
+    if (nextMatch?.id) {
+      match.nextMatchId = nextMatch.id;
+      match.nextSlot = next.slot;
+      match.nextCleanId = next.next;
+    }
+  });
+}
+
+function footballManualSlotLockedV339(match = {}, slot = "") {
+  return slot === "homeTeam" ? match.manualHomeTeamLocked === true : match.manualAwayTeamLocked === true;
+}
+
+function footballApiExplicitSlotV339(apiMatch = {}) {
+  const raw = cleanString(apiMatch.cleanId || apiMatch.cleanMatchId || apiMatch.publicId || apiMatch.matchNumber || apiMatch.fifaMatchNumber || apiMatch.officialMatchNumber || "").toUpperCase();
+  if (/^M\d+$/.test(raw)) return raw;
+  const numeric = Number(raw.replace(/\D+/g, ""));
+  if (Number.isFinite(numeric) && numeric) return "M" + numeric;
+  return "";
+}
+
+function getKnockoutSlotForApiMatch(apiMatch = {}, localRound = [], used = new Set()) {
+  const apiId = cleanString(apiMatch.id || "");
+  if (apiId) {
+    const byExternal = localRound.find(match => !used.has(match.id) && cleanString(match.footballDataId || match.externalId || "") === apiId);
+    if (byExternal) return { match: byExternal, confidence: "footballDataId" };
+  }
+  const explicitSlot = footballApiExplicitSlotV339(apiMatch);
+  if (explicitSlot) {
+    const bySlot = localRound.find(match => !used.has(match.id) && footballCleanKnockoutIdV339(match) === explicitSlot);
+    if (bySlot) return { match: bySlot, confidence: "apiSlot" };
+  }
+  const samePair = localRound.find(match => !used.has(match.id) && footballMatchOrientationV263(apiMatch, match));
+  if (samePair) return { match: footballApplyMatchOrientationV263(apiMatch, samePair), confidence: "teamPair" };
+  return { match: null, confidence: "unmatched" };
+}
+
+function applyApiTeamsToCorrectKnockoutSlot(apiMatch, target, actor = {}) {
+  const apiUtcDate = cleanString(apiMatch.utcDate);
+  const apiHome = footballApiTeamName(apiMatch.homeTeam);
+  const apiAway = footballApiTeamName(apiMatch.awayTeam);
+  const homeIsReal = footballApiTeamIsRealV271(apiHome);
+  const awayIsReal = footballApiTeamIsRealV271(apiAway);
+  const score = footballApiAnyScoreV153(apiMatch);
+  if (apiMatch.id) target.footballDataId = cleanString(apiMatch.id);
+  target.externalId = target.externalId || cleanString(apiMatch.id || "");
+  target.footballDataStatus = cleanString(apiMatch.status);
+  target.footballDataStage = cleanString(apiMatch.stage);
+  target.footballDataGroup = cleanString(apiMatch.group);
+  target.footballDataUtcDate = apiUtcDate;
+  target.footballDataLocked = footballShouldLockMatch(apiMatch);
+  target.footballDataUpdatedBy = actor.email || "api";
+  target.source = "football-data.org";
+  target.updatedAt = new Date().toISOString();
+  if (apiUtcDate) {
+    target.matchDate = apiUtcDate;
+    target.date = apiUtcDate;
+    target.kickoff = apiUtcDate;
+    target.startAt = apiUtcDate;
+    target.time = apiUtcDate;
+  }
+  if (homeIsReal && !footballManualSlotLockedV339(target, "homeTeam")) target.homeTeam = apiHome;
+  if (awayIsReal && !footballManualSlotLockedV339(target, "awayTeam")) target.awayTeam = apiAway;
+  if (score) applyApiResultToMatch(apiMatch, target, score);
+}
+
+function applyApiResultToMatch(apiMatch, target, score = null) {
+  const apiStatus = cleanString(apiMatch.status).toUpperCase();
+  const localScore = footballScoreForLocalMatchV263(score || footballApiAnyScoreV153(apiMatch), target);
+  if (!localScore) return;
+  if (["FINISHED", "AWARDED"].includes(apiStatus)) {
+    target.homeScore = localScore.homeScore;
+    target.awayScore = localScore.awayScore;
+    target.liveHomeScore = null;
+    target.liveAwayScore = null;
+    target.homePenalties = null;
+    target.awayPenalties = null;
+    const qualified = footballQualifiedTeamFromScoreV268(target, localScore);
+    if (qualified) footballApplyQualifiedFieldsV268(target, qualified);
+    target.scoreConfirmed = true;
+    target.pointsConfirmed = true;
+    target.syncEndedAt = target.syncEndedAt || new Date().toISOString();
+    target.syncConfirmedAt = new Date().toISOString();
+    target.syncActive = false;
+  } else {
+    target.liveHomeScore = localScore.homeScore;
+    target.liveAwayScore = localScore.awayScore;
+    target.liveUpdatedAt = new Date().toISOString();
+    target.scoreConfirmed = false;
+    target.pointsConfirmed = false;
+  }
 }
 
 function footballApiTeamIsRealV271(name = "") {
@@ -693,183 +853,8 @@ function footballSortApiMatchesV271(a = {}, b = {}) {
   return Number(a.id || 0) - Number(b.id || 0);
 }
 
-
-const FOOTBALL_OFFICIAL_R32_TO_LOCAL_INDEX_V357 = {
-  73: 1, 74: 2, 75: 3, 76: 4,
-  77: 5, 78: 6, 79: 7, 80: 8,
-  81: 9, 82: 10, 83: 11, 84: 12,
-  85: 13, 86: 14, 87: 15, 88: 16
-};
-
-const FOOTBALL_KO_OFFICIAL_NEXT_CLEAN_V357 = {
-  M61: { next: "M71", slot: "homeTeam" },
-  M64: { next: "M71", slot: "awayTeam" },
-  M62: { next: "M72", slot: "homeTeam" },
-  M65: { next: "M72", slot: "awayTeam" },
-  M63: { next: "M73", slot: "homeTeam" },
-  M66: { next: "M73", slot: "awayTeam" },
-  M67: { next: "M74", slot: "homeTeam" },
-  M68: { next: "M74", slot: "awayTeam" },
-  M611: { next: "M75", slot: "homeTeam" },
-  M612: { next: "M75", slot: "awayTeam" },
-  M69: { next: "M76", slot: "homeTeam" },
-  M610: { next: "M76", slot: "awayTeam" },
-  M614: { next: "M77", slot: "homeTeam" },
-  M616: { next: "M77", slot: "awayTeam" },
-  M613: { next: "M78", slot: "homeTeam" },
-  M615: { next: "M78", slot: "awayTeam" },
-  M71: { next: "M81", slot: "homeTeam" },
-  M72: { next: "M81", slot: "awayTeam" },
-  M73: { next: "M82", slot: "homeTeam" },
-  M74: { next: "M82", slot: "awayTeam" },
-  M75: { next: "M83", slot: "homeTeam" },
-  M76: { next: "M83", slot: "awayTeam" },
-  M77: { next: "M84", slot: "homeTeam" },
-  M78: { next: "M84", slot: "awayTeam" },
-  M81: { next: "M91", slot: "homeTeam" },
-  M82: { next: "M91", slot: "awayTeam" },
-  M83: { next: "M92", slot: "homeTeam" },
-  M84: { next: "M92", slot: "awayTeam" },
-  M91: { next: "M101", slot: "homeTeam" },
-  M92: { next: "M101", slot: "awayTeam" }
-};
-
-const FOOTBALL_R32_TEAM_HINTS_V357 = [
-  { teams: ["south africa", "canada"], index: 1 },
-  { teams: ["germany", "paraguay"], index: 2 },
-  { teams: ["brazil", "japan"], index: 3 },
-  { teams: ["netherlands", "morocco"], index: 4 },
-  { teams: ["france", "sweden"], index: 5 },
-  { teams: ["ivory coast", "côte d'ivoire", "cote d'ivoire", "norway"], index: 6 },
-  { teams: ["mexico", "ecuador"], index: 7 },
-  { teams: ["england", "dr congo", "congo dr", "democratic republic of the congo"], index: 8 },
-  { teams: ["united states", "usa", "bosnia and herzegovina"], index: 9 },
-  { teams: ["belgium", "senegal"], index: 10 },
-  { teams: ["portugal", "croatia"], index: 11 },
-  { teams: ["spain", "austria"], index: 12 },
-  { teams: ["switzerland", "algeria"], index: 13 },
-  { teams: ["argentina", "cape verde", "cabo verde"], index: 14 },
-  { teams: ["colombia", "ghana"], index: 15 },
-  { teams: ["australia", "egypt"], index: 16 }
-];
-
-function footballCleanKnockoutIdV357(match = {}) {
-  const existing = cleanString(match.cleanId || match.cleanMatchId || match.publicId).toUpperCase();
-  if (/^M\d+$/i.test(existing)) return existing;
-  const round = cleanString(match.round).toLowerCase();
-  const index = Math.max(1, Number(match.index || 1));
-  if (round === "r32") return `M6${index}`;
-  if (round === "r16") return `M7${index}`;
-  if (round === "qf") return `M8${index}`;
-  if (round === "sf") return `M9${index}`;
-  if (round === "final") return "M101";
-  return "";
-}
-
-function footballApplyOfficialKnockoutBracketV357(knockoutMatches = []) {
-  const byClean = new Map();
-  const roundRank = { r32: 1, r16: 2, qf: 3, sf: 4, final: 5 };
-  (Array.isArray(knockoutMatches) ? knockoutMatches : []).forEach(match => {
-    const cleanId = footballCleanKnockoutIdV357(match);
-    if (!cleanId) return;
-    match.cleanId = cleanId;
-    match.cleanMatchId = cleanId;
-    match.publicId = cleanId;
-    match.matchNumber = Number(cleanId.replace(/^M/i, "")) || match.matchNumber || "";
-    match.officialOrder = Number(match.index || 0) || match.officialOrder || "";
-    byClean.set(cleanId, match);
-  });
-
-  (Array.isArray(knockoutMatches) ? knockoutMatches : []).forEach(match => {
-    const cleanId = footballCleanKnockoutIdV357(match);
-    const nextInfo = FOOTBALL_KO_OFFICIAL_NEXT_CLEAN_V357[cleanId];
-    if (!nextInfo) {
-      match.nextMatchId = "";
-      match.nextSlot = "";
-      match.nextCleanId = "";
-      return;
-    }
-    const next = byClean.get(nextInfo.next);
-    if (!next) return;
-    match.nextMatchId = next.id;
-    match.nextSlot = nextInfo.slot;
-    match.nextCleanId = nextInfo.next;
-  });
-
-  knockoutMatches.sort((a, b) =>
-    (roundRank[cleanString(a.round).toLowerCase()] || 99) - (roundRank[cleanString(b.round).toLowerCase()] || 99) ||
-    Number(a.index || 0) - Number(b.index || 0)
-  );
-}
-
-function footballApiMatchNumberV357(apiMatch = {}) {
-  const directKeys = ["officialMatchNumber", "fifaMatchNumber", "matchNumber", "matchNo", "number", "apiMatchNumber"];
-  for (const key of directKeys) {
-    const value = Number(apiMatch?.[key]);
-    if (Number.isFinite(value) && value >= 61 && value <= 104) return value;
-  }
-  const text = [apiMatch?.name, apiMatch?.title, apiMatch?.label, apiMatch?.stage, apiMatch?.group, apiMatch?.round]
-    .map(value => cleanString(value)).join(" ");
-  const found = text.match(/(?:match|jogo|m)\s*#?\s*(\d{2,3})\b/i);
-  if (found) {
-    const value = Number(found[1]);
-    if (Number.isFinite(value) && value >= 61 && value <= 104) return value;
-  }
-  return 0;
-}
-
-function footballR32HintIndexV357(apiMatch = {}) {
-  const home = footballTeamKey(footballApiTeamName(apiMatch.homeTeam));
-  const away = footballTeamKey(footballApiTeamName(apiMatch.awayTeam));
-  if (!home || !away) return 0;
-  for (const hint of FOOTBALL_R32_TEAM_HINTS_V357) {
-    const keys = hint.teams.map(footballTeamKey).filter(Boolean);
-    const homeOk = keys.some(key => key === home || key.includes(home) || home.includes(key));
-    const awayOk = keys.some(key => key === away || key.includes(away) || away.includes(key));
-    if (homeOk && awayOk) return hint.index;
-  }
-  return 0;
-}
-
-function footballTargetForApiKnockoutV357(apiMatch = {}, localRound = [], used = new Set(), fallbackIndex = 0) {
-  const apiId = cleanString(apiMatch.id);
-  if (apiId) {
-    const byExternal = localRound.find(match => cleanString(match.footballDataId || match.externalId) === apiId);
-    if (byExternal && !used.has(byExternal.id)) return byExternal;
-  }
-
-  const round = footballKnockoutRoundFromApiV271(apiMatch);
-  let wantedIndex = 0;
-  const officialNumber = footballApiMatchNumberV357(apiMatch);
-  if (round === "r32") wantedIndex = FOOTBALL_OFFICIAL_R32_TO_LOCAL_INDEX_V357[officialNumber] || footballR32HintIndexV357(apiMatch) || 0;
-  if (wantedIndex) {
-    const byIndex = localRound.find(match => Number(match.index || 0) === Number(wantedIndex));
-    if (byIndex && !used.has(byIndex.id)) return byIndex;
-  }
-
-  const empty = localRound.find(match => !used.has(match.id) && !cleanString(match.footballDataId || match.externalId));
-  if (empty) return empty;
-  return localRound[fallbackIndex] && !used.has(localRound[fallbackIndex].id) ? localRound[fallbackIndex] : null;
-}
-
-function footballSetApiR32TeamV357(target = {}, slot = "homeTeam", value = "") {
-  if (cleanString(target.round).toLowerCase() !== "r32") return false;
-  const clean = cleanString(value);
-  if (!footballApiTeamIsRealV271(clean)) return false;
-  if (target[slot] === clean && target[slot === "homeTeam" ? "homeTeamOrigin" : "awayTeamOrigin"] === "api") return false;
-  target[slot] = clean;
-  target[slot === "homeTeam" ? "apiHomeTeam" : "apiAwayTeam"] = clean;
-  target[slot === "homeTeam" ? "manualHomeTeam" : "manualAwayTeam"] = "";
-  target[slot === "homeTeam" ? "manualHomeTeamLocked" : "manualAwayTeamLocked"] = false;
-  target[slot === "homeTeam" ? "homeTeamOrigin" : "awayTeamOrigin"] = "api";
-  target.apiTeamsEnabledV357 = true;
-  target.apiTeamsUpdatedAt = new Date().toISOString();
-  return true;
-}
-
 function footballApplyApiKnockoutScheduleV271(apiMatches = [], knockoutMatches = [], actor = {}) {
-  footballApplyOfficialKnockoutBracketV357(knockoutMatches);
-
+  footballApplyKnockoutBracketMapV339(knockoutMatches);
   const byRound = new Map();
   (Array.isArray(apiMatches) ? apiMatches : []).forEach(apiMatch => {
     const round = footballKnockoutRoundFromApiV271(apiMatch);
@@ -877,108 +862,80 @@ function footballApplyApiKnockoutScheduleV271(apiMatches = [], knockoutMatches =
     if (!byRound.has(round)) byRound.set(round, []);
     byRound.get(round).push(apiMatch);
   });
-
-  const result = { checked: 0, updated: 0, withTeams: 0, withDate: 0, matched: [], bracketMode: "official-v357" };
-
+  const result = { checked: 0, updated: 0, withTeams: 0, withDate: 0, matched: [], conflicts: [], unmatched: [] };
   byRound.forEach((apiList, round) => {
-    const sortedApi = [...apiList].sort(footballSortApiMatchesV271);
     const localRound = (Array.isArray(knockoutMatches) ? knockoutMatches : [])
-      .filter(match => cleanString(match.round).toLowerCase() === round)
+      .filter(match => footballCleanKnockoutRoundV339(match) === round)
       .sort((a, b) => Number(a.index || 0) - Number(b.index || 0));
-
     const used = new Set();
-
-    sortedApi.forEach((apiMatch, idx) => {
+    [...apiList].sort(footballSortApiMatchesV271).forEach(apiMatch => {
       result.checked += 1;
-      const apiId = cleanString(apiMatch.id);
-      const target = footballTargetForApiKnockoutV357(apiMatch, localRound, used, idx);
-      if (!target || used.has(target.id)) return;
+      const apiId = cleanString(apiMatch.id || "");
+      const located = getKnockoutSlotForApiMatch(apiMatch, localRound, used);
+      const target = located.match;
+      if (!target) {
+        const summary = footballMatchSummary(apiMatch);
+        result.unmatched.push(summary);
+        result.conflicts.push({ reason: "sem slot seguro", round, api: summary });
+        return;
+      }
       used.add(target.id);
-
       const before = JSON.stringify({
         footballDataId: target.footballDataId || "",
         matchDate: target.matchDate || target.date || target.kickoff || target.startAt || target.time || "",
         homeTeam: target.homeTeam || "",
         awayTeam: target.awayTeam || "",
+        homeScore: target.homeScore ?? null,
+        awayScore: target.awayScore ?? null,
+        liveHomeScore: target.liveHomeScore ?? null,
+        liveAwayScore: target.liveAwayScore ?? null,
         status: target.footballDataStatus || "",
         nextMatchId: target.nextMatchId || "",
         nextSlot: target.nextSlot || ""
       });
-
+      applyApiTeamsToCorrectKnockoutSlot(apiMatch, target, actor);
+      target.apiAutoMapped = true;
+      target.apiMappingConfidence = located.confidence;
+      target.apiMappingWarning = located.confidence === "unmatched" ? "API sem slot seguro" : "";
       const apiUtcDate = cleanString(apiMatch.utcDate);
       const apiHome = footballApiTeamName(apiMatch.homeTeam);
       const apiAway = footballApiTeamName(apiMatch.awayTeam);
-      const homeIsReal = footballApiTeamIsRealV271(apiHome);
-      const awayIsReal = footballApiTeamIsRealV271(apiAway);
-      const apiMatchNumber = footballApiMatchNumberV357(apiMatch);
-
-      if (apiId) target.footballDataId = apiId;
-      target.externalId = target.externalId || apiId;
-      target.footballDataStatus = cleanString(apiMatch.status);
-      target.footballDataStage = cleanString(apiMatch.stage);
-      target.footballDataGroup = cleanString(apiMatch.group);
-      target.footballDataUtcDate = apiUtcDate;
-      target.footballDataLocked = footballShouldLockMatch(apiMatch);
-      target.footballDataUpdatedBy = actor.email || "api";
-      target.source = "football-data.org";
-      target.updatedAt = new Date().toISOString();
-      target.apiAutoMapped = true;
-      if (apiMatchNumber) target.apiMatchNumber = apiMatchNumber;
-
-      if (apiUtcDate) {
-        target.matchDate = apiUtcDate;
-        target.date = apiUtcDate;
-        target.kickoff = apiUtcDate;
-        target.startAt = apiUtcDate;
-        target.time = apiUtcDate;
-        result.withDate += 1;
-      }
-
-      if (homeIsReal || awayIsReal) {
-        target.apiHomeTeam = apiHome;
-        target.apiAwayTeam = apiAway;
-      }
-
-      // v357: só os 16 avos recebem equipas da API. As rondas seguintes vêm da árvore/vencedores.
-      if (round === "r32") {
-        const h = footballSetApiR32TeamV357(target, "homeTeam", apiHome);
-        const a = footballSetApiR32TeamV357(target, "awayTeam", apiAway);
-        if (h || a) result.withTeams += 1;
-      }
-
-      const cleanId = footballCleanKnockoutIdV357(target);
+      if (apiUtcDate) result.withDate += 1;
+      if (footballApiTeamIsRealV271(apiHome) || footballApiTeamIsRealV271(apiAway)) result.withTeams += 1;
       const after = JSON.stringify({
         footballDataId: target.footballDataId || "",
         matchDate: target.matchDate || target.date || target.kickoff || target.startAt || target.time || "",
         homeTeam: target.homeTeam || "",
         awayTeam: target.awayTeam || "",
+        homeScore: target.homeScore ?? null,
+        awayScore: target.awayScore ?? null,
+        liveHomeScore: target.liveHomeScore ?? null,
+        liveAwayScore: target.liveAwayScore ?? null,
         status: target.footballDataStatus || "",
         nextMatchId: target.nextMatchId || "",
         nextSlot: target.nextSlot || ""
       });
-
       if (before !== after) result.updated += 1;
       result.matched.push({
         localId: target.id,
-        cleanId,
+        cleanId: footballCleanKnockoutIdV339(target),
         round,
         index: target.index || "",
         footballDataId: apiId,
-        apiMatchNumber,
+        confidence: located.confidence,
         utcDate: apiUtcDate,
         apiHome,
         apiAway,
         localHome: target.homeTeam || "",
         localAway: target.awayTeam || "",
-        status: target.footballDataStatus || "",
         nextCleanId: target.nextCleanId || "",
         nextMatchId: target.nextMatchId || "",
-        nextSlot: target.nextSlot || ""
+        nextSlot: target.nextSlot || "",
+        status: target.footballDataStatus || ""
       });
     });
   });
-
-  footballApplyOfficialKnockoutBracketV357(knockoutMatches);
+  footballApplyKnockoutBracketMapV339(knockoutMatches);
   return result;
 }
 
@@ -1266,6 +1223,7 @@ function footballSmartWinnerV201(match = {}) {
 }
 
 function footballSmartPropagateKnockoutV201(matches = []) {
+  footballApplyKnockoutBracketMapV339(matches);
   const byId = new Map(matches.map(match => [match.id, match]));
   let changed = false;
 
@@ -1303,6 +1261,7 @@ function footballSmartPropagateKnockoutV201(matches = []) {
 }
 
 function footballSmartKnockoutPropagationOkV201(match = {}, matches = []) {
+  footballApplyKnockoutBracketMapV339(matches);
   if (!match.nextMatchId || !match.nextSlot) return true;
   const winner = footballSmartWinnerV201(match);
   if (!winner) return false;
@@ -1683,19 +1642,9 @@ async function runFootballDataSyncCoreV151(options = {}) {
 
       updatedKnockoutMatches.push({
         id: knockoutTarget.id,
-        cleanId: footballCleanKnockoutIdV357(knockoutTarget),
-        cleanMatchId: footballCleanKnockoutIdV357(knockoutTarget),
-        publicId: footballCleanKnockoutIdV357(knockoutTarget),
-        round: knockoutTarget.round || "",
-        index: knockoutTarget.index || "",
         homeTeam: knockoutTarget.homeTeam,
         awayTeam: knockoutTarget.awayTeam,
-        apiHomeTeam: knockoutTarget.apiHomeTeam || "",
-        apiAwayTeam: knockoutTarget.apiAwayTeam || "",
-        homeTeamOrigin: knockoutTarget.homeTeamOrigin || "",
-        awayTeamOrigin: knockoutTarget.awayTeamOrigin || "",
         footballDataId: knockoutTarget.footballDataId,
-        apiMatchNumber: knockoutTarget.apiMatchNumber || footballApiMatchNumberV357(apiMatch) || "",
         footballDataStatus: knockoutTarget.footballDataStatus,
         footballDataStage: knockoutTarget.footballDataStage,
         footballDataGroup: knockoutTarget.footballDataGroup,
@@ -1706,13 +1655,8 @@ async function runFootballDataSyncCoreV151(options = {}) {
         qualified: knockoutTarget.qualified || knockoutTarget.winnerTeam || knockoutTarget.winner || "",
         homeScore: knockoutTarget.homeScore ?? null,
         awayScore: knockoutTarget.awayScore ?? null,
-        homePenalties: knockoutTarget.homePenalties ?? null,
-        awayPenalties: knockoutTarget.awayPenalties ?? null,
         liveHomeScore: knockoutTarget.liveHomeScore ?? null,
         liveAwayScore: knockoutTarget.liveAwayScore ?? null,
-        nextMatchId: knockoutTarget.nextMatchId || "",
-        nextSlot: knockoutTarget.nextSlot || "",
-        nextCleanId: knockoutTarget.nextCleanId || "",
         scoreConfirmed: knockoutTarget.scoreConfirmed === true,
         pointsConfirmed: knockoutTarget.pointsConfirmed === true,
         updatedAt: knockoutTarget.updatedAt,
@@ -1722,9 +1666,7 @@ async function runFootballDataSyncCoreV151(options = {}) {
     }
   });
 
-  if (updatedKnockoutMatches.length || knockoutApiScheduleV271.updated) {
-    // v357: depois de a API preencher os 16 avos/resultados, propagar vencedores pela árvore oficial corrigida.
-    footballApplyOfficialKnockoutBracketV357(knockoutMatches);
+  if (updatedKnockoutMatches.length) {
     knockoutPropagationChanged = footballSmartPropagateKnockoutV201(knockoutMatches);
   }
 
@@ -1756,6 +1698,8 @@ async function runFootballDataSyncCoreV151(options = {}) {
     knockoutApiScheduleUpdated: knockoutApiScheduleV271.updated,
     knockoutApiScheduleChecked: knockoutApiScheduleV271.checked,
     knockoutApiScheduleWithTeams: knockoutApiScheduleV271.withTeams,
+    knockoutApiScheduleConflicts: knockoutApiScheduleV271.conflicts || [],
+    knockoutApiScheduleUnmatched: knockoutApiScheduleV271.unmatched || [],
     knockoutApiScheduleWithDate: knockoutApiScheduleV271.withDate,
     finalConfirmed,
     liveUpdated,
