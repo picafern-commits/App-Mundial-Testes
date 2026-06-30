@@ -18203,3 +18203,12 @@ html.app-modern-v314 .tab[aria-selected="true"]{
   .backup-grid-v340,
   .backup-counts-v340 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+
+/* v343-export-import-todas-apostas */
+#importAllBetsBtn,
+#exportAllBetsBtn{
+  white-space:nowrap;
+}
+
+/* v344-proteger-equipas-fase-final */

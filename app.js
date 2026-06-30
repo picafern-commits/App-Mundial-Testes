@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v342";
+const APP_VERSION_LABEL = "v344";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -28726,3 +28726,731 @@ if (typeof renderSettingsForm === "function" && !renderSettingsForm.__backupV340
 }
 
 setTimeout(renderBackupPanelV340, 800);
+
+
+/* v343 — Exportar/Importar TODAS as apostas em Excel.
+   Backup seguro: não mistura com o Excel Resultados antigo.
+   Importa criando/atualizando por id ou playerId+gameId, sem apagar por defeito.
+*/
+const APP_VERSION_V343_ALL_BETS_EXCEL = "343.0";
+
+function allBetsExcelToastV343(message) {
+  try { toast(message); } catch { alert(message); }
+}
+
+function allBetsExcelValueV343(value) {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "object") {
+    try { return JSON.stringify(value); } catch { return String(value); }
+  }
+  return value;
+}
+
+function allBetsExcelNumberOrBlankV343(value) {
+  if (value === "" || value === null || value === undefined) return "";
+  const number = Number(String(value).replace(",", "."));
+  return Number.isFinite(number) ? number : "";
+}
+
+function allBetsExcelBoolV343(value) {
+  if (value === true || value === false) return value;
+  const text = String(value ?? "").trim().toLowerCase();
+  if (["true", "sim", "yes", "1", "x"].includes(text)) return true;
+  if (["false", "nao", "não", "no", "0"].includes(text)) return false;
+  return "";
+}
+
+function allBetsExcelGameV343(bet) {
+  const ids = [
+    bet?.gameId,
+    bet?.matchId,
+    bet?.knockoutMatchId,
+    bet?.fixtureId
+  ].map(value => String(value || "")).filter(Boolean);
+
+  try {
+    const normal = games.find(game => ids.includes(String(game.id)));
+    if (normal) return { game: normal, type: "Calendario" };
+  } catch {}
+
+  try {
+    if (typeof knockoutMatchById === "function") {
+      for (const id of ids) {
+        const match = knockoutMatchById(id);
+        if (match) return { game: match, type: "Fase Final" };
+      }
+    }
+  } catch {}
+
+  try {
+    const match = (appSettings?.knockout?.matches || []).find(item => ids.includes(String(item.id)));
+    if (match) return { game: match, type: "Fase Final" };
+  } catch {}
+
+  return { game: null, type: bet?.type === "knockout" || bet?.knockout ? "Fase Final" : "Calendario" };
+}
+
+function allBetsExcelBetRowsV343() {
+  return (bets || []).map(bet => {
+    const info = allBetsExcelGameV343(bet);
+    const game = info.game || {};
+    const homeTeam = bet.homeTeam || game.homeTeam || game.home || "";
+    const awayTeam = bet.awayTeam || game.awayTeam || game.away || "";
+
+    return {
+      id: allBetsExcelValueV343(bet.id),
+      gameId: allBetsExcelValueV343(bet.gameId),
+      matchId: allBetsExcelValueV343(bet.matchId),
+      knockoutMatchId: allBetsExcelValueV343(bet.knockoutMatchId),
+      playerId: allBetsExcelValueV343(bet.playerId),
+      playerName: allBetsExcelValueV343(bet.playerName),
+      email: allBetsExcelValueV343(bet.email),
+      tipoJogo: info.type,
+      grupoFase: allBetsExcelValueV343(game.group || game.roundLabel || game.round || game.phase || ""),
+      jogo: `${homeTeam || ""} - ${awayTeam || ""}`,
+      equipaCasa: allBetsExcelValueV343(homeTeam),
+      equipaFora: allBetsExcelValueV343(awayTeam),
+      homeGuess: allBetsExcelValueV343(bet.homeGuess),
+      awayGuess: allBetsExcelValueV343(bet.awayGuess),
+      homeScore: allBetsExcelValueV343(bet.homeScore),
+      awayScore: allBetsExcelValueV343(bet.awayScore),
+      homePenalties: allBetsExcelValueV343(bet.homePenalties),
+      awayPenalties: allBetsExcelValueV343(bet.awayPenalties),
+      qualifiedTeam: allBetsExcelValueV343(bet.qualifiedTeam || bet.qualified || bet.qualifier || ""),
+      winnerTeam: allBetsExcelValueV343(bet.winnerTeam || bet.winner || bet.predictedWinner || ""),
+      predictedWinner: allBetsExcelValueV343(bet.predictedWinner || ""),
+      source: allBetsExcelValueV343(bet.source),
+      type: allBetsExcelValueV343(bet.type),
+      knockout: allBetsExcelValueV343(bet.knockout),
+      missed: allBetsExcelValueV343(bet.missed),
+      excluded: allBetsExcelValueV343(bet.excluded),
+      ownerEdited: allBetsExcelValueV343(bet.ownerEdited),
+      ownerEditedBy: allBetsExcelValueV343(bet.ownerEditedBy),
+      ownerEditedAt: allBetsExcelValueV343(bet.ownerEditedAt),
+      createdAt: allBetsExcelValueV343(bet.createdAt),
+      updatedAt: allBetsExcelValueV343(bet.updatedAt),
+      rawJson: JSON.stringify(bet)
+    };
+  });
+}
+
+function exportAllBetsExcelV343() {
+  if (!hasPermission("importExcel")) {
+    allBetsExcelToastV343("Sem permissão.");
+    return;
+  }
+  if (!window.XLSX) {
+    allBetsExcelToastV343("Biblioteca Excel ainda não carregou.");
+    return;
+  }
+
+  const rows = allBetsExcelBetRowsV343();
+  const headers = [
+    "id", "gameId", "matchId", "knockoutMatchId",
+    "playerId", "playerName", "email",
+    "tipoJogo", "grupoFase", "jogo", "equipaCasa", "equipaFora",
+    "homeGuess", "awayGuess", "homeScore", "awayScore",
+    "homePenalties", "awayPenalties",
+    "qualifiedTeam", "winnerTeam", "predictedWinner",
+    "source", "type", "knockout", "missed", "excluded",
+    "ownerEdited", "ownerEditedBy", "ownerEditedAt",
+    "createdAt", "updatedAt", "rawJson"
+  ];
+
+  const sheetData = [headers, ...rows.map(row => headers.map(header => row[header] ?? ""))];
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(sheetData);
+  ws["!cols"] = headers.map(header => {
+    if (["rawJson"].includes(header)) return { wch: 45 };
+    if (["playerName", "jogo", "ownerEditedBy"].includes(header)) return { wch: 28 };
+    if (["id", "gameId", "matchId", "knockoutMatchId", "updatedAt", "createdAt", "ownerEditedAt"].includes(header)) return { wch: 24 };
+    return { wch: 16 };
+  });
+  XLSX.utils.book_append_sheet(wb, ws, "Apostas");
+
+  const resumo = [
+    ["Backup de Todas as Apostas"],
+    ["Data", new Date().toLocaleString("pt-PT")],
+    ["Total apostas", rows.length],
+    ["Jogadores", new Set(rows.map(row => row.playerName).filter(Boolean)).size],
+    ["Jogos com apostas", new Set(rows.map(row => row.gameId).filter(Boolean)).size],
+    ["Nota", "Importa este ficheiro no botão Importar Todas as Apostas."]
+  ];
+  const wsResumo = XLSX.utils.aoa_to_sheet(resumo);
+  wsResumo["!cols"] = [{ wch: 28 }, { wch: 38 }];
+  XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
+
+  const filename = `Backup_Todas_Apostas_Mundial_2026_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  allBetsExcelToastV343(`Backup Excel exportado: ${rows.length} apostas.`);
+}
+
+function allBetsHeaderMapV343(headers) {
+  const map = {};
+  (headers || []).forEach((header, index) => {
+    const key = normalizeKey(header);
+    if (key) map[key] = index;
+  });
+  return map;
+}
+
+function allBetsCellV343(row, map, names) {
+  for (const name of names) {
+    const key = normalizeKey(name);
+    if (map[key] !== undefined) return cellText(row[map[key]]);
+  }
+  return "";
+}
+
+function allBetsParseJsonV343(value) {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function allBetsBuildImportedBetV343(row, map) {
+  const raw = allBetsParseJsonV343(allBetsCellV343(row, map, ["rawJson", "raw json", "json"]));
+
+  const gameId = allBetsCellV343(row, map, ["gameId", "game id", "id jogo"]) || raw.gameId || raw.matchId || raw.knockoutMatchId;
+  const matchId = allBetsCellV343(row, map, ["matchId", "match id"]) || raw.matchId || "";
+  const knockoutMatchId = allBetsCellV343(row, map, ["knockoutMatchId", "knockout match id"]) || raw.knockoutMatchId || "";
+  const playerName = allBetsCellV343(row, map, ["playerName", "player name", "jogador", "user"]) || raw.playerName || raw.name || "";
+  const playerId = allBetsCellV343(row, map, ["playerId", "player id"]) || raw.playerId || playerIdFromName(playerName || "Sem nome");
+  const id = allBetsCellV343(row, map, ["id"]) || raw.id || `${playerId}_${gameId}`;
+
+  if (!gameId || !playerName) return null;
+
+  const homeGuess = allBetsExcelNumberOrBlankV343(allBetsCellV343(row, map, ["homeGuess", "home guess", "aposta casa"]) || raw.homeGuess);
+  const awayGuess = allBetsExcelNumberOrBlankV343(allBetsCellV343(row, map, ["awayGuess", "away guess", "aposta fora"]) || raw.awayGuess);
+  const homeScore = allBetsExcelNumberOrBlankV343(allBetsCellV343(row, map, ["homeScore", "home score"]) || raw.homeScore);
+  const awayScore = allBetsExcelNumberOrBlankV343(allBetsCellV343(row, map, ["awayScore", "away score"]) || raw.awayScore);
+  const homePenalties = allBetsExcelNumberOrBlankV343(allBetsCellV343(row, map, ["homePenalties", "home penalties", "penaltis casa"]) || raw.homePenalties);
+  const awayPenalties = allBetsExcelNumberOrBlankV343(allBetsCellV343(row, map, ["awayPenalties", "away penalties", "penaltis fora"]) || raw.awayPenalties);
+  const qualifiedTeam = allBetsCellV343(row, map, ["qualifiedTeam", "qualified team", "equipa qualificada"]) || raw.qualifiedTeam || raw.qualified || raw.qualifier || "";
+  const winnerTeam = allBetsCellV343(row, map, ["winnerTeam", "winner team", "winner"]) || raw.winnerTeam || raw.winner || raw.predictedWinner || qualifiedTeam || "";
+  const predictedWinner = allBetsCellV343(row, map, ["predictedWinner", "predicted winner"]) || raw.predictedWinner || winnerTeam || qualifiedTeam || "";
+
+  const now = new Date().toISOString();
+
+  const imported = {
+    ...raw,
+    id,
+    gameId,
+    matchId,
+    knockoutMatchId,
+    playerId,
+    playerName,
+    email: allBetsCellV343(row, map, ["email"]) || raw.email || "",
+    homeGuess: homeGuess === "" ? raw.homeGuess : homeGuess,
+    awayGuess: awayGuess === "" ? raw.awayGuess : awayGuess,
+    homeScore: homeScore === "" ? raw.homeScore : homeScore,
+    awayScore: awayScore === "" ? raw.awayScore : awayScore,
+    homePenalties: homePenalties === "" ? raw.homePenalties : homePenalties,
+    awayPenalties: awayPenalties === "" ? raw.awayPenalties : awayPenalties,
+    qualifiedTeam,
+    qualified: qualifiedTeam || raw.qualified || "",
+    qualifier: qualifiedTeam || raw.qualifier || "",
+    winnerTeam,
+    winner: winnerTeam || raw.winner || "",
+    predictedWinner,
+    source: allBetsCellV343(row, map, ["source", "origem"]) || raw.source || "Backup Excel",
+    type: allBetsCellV343(row, map, ["type", "tipo"]) || raw.type || "",
+    knockout: allBetsExcelBoolV343(allBetsCellV343(row, map, ["knockout"]) || raw.knockout),
+    missed: allBetsExcelBoolV343(allBetsCellV343(row, map, ["missed"]) || raw.missed),
+    excluded: allBetsExcelBoolV343(allBetsCellV343(row, map, ["excluded"]) || raw.excluded),
+    ownerEdited: allBetsExcelBoolV343(allBetsCellV343(row, map, ["ownerEdited", "owner edited"]) || raw.ownerEdited),
+    ownerEditedBy: allBetsCellV343(row, map, ["ownerEditedBy", "owner edited by"]) || raw.ownerEditedBy || "",
+    ownerEditedAt: allBetsCellV343(row, map, ["ownerEditedAt", "owner edited at"]) || raw.ownerEditedAt || "",
+    updatedAt: allBetsCellV343(row, map, ["updatedAt", "updated at"]) || raw.updatedAt || now,
+    createdAt: allBetsCellV343(row, map, ["createdAt", "created at"]) || raw.createdAt || now,
+    restoredFromExcel: true,
+    restoredAt: now,
+    pendingSync: true
+  };
+
+  if (imported.knockout === "") delete imported.knockout;
+  if (imported.missed === "") delete imported.missed;
+  if (imported.excluded === "") delete imported.excluded;
+  if (imported.ownerEdited === "") delete imported.ownerEdited;
+
+  return imported;
+}
+
+function parseAllBetsWorkbookRowsV343(rows) {
+  const errors = [];
+  if (!rows || rows.length < 2) return { bets: [], errors: ["O ficheiro não tem linhas suficientes."] };
+
+  let headerRowIndex = rows.findIndex(row => (row || []).some(cell => normalizeKey(cell) === "gameid") && (row || []).some(cell => normalizeKey(cell) === "playername"));
+  if (headerRowIndex < 0) {
+    headerRowIndex = rows.findIndex(row => (row || []).some(cell => normalizeKey(cell) === "id jogo") && (row || []).some(cell => ["jogador", "user"].includes(normalizeKey(cell))));
+  }
+  if (headerRowIndex < 0) return { bets: [], errors: ["Não encontrei cabeçalho de apostas. Preciso de gameId e playerName."] };
+
+  const headers = rows[headerRowIndex] || [];
+  const map = allBetsHeaderMapV343(headers);
+  const imported = [];
+
+  for (let r = headerRowIndex + 1; r < rows.length; r += 1) {
+    const row = rows[r] || [];
+    if (!row.some(cell => cellText(cell))) continue;
+    const bet = allBetsBuildImportedBetV343(row, map);
+    if (!bet) {
+      errors.push(`Linha ${r + 1}: sem gameId/playerName.`);
+      continue;
+    }
+    imported.push(bet);
+  }
+
+  return { bets: imported, errors };
+}
+
+async function readAllBetsWorkbookV343(file) {
+  const workbook = await readWorkbookFile(file);
+  const sheetName = workbook.SheetNames.includes("Apostas") ? "Apostas" : workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  return XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, blankrows: false });
+}
+
+async function importAllBetsExcelFileV343(file) {
+  if (!hasPermission("importExcel")) {
+    allBetsExcelToastV343("Sem permissão.");
+    return;
+  }
+  if (!file) return;
+
+  try {
+    const rows = await readAllBetsWorkbookV343(file);
+    const parsed = parseAllBetsWorkbookRowsV343(rows);
+    if (!parsed.bets.length) {
+      alert(`Não encontrei apostas para importar.\n${parsed.errors.slice(0, 10).join("\n")}`);
+      return;
+    }
+
+    const uniquePlayers = new Set(parsed.bets.map(bet => bet.playerName).filter(Boolean));
+    const uniqueGames = new Set(parsed.bets.map(bet => bet.gameId).filter(Boolean));
+
+    const ok = confirm(
+      `Foram encontradas ${parsed.bets.length} apostas, ${uniquePlayers.size} jogadores e ${uniqueGames.size} jogos.\n\n` +
+      `Queres importar agora?\n\n` +
+      `Isto cria/atualiza apostas pelo id ou playerId+gameId e NÃO apaga as restantes.`
+    );
+    if (!ok) return;
+
+    const byKey = new Map();
+    (bets || []).forEach(bet => {
+      const key = bet.id || `${bet.playerId}_${bet.gameId}`;
+      byKey.set(String(key), bet);
+      byKey.set(`${bet.playerId}_${bet.gameId}`, bet);
+    });
+
+    const importedIds = [];
+    parsed.bets.forEach(imported => {
+      const candidateKeys = [
+        imported.id,
+        `${imported.playerId}_${imported.gameId}`,
+        `${imported.gameId}_${imported.playerId}`
+      ].map(value => String(value || "")).filter(Boolean);
+
+      const existing = candidateKeys.map(key => byKey.get(key)).find(Boolean);
+      const finalId = existing?.id || imported.id || `${imported.playerId}_${imported.gameId}`;
+      const finalBet = { ...(existing || {}), ...imported, id: finalId, updatedAt: imported.updatedAt || new Date().toISOString(), pendingSync: true };
+
+      byKey.set(finalId, finalBet);
+      byKey.set(`${finalBet.playerId}_${finalBet.gameId}`, finalBet);
+      byKey.set(`${finalBet.gameId}_${finalBet.playerId}`, finalBet);
+      importedIds.push(finalId);
+    });
+
+    // Remover duplicados por id real.
+    const uniqueById = new Map();
+    Array.from(byKey.values()).forEach(bet => {
+      if (!bet || !bet.id) return;
+      uniqueById.set(String(bet.id), bet);
+    });
+    bets = Array.from(uniqueById.values());
+
+    const importedUsers = new Set(appSettings.users || []);
+    parsed.bets.forEach(bet => importedUsers.add(bet.playerName));
+    appSettings.users = [...importedUsers].filter(Boolean).sort((a, b) => a.localeCompare(b, "pt", { sensitivity: "base" }));
+
+    markBetsPending(importedIds);
+    markSettingsPending();
+    saveLocalData("importar backup todas apostas Excel");
+    scheduleFullSync("importar backup todas apostas", 300);
+    addSystemLog("Backup Excel de apostas importado", `${parsed.bets.length} apostas importadas/atualizadas.`, {
+      bets: parsed.bets.length,
+      players: uniquePlayers.size,
+      games: uniqueGames.size,
+      warnings: parsed.errors.length
+    }, { sync: true });
+
+    renderAll();
+    allBetsExcelToastV343(`Importadas/atualizadas ${parsed.bets.length} apostas.`);
+    if (parsed.errors.length) {
+      console.warn("Avisos importação todas apostas:", parsed.errors);
+      alert(`Importação concluída com ${parsed.errors.length} avisos. Vê a consola para detalhes.`);
+    }
+  } catch (error) {
+    console.error("Erro ao importar todas as apostas:", error);
+    alert(`Erro ao importar backup de apostas: ${error.message || error}`);
+  }
+}
+
+function bindAllBetsExcelButtonsV343() {
+  $("exportAllBetsBtn")?.addEventListener("click", exportAllBetsExcelV343);
+  $("importAllBetsBtn")?.addEventListener("click", () => {
+    if (!hasPermission("importExcel")) return allBetsExcelToastV343("Sem permissão.");
+    $("allBetsExcelInput")?.click();
+  });
+  $("allBetsExcelInput")?.addEventListener("change", event => {
+    const file = event.target.files?.[0];
+    if (file) importAllBetsExcelFileV343(file);
+    event.target.value = "";
+  });
+}
+
+document.addEventListener("DOMContentLoaded", bindAllBetsExcelButtonsV343);
+bindAllBetsExcelButtonsV343();
+
+window.debugAllBetsExcelV343 = function debugAllBetsExcelV343() {
+  return {
+    version: APP_VERSION_V343_ALL_BETS_EXCEL,
+    totalBets: (bets || []).length,
+    players: new Set((bets || []).map(bet => bet.playerName).filter(Boolean)).size,
+    gamesWithBets: new Set((bets || []).map(bet => bet.gameId).filter(Boolean)).size,
+    exportButton: Boolean($("exportAllBetsBtn")),
+    importButton: Boolean($("importAllBetsBtn")),
+    fileInput: Boolean($("allBetsExcelInput"))
+  };
+};
+
+
+/* v344 — Proteção definitiva das equipas manuais da Fase Final.
+   Protege contra:
+   1) propagação automática;
+   2) Firebase settings antigo;
+   3) sync/API que chama propagação.
+*/
+const APP_VERSION_V344_KO_TEAM_TRUTH = "344.0";
+
+function koSlotManualFieldV344(slot) {
+  return slot === "awayTeam" ? "manualAwayTeam" : "manualHomeTeam";
+}
+function koSlotLockFieldV344(slot) {
+  return slot === "awayTeam" ? "manualAwayTeamLocked" : "manualHomeTeamLocked";
+}
+function koSlotOriginFieldV344(slot) {
+  return slot === "awayTeam" ? "awayTeamOrigin" : "homeTeamOrigin";
+}
+function koNowIsoV344() {
+  return new Date().toISOString();
+}
+function koManualMillisV344(match) {
+  const value = match?.manualTeamsUpdatedAt || match?.updatedAt || "";
+  const time = Date.parse(value);
+  return Number.isFinite(time) ? time : 0;
+}
+function koIsManualSlotV344(match, slot) {
+  const value = String(match?.[koSlotManualFieldV344(slot)] || "").trim();
+  return Boolean(match?.[koSlotLockFieldV344(slot)] && value);
+}
+function koManualValueV344(match, slot) {
+  return String(match?.[koSlotManualFieldV344(slot)] || "").trim();
+}
+function koEditorV344() {
+  return String(currentProfile?.email || currentUser?.email || currentProfile?.uid || currentUser?.uid || "admin").trim();
+}
+function koLockManualSlotV344(match, slot, value, reason = "manual") {
+  if (!match || (slot !== "homeTeam" && slot !== "awayTeam")) return;
+  const clean = String(value || "").trim();
+
+  match[slot] = clean;
+  match[koSlotManualFieldV344(slot)] = clean;
+  match[koSlotLockFieldV344(slot)] = Boolean(clean);
+  match[koSlotOriginFieldV344(slot)] = clean ? "manual" : "";
+
+  match.manualTeamsUpdatedAt = koNowIsoV344();
+  match.manualTeamsUpdatedBy = koEditorV344();
+  match.manualTeamsReason = reason;
+}
+function koUnlockManualSlotV344(match, slot) {
+  if (!match || (slot !== "homeTeam" && slot !== "awayTeam")) return;
+  match[koSlotManualFieldV344(slot)] = "";
+  match[koSlotLockFieldV344(slot)] = false;
+  match[koSlotOriginFieldV344(slot)] = "";
+  match.manualTeamsUpdatedAt = koNowIsoV344();
+  match.manualTeamsUpdatedBy = koEditorV344();
+}
+function koRestoreManualSlotsV344(match) {
+  if (!match) return;
+  ["homeTeam", "awayTeam"].forEach(slot => {
+    if (koIsManualSlotV344(match, slot)) {
+      match[slot] = koManualValueV344(match, slot);
+      match[koSlotOriginFieldV344(slot)] = "manual";
+    }
+  });
+}
+
+function koMatchKeyListV344(match) {
+  return [
+    match?.id,
+    match?.gameId,
+    match?.matchId,
+    match?.knockoutMatchId,
+    match?.cleanId,
+    match?.cleanMatchId,
+    match?.publicId,
+    match?.matchNumber ? `M${match.matchNumber}` : "",
+    match?.fifaMatchNumber ? `M${match.fifaMatchNumber}` : ""
+  ].map(value => String(value || "").trim()).filter(Boolean);
+}
+function koMatchSameV344(a, b) {
+  const aKeys = new Set(koMatchKeyListV344(a));
+  return koMatchKeyListV344(b).some(key => aKeys.has(key));
+}
+function koFindMatchingMatchV344(list, sourceMatch) {
+  return (list || []).find(match => koMatchSameV344(match, sourceMatch)) || null;
+}
+function koCopyManualSlotIfNewerV344(target, source, slot) {
+  if (!target || !source) return false;
+
+  const sourceManual = koIsManualSlotV344(source, slot);
+  const targetManual = koIsManualSlotV344(target, slot);
+  if (!sourceManual) return false;
+
+  const sourceTime = koManualMillisV344(source);
+  const targetTime = koManualMillisV344(target);
+
+  // A versão manual local ganha se a remota não tiver lock ou for mais antiga/igual.
+  if (!targetManual || sourceTime >= targetTime) {
+    target[slot] = koManualValueV344(source, slot);
+    target[koSlotManualFieldV344(slot)] = koManualValueV344(source, slot);
+    target[koSlotLockFieldV344(slot)] = true;
+    target[koSlotOriginFieldV344(slot)] = "manual";
+    target.manualTeamsUpdatedAt = source.manualTeamsUpdatedAt || target.manualTeamsUpdatedAt || koNowIsoV344();
+    target.manualTeamsUpdatedBy = source.manualTeamsUpdatedBy || target.manualTeamsUpdatedBy || "local";
+    target.manualTeamsReason = source.manualTeamsReason || target.manualTeamsReason || "preserve-local-manual";
+    return true;
+  }
+
+  return false;
+}
+function koProtectManualMatchesV344(targetSettings, sourceSettings = appSettings) {
+  try {
+    const targetMatches = targetSettings?.knockout?.matches || [];
+    const sourceMatches = sourceSettings?.knockout?.matches || [];
+    if (!Array.isArray(targetMatches) || !Array.isArray(sourceMatches)) return targetSettings;
+
+    targetMatches.forEach(target => {
+      const source = koFindMatchingMatchV344(sourceMatches, target);
+      if (!source) return;
+      koCopyManualSlotIfNewerV344(target, source, "homeTeam");
+      koCopyManualSlotIfNewerV344(target, source, "awayTeam");
+      koRestoreManualSlotsV344(target);
+    });
+  } catch (error) {
+    console.warn("v344: falhou proteger matches manuais", error);
+  }
+  return targetSettings;
+}
+function koProtectCurrentManualSlotsV344() {
+  try {
+    (appSettings?.knockout?.matches || []).forEach(koRestoreManualSlotsV344);
+  } catch {}
+}
+
+if (typeof mergeSettings === "function" && !mergeSettings.__protectKoManualV344) {
+  const originalMergeSettingsV344 = mergeSettings;
+  mergeSettings = function mergeSettingsProtectKoManualV344(remoteOrLocalSettings) {
+    const previousSettings = appSettings;
+    const merged = originalMergeSettingsV344.apply(this, arguments);
+    return koProtectManualMatchesV344(merged, previousSettings);
+  };
+  mergeSettings.__protectKoManualV344 = true;
+}
+
+if (typeof resetAutoKnockoutTeams === "function" && !resetAutoKnockoutTeams.__protectKoManualV344) {
+  resetAutoKnockoutTeams = function resetAutoKnockoutTeamsProtectKoManualV344() {
+    if (!appSettings.knockout || !Array.isArray(appSettings.knockout.matches)) return;
+
+    appSettings.knockout.matches.forEach(match => {
+      if (typeof isFirstKnockoutRound === "function" && isFirstKnockoutRound(match)) {
+        koRestoreManualSlotsV344(match);
+        return;
+      }
+
+      ["homeTeam", "awayTeam"].forEach(slot => {
+        if (koIsManualSlotV344(match, slot)) {
+          koRestoreManualSlotsV344(match);
+        } else {
+          match[slot] = "";
+          match[koSlotOriginFieldV344(slot)] = "";
+        }
+      });
+    });
+  };
+  resetAutoKnockoutTeams.__protectKoManualV344 = true;
+}
+
+if (typeof clearAutoKnockoutSlots === "function" && !clearAutoKnockoutSlots.__protectKoManualV344) {
+  clearAutoKnockoutSlots = function clearAutoKnockoutSlotsProtectKoManualV344() {
+    const matches = appSettings.knockout?.matches || [];
+    matches.forEach(match => {
+      const firstRound = typeof isManualKnockoutRound === "function" ? isManualKnockoutRound(match) : match?.round === "r32";
+      if (firstRound) {
+        koRestoreManualSlotsV344(match);
+        return;
+      }
+
+      const beforeTeams = `${match.homeTeam || ""}|${match.awayTeam || ""}`;
+
+      ["homeTeam", "awayTeam"].forEach(slot => {
+        if (koIsManualSlotV344(match, slot)) koRestoreManualSlotsV344(match);
+        else {
+          match[slot] = "";
+          match[koSlotOriginFieldV344(slot)] = "";
+        }
+      });
+
+      const afterTeams = `${match.homeTeam || ""}|${match.awayTeam || ""}`;
+      if (beforeTeams !== afterTeams) {
+        match.homeScore = null;
+        match.awayScore = null;
+        match.homePenalties = null;
+        match.awayPenalties = null;
+        match.winner = "";
+        match.winnerTeam = "";
+        match.qualified = "";
+      }
+    });
+  };
+  clearAutoKnockoutSlots.__protectKoManualV344 = true;
+}
+
+if (typeof propagateKnockoutWinners === "function" && !propagateKnockoutWinners.__protectKoManualV344) {
+  const originalKnockoutWinnerV344 = typeof knockoutWinner === "function" ? knockoutWinner : null;
+
+  propagateKnockoutWinners = function propagateKnockoutWinnersProtectKoManualV344(shouldSave = true) {
+    if (!appSettings.knockout || !Array.isArray(appSettings.knockout.matches)) return;
+
+    const matches = appSettings.knockout.matches;
+    const previousTeams = new Map(matches.map(match => [match.id, `${match.homeTeam || ""}|${match.awayTeam || ""}`]));
+
+    resetAutoKnockoutTeams();
+
+    matches.forEach(match => {
+      const winner = originalKnockoutWinnerV344 ? originalKnockoutWinnerV344(match) : "";
+      if (!winner || !match.nextMatchId || !match.nextSlot) return;
+
+      const next = matches.find(item => item.id === match.nextMatchId);
+      if (!next) return;
+
+      if (koIsManualSlotV344(next, match.nextSlot)) {
+        koRestoreManualSlotsV344(next);
+        return;
+      }
+
+      next[match.nextSlot] = winner;
+      next[koSlotOriginFieldV344(match.nextSlot)] = "auto";
+    });
+
+    matches.forEach(koRestoreManualSlotsV344);
+
+    if (typeof clearInvalidAutoKnockoutScores === "function") {
+      clearInvalidAutoKnockoutScores(previousTeams);
+    }
+
+    matches.forEach(koRestoreManualSlotsV344);
+
+    if (shouldSave) {
+      markSettingsPending();
+      saveLocalData("fase final propagada sem pisar manuais");
+      scheduleFullSync("fase final propagada", 300);
+    }
+  };
+  propagateKnockoutWinners.__protectKoManualV344 = true;
+}
+
+if (typeof mergeFootballDataKnockoutV139 === "function" && !mergeFootballDataKnockoutV139.__protectKoManualV344) {
+  const originalMergeFootballDataKnockoutV344 = mergeFootballDataKnockoutV139;
+  mergeFootballDataKnockoutV139 = function mergeFootballDataKnockoutProtectManualV344(knockoutMatches = []) {
+    const beforeSettings = JSON.parse(JSON.stringify(appSettings || {}));
+    const result = originalMergeFootballDataKnockoutV344.apply(this, arguments);
+    koProtectManualMatchesV344(appSettings, beforeSettings);
+    koProtectCurrentManualSlotsV344();
+    return result;
+  };
+  mergeFootballDataKnockoutV139.__protectKoManualV344 = true;
+}
+
+if (typeof saveKnockoutMatchFromAdmin === "function" && !saveKnockoutMatchFromAdmin.__protectKoManualV344) {
+  const originalSaveKnockoutMatchFromAdminV344 = saveKnockoutMatchFromAdmin;
+  saveKnockoutMatchFromAdmin = async function saveKnockoutMatchFromAdminProtectManualV344(matchId, sourceElement = null) {
+    const row = sourceElement?.closest?.(`[data-ko-admin="${CSS.escape(matchId)}"]`) ||
+      document.querySelector(`[data-ko-admin="${CSS.escape(matchId)}"]`);
+    const match = typeof knockoutMatchById === "function" ? knockoutMatchById(matchId) : null;
+
+    const beforeHome = String(match?.homeTeam || "");
+    const beforeAway = String(match?.awayTeam || "");
+    const nextHome = String(row?.querySelector?.(".ko-home-team,.ko-home-team-v339,[data-ko-team-slot='homeTeam']")?.value ?? beforeHome).trim();
+    const nextAway = String(row?.querySelector?.(".ko-away-team,.ko-away-team-v339,[data-ko-team-slot='awayTeam']")?.value ?? beforeAway).trim();
+
+    const result = await originalSaveKnockoutMatchFromAdminV344.apply(this, arguments);
+
+    const after = typeof knockoutMatchById === "function" ? knockoutMatchById(matchId) : match;
+    if (after) {
+      if (nextHome || nextHome !== beforeHome) koLockManualSlotV344(after, "homeTeam", nextHome, "admin-save-v344");
+      if (nextAway || nextAway !== beforeAway) koLockManualSlotV344(after, "awayTeam", nextAway, "admin-save-v344");
+
+      koProtectCurrentManualSlotsV344();
+      try { propagateKnockoutWinners(false); } catch {}
+      koProtectCurrentManualSlotsV344();
+
+      try { markSettingsPending?.(); } catch {}
+      try { saveLocalData?.("fase final equipa manual protegida v344"); } catch {}
+      try { scheduleFullSync?.("fase final equipa manual protegida", 350); } catch {}
+      try { saveSettingsFastToFirebase?.("fase final equipa manual protegida v344"); } catch {}
+    }
+
+    return result;
+  };
+  saveKnockoutMatchFromAdmin.__protectKoManualV344 = true;
+}
+
+window.debugFaseFinalEquipas = function debugFaseFinalEquipas() {
+  try { ensureKnockoutSettings(); } catch {}
+  try { koProtectCurrentManualSlotsV344(); } catch {}
+
+  const rows = (appSettings?.knockout?.matches || []).map(match => ({
+    idReal: match.id,
+    cleanId: match.cleanId || match.publicId || match.cleanMatchId || "",
+    round: match.round,
+    index: match.index,
+    homeTeam: match.homeTeam || "",
+    awayTeam: match.awayTeam || "",
+    manualHomeTeam: match.manualHomeTeam || "",
+    manualAwayTeam: match.manualAwayTeam || "",
+    manualHomeTeamLocked: Boolean(match.manualHomeTeamLocked),
+    manualAwayTeamLocked: Boolean(match.manualAwayTeamLocked),
+    homeOrigin: match.homeTeamOrigin || "",
+    awayOrigin: match.awayTeamOrigin || "",
+    manualTeamsUpdatedAt: match.manualTeamsUpdatedAt || "",
+    manualTeamsUpdatedBy: match.manualTeamsUpdatedBy || "",
+    nextMatchId: match.nextMatchId || "",
+    nextSlot: match.nextSlot || "",
+    footballDataId: match.footballDataId || "",
+    footballDataStatus: match.footballDataStatus || ""
+  }));
+
+  console.table(rows);
+  return rows;
+};
+
+koProtectCurrentManualSlotsV344();
+try { propagateKnockoutWinners(false); } catch {}
+koProtectCurrentManualSlotsV344();
