@@ -18253,3 +18253,51 @@ html.app-modern-v314 .tab[aria-selected="true"]{
 .private-bets-warning-v345{
   border-color:rgba(255,212,90,.32)!important;
 }
+
+
+/* v349-auditoria-fluidez-clean */
+html{
+  scroll-behavior:smooth;
+}
+body{
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+}
+body.has-open-modal-v349{
+  overflow:hidden;
+}
+.modal,
+.modal-content,
+#betsModal,
+#knockoutBetModalV241,
+.owner-edit-bet-modal-v334{
+  max-width:min(96vw, 980px);
+}
+.modal-content,
+#betsModal .modal-content,
+#knockoutBetModalV241 .modal-content,
+.owner-edit-bet-modal-v334{
+  max-height:92vh;
+  overflow:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+.select-clean-v349{
+  text-overflow:ellipsis;
+}
+button,
+select,
+input,
+textarea{
+  -webkit-tap-highlight-color:transparent;
+}
+@media (max-width: 760px){
+  .modal,
+  #betsModal,
+  #knockoutBetModalV241{
+    padding:10px!important;
+  }
+  .modal-content{
+    max-height:90vh!important;
+  }
+}
