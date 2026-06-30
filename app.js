@@ -10,7 +10,7 @@ const PENDING_SETTINGS_KEY = `${STORAGE_KEY}_pending_settings_v1`;
 const PORTUGAL_TZ = "Europe/Lisbon";
 const MAX_SYSTEM_LOGS = 200;
 const LOGS_PIN = "26160";
-const APP_VERSION_LABEL = "v333";
+const APP_VERSION_LABEL = "v335";
 const NOTIFICATIONS_READ_KEY_V164 = `${STORAGE_KEY}_notifications_read_v164`;
 const PUSH_DEVICE_KEY_V165 = `${STORAGE_KEY}_push_device_id_v165`;
 const PUSH_OPT_IN_DISMISSED_KEY_V182 = `${STORAGE_KEY}_push_opt_in_dismissed_v182`;
@@ -4630,7 +4630,7 @@ function renderKnockoutMatch(match, layoutKey = "") {
 
   return `
     <article class="knockout-match ${winner ? "has-winner" : ""} ${waiting ? "waiting" : ""} ${editable ? "ko-match-clickable" : ""}" data-ko-admin="${escapeHtml(match.id)}"${editableAttrs} ${layoutKey ? `data-ko-layout="${escapeHtml(layoutKey)}" style="--ko-match-offset:${knockoutLayoutValue(layoutKey)}px"` : ""}>
-      <div class="knockout-match-title">${escapeHtml(match.roundLabel)} ${match.index}</div>
+      <div class="knockout-match-title">${escapeHtml(match.roundLabel)} ${match.index}${match.matchNumber ? ` · Jogo ${escapeHtml(match.matchNumber)}` : ""}</div>
 
       <div class="ko-team ${winner === match.homeTeam ? "winner" : ""}">
         <span>${escapeHtml(match.homeTeam || "A definir")}</span>
@@ -4718,7 +4718,7 @@ function renderKnockoutAdmin() {
 
         return `
           <div class="ko-admin-row ko-admin-row-penalties ${firstRound ? "manual-round" : "auto-round"}" data-ko-admin="${escapeHtml(match.id)}">
-            <strong>${escapeHtml(match.roundLabel)} ${match.index}</strong>
+            <strong>${escapeHtml(match.roundLabel)} ${match.index}${match.matchNumber ? ` · Jogo ${escapeHtml(match.matchNumber)}` : ""}</strong>
             ${homeControl}
             <span>vs</span>
             ${awayControl}
@@ -26928,3 +26928,829 @@ window.debugKnockoutPointsV333 = function debugKnockoutPointsV333(playerName = "
     return { player: name, points: stats.points, knockoutPoints: stats.knockoutPoints, qualifiedHits: stats.qualified, rows };
   });
 };
+
+
+/* v334 — Lápis/edição manual do Dono nas apostas da Fase Final
+   Correção cirúrgica: usa gameId real, não depende do título do modal nem de "desbloquear apostas".
+*/
+const APP_VERSION_V334_OWNER_EDIT_BETS = "334.0";
+let ownerEditCurrentGameIdV334 = "";
+
+function isOwnerForEditBetsV334() {
+  try { return typeof normalizeRole === "function" && normalizeRole(currentProfile?.role || "") === "owner"; } catch {}
+  try { return currentProfile?.role === "owner" || currentProfile?.role === "dono"; } catch {}
+  return false;
+}
+
+function ownerToastV334(message) {
+  try { if (typeof toast === "function") return toast(message); } catch {}
+  try { alert(message); } catch {}
+}
+
+function ownerEditTeamNameV334(value, fallback = "") {
+  if (!value) return fallback;
+  if (typeof value === "string") return value;
+  return String(value.name || value.nome || value.shortName || value.tla || fallback || "");
+}
+
+function ownerEditMatchByIdV334(id) {
+  const value = String(id || "");
+  if (!value) return null;
+
+  try {
+    if (typeof knockoutMatchById === "function") {
+      const found = knockoutMatchById(value);
+      if (found) return found;
+    }
+  } catch {}
+
+  try {
+    const matches = typeof knockoutMatches === "function" ? knockoutMatches() : (appSettings?.knockout?.matches || []);
+    return (matches || []).find(match => {
+      const ids = [match.id, match.gameId, match.matchId, match.knockoutMatchId, match.sourceMatchId].map(item => String(item || ""));
+      return ids.includes(value);
+    }) || null;
+  } catch {}
+
+  return null;
+}
+
+function ownerEditResolveGameV334(gameId) {
+  const requested = String(gameId || "");
+  let game = null;
+  let match = null;
+
+  try {
+    game = (games || []).find(item => {
+      const ids = [item.id, item.gameId, item.matchId, item.knockoutMatchId, item.sourceMatchId].map(value => String(value || ""));
+      return ids.includes(requested);
+    }) || null;
+  } catch {}
+
+  try {
+    if (game && typeof isKnockoutCalendarGameV259 === "function" && isKnockoutCalendarGameV259(game) && typeof knockoutMatchFromCalendarGameV259 === "function") {
+      match = knockoutMatchFromCalendarGameV259(game);
+    }
+  } catch {}
+
+  if (!match) match = ownerEditMatchByIdV334(requested);
+
+  if (!match && game) {
+    const ids = [game.id, game.matchId, game.knockoutMatchId, game.sourceMatchId].map(value => String(value || "")).filter(Boolean);
+    match = ids.map(ownerEditMatchByIdV334).find(Boolean) || null;
+  }
+
+  if (!game && match) {
+    try {
+      game = (games || []).find(item => {
+        const ids = [item.id, item.gameId, item.matchId, item.knockoutMatchId, item.sourceMatchId].map(value => String(value || ""));
+        return ids.includes(String(match.id || "")) || ids.includes(String(match.gameId || ""));
+      }) || null;
+    } catch {}
+  }
+
+  if (!game && match) {
+    game = {
+      ...match,
+      id: match.id,
+      homeTeam: ownerEditTeamNameV334(match.homeTeam || match.home || match.teamA || match.equipaA, "Casa"),
+      awayTeam: ownerEditTeamNameV334(match.awayTeam || match.away || match.teamB || match.equipaB, "Fora"),
+      group: match.roundLabel || match.round || match.phase || match.fase || "Fase Final",
+      matchDate: match.matchDate || match.date || match.kickoffAt || match.kickoff || match.startTime || ""
+    };
+  }
+
+  const isKnockout = Boolean(
+    match ||
+    game?.knockoutMatchId ||
+    game?.type === "knockout" ||
+    String(`${game?.group || ""} ${game?.phase || ""} ${game?.round || ""} ${game?.roundLabel || ""}`).toLowerCase().match(/fase final|oitavos|quartos|meias|final|16 avos|r16|qf|sf/)
+  );
+
+  if (!isKnockout) return { game: null, match: null, ids: [], realGameId: "" };
+
+  const realGameId = String(match?.id || game?.knockoutMatchId || game?.matchId || game?.id || requested);
+  const ids = [...new Set([
+    requested,
+    realGameId,
+    game?.id,
+    game?.gameId,
+    game?.matchId,
+    game?.knockoutMatchId,
+    game?.sourceMatchId,
+    match?.id,
+    match?.gameId,
+    match?.matchId,
+    match?.knockoutMatchId
+  ].map(value => String(value || "")).filter(Boolean))];
+
+  return { game, match: match || game, ids, realGameId };
+}
+
+function ownerEditTeamsV334(matchOrGame) {
+  return {
+    home: ownerEditTeamNameV334(matchOrGame?.homeTeam || matchOrGame?.home || matchOrGame?.teamA || matchOrGame?.equipaA, "Casa"),
+    away: ownerEditTeamNameV334(matchOrGame?.awayTeam || matchOrGame?.away || matchOrGame?.teamB || matchOrGame?.equipaB, "Fora")
+  };
+}
+
+function ownerEditPlayerIdV334(player) {
+  const raw = String(player?.id || player?.playerId || player?.linkedPlayerId || player?.email || player?.name || "").trim();
+  if (raw) return raw;
+  try { return playerIdFromName(player?.name || "Jogador"); } catch {}
+  return String(player?.name || "Jogador").replace(/\s+/g, "_");
+}
+
+function ownerEditPlayersV334() {
+  const map = new Map();
+  const add = player => {
+    if (!player) return;
+    const name = String(player.name || player.playerName || player.linkedPlayerName || player.displayName || player.email || player.id || "Jogador").trim();
+    const id = String(player.id || player.playerId || player.linkedPlayerId || player.uid || player.email || name).trim();
+    const email = String(player.email || player.linkedEmail || "").trim();
+    if (!id && !name) return;
+    const key = id || name;
+    if (!map.has(key)) map.set(key, { id: key, name, email });
+  };
+
+  try {
+    if (typeof playersCatalogV241 === "function") playersCatalogV241().forEach(add);
+  } catch {}
+
+  try {
+    (permissionsCache || []).forEach(user => {
+      add({
+        id: user.linkedPlayerId || user.playerId || user.uid || user.email,
+        name: user.linkedPlayerName || user.playerName || user.name || user.displayName || user.email,
+        email: user.email
+      });
+    });
+  } catch {}
+
+  try {
+    const users = appSettings?.users || {};
+    if (Array.isArray(users)) {
+      users.forEach(user => add({
+        id: user.linkedPlayerId || user.playerId || user.uid || user.email,
+        name: user.linkedPlayerName || user.playerName || user.displayName || user.name || user.email,
+        email: user.email
+      }));
+    } else {
+      Object.entries(users).forEach(([key, user]) => add({
+        id: user.linkedPlayerId || user.playerId || user.uid || user.email || key,
+        name: user.linkedPlayerName || user.playerName || user.displayName || user.name || user.email || key,
+        email: user.email || key
+      }));
+    }
+  } catch {}
+
+  try {
+    (bets || []).forEach(bet => add({
+      id: bet.playerId || bet.userId || bet.uid || bet.email || bet.playerName,
+      name: bet.playerName || bet.userName || bet.displayName || bet.name || bet.email,
+      email: bet.email
+    }));
+  } catch {}
+
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, "pt", { sensitivity: "base" }));
+}
+
+function ownerEditBetPlayerIdV334(bet) {
+  return String(bet?.playerId || bet?.userId || bet?.uid || bet?.email || bet?.playerName || "");
+}
+
+function ownerEditBetGameIdV334(bet) {
+  return String(bet?.gameId || bet?.matchId || bet?.knockoutMatchId || bet?.fixtureId || "");
+}
+
+function ownerEditBetMatchesGameV334(bet, resolved) {
+  const ids = resolved?.ids || [];
+  return ids.includes(ownerEditBetGameIdV334(bet)) ||
+    ids.includes(String(bet?.matchId || "")) ||
+    ids.includes(String(bet?.knockoutMatchId || ""));
+}
+
+function ownerEditBetsForGameV334(resolved) {
+  const ids = resolved?.ids || [];
+  const seen = new Set();
+  const rows = [];
+
+  try {
+    ids.forEach(id => {
+      (typeof betsForGame === "function" ? betsForGame(id) : []).forEach(bet => rows.push(bet));
+    });
+  } catch {}
+
+  try {
+    (bets || []).filter(bet => ownerEditBetMatchesGameV334(bet, resolved)).forEach(bet => rows.push(bet));
+  } catch {}
+
+  return rows.filter(bet => {
+    const key = String(bet?.id || `${ownerEditBetGameIdV334(bet)}_${ownerEditBetPlayerIdV334(bet)}`);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function ownerEditBetForPlayerV334(resolved, playerId) {
+  const pid = String(playerId || "");
+  return ownerEditBetsForGameV334(resolved).find(bet => String(ownerEditBetPlayerIdV334(bet)) === pid) || null;
+}
+
+function ownerEditBetDisplayV334(bet) {
+  try { if (typeof knockoutBetDisplay === "function") return knockoutBetDisplay(bet); } catch {}
+  const home = bet?.homeGuess ?? bet?.homeScore ?? bet?.homeGoals ?? bet?.predictedHome ?? bet?.home ?? "-";
+  const away = bet?.awayGuess ?? bet?.awayScore ?? bet?.awayGoals ?? bet?.predictedAway ?? bet?.away ?? "-";
+  const q = bet?.qualifiedTeam || bet?.winnerTeam || bet?.winner || bet?.qualifier || bet?.qualified || "";
+  return `${home}-${away}${q ? ` · ${q}` : ""}`;
+}
+
+function ownerEditBetResultClassV334(bet, match) {
+  try {
+    if (typeof knockoutMatchHasResult === "function" && knockoutMatchHasResult(match) && typeof knockoutBetResultClass === "function") {
+      return knockoutBetResultClass(bet, match);
+    }
+  } catch {}
+  return "pending";
+}
+
+function ownerEditBetResultLabelV334(bet, match) {
+  try {
+    if (typeof knockoutMatchHasResult === "function" && knockoutMatchHasResult(match) && typeof knockoutBetResultLabel === "function") {
+      return knockoutBetResultLabel(bet, match);
+    }
+  } catch {}
+  return "Por jogar";
+}
+
+function ownerEditBetPointsV334(bet, match) {
+  try {
+    if (typeof knockoutMatchHasResult === "function" && knockoutMatchHasResult(match) && typeof pointsForKnockoutBet === "function") {
+      return pointsForKnockoutBet(bet, match);
+    }
+  } catch {}
+  return "-";
+}
+
+function showOwnerEditBetsModalV334(gameId) {
+  const resolved = ownerEditResolveGameV334(gameId);
+  if (!resolved.match || !resolved.game) return false;
+
+  const modal = $("betsModal");
+  const title = $("betsModalTitle");
+  const subtitle = $("betsModalSubtitle");
+  const summary = $("betsGameSummary");
+  const body = $("betsModalBody");
+  if (!modal || !title || !subtitle || !summary || !body) return false;
+
+  const teams = ownerEditTeamsV334(resolved.match || resolved.game);
+  const rows = ownerEditBetsForGameV334(resolved).sort((a, b) =>
+    Number(ownerEditBetPointsV334(b, resolved.match) || 0) - Number(ownerEditBetPointsV334(a, resolved.match) || 0) ||
+    String(a.playerName || "").localeCompare(String(b.playerName || ""), "pt")
+  );
+  const hasResult = typeof knockoutMatchHasResult === "function" ? knockoutMatchHasResult(resolved.match) : false;
+  const totalPoints = rows.reduce((sum, bet) => sum + Number(ownerEditBetPointsV334(bet, resolved.match) || 0), 0);
+  const players = ownerEditPlayersV334();
+  const bettors = new Set(rows.map(ownerEditBetPlayerIdV334).filter(Boolean));
+  const missingPlayers = players.filter(player => !bettors.has(String(player.id)));
+
+  ownerEditCurrentGameIdV334 = resolved.realGameId;
+  modal.dataset.ownerEditGameV334 = resolved.realGameId;
+  modal.dataset.ownerEditRequestedGameV334 = String(gameId || "");
+  modal.dataset.ownerEditIdsV334 = JSON.stringify(resolved.ids);
+
+  title.textContent = `${teams.home} - ${teams.away}`;
+  subtitle.textContent = `${resolved.game.group || resolved.match.roundLabel || resolved.match.round || "Fase Final"} · edição segura por gameId`;
+  summary.innerHTML = `
+    <div class="bets-summary-card main">
+      <span>Resultado</span>
+      <strong>${hasResult ? `${resolved.match.homeScore ?? resolved.game.homeScore}-${resolved.match.awayScore ?? resolved.game.awayScore}` : "Por colocar"}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Apostas</span>
+      <strong>${rows.length}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Jogadores sem aposta</span>
+      <strong>${missingPlayers.length}</strong>
+    </div>
+    <div class="bets-summary-card">
+      <span>Pontos</span>
+      <strong>${hasResult ? totalPoints : "-"}</strong>
+    </div>
+  `;
+
+  const canEdit = isOwnerForEditBetsV334();
+
+  body.innerHTML = `
+    ${canEdit ? `
+      <div class="ko-owner-edit-bar-v334">
+        <span>Dono: podes editar apostas deste jogo mesmo bloqueado, sem desbloquear para os users.</span>
+        <button type="button" class="primary" id="ownerAddEditBetV334" data-game-id="${escapeHtml(resolved.realGameId)}">Adicionar/editar aposta de jogador</button>
+      </div>
+    ` : ""}
+    ${rows.length ? `
+      <div class="bets-list-head ko-owner-list-head-v334">
+        <span>Jogador</span>
+        <span>Aposta</span>
+        <span>Tipo</span>
+        <span>Pontos</span>
+        ${canEdit ? "<span>Editar</span>" : ""}
+      </div>
+      <div class="bets-list">
+        ${rows.map((bet, index) => {
+          const playerId = ownerEditBetPlayerIdV334(bet);
+          const typeClass = ownerEditBetResultClassV334(bet, resolved.match);
+          const label = ownerEditBetResultLabelV334(bet, resolved.match);
+          const points = ownerEditBetPointsV334(bet, resolved.match);
+          return `
+            <article class="bet-user-row ${typeClass} ko-owner-row-v334" data-owner-bet-player-v334="${escapeHtml(playerId)}">
+              <div class="bet-user-main" data-label="Jogador">
+                <span class="bet-position">${index + 1}</span>
+                <strong title="${escapeHtml(bet.playerName || playerId || "Jogador")}">${escapeHtml(bet.playerName || playerId || "Jogador")}</strong>
+              </div>
+              <div class="bet-score-pill" data-label="Aposta">${escapeHtml(ownerEditBetDisplayV334(bet))}</div>
+              <div class="bet-type-pill" data-label="Tipo">${escapeHtml(label)}</div>
+              <b data-label="Pontos">${hasResult ? points : "-"}</b>
+              ${canEdit ? `
+                <button
+                  type="button"
+                  class="ko-owner-edit-btn-v334"
+                  title="Editar aposta como Dono"
+                  data-game-id="${escapeHtml(resolved.realGameId)}"
+                  data-player-id="${escapeHtml(playerId)}"
+                >✏️</button>
+              ` : ""}
+            </article>
+          `;
+        }).join("")}
+      </div>
+    ` : `<div class="empty">Ainda não existem apostas para este jogo.</div>`}
+  `;
+
+  modal.classList.remove("hidden");
+  return true;
+}
+
+function openOwnerEditBetModal(gameId, playerId = "") {
+  if (!isOwnerForEditBetsV334()) return ownerToastV334("Só o Dono pode editar apostas.");
+  const resolved = ownerEditResolveGameV334(gameId || ownerEditCurrentGameIdV334 || document.getElementById("betsModal")?.dataset.ownerEditGameV334 || "");
+  if (!resolved.match) return ownerToastV334("Jogo da Fase Final não encontrado pelo ID real.");
+
+  const teams = ownerEditTeamsV334(resolved.match || resolved.game);
+  const players = ownerEditPlayersV334();
+  const selected = players.find(player => String(player.id) === String(playerId)) || players[0];
+  if (!selected) return ownerToastV334("Ainda não existem jogadores para editar.");
+
+  const bet = ownerEditBetForPlayerV334(resolved, selected.id);
+  const home = bet?.homeGuess ?? bet?.homeScore ?? bet?.homeGoals ?? bet?.predictedHome ?? "";
+  const away = bet?.awayGuess ?? bet?.awayScore ?? bet?.awayGoals ?? bet?.predictedAway ?? "";
+  const qualified = bet?.qualifiedTeam || bet?.winnerTeam || bet?.winner || bet?.qualifier || bet?.qualified || bet?.predictedWinner || "";
+
+  document.getElementById("ownerEditBetModalV334")?.remove();
+  const modal = document.createElement("div");
+  modal.id = "ownerEditBetModalV334";
+  modal.className = "owner-edit-bet-backdrop-v334";
+  modal.innerHTML = `
+    <section class="owner-edit-bet-modal-v334" role="dialog" aria-modal="true">
+      <header>
+        <div>
+          <span>Dono · edição manual</span>
+          <h3>${escapeHtml(teams.home)} vs ${escapeHtml(teams.away)}</h3>
+          <small>Esta edição não desbloqueia apostas para os users.</small>
+        </div>
+        <button type="button" class="icon-button" data-owner-edit-close-v334 aria-label="Fechar">×</button>
+      </header>
+
+      <div class="owner-edit-fields-v334">
+        <label>
+          <span>Jogador</span>
+          <select id="ownerEditPlayerV334">
+            ${players.map(player => `<option value="${escapeHtml(player.id)}" ${String(player.id) === String(selected.id) ? "selected" : ""}>${escapeHtml(player.name)}</option>`).join("")}
+          </select>
+        </label>
+
+        <div class="owner-edit-score-v334">
+          <label><span>${escapeHtml(teams.home)}</span><input id="ownerEditHomeV334" type="number" min="0" inputmode="numeric" value="${escapeHtml(home)}" /></label>
+          <b>VS</b>
+          <label><span>${escapeHtml(teams.away)}</span><input id="ownerEditAwayV334" type="number" min="0" inputmode="numeric" value="${escapeHtml(away)}" /></label>
+        </div>
+
+        <label>
+          <span>Equipa qualificada</span>
+          <select id="ownerEditQualifiedV334">
+            <option value="">Escolher equipa</option>
+            <option value="${escapeHtml(teams.home)}" ${normalizeComparable?.(qualified) === normalizeComparable?.(teams.home) ? "selected" : ""}>${escapeHtml(teams.home)}</option>
+            <option value="${escapeHtml(teams.away)}" ${normalizeComparable?.(qualified) === normalizeComparable?.(teams.away) ? "selected" : ""}>${escapeHtml(teams.away)}</option>
+          </select>
+        </label>
+      </div>
+
+      <footer>
+        <button type="button" class="danger" data-owner-edit-delete-v334="${escapeHtml(resolved.realGameId)}">Limpar aposta</button>
+        <div>
+          <button type="button" class="secondary" data-owner-edit-close-v334>Cancelar</button>
+          <button type="button" class="primary" data-owner-edit-save-v334="${escapeHtml(resolved.realGameId)}">Guardar</button>
+        </div>
+      </footer>
+    </section>
+  `;
+  modal.dataset.gameId = resolved.realGameId;
+  modal.dataset.requestedGameId = String(gameId || "");
+  document.body.appendChild(modal);
+  document.getElementById("ownerEditPlayerV334")?.addEventListener("change", event => openOwnerEditBetModal(resolved.realGameId, event.target.value));
+  setTimeout(() => document.getElementById("ownerEditHomeV334")?.focus(), 60);
+}
+
+function ownerEditedBetIdV334(gameId, playerId) {
+  return `${String(gameId || "").replace(/[^\w.-]/g, "_")}_${String(playerId || "").replace(/[^\w.-]/g, "_")}`;
+}
+
+async function saveOwnerEditedBet(gameId = "") {
+  if (!isOwnerForEditBetsV334()) return ownerToastV334("Só o Dono pode editar apostas.");
+  const modal = document.getElementById("ownerEditBetModalV334");
+  const resolved = ownerEditResolveGameV334(gameId || modal?.dataset.gameId || ownerEditCurrentGameIdV334);
+  if (!resolved.match) return ownerToastV334("Jogo da Fase Final não encontrado.");
+
+  const playerId = document.getElementById("ownerEditPlayerV334")?.value || "";
+  const player = ownerEditPlayersV334().find(item => String(item.id) === String(playerId));
+  if (!player) return ownerToastV334("Jogador não encontrado.");
+
+  const homeRaw = document.getElementById("ownerEditHomeV334")?.value ?? "";
+  const awayRaw = document.getElementById("ownerEditAwayV334")?.value ?? "";
+  const qualified = document.getElementById("ownerEditQualifiedV334")?.value || "";
+  if (homeRaw === "" || awayRaw === "") return ownerToastV334("Preenche o resultado.");
+  if (!qualified) return ownerToastV334("Escolhe a equipa qualificada.");
+
+  const home = Number(homeRaw);
+  const away = Number(awayRaw);
+  if (!Number.isFinite(home) || !Number.isFinite(away) || home < 0 || away < 0) return ownerToastV334("Resultado inválido.");
+
+  const teams = ownerEditTeamsV334(resolved.match || resolved.game);
+  const now = new Date().toISOString();
+  const existing = ownerEditBetForPlayerV334(resolved, player.id);
+  const newId = ownerEditedBetIdV334(resolved.realGameId, player.id);
+  const oldIds = ownerEditBetsForGameV334(resolved)
+    .filter(bet => String(ownerEditBetPlayerIdV334(bet)) === String(player.id))
+    .map(bet => bet.id)
+    .filter(Boolean);
+
+  const updated = {
+    ...(existing || {}),
+    id: existing?.id || newId,
+    gameId: resolved.realGameId,
+    matchId: resolved.match?.id || resolved.realGameId,
+    knockoutMatchId: resolved.match?.id || resolved.realGameId,
+    type: "knockout",
+    source: existing?.source || "FaseFinalOwnerEdit",
+    playerId: player.id,
+    playerName: player.name,
+    email: player.email || existing?.email || "",
+    homeGuess: home,
+    awayGuess: away,
+    homeScore: home,
+    awayScore: away,
+    homeGoals: home,
+    awayGoals: away,
+    predictedHome: home,
+    predictedAway: away,
+    qualifiedTeam: qualified,
+    qualified,
+    qualifier: qualified,
+    winner: qualified,
+    winnerTeam: qualified,
+    predictedWinner: qualified,
+    homeTeam: teams.home,
+    awayTeam: teams.away,
+    ownerEdited: true,
+    ownerEditedBy: currentProfile?.email || currentUser?.email || "owner",
+    ownerEditedAt: now,
+    updatedAt: now,
+    createdAt: existing?.createdAt || now,
+    pendingSync: true
+  };
+
+  if (!Array.isArray(bets)) bets = [];
+  bets = bets.filter(bet => !(ownerEditBetMatchesGameV334(bet, resolved) && String(ownerEditBetPlayerIdV334(bet)) === String(player.id)));
+  bets.push(updated);
+
+  const deleteIds = oldIds.filter(id => id && id !== updated.id);
+  try { if (deleteIds.length && typeof markBetsForDelete === "function") markBetsForDelete(deleteIds); } catch {}
+  try { if (typeof markBetsPending === "function") markBetsPending([updated.id]); } catch {}
+  try { saveLocalData?.("dono editou aposta fase final"); } catch {}
+  try { scheduleFullSync?.("dono editou aposta fase final", 250); } catch {}
+  try { addSystemLog?.("Aposta Fase Final editada pelo Dono", `${player.name} · ${teams.home} vs ${teams.away}`, { gameId: resolved.realGameId, playerId: player.id }, { sync: true }); } catch {}
+
+  document.getElementById("ownerEditBetModalV334")?.remove();
+  try { showGameBets?.(resolved.realGameId); } catch {}
+  try { renderCalendar?.(); } catch {}
+  try { renderKnockout?.(); } catch {}
+  try { renderScore?.(); } catch {}
+  ownerToastV334("Aposta guardada pelo Dono.");
+}
+
+async function deleteOwnerEditedBet(gameId = "") {
+  if (!isOwnerForEditBetsV334()) return ownerToastV334("Só o Dono pode limpar apostas.");
+  const modal = document.getElementById("ownerEditBetModalV334");
+  const resolved = ownerEditResolveGameV334(gameId || modal?.dataset.gameId || ownerEditCurrentGameIdV334);
+  if (!resolved.match) return ownerToastV334("Jogo da Fase Final não encontrado.");
+
+  const playerId = document.getElementById("ownerEditPlayerV334")?.value || "";
+  const player = ownerEditPlayersV334().find(item => String(item.id) === String(playerId));
+  if (!player) return ownerToastV334("Jogador não encontrado.");
+
+  const toDelete = ownerEditBetsForGameV334(resolved).filter(bet => String(ownerEditBetPlayerIdV334(bet)) === String(player.id));
+  if (!toDelete.length) return ownerToastV334("Este jogador ainda não tem aposta neste jogo.");
+  if (!confirm(`Limpar a aposta de ${player.name}?`)) return;
+
+  const deleteIds = toDelete.map(bet => bet.id).filter(Boolean);
+  bets = (bets || []).filter(bet => !(ownerEditBetMatchesGameV334(bet, resolved) && String(ownerEditBetPlayerIdV334(bet)) === String(player.id)));
+
+  try { if (deleteIds.length && typeof markBetsForDelete === "function") markBetsForDelete(deleteIds); } catch {}
+  try { saveLocalData?.("dono limpou aposta fase final"); } catch {}
+  try { scheduleFullSync?.("dono limpou aposta fase final", 250); } catch {}
+  try { addSystemLog?.("Aposta Fase Final limpa pelo Dono", `${player.name}`, { gameId: resolved.realGameId, playerId: player.id, deleted: deleteIds }, { sync: true }); } catch {}
+
+  document.getElementById("ownerEditBetModalV334")?.remove();
+  try { showGameBets?.(resolved.realGameId); } catch {}
+  try { renderCalendar?.(); } catch {}
+  try { renderKnockout?.(); } catch {}
+  try { renderScore?.(); } catch {}
+  ownerToastV334("Aposta limpa pelo Dono.");
+}
+
+function installOwnerEditBets() {
+  if (window.__ownerEditBetsV334) return;
+  window.__ownerEditBetsV334 = true;
+
+  const previousShowGameBetsV334 = typeof showGameBets === "function" ? showGameBets : null;
+  if (previousShowGameBetsV334 && !previousShowGameBetsV334.__ownerEditBetsV334) {
+    showGameBets = function showGameBetsOwnerEditBetsV334(gameId) {
+      ownerEditCurrentGameIdV334 = String(gameId || "");
+      const resolved = ownerEditResolveGameV334(gameId);
+      if (resolved.match && isOwnerForEditBetsV334()) {
+        return showOwnerEditBetsModalV334(gameId);
+      }
+      return previousShowGameBetsV334.apply(this, arguments);
+    };
+    showGameBets.__ownerEditBetsV334 = true;
+    window.showGameBets = showGameBets;
+  }
+
+  document.addEventListener("click", event => {
+    const openBets = event.target.closest?.("[data-bets-game]");
+    if (openBets) ownerEditCurrentGameIdV334 = String(openBets.dataset.betsGame || "");
+
+    const editBtn = event.target.closest?.(".ko-owner-edit-btn-v334");
+    if (editBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      openOwnerEditBetModal(editBtn.dataset.gameId || ownerEditCurrentGameIdV334, editBtn.dataset.playerId || "");
+      return;
+    }
+
+    const addBtn = event.target.closest?.("#ownerAddEditBetV334");
+    if (addBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      openOwnerEditBetModal(addBtn.dataset.gameId || ownerEditCurrentGameIdV334);
+      return;
+    }
+
+    const closeBtn = event.target.closest?.("[data-owner-edit-close-v334]");
+    if (closeBtn) {
+      event.preventDefault();
+      document.getElementById("ownerEditBetModalV334")?.remove();
+      return;
+    }
+
+    const saveBtn = event.target.closest?.("[data-owner-edit-save-v334]");
+    if (saveBtn) {
+      event.preventDefault();
+      saveOwnerEditedBet(saveBtn.dataset.ownerEditSaveV334 || saveBtn.getAttribute("data-owner-edit-save-v334") || ownerEditCurrentGameIdV334);
+      return;
+    }
+
+    const deleteBtn = event.target.closest?.("[data-owner-edit-delete-v334]");
+    if (deleteBtn) {
+      event.preventDefault();
+      deleteOwnerEditedBet(deleteBtn.dataset.ownerEditDeleteV334 || deleteBtn.getAttribute("data-owner-edit-delete-v334") || ownerEditCurrentGameIdV334);
+    }
+  }, true);
+}
+
+installOwnerEditBets();
+
+window.debugOwnerEditBetsV334 = function debugOwnerEditBetsV334(gameId = "") {
+  const gid = gameId || ownerEditCurrentGameIdV334 || document.getElementById("betsModal")?.dataset.ownerEditGameV334 || "";
+  const resolved = ownerEditResolveGameV334(gid);
+  return {
+    version: APP_VERSION_V334_OWNER_EDIT_BETS,
+    requestedGameId: gid,
+    realGameId: resolved.realGameId,
+    ids: resolved.ids,
+    isOwner: isOwnerForEditBetsV334(),
+    hasGame: Boolean(resolved.game),
+    hasMatch: Boolean(resolved.match),
+    players: ownerEditPlayersV334().length,
+    betsForGame: ownerEditBetsForGameV334(resolved).length,
+    modalOpen: Boolean(document.getElementById("betsModal") && !document.getElementById("betsModal").classList.contains("hidden")),
+    pencils: document.querySelectorAll(".ko-owner-edit-btn-v334").length,
+    addButton: Boolean(document.getElementById("ownerAddEditBetV334"))
+  };
+};
+
+
+/* v335 — Esquema oficial da Fase Final 2026.
+   Corrige a ordem e os cruzamentos:
+   R32 M73-M88 → R16 M89-M96 → QF M97-M100 → SF M101-M102 → Final M104.
+*/
+const OFFICIAL_KNOCKOUT_BRACKET_V335 = {
+  r32: [
+    { id: "ko_r32_01", matchNumber: 73, next: "ko_r16_01", slot: "homeTeam", displayOrder: 1 },
+    { id: "ko_r32_03", matchNumber: 75, next: "ko_r16_01", slot: "awayTeam", displayOrder: 2 },
+    { id: "ko_r32_02", matchNumber: 74, next: "ko_r16_02", slot: "homeTeam", displayOrder: 3 },
+    { id: "ko_r32_05", matchNumber: 77, next: "ko_r16_02", slot: "awayTeam", displayOrder: 4 },
+
+    { id: "ko_r32_11", matchNumber: 83, next: "ko_r16_05", slot: "homeTeam", displayOrder: 5 },
+    { id: "ko_r32_12", matchNumber: 84, next: "ko_r16_05", slot: "awayTeam", displayOrder: 6 },
+    { id: "ko_r32_09", matchNumber: 81, next: "ko_r16_06", slot: "homeTeam", displayOrder: 7 },
+    { id: "ko_r32_10", matchNumber: 82, next: "ko_r16_06", slot: "awayTeam", displayOrder: 8 },
+
+    { id: "ko_r32_04", matchNumber: 76, next: "ko_r16_03", slot: "homeTeam", displayOrder: 9 },
+    { id: "ko_r32_06", matchNumber: 78, next: "ko_r16_03", slot: "awayTeam", displayOrder: 10 },
+    { id: "ko_r32_07", matchNumber: 79, next: "ko_r16_04", slot: "homeTeam", displayOrder: 11 },
+    { id: "ko_r32_08", matchNumber: 80, next: "ko_r16_04", slot: "awayTeam", displayOrder: 12 },
+
+    { id: "ko_r32_14", matchNumber: 86, next: "ko_r16_07", slot: "homeTeam", displayOrder: 13 },
+    { id: "ko_r32_16", matchNumber: 88, next: "ko_r16_07", slot: "awayTeam", displayOrder: 14 },
+    { id: "ko_r32_13", matchNumber: 85, next: "ko_r16_08", slot: "homeTeam", displayOrder: 15 },
+    { id: "ko_r32_15", matchNumber: 87, next: "ko_r16_08", slot: "awayTeam", displayOrder: 16 }
+  ],
+  r16: [
+    { id: "ko_r16_01", matchNumber: 89, next: "ko_qf_01", slot: "homeTeam", displayOrder: 1 },
+    { id: "ko_r16_02", matchNumber: 90, next: "ko_qf_01", slot: "awayTeam", displayOrder: 2 },
+    { id: "ko_r16_05", matchNumber: 93, next: "ko_qf_02", slot: "homeTeam", displayOrder: 3 },
+    { id: "ko_r16_06", matchNumber: 94, next: "ko_qf_02", slot: "awayTeam", displayOrder: 4 },
+
+    { id: "ko_r16_03", matchNumber: 91, next: "ko_qf_03", slot: "homeTeam", displayOrder: 5 },
+    { id: "ko_r16_04", matchNumber: 92, next: "ko_qf_03", slot: "awayTeam", displayOrder: 6 },
+    { id: "ko_r16_07", matchNumber: 95, next: "ko_qf_04", slot: "homeTeam", displayOrder: 7 },
+    { id: "ko_r16_08", matchNumber: 96, next: "ko_qf_04", slot: "awayTeam", displayOrder: 8 }
+  ],
+  qf: [
+    { id: "ko_qf_01", matchNumber: 97, next: "ko_sf_01", slot: "homeTeam", displayOrder: 1 },
+    { id: "ko_qf_02", matchNumber: 98, next: "ko_sf_01", slot: "awayTeam", displayOrder: 2 },
+    { id: "ko_qf_03", matchNumber: 99, next: "ko_sf_02", slot: "homeTeam", displayOrder: 3 },
+    { id: "ko_qf_04", matchNumber: 100, next: "ko_sf_02", slot: "awayTeam", displayOrder: 4 }
+  ],
+  sf: [
+    { id: "ko_sf_01", matchNumber: 101, next: "ko_final_01", slot: "homeTeam", displayOrder: 1 },
+    { id: "ko_sf_02", matchNumber: 102, next: "ko_final_01", slot: "awayTeam", displayOrder: 2 }
+  ],
+  final: [
+    { id: "ko_final_01", matchNumber: 104, next: "", slot: "", displayOrder: 1 }
+  ]
+};
+
+function officialKnockoutEntryV335(matchOrId) {
+  const id = typeof matchOrId === "string" ? matchOrId : String(matchOrId?.id || "");
+  for (const entries of Object.values(OFFICIAL_KNOCKOUT_BRACKET_V335)) {
+    const found = entries.find(entry => entry.id === id);
+    if (found) return found;
+  }
+  return null;
+}
+
+function officialKnockoutOrderV335(match) {
+  const entry = officialKnockoutEntryV335(match);
+  if (entry) return entry.displayOrder;
+  return Number(match?.index || 999);
+}
+
+function officialKnockoutMatchNumberV335(match) {
+  return officialKnockoutEntryV335(match)?.matchNumber || match?.matchNumber || "";
+}
+
+function enforceOfficialKnockoutBracketV335() {
+  try {
+    if (!appSettings.knockout || !Array.isArray(appSettings.knockout.matches)) return;
+
+    const roundRank = { r32: 1, r16: 2, qf: 3, sf: 4, final: 5 };
+
+    appSettings.knockout.matches.forEach(match => {
+      const entry = officialKnockoutEntryV335(match);
+      if (!entry) return;
+
+      match.matchNumber = entry.matchNumber;
+      match.officialMatchNumber = entry.matchNumber;
+      match.officialOrder = entry.displayOrder;
+      match.nextMatchId = entry.next || "";
+      match.nextSlot = entry.slot || "";
+
+      if (entry.matchNumber) {
+        match.fifaMatchNumber = entry.matchNumber;
+      }
+    });
+
+    appSettings.knockout.matches.sort((a, b) =>
+      (roundRank[a.round] || 99) - (roundRank[b.round] || 99) ||
+      officialKnockoutOrderV335(a) - officialKnockoutOrderV335(b) ||
+      Number(a.index || 0) - Number(b.index || 0)
+    );
+  } catch (error) {
+    console.warn("Falhou aplicar esquema oficial da Fase Final v335:", error);
+  }
+}
+
+if (typeof ensureKnockoutSettings === "function" && !ensureKnockoutSettings.__officialBracketV335) {
+  const originalEnsureKnockoutSettingsV335 = ensureKnockoutSettings;
+  ensureKnockoutSettings = function ensureKnockoutSettingsOfficialBracketV335() {
+    const result = originalEnsureKnockoutSettingsV335.apply(this, arguments);
+    enforceOfficialKnockoutBracketV335();
+    try { propagateKnockoutWinners(false); } catch {}
+    return result;
+  };
+  ensureKnockoutSettings.__officialBracketV335 = true;
+}
+
+if (typeof buildKnockoutPhotoColumns === "function" && !window.__buildKnockoutPhotoColumnsV335) {
+  window.__buildKnockoutPhotoColumnsV335 = true;
+  buildKnockoutPhotoColumns = function buildKnockoutPhotoColumnsOfficialV335() {
+    const byRound = key => knockoutMatches()
+      .filter(match => match.round === key)
+      .sort((a, b) => officialKnockoutOrderV335(a) - officialKnockoutOrderV335(b));
+
+    const labels = {
+      r32: "16 avos de final",
+      r16: "Oitavos de final",
+      qf: "Quartos de final",
+      sf: "Meias-finais"
+    };
+
+    const split = key => {
+      const list = byRound(key);
+      const half = Math.ceil(list.length / 2);
+      return [list.slice(0, half), list.slice(half)];
+    };
+
+    const [r32Left, r32Right] = split("r32");
+    const [r16Left, r16Right] = split("r16");
+    const [qfLeft, qfRight] = split("qf");
+    const [sfLeft, sfRight] = split("sf");
+
+    return {
+      left: [
+        { key: "r32", side: "left", label: labels.r32, matches: r32Left },
+        { key: "r16", side: "left", label: labels.r16, matches: r16Left },
+        { key: "qf", side: "left", label: labels.qf, matches: qfLeft },
+        { key: "sf", side: "left", label: labels.sf, matches: sfLeft }
+      ],
+      right: [
+        { key: "sf", side: "right", label: labels.sf, matches: sfRight },
+        { key: "qf", side: "right", label: labels.qf, matches: qfRight },
+        { key: "r16", side: "right", label: labels.r16, matches: r16Right },
+        { key: "r32", side: "right", label: labels.r32, matches: r32Right }
+      ]
+    };
+  };
+}
+
+if (typeof knockoutRoundsForMobileV121 === "function" && !window.__knockoutRoundsForMobileV335) {
+  window.__knockoutRoundsForMobileV335 = true;
+  const originalKnockoutRoundsForMobileV335 = knockoutRoundsForMobileV121;
+  knockoutRoundsForMobileV121 = function knockoutRoundsForMobileOfficialV335() {
+    const rounds = originalKnockoutRoundsForMobileV335.apply(this, arguments);
+    return rounds.map(round => ({
+      ...round,
+      games: [...(round.games || [])].sort((a, b) => officialKnockoutOrderV335(a) - officialKnockoutOrderV335(b))
+    }));
+  };
+}
+
+const originalRenderKnockoutMatchV335 = typeof renderKnockoutMatch === "function" ? renderKnockoutMatch : null;
+if (originalRenderKnockoutMatchV335 && !window.__renderKnockoutMatchOfficialV335) {
+  window.__renderKnockoutMatchOfficialV335 = true;
+  renderKnockoutMatch = function renderKnockoutMatchOfficialNumberV335(match, layoutKey = "") {
+    enforceOfficialKnockoutBracketV335();
+    return originalRenderKnockoutMatchV335(match, layoutKey);
+  };
+}
+
+function debugOfficialKnockoutBracketV335() {
+  enforceOfficialKnockoutBracketV335();
+  return knockoutMatches().map(match => ({
+    id: match.id,
+    round: match.round,
+    index: match.index,
+    matchNumber: match.matchNumber,
+    displayOrder: match.officialOrder,
+    nextMatchId: match.nextMatchId,
+    nextSlot: match.nextSlot,
+    homeTeam: match.homeTeam,
+    awayTeam: match.awayTeam
+  }));
+}
+
+enforceOfficialKnockoutBracketV335();

@@ -17870,3 +17870,160 @@ html.app-modern-v314 .tab[aria-selected="true"]{
 }
 
 /* v333-pontos-qualificada */
+
+
+/* v334-owner-edit-bets */
+.ko-owner-edit-bar-v334{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  margin:0 0 12px!important;
+  padding:12px!important;
+  border-radius:16px!important;
+  border:1px solid rgba(255,212,90,.28)!important;
+  background:rgba(255,212,90,.10)!important;
+  color:#ffe390!important;
+}
+.ko-owner-edit-bar-v334 span{
+  font-weight:850!important;
+  font-size:13px!important;
+}
+.ko-owner-list-head-v334{
+  grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) .55fr .45fr!important;
+}
+.ko-owner-row-v334{
+  grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) .55fr .45fr!important;
+}
+.ko-owner-edit-btn-v334{
+  width:38px!important;
+  height:38px!important;
+  border-radius:14px!important;
+  border:1px solid rgba(255,212,90,.35)!important;
+  background:rgba(255,212,90,.14)!important;
+  color:#ffe390!important;
+  font-size:18px!important;
+  cursor:pointer!important;
+  justify-self:end!important;
+}
+.owner-edit-bet-backdrop-v334{
+  position:fixed!important;
+  inset:0!important;
+  z-index:1000000!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:18px!important;
+  background:rgba(0,0,0,.72)!important;
+  backdrop-filter:blur(8px)!important;
+}
+.owner-edit-bet-modal-v334{
+  width:min(560px,100%)!important;
+  border-radius:24px!important;
+  border:1px solid rgba(255,255,255,.14)!important;
+  background:linear-gradient(180deg,#111c2e,#070b13)!important;
+  color:#fff!important;
+  box-shadow:0 28px 90px rgba(0,0,0,.56)!important;
+  padding:18px!important;
+}
+.owner-edit-bet-modal-v334 header,
+.owner-edit-bet-modal-v334 footer{
+  display:flex!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  align-items:flex-start!important;
+}
+.owner-edit-bet-modal-v334 header span{
+  display:block!important;
+  color:#ffe390!important;
+  font-size:12px!important;
+  font-weight:950!important;
+  text-transform:uppercase!important;
+  letter-spacing:.06em!important;
+}
+.owner-edit-bet-modal-v334 h3{
+  margin:4px 0!important;
+  font-size:20px!important;
+}
+.owner-edit-bet-modal-v334 small{
+  color:rgba(255,255,255,.62)!important;
+}
+.owner-edit-fields-v334{
+  display:grid!important;
+  gap:14px!important;
+  margin:16px 0!important;
+}
+.owner-edit-fields-v334 label{
+  display:grid!important;
+  gap:7px!important;
+  font-size:13px!important;
+  font-weight:850!important;
+}
+.owner-edit-fields-v334 input,
+.owner-edit-fields-v334 select{
+  width:100%!important;
+  border-radius:14px!important;
+  border:1px solid rgba(255,255,255,.14)!important;
+  background:#0b1320!important;
+  color:#fff!important;
+  padding:12px!important;
+}
+.owner-edit-score-v334{
+  display:grid!important;
+  grid-template-columns:1fr auto 1fr!important;
+  align-items:end!important;
+  gap:10px!important;
+}
+.owner-edit-score-v334 b{
+  padding-bottom:13px!important;
+  color:rgba(255,255,255,.55)!important;
+}
+.owner-edit-bet-modal-v334 footer{
+  align-items:center!important;
+}
+.owner-edit-bet-modal-v334 footer > div{
+  display:flex!important;
+  gap:8px!important;
+}
+@media(max-width:760px){
+  .ko-owner-edit-bar-v334{
+    flex-direction:column!important;
+    align-items:stretch!important;
+  }
+  .ko-owner-list-head-v334{
+    display:none!important;
+  }
+  .ko-owner-row-v334{
+    grid-template-columns:1fr!important;
+  }
+  .ko-owner-edit-btn-v334{
+    justify-self:stretch!important;
+    width:100%!important;
+  }
+  .owner-edit-bet-backdrop-v334{
+    align-items:end!important;
+    padding:10px!important;
+  }
+  .owner-edit-bet-modal-v334{
+    max-height:88vh!important;
+    overflow:auto!important;
+    border-radius:24px 24px 16px 16px!important;
+  }
+  .owner-edit-score-v334{
+    grid-template-columns:1fr!important;
+  }
+  .owner-edit-score-v334 b{
+    padding:0!important;
+    text-align:center!important;
+  }
+  .owner-edit-bet-modal-v334 footer,
+  .owner-edit-bet-modal-v334 footer > div{
+    flex-direction:column!important;
+    align-items:stretch!important;
+  }
+}
+
+
+/* v335-esquema-fase-final-oficial */
+.knockout-match-title{
+  letter-spacing:.01em;
+}
