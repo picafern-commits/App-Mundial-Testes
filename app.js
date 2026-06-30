@@ -63,92 +63,92 @@ let firebaseReadyPromise = null;
 let authGateStarted = false;
 
 const MATCH_ROWS = [
-  ["Grupo A", "Mxico", "frica do Sul", "2026-06-11T20:00"],
-  ["Grupo A", "Coreia do Sul", "Chquia", "2026-06-12T03:00"],
+  ["Grupo A", "México", "África do Sul", "2026-06-11T20:00"],
+  ["Grupo A", "Coreia do Sul", "Chéquia", "2026-06-12T03:00"],
   ["Grupo B", "Canad", "Bsnia", "2026-06-12T20:00"],
   ["Grupo D", "Estados Unidos", "Paraguai", "2026-06-13T02:00"],
-  ["Grupo B", "Qatar", "Sua", "2026-06-13T20:00"],
+  ["Grupo B", "Qatar", "Suíça", "2026-06-13T20:00"],
   ["Grupo C", "Brasil", "Marrocos", "2026-06-13T23:00"],
   ["Grupo C", "Haiti", "Esccia", "2026-06-14T02:00"],
   ["Grupo D", "Austrlia", "Turquia", "2026-06-14T05:00"],
-  ["Grupo E", "Alemanha", "Curaao", "2026-06-14T18:00"],
-  ["Grupo F", "Pases Baixos", "Japo", "2026-06-14T21:00"],
+  ["Grupo E", "Alemanha", "Curaçao", "2026-06-14T18:00"],
+  ["Grupo F", "Países Baixos", "Japão", "2026-06-14T21:00"],
   ["Grupo E", "Costa do Marfim", "Equador", "2026-06-15T00:00"],
-  ["Grupo F", "Sucia", "Tunsia", "2026-06-15T03:00"],
+  ["Grupo F", "Suécia", "Tunsia", "2026-06-15T03:00"],
   ["Grupo H", "Espanha", "Cabo Verde", "2026-06-15T17:00"],
   ["Grupo G", "Blgica", "Egito", "2026-06-15T20:00"],
   ["Grupo H", "Arbia Saudita", "Uruguai", "2026-06-15T23:00"],
-  ["Grupo G", "Iro", "Nova Zelndia", "2026-06-16T02:00"],
-  ["Grupo I", "Frana", "Senegal", "2026-06-16T20:00"],
+  ["Grupo G", "Irão", "Nova Zelândia", "2026-06-16T02:00"],
+  ["Grupo I", "França", "Senegal", "2026-06-16T20:00"],
   ["Grupo I", "Iraque", "Noruega", "2026-06-16T23:00"],
-  ["Grupo J", "Argentina", "Arglia", "2026-06-17T02:00"],
-  ["Grupo J", "ustria", "Jordnia", "2026-06-17T05:00"],
+  ["Grupo J", "Argentina", "Argélia", "2026-06-17T02:00"],
+  ["Grupo J", "Áustria", "Jordânia", "2026-06-17T05:00"],
   ["Grupo K", "Portugal", "RD Congo", "2026-06-17T18:00"],
   ["Grupo L", "Inglaterra", "Crocia", "2026-06-17T21:00"],
-  ["Grupo L", "Gana", "Panam", "2026-06-18T00:00"],
-  ["Grupo K", "Uzbequisto", "Colmbia", "2026-06-18T03:00"],
-  ["Grupo A", "Chquia", "frica do Sul", "2026-06-18T17:00"],
-  ["Grupo B", "Sua", "Bsnia", "2026-06-18T20:00"],
+  ["Grupo L", "Gana", "Panamá", "2026-06-18T00:00"],
+  ["Grupo K", "Uzbequistão", "Colômbia", "2026-06-18T03:00"],
+  ["Grupo A", "Chéquia", "África do Sul", "2026-06-18T17:00"],
+  ["Grupo B", "Suíça", "Bsnia", "2026-06-18T20:00"],
   ["Grupo B", "Canad", "Qatar", "2026-06-18T23:00"],
-  ["Grupo A", "Mxico", "Coreia do Sul", "2026-06-19T02:00"],
+  ["Grupo A", "México", "Coreia do Sul", "2026-06-19T02:00"],
   ["Grupo D", "Estados Unidos", "Austrlia", "2026-06-19T20:00"],
   ["Grupo C", "Esccia", "Marrocos", "2026-06-19T23:00"],
   ["Grupo C", "Brasil", "Haiti", "2026-06-20T01:30"],
   ["Grupo D", "Turquia", "Paraguai", "2026-06-20T04:00"],
-  ["Grupo F", "Pases Baixos", "Sucia", "2026-06-20T18:00"],
+  ["Grupo F", "Países Baixos", "Suécia", "2026-06-20T18:00"],
   ["Grupo E", "Alemanha", "Costa do Marfim", "2026-06-20T21:00"],
-  ["Grupo E", "Equador", "Curaao", "2026-06-21T01:00"],
-  ["Grupo F", "Tunsia", "Japo", "2026-06-21T05:00"],
+  ["Grupo E", "Equador", "Curaçao", "2026-06-21T01:00"],
+  ["Grupo F", "Tunsia", "Japão", "2026-06-21T05:00"],
   ["Grupo H", "Espanha", "Arbia Saudita", "2026-06-21T17:00"],
-  ["Grupo G", "Blgica", "Iro", "2026-06-21T20:00"],
+  ["Grupo G", "Blgica", "Irão", "2026-06-21T20:00"],
   ["Grupo H", "Uruguai", "Cabo Verde", "2026-06-21T23:00"],
-  ["Grupo G", "Nova Zelndia", "Egito", "2026-06-22T02:00"],
-  ["Grupo J", "Argentina", "ustria", "2026-06-22T18:00"],
-  ["Grupo I", "Frana", "Iraque", "2026-06-22T22:00"],
+  ["Grupo G", "Nova Zelândia", "Egito", "2026-06-22T02:00"],
+  ["Grupo J", "Argentina", "Áustria", "2026-06-22T18:00"],
+  ["Grupo I", "França", "Iraque", "2026-06-22T22:00"],
   ["Grupo I", "Noruega", "Senegal", "2026-06-23T01:00"],
-  ["Grupo J", "Jordnia", "Arglia", "2026-06-23T04:00"],
-  ["Grupo K", "Portugal", "Uzbequisto", "2026-06-23T18:00"],
+  ["Grupo J", "Jordânia", "Argélia", "2026-06-23T04:00"],
+  ["Grupo K", "Portugal", "Uzbequistão", "2026-06-23T18:00"],
   ["Grupo L", "Inglaterra", "Gana", "2026-06-23T21:00"],
-  ["Grupo L", "Panam", "Crocia", "2026-06-24T00:00"],
-  ["Grupo K", "Colmbia", "RD Congo", "2026-06-24T03:00"],
-  ["Grupo B", "Sua", "Canad", "2026-06-24T20:00"],
+  ["Grupo L", "Panamá", "Crocia", "2026-06-24T00:00"],
+  ["Grupo K", "Colômbia", "RD Congo", "2026-06-24T03:00"],
+  ["Grupo B", "Suíça", "Canad", "2026-06-24T20:00"],
   ["Grupo B", "Bsnia", "Qatar", "2026-06-24T20:00"],
   ["Grupo C", "Esccia", "Brasil", "2026-06-24T23:00"],
   ["Grupo C", "Marrocos", "Haiti", "2026-06-24T23:00"],
-  ["Grupo A", "frica do Sul", "Coreia do Sul", "2026-06-25T02:00"],
-  ["Grupo A", "Chquia", "Mxico", "2026-06-25T02:00"],
-  ["Grupo E", "Curaao", "Costa do Marfim", "2026-06-25T21:00"],
+  ["Grupo A", "África do Sul", "Coreia do Sul", "2026-06-25T02:00"],
+  ["Grupo A", "Chéquia", "México", "2026-06-25T02:00"],
+  ["Grupo E", "Curaçao", "Costa do Marfim", "2026-06-25T21:00"],
   ["Grupo E", "Equador", "Alemanha", "2026-06-25T21:00"],
-  ["Grupo F", "Tunsia", "Pases Baixos", "2026-06-26T00:00"],
-  ["Grupo F", "Japo", "Sucia", "2026-06-26T00:00"],
+  ["Grupo F", "Tunsia", "Países Baixos", "2026-06-26T00:00"],
+  ["Grupo F", "Japão", "Suécia", "2026-06-26T00:00"],
   ["Grupo D", "Turquia", "Estados Unidos", "2026-06-26T03:00"],
   ["Grupo D", "Paraguai", "Austrlia", "2026-06-26T03:00"],
-  ["Grupo I", "Noruega", "Frana", "2026-06-26T20:00"],
+  ["Grupo I", "Noruega", "França", "2026-06-26T20:00"],
   ["Grupo I", "Senegal", "Iraque", "2026-06-26T20:00"],
   ["Grupo H", "Cabo Verde", "Arbia Saudita", "2026-06-27T01:00"],
   ["Grupo H", "Uruguai", "Espanha", "2026-06-27T01:00"],
-  ["Grupo G", "Nova Zelndia", "Blgica", "2026-06-27T04:00"],
-  ["Grupo G", "Egito", "Iro", "2026-06-27T04:00"],
-  ["Grupo L", "Panam", "Inglaterra", "2026-06-27T22:00"],
+  ["Grupo G", "Nova Zelândia", "Blgica", "2026-06-27T04:00"],
+  ["Grupo G", "Egito", "Irão", "2026-06-27T04:00"],
+  ["Grupo L", "Panamá", "Inglaterra", "2026-06-27T22:00"],
   ["Grupo L", "Crocia", "Gana", "2026-06-27T22:00"],
-  ["Grupo K", "Colmbia", "Portugal", "2026-06-28T00:30"],
-  ["Grupo K", "RD Congo", "Uzbequisto", "2026-06-28T00:30"],
-  ["Grupo J", "Arglia", "ustria", "2026-06-28T03:00"],
-  ["Grupo J", "Jordnia", "Argentina", "2026-06-28T03:00"]
+  ["Grupo K", "Colômbia", "Portugal", "2026-06-28T00:30"],
+  ["Grupo K", "RD Congo", "Uzbequistão", "2026-06-28T00:30"],
+  ["Grupo J", "Argélia", "Áustria", "2026-06-28T03:00"],
+  ["Grupo J", "Jordânia", "Argentina", "2026-06-28T03:00"]
 ];
 
 const FLAGS = {
   "Portugal": "",
-  "frica do Sul": "",
-  "Mxico": "",
+  "África do Sul": "",
+  "México": "",
   "Coreia do Sul": "",
-  "Chquia": "",
+  "Chéquia": "",
   "Canad": "",
   "Bsnia": "",
   "Estados Unidos": "",
   "Paraguai": "",
   "Qatar": "",
-  "Sua": "",
+  "Suíça": "",
   "Brasil": "",
   "Marrocos": "",
   "Haiti": "",
@@ -156,12 +156,12 @@ const FLAGS = {
   "Austrlia": "",
   "Turquia": "",
   "Alemanha": "",
-  "Curaao": "",
-  "Pases Baixos": "",
-  "Japo": "",
+  "Curaçao": "",
+  "Países Baixos": "",
+  "Japão": "",
   "Costa do Marfim": "",
   "Equador": "",
-  "Sucia": "",
+  "Suécia": "",
   "Tunsia": "",
   "Espanha": "",
   "Cabo Verde": "",
@@ -169,43 +169,43 @@ const FLAGS = {
   "Egito": "",
   "Arbia Saudita": "",
   "Uruguai": "",
-  "Iro": "",
-  "Nova Zelndia": "",
-  "Frana": "",
+  "Irão": "",
+  "Nova Zelândia": "",
+  "França": "",
   "Senegal": "",
   "Iraque": "",
   "Noruega": "",
   "Argentina": "",
-  "Arglia": "",
-  "ustria": "",
-  "Jordnia": "",
+  "Argélia": "",
+  "Áustria": "",
+  "Jordânia": "",
   "RD Congo": "",
   "Inglaterra": "",
   "Crocia": "",
   "Gana": "",
-  "Panam": "",
-  "Uzbequisto": "",
-  "Colmbia": ""
+  "Panamá": "",
+  "Uzbequistão": "",
+  "Colômbia": ""
 };
 
 const TEAM_ALIASES = {
-  "mexico": "Mxico", "africa do sul": "frica do Sul", "frica do sul": "frica do Sul",
-  "coreia do sul": "Coreia do Sul", "republica checa": "Chquia", "rep checa": "Chquia", "czechia": "Chquia", "czech republic": "Chquia", "repblica checa": "Chquia", "chequia": "Chquia", "chquia": "Chquia",
+  "mexico": "México", "africa do sul": "África do Sul", "frica do sul": "África do Sul",
+  "coreia do sul": "Coreia do Sul", "republica checa": "Chéquia", "rep checa": "Chéquia", "czechia": "Chéquia", "czech republic": "Chéquia", "repblica checa": "Chéquia", "chequia": "Chéquia", "chquia": "Chéquia",
   "canada": "Canad", "bosnia": "Bsnia", "bosnia e herzegovina": "Bsnia", "bsnia e herzegovina": "Bsnia", "bsnia": "Bsnia", "bosnia-herzegovina": "Bsnia", "bsnia-herzegovina": "Bsnia",
-  "qatar": "Qatar", "suica": "Sua", "suia": "Sua", "sua": "Sua", "brasil": "Brasil", "marrocos": "Marrocos",
+  "qatar": "Qatar", "suica": "Suíça", "suia": "Suíça", "sua": "Suíça", "brasil": "Brasil", "marrocos": "Marrocos",
   "haiti": "Haiti", "escocia": "Esccia", "esccia": "Esccia", "australia": "Austrlia", "austrlia": "Austrlia",
-  "turquia": "Turquia", "alemanha": "Alemanha", "curacao": "Curaao", "curaao": "Curaao",
-  "paises baixos": "Pases Baixos", "holanda": "Pases Baixos", "netherlands": "Pases Baixos", "pases baixos": "Pases Baixos", "japao": "Japo", "japo": "Japo",
-  "costa do marfim": "Costa do Marfim", "equador": "Equador", "suecia": "Sucia", "sucia": "Sucia",
+  "turquia": "Turquia", "alemanha": "Alemanha", "curacao": "Curaçao", "curaao": "Curaçao",
+  "paises baixos": "Países Baixos", "holanda": "Países Baixos", "netherlands": "Países Baixos", "pases baixos": "Países Baixos", "japao": "Japão", "japo": "Japão",
+  "costa do marfim": "Costa do Marfim", "equador": "Equador", "suecia": "Suécia", "sucia": "Suécia",
   "tunisia": "Tunsia", "tunsia": "Tunsia", "espanha": "Espanha", "cabo verde": "Cabo Verde",
   "belgica": "Blgica", "blgica": "Blgica", "egito": "Egito", "arabia saudita": "Arbia Saudita", "arbia saudita": "Arbia Saudita",
-  "uruguai": "Uruguai", "irao": "Iro", "iro": "Iro", "nova zelandia": "Nova Zelndia", "nova zelndia": "Nova Zelndia",
-  "franca": "Frana", "frana": "Frana", "senegal": "Senegal", "iraque": "Iraque", "noruega": "Noruega",
-  "argentina": "Argentina", "argelia": "Arglia", "arglia": "Arglia", "austria": "ustria", "ustria": "ustria",
-  "jordania": "Jordnia", "jordnia": "Jordnia", "rd congo": "RD Congo", "r d congo": "RD Congo", "dr congo": "RD Congo", "congo dr": "RD Congo", "r.d. congo": "RD Congo", "r d. congo": "RD Congo", "rd. congo": "RD Congo", "r.d congo": "RD Congo", "rdcongo": "RD Congo", "rdc": "RD Congo", "congo rd": "RD Congo", "d r congo": "RD Congo", "d.r. congo": "RD Congo", "democratic republic of congo": "RD Congo",
+  "uruguai": "Uruguai", "irao": "Irão", "iro": "Irão", "nova zelandia": "Nova Zelândia", "nova zelndia": "Nova Zelândia",
+  "franca": "França", "frana": "França", "senegal": "Senegal", "iraque": "Iraque", "noruega": "Noruega",
+  "argentina": "Argentina", "argelia": "Argélia", "arglia": "Argélia", "austria": "Áustria", "Áustria": "Áustria",
+  "jordania": "Jordânia", "jordnia": "Jordânia", "rd congo": "RD Congo", "r d congo": "RD Congo", "dr congo": "RD Congo", "congo dr": "RD Congo", "r.d. congo": "RD Congo", "r d. congo": "RD Congo", "rd. congo": "RD Congo", "r.d congo": "RD Congo", "rdcongo": "RD Congo", "rdc": "RD Congo", "congo rd": "RD Congo", "d r congo": "RD Congo", "d.r. congo": "RD Congo", "democratic republic of congo": "RD Congo",
   "republica democratica do congo": "RD Congo", "rep democratica do congo": "RD Congo", "repblica democrtica do congo": "RD Congo", "inglaterra": "Inglaterra", "croacia": "Crocia", "crocia": "Crocia",
-  "gana": "Gana", "panama": "Panam", "panam": "Panam", "uzbequistao": "Uzbequisto", "uzbequisto": "Uzbequisto", "uzbekistan": "Uzbequisto",
-  "colombia": "Colmbia", "colmbia": "Colmbia", "columbia": "Colmbia"
+  "gana": "Gana", "panama": "Panamá", "panam": "Panamá", "uzbequistao": "Uzbequistão", "uzbequisto": "Uzbequistão", "uzbekistan": "Uzbequistão",
+  "colombia": "Colômbia", "colmbia": "Colômbia", "columbia": "Colômbia"
 };
 
 const SEED_GAMES = MATCH_ROWS.map(([group, homeTeam, awayTeam, matchDate], index) => ({
@@ -613,7 +613,7 @@ function scheduleFullSync(reason = "sincronizar dados", delay = 500) {
   saveLocalData(`${reason} pendente`);
 
   if (!db || !firebaseApi || storageMode !== "firebase") {
-    setFirebaseStatus("error", "Firebase: dados guardados localmente; sincronizacao pendente");
+    setFirebaseStatus("error", "Firebase: dados guardados localmente; sincronização pendente");
     return;
   }
 
@@ -634,9 +634,9 @@ async function retryPendingFullSync(reason = "sincronizar pendentes") {
     clearFullSyncPending();
     setFirebaseStatus("success", "Firebase: dados pendentes sincronizados");
   } catch (error) {
-    console.warn("Sincronizacao completa ainda pendente:", error);
+    console.warn("Sincronização completa ainda pendente:", error);
     markFullSyncPending();
-    setFirebaseStatus("error", `Firebase: sincronizacao pendente (${shortFirebaseError(error)})`);
+    setFirebaseStatus("error", `Firebase: sincronização pendente (${shortFirebaseError(error)})`);
   }
 }
 
@@ -656,7 +656,7 @@ async function retryPendingGameSaves(reason = "reenviar pendentes") {
       await saveGameFastToFirebase(game, { status: false, reason });
       clearPendingGame(gameId);
     } catch (error) {
-      console.warn("Resultado pendente ainda nao sincronizou:", gameId, error);
+      console.warn("Resultado pendente ainda não sincronizou:", gameId, error);
       break;
     }
   }
@@ -785,7 +785,7 @@ async function showForegroundPushNotificationV183(payload = {}) {
       }
     });
   } catch (error) {
-    console.warn("Nao consegui mostrar notificacao foreground:", error);
+    console.warn("Não consegui mostrar notificacao foreground:", error);
   }
 }
 async function importFirebaseModuleV189(file) {
@@ -945,7 +945,7 @@ async function safeGetCollection(name) {
 
 function shortFirebaseError(error) {
   const text = String(error || "");
-  if (text.includes("Missing or insufficient permissions")) return "sem permisses nas regras";
+  if (text.includes("Missing or insufficient permissions")) return "sem permissões nas regras";
   if (text.includes("Failed to fetch")) return "falha de rede/CORS";
   if (text.includes("demorou demasiado")) return "tempo esgotado";
   return text.slice(0, 90) || "erro desconhecido";
@@ -978,7 +978,7 @@ async function loadData(options = {}) {
       const { collection, doc, getDocs, setDoc } = firebaseApi;
 
       const gamesPromise = withTimeout(getDocs(collection(db, "games")), 9000, "ler jogos");
-      const settingsPromise = withTimeout(getDocs(collection(db, "settings")), 9000, "ler configuraes");
+      const settingsPromise = withTimeout(getDocs(collection(db, "settings")), 9000, "ler configurações");
       const betsPromise = localBets.length
         ? Promise.resolve({ docs: [], skipped: true })
         : withTimeout(getDocs(collection(db, "bets")), 9000, "ler apostas");
@@ -1026,7 +1026,7 @@ async function loadData(options = {}) {
       bets = localBets.length ? localBets : bets;
       appSettings = localSettings || appSettings;
       ensureKnockoutSettings();
-      setFirebaseStatus("error", `Firebase: ligao instvel (${shortFirebaseError(error)}). A usar cache e vou tentar novamente.`);
+      setFirebaseStatus("error", `Firebase: ligação instvel (${shortFirebaseError(error)}). A usar cache e vou tentar novamente.`);
       renderAll();
       scheduleFirebaseReconnect(options.reason || "loadData erro", 4500);
     }
@@ -1097,8 +1097,8 @@ function setupRealtimeSync() {
       return;
     }
     appSettings = mergeSettings(remoteSettings);
-    queueRealtimeRender("firebase realtime configuraes");
-  }, error => console.warn("Realtime configuraes falhou:", error)));
+    queueRealtimeRender("firebase realtime configurações");
+  }, error => console.warn("Realtime configurações falhou:", error)));
 
   realtimeUnsubscribers.push(onSnapshot(doc(db, "users", normalizeEmail(currentUser.email)), async snap => {
     if (!snap.exists()) return;
@@ -1135,7 +1135,7 @@ function setupRealtimeSync() {
       permissionsCache = snap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
         .sort((a, b) => normalizeEmail(a.email || a.id).localeCompare(normalizeEmail(b.email || b.id)));
       renderPermissionsUsers();
-    }, error => console.warn("Realtime permissoes falhou:", error)));
+    }, error => console.warn("Realtime permissões falhou:", error)));
   }
 }
 
@@ -1161,8 +1161,8 @@ async function persistAllGames() {
   saveLocalData("guardar todos jogos local");
 
   /*
-   * As gravacoes completas ficam em segundo plano para a interface nao bloquear
-   * quando o Firestore esta lento, offline ou sem permissoes.
+   * As gravacoes completas ficam em segundo plano para a interface não bloquear
+   * quando o Firestore está lento, offline ou sem permissões.
    */
   games.forEach(game => {
     if (hasResult(game) && !game.updatedAt) stampGame(game, "migrao resultado existente");
@@ -1195,8 +1195,8 @@ async function persistAllBets(importedBets, replaceImported = true) {
 
 async function persistSettings() {
   markSettingsPending();
-  saveLocalData("guardar configuraes local");
-  scheduleFullSync("guardar configuraes", 300);
+  saveLocalData("guardar configurações local");
+  scheduleFullSync("guardar configurações", 300);
 }
 
 function betsForGame(gameId) { return bets.filter(bet => bet.gameId === gameId); }
@@ -1384,7 +1384,7 @@ function playerStats(playerName) {
   stats.champion = extras.champion;
   stats.extraPoints = extras.total;
 
-  // Total mostrado na pgina Pontuao: sempre calculado pela app.
+  // Total mostrado na pgina Pontuação: sempre calculado pela app.
   // No usa pontos importados do Excel.
   stats.points = stats.gamePoints + stats.extraPoints;
   stats.calculatedTotal = stats.points;
@@ -1431,7 +1431,7 @@ function filteredGames() {
     // J jogaram: mais recente para o mais antigo.
     if (calendarViewMode === "played") return -diff;
 
-    // Faltam resultados e Todos os jogos: ordem natural do calendrio.
+    // Faltam resultados e Todos os jogos: ordem natural do calendário.
     return diff;
   });
 }
@@ -1897,7 +1897,7 @@ async function loadPermissionsUsers() {
     permissionsCache = snap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
       .sort((a, b) => normalizeEmail(a.email || a.id).localeCompare(normalizeEmail(b.email || b.id)));
   } catch (error) {
-    console.warn("Permisses em segundo plano falharam:", error);
+    console.warn("Permissões em segundo plano falharam:", error);
   }
 }
 
@@ -1924,12 +1924,12 @@ function renderPermissionsUsers() {
   }
 
   const labels = {
-    calendar: "Ver Calendrio",
-    score: "Ver Pontuao",
+    calendar: "Ver Calendário",
+    score: "Ver Pontuação",
     knockout: "Ver Fase Final",
-    notifications: "Ver Notificaes",
+    notifications: "Ver Notificações",
     logs: "Ver Logs",
-    settings: "Ver Configuraes",
+    settings: "Ver Configurações",
     adminTab: "Ver Admin",
     admin: "Poder Admin",
     editResults: "Editar resultados",
@@ -1937,7 +1937,7 @@ function renderPermissionsUsers() {
     editUsers: "Users do jogo",
     editPoints: "Sistema pontos",
     editKnockout: "Editar Fase Final",
-    managePermissions: "Permisses"
+    managePermissions: "Permissões"
   };
 
   list.innerHTML = permissionsCache.map(user => {
@@ -2734,9 +2734,9 @@ async function unpinChatMessage() {
 
 async function deleteChatMessage(messageId) {
   const message = chatMessagesCache.find(item => item.id === messageId);
-  if (!message) return toast("Mensagem nao encontrada.");
-  if (!canDeleteChatMessage(message)) return toast("So podes apagar as tuas mensagens.");
-  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase nao esta ligado.");
+  if (!message) return toast("Mensagem não encontrada.");
+  if (!canDeleteChatMessage(message)) return toast("Só podes apagar as tuas mensagens.");
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase não está ligado.");
 
   const beforeDelete = [...chatMessagesCache];
   const collectionName = chatCollectionRef(message.room || chatCurrentRoom);
@@ -2778,7 +2778,7 @@ async function deleteChatMessage(messageId) {
     console.error("Falhou apagar mensagem:", error);
     chatMessagesCache = beforeDelete;
     renderChatMessages();
-    toast("Nao consegui apagar a mensagem. Confirma as regras Firebase.");
+    toast("Não consegui apagar a mensagem. Confirma as regras Firebase.");
   }
 }
 
@@ -3112,7 +3112,7 @@ async function reactToChatMessage(messageId, emoji) {
 
   try {
     const { doc, updateDoc } = firebaseApi;
-    if (typeof updateDoc !== "function") return toast("Esta verso do Firebase no permite reaes.");
+    if (typeof updateDoc !== "function") return toast("Está verso do Firebase no permite reaes.");
     const next = { ...(message.reactions || {}) };
     if (next[currentUser.uid] === emoji) delete next[currentUser.uid];
     else next[currentUser.uid] = emoji;
@@ -3486,8 +3486,8 @@ async function sendChatMessage(text, imageData = "") {
   const image = String(imageData || "");
   if (!clean && !image) return;
   if (!currentUser) return toast("Faz login para escrever no chat.");
-  if (!canUseChatRoom()) return toast("Nao tens acesso a este chat.");
-  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase nao esta ligado.");
+  if (!canUseChatRoom()) return toast("Não tens acesso a este chat.");
+  if (!db || !firebaseApi || storageMode !== "firebase") return toast("Firebase não está ligado.");
 
   const now = Date.now();
   const optimisticId = `local_${now}_${Math.random().toString(36).slice(2)}`;
@@ -3526,7 +3526,7 @@ async function sendChatMessage(text, imageData = "") {
       message.id === optimisticId ? { ...message, pending: false, failed: true } : message
     ));
     renderChatMessages();
-    toast("Nao consegui enviar a mensagem.");
+    toast("Não consegui enviar a mensagem.");
   }
 }
 
@@ -3681,7 +3681,7 @@ function setupAuthGate() {
     try {
       currentProfile = await readUserProfile(user);
     } catch (profileError) {
-      console.warn("Perfil/permisses falharam; a usar perfil local:", profileError);
+      console.warn("Perfil/permissões falharam; a usar perfil local:", profileError);
       currentProfile = defaultProfileForUser(user);
     }
 
@@ -3709,7 +3709,7 @@ function setupAuthGate() {
 
     loadPermissionsUsers()
       .then(() => { try { renderPermissionsUsers(); } catch (error) { console.warn("renderPermissionsUsers falhou:", error); } })
-      .catch(error => console.warn("Permisses em segundo plano falharam:", error));
+      .catch(error => console.warn("Permissões em segundo plano falharam:", error));
 
     try {
       await loadData();
@@ -4120,7 +4120,7 @@ function renderKnockout() {
 
   if (!knockoutAvailable()) {
     const missing = games.filter(needsFinalResult).length;
-    if (notice) notice.innerHTML = `<strong>Fase Final bloqueada</strong><span>Faltam ${missing} resultado(s) da fase de grupos. O Admin pode ativar esta pgina para trabalhar.</span>`;
+    if (notice) notice.innerHTML = `<strong>Fase Final bloqueada</strong><span>Faltam ${missing} resultado(s) da fase de grupos. O Admin pode ativar está pgina para trabalhar.</span>`;
     container.innerHTML = "";
     return;
   }
@@ -4512,7 +4512,7 @@ function renderKnockoutMobileV121() {
       const id = btn.dataset.koMobileEdit;
       const originalButton = document.querySelector(`[data-ko-admin="${CSS.escape(id)}"] button, [data-ko-edit="${CSS.escape(id)}"], [data-match-id="${CSS.escape(id)}"] button`);
       if (originalButton) originalButton.click();
-      else toast("Edio mobile visual nesta fase. Usa a edio normal se necessrio.");
+      else toast("Edição mobile visual nesta fase. Usa a edição normal se necessrio.");
     });
   });
 }
@@ -4761,8 +4761,8 @@ function updateKnockoutUnlockControlV230(unlocked = Boolean($("adminKnockoutUnlo
   card?.classList.toggle("is-unlocked-v230", Boolean(unlocked));
   if (label) {
     label.textContent = unlocked
-      ? "Ativa no Calendario antes do fim dos grupos"
-      : "Bloqueada ate acabarem os grupos";
+      ? "Ativa no Calendário antes do fim dos grupos"
+      : "Bloqueada até acabarem os grupos";
   }
   if (button) button.textContent = unlocked ? "Guardar ativada" : "Guardar bloqueada";
 }
@@ -4995,12 +4995,12 @@ async function saveKnockoutMatchFromAdmin(matchId, sourceElement = null) {
     }
 
     if (hasFullScore && !isDraw && ((Number(match.homeScore) > Number(match.awayScore) && !homeQualified) || (Number(match.awayScore) > Number(match.homeScore) && !awayQualified))) {
-      toast("A equipa qualificada nao bate certo com o resultado.");
+      toast("A equipa qualificada não bate certo com o resultado.");
       return;
     }
 
     if (isDraw && match.homePenalties !== null && match.awayPenalties !== null && ((Number(match.homePenalties) > Number(match.awayPenalties) && !homeQualified) || (Number(match.awayPenalties) > Number(match.homePenalties) && !awayQualified))) {
-      toast("A equipa qualificada nao bate certo com os penaltis.");
+      toast("A equipa qualificada não bate certo com os penáltis.");
       return;
     }
 
@@ -5220,7 +5220,7 @@ function renderCalendarFilterState() {
   if (allBtn) {
     allBtn.classList.toggle("active-filter", calendarViewMode === "all");
     allBtn.innerHTML = `Todos os jogos <span class="filter-count">${totalCount}</span>`;
-    allBtn.title = "Mostra todos os jogos por data/calendrio.";
+    allBtn.title = "Mostra todos os jogos por data/calendário.";
     allBtn.setAttribute("aria-label", `Todos os jogos: ${totalCount} jogos por data`);
   }
 }
@@ -5232,7 +5232,7 @@ function renderCalendar() {
     // J jogaram: dias mais recentes primeiro.
     if (calendarViewMode === "played") return b[0].localeCompare(a[0]);
 
-    // Todos os jogos e Faltam resultados: por data/calendrio.
+    // Todos os jogos e Faltam resultados: por data/calendário.
     return a[0].localeCompare(b[0]);
   });
 
@@ -5707,8 +5707,8 @@ function renderApiSettings() {
   const summary = $("apiSyncSummary");
   if (summary) {
     summary.innerHTML = api.lastSync
-      ? `<strong>ltima sincronizao:</strong> ${escapeHtml(new Date(api.lastSync.at).toLocaleString("pt-PT"))}  ${api.lastSync.updated || 0} resultados atualizados  ${api.lastSync.matched || 0} jogos encontrados na app.`
-      : "Ainda no foi feita sincronizao automtica.";
+      ? `<strong>ltima sincronização:</strong> ${escapeHtml(new Date(api.lastSync.at).toLocaleString("pt-PT"))}  ${api.lastSync.updated || 0} resultados atualizados  ${api.lastSync.matched || 0} jogos encontrados na app.`
+      : "Ainda no foi feita sincronização automtica.";
   }
 }
 
@@ -5859,7 +5859,7 @@ async function saveEditedUserBets() {
         return;
       }
       scheduleFullSync("editar apostas utilizador", 800);
-      setFirebaseStatus("error", "Firebase: nao ligado - apostas guardadas localmente");
+      setFirebaseStatus("error", "Firebase: não ligado - apostas guardadas localmente");
     })
     .catch(error => {
       console.error("Falhou guardar apostas do utilizador no Firebase:", error);
@@ -6084,7 +6084,7 @@ function renderFirebaseHealthPanelV187() {
     </div>
     <div class="health-grid-v187">
       <article class="${storageMode === "firebase" ? "ok" : "warn"}">
-        <span>Ligacao</span>
+        <span>Ligação</span>
         <strong>${escapeHtml(navigator.onLine ? "Online" : "Offline")}</strong>
         <p>${escapeHtml(status)}</p>
       </article>
@@ -6380,7 +6380,7 @@ function splitMatchLabel(label) {
     return { home: canonicalTeam(directParts[0]), away: canonicalTeam(directParts.slice(1).join(" - ")), score };
   }
 
-  // Caso venha sem espaos: "Colmbia-RD Congo"
+  // Caso venha sem espaos: "Colômbia-RD Congo"
   const looseParts = cleanLabel.split(/\s*(?:-||)\s*/).filter(Boolean);
   if (looseParts.length >= 2) {
     return { home: canonicalTeam(looseParts[0]), away: canonicalTeam(looseParts.slice(1).join(" - ")), score };
@@ -6426,7 +6426,7 @@ function findGameByTeams(home, away, group = "") {
   return findGameMatch(home, away, group)?.game || null;
 }
 async function readWorkbookFile(file) {
-  if (!window.XLSX) throw new Error("Biblioteca Excel ainda no carregou. Verifica ligao  internet.");
+  if (!window.XLSX) throw new Error("Biblioteca Excel ainda no carregou. Verifica ligação  internet.");
   const buffer = await file.arrayBuffer();
   if (file.name.toLowerCase().endsWith(".csv")) {
     const text = new TextDecoder("utf-8").decode(buffer);
@@ -6691,7 +6691,7 @@ async function addUser() {
 async function removeUser(name) {
   if (!hasPermission("editUsers")) { toast("Sem permisso."); return; }
 
-  if (!confirm(`Remover ${name} da lista de users? As apostas importadas no so apagadas.`)) return;
+  if (!confirm(`Remover ${name} da lista de users? As apostas importadas no só apagadas.`)) return;
   appSettings.users = (appSettings.users || []).filter(user => user !== name);
   addSystemLog("User removido", `${name} foi removido da lista de users.`, { name });
   await persistSettings();
@@ -7149,7 +7149,7 @@ document.addEventListener("keydown", event => {
 document.querySelectorAll(".tab").forEach(button => {
   button.addEventListener("click", () => {
     if (!permissionTabAllowed(button.dataset.tab)) {
-      toast("Sem permisso para abrir esta pgina.");
+      toast("Sem permisso para abrir está pgina.");
       return;
     }
     if (button.dataset.tab === "knockoutTab" && !knockoutAvailable()) {
@@ -7306,7 +7306,7 @@ function registerServiceWorker() {
       .then(registration => {
         setupAppUpdateRefresh(registration);
       })
-      .catch(error => console.warn("Service worker nao registado:", error));
+      .catch(error => console.warn("Service worker não registado:", error));
   });
 }
 
@@ -7317,11 +7317,11 @@ async function clearAppCaches() {
       await Promise.all(keys.map(key => caches.delete(key)));
     }
   } catch (error) {
-    console.warn("Nao consegui limpar a cache da app:", error);
+    console.warn("Não consegui limpar a cache da app:", error);
   }
 }
 
-function showRefreshAppButton(message = "Nova versao disponivel.") {
+function showRefreshAppButton(message = "Nova versão disponível.") {
   const button = $("refreshAppBtn");
   if (!button) return;
   button.classList.remove("hidden");
@@ -7351,7 +7351,7 @@ async function refreshAppNow() {
 
     await clearAppCaches();
   } catch (error) {
-    console.warn("Atualizacao da app falhou, vou recarregar na mesma:", error);
+    console.warn("Atualização da app falhou, vou recarregar na mesma:", error);
   }
 
   const url = new URL(window.location.href);
@@ -7374,8 +7374,8 @@ function setupAppUpdateRefresh(registration) {
 
     worker.addEventListener("statechange", () => {
       if (worker.state === "installed" && navigator.serviceWorker.controller) {
-        showRefreshAppButton("Nova versao pronta para instalar.");
-        toast("Nova versao pronta. Toca em Atualizar app.");
+        showRefreshAppButton("Nova versão pronta para instalar.");
+        toast("Nova versão pronta. Toca em Atualizar app.");
       }
     });
   });
@@ -7388,7 +7388,7 @@ function setupAppUpdateRefresh(registration) {
 
   navigator.serviceWorker.addEventListener("message", event => {
     if (event.data?.type === "APP_VERSION_READY") {
-      showRefreshAppButton("Nova versao pronta para instalar.");
+      showRefreshAppButton("Nova versão pronta para instalar.");
     }
   });
 
@@ -7849,7 +7849,7 @@ setupSearchResultsAdminButton();
     return false;
   };
 
-  // Substitui os nomes usados pelas verses anteriores.
+  // Substitui os nomes usados pelas versões anteriores.
   window.openChatImageAboveV91 = window.openChatImageAboveChatV92;
   window.openChatImageClean = window.openChatImageAboveChatV92;
   window.openChatImageViewerV90 = window.openChatImageAboveChatV92;
@@ -9061,7 +9061,7 @@ function isAdminPageActiveV143() {
 
     const activePanel = document.querySelector(".tab-panel.active, .page.active, section.active");
     const text = ((activePanel?.id || "") + " " + (activePanel?.textContent || "")).toLowerCase();
-    if (text.includes("permisses de utilizadores") || text.includes("permissoes de utilizadores")) return true;
+    if (text.includes("permissões de utilizadores") || text.includes("permissões de utilizadores")) return true;
     if (text.includes("importar excel resultados") && text.includes("sistema de pontos")) return true;
 
     return false;
@@ -9074,7 +9074,7 @@ function findAdminRootV143() {
   const byContent = Array.from(document.querySelectorAll("section, main, div"))
     .filter(el => {
       const text = (el.textContent || "").toLowerCase();
-      return text.includes("permisses de utilizadores") || text.includes("permissoes de utilizadores");
+      return text.includes("permissões de utilizadores") || text.includes("permissões de utilizadores");
     })
     .sort((a, b) => (a.textContent || "").length - (b.textContent || "").length);
 
@@ -9970,7 +9970,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 document.addEventListener("click", () => setTimeout(renderSuspendedGameAdminV159, 180));
 
-// v162 - camada limpa para Admin, Logs, Configuraes e PWA.
+// v162 - camada limpa para Admin, Logs, Configurações e PWA.
 function renderSystemLogs() {
   const container = $("systemLogsList");
   const lockedPanel = $("logsLockedPanel");
@@ -10087,7 +10087,7 @@ function notificationTypeLabelV164(type) {
   return ({
     result: "Resultado",
     knockout: "Fase Final",
-    sync: "Sincronizao",
+    sync: "Sincronização",
     install: "Instalao",
     suspended: "Suspenso",
     admin: "Admin",
@@ -10148,7 +10148,7 @@ function buildNotificationsV164() {
       type: "warning",
       at: new Date().toISOString(),
       title: "Dispositivo offline",
-      detail: "As alteraes ficam guardadas localmente at a ligao voltar.",
+      detail: "As alteraes ficam guardadas localmente at a ligação voltar.",
       actor: "Sistema"
     });
   }
@@ -10172,7 +10172,7 @@ function buildNotificationsV164() {
       at: "2000-01-01T00:00:00.000Z",
       title: `${missing} jogo${missing === 1 ? "" : "s"} sem resultado final`,
       detail: "Usa o filtro Faltam resultados para fechar os jogos pendentes.",
-      actor: "Calendrio"
+      actor: "Calendário"
     });
   }
 
@@ -10206,13 +10206,13 @@ function renderNotificationsCenterV164() {
   }
 
   summary.innerHTML = `
-    <article><span>Por ver</span><strong>${unread}</strong><p>Notificaes desde a ltima leitura</p></article>
+    <article><span>Por ver</span><strong>${unread}</strong><p>Notificações desde a ltima leitura</p></article>
     <article><span>Total</span><strong>${notes.length}</strong><p>Alertas recentes e estado da app</p></article>
-    <article><span>Importantes</span><strong>${important}</strong><p>Offline, suspensos ou atualizao</p></article>
+    <article><span>Importantes</span><strong>${important}</strong><p>Offline, suspensos ou atualização</p></article>
   `;
 
   if (!notes.length) {
-    list.innerHTML = `<div class="empty small-empty">Ainda no h notificaes.</div>`;
+    list.innerHTML = `<div class="empty small-empty">Ainda no h notificações.</div>`;
     return;
   }
 
@@ -10234,7 +10234,7 @@ function renderNotificationsCenterV164() {
 function markNotificationsReadV164() {
   localStorage.setItem(NOTIFICATIONS_READ_KEY_V164, String(Date.now()));
   renderNotificationsCenterV164();
-  toast("Notificaes marcadas como vistas.");
+  toast("Notificações marcadas como vistas.");
 }
 
 function renderInstallGuideV164() {
@@ -10372,14 +10372,14 @@ function currentGlobalNotificationSettingsV264() {
 }
 
 async function saveGlobalNotificationSettingsV264() {
-  if (!isOwnerProfileV264()) return toast("S o Dono pode alterar notificaes globais.");
+  if (!isOwnerProfileV264()) return toast("S o Dono pode alterar notificações globais.");
   const settings = currentGlobalNotificationSettingsV264();
   appSettings.globalNotifications = settings;
   markSettingsPending();
-  saveLocalData("notificaes globais");
+  saveLocalData("notificações globais");
   try {
-    await saveSettingsFastToFirebase("notificaes globais");
-    toast("Notificaes globais guardadas.");
+    await saveSettingsFastToFirebase("notificações globais");
+    toast("Notificações globais guardadas.");
   } catch (error) {
     console.error("saveGlobalNotificationSettingsV264 falhou:", error);
     toast("Preferncias guardadas localmente. Sincroniza quando o Firebase responder.");
@@ -10498,7 +10498,7 @@ async function enablePushNotificationsV181(options = {}) {
     if (permission !== "granted") {
       renderPushNotificationsPanelV165();
       renderPushOptInPromptV182();
-      if (!silent) toast("Permisso de notificaes no autorizada.");
+      if (!silent) toast("Permisso de notificações no autorizada.");
       return false;
     }
 
@@ -10522,7 +10522,7 @@ async function enablePushNotificationsV181(options = {}) {
 
     localStorage.setItem(pushLastTokenStorageKeyV181(), token);
     localStorage.removeItem(PUSH_OPT_IN_DISMISSED_KEY_V182);
-    if (!silent) toast("Notificaes push ativas neste dispositivo.");
+    if (!silent) toast("Notificações push ativas neste dispositivo.");
     loadPushStatsV187(true).then(renderFirebaseHealthPanelV187);
     renderPushNotificationsPanelV165();
     renderPushOptInPromptV182();
@@ -10541,7 +10541,7 @@ async function enablePushNotificationsV181(options = {}) {
 function currentPushTestPayloadV184() {
   const type = $("pushTestTypeInputV184")?.value || "custom";
   const team = String($("pushTestTeamInputV184")?.value || "Portugal").trim();
-  const game = String($("pushTestGameInputV184")?.value || "Portugal vs Uzbequisto").trim();
+  const game = String($("pushTestGameInputV184")?.value || "Portugal vs Uzbequistão").trim();
   const custom = String($("pushTestMessageInputV184")?.value || "").trim();
   const defaults = {
     gameStart: { title: "Jogo comeou", body: `${game} j comeou.` },
@@ -10552,7 +10552,7 @@ function currentPushTestPayloadV184() {
     chatGeneral: { title: "Nova mensagem no chat geral", body: "Mensagem de teste no chat geral." },
     chatAdmin: { title: "Nova mensagem no chat admin", body: "Mensagem de teste no chat admin." },
     mentions: { title: `${team} mencionou-te`, body: "Teste de meno no chat." },
-    custom: { title: "Teste push Mundial", body: custom || "As notificaes push esto a funcionar." }
+    custom: { title: "Teste push Mundial", body: custom || "As notificações push esto a funcionar." }
   };
   const selected = defaults[type] || defaults.custom;
   return {
@@ -10612,7 +10612,7 @@ function renderPushOptInPromptV182() {
   }
 
   const support = pushSupportV181();
-  const title = support.permission === "granted" ? "Concluir notificaes neste dispositivo" : "Ativar notificaes neste dispositivo";
+  const title = support.permission === "granted" ? "Concluir notificações neste dispositivo" : "Ativar notificações neste dispositivo";
   const detail = support.permission === "granted"
     ? "A permisso j est dada. Falta s registar este dispositivo para receber alertas."
     : "Recebe alertas de jogo comeou, jogo acabou e golo da equipa mesmo com a app fechada.";
@@ -10624,7 +10624,7 @@ function renderPushOptInPromptV182() {
       <span>${escapeHtml(detail)}</span>
     </div>
     <div class="push-optin-actions-v182">
-      <button id="pushOptInEnableBtnV182" class="primary" type="button">Ativar notificaes</button>
+      <button id="pushOptInEnableBtnV182" class="primary" type="button">Ativar notificações</button>
       <button id="pushOptInLaterBtnV182" class="secondary" type="button">Depois</button>
     </div>
   `;
@@ -10664,13 +10664,13 @@ function renderPushNotificationsPanelV165() {
   const ownerGlobalBlock = isOwnerProfileV264() ? `
     <div class="push-options-v165 push-options-v200 global-push-options-v264">
       <div class="push-options-title-v200">
-        <strong>Notificaes globais  Dono</strong>
+        <strong>Notificações globais  Dono</strong>
         <span>Escolhe que tipos podem ser enviados para todos os users. Isto manda nas Functions e fica guardado no Firebase.</span>
       </div>
       ${Object.keys(defaultGlobalNotificationSettingsV264()).map(key => `
         <label><input id="globalPush_${key}_V264" type="checkbox" ${globalPreferences[key] !== false ? "checked" : ""} /> ${escapeHtml(globalNotificationLabelV264(key))}</label>
       `).join("")}
-      <button id="saveGlobalPushPrefsBtnV264" class="primary" type="button">Guardar notificaes globais</button>
+      <button id="saveGlobalPushPrefsBtnV264" class="primary" type="button">Guardar notificações globais</button>
     </div>
   ` : "";
   const hasToken = Boolean(localStorage.getItem(pushLastTokenStorageKeyV181()));
@@ -10699,7 +10699,7 @@ function renderPushNotificationsPanelV165() {
     ${ownerGlobalBlock}
     <div class="push-options-v165 push-options-v200">
       <div class="push-options-title-v200">
-        <strong>Notificaes</strong>
+        <strong>Notificações</strong>
         <span>Escolhe os alertas deste dispositivo.</span>
       </div>
       <label><input id="pushGameStartInputV181" type="checkbox" ${preferences.gameStart ? "checked" : ""} /> Jogo comeou</label>
@@ -10731,10 +10731,10 @@ function renderPushNotificationsPanelV165() {
         <input id="pushTestTeamInputV184" type="text" value="Portugal" />
       </label>
       <label>Jogo
-        <input id="pushTestGameInputV184" type="text" value="Portugal vs Uzbequisto" />
+        <input id="pushTestGameInputV184" type="text" value="Portugal vs Uzbequistão" />
       </label>
       <label>Mensagem opcional
-        <input id="pushTestMessageInputV184" type="text" placeholder="Vazio usa texto automatico" />
+        <input id="pushTestMessageInputV184" type="text" placeholder="Vazio usa texto automático" />
       </label>
     </div>
     <p class="push-note-v165">Estado: ${escapeHtml(pushDiagnosticV181())}</p>
@@ -11007,7 +11007,7 @@ function safeVibrateV192(pattern) {
   }
 }
 
-// v192 - permisses: torna checkboxes clicveis e marca o card como alterado.
+// v192 - permissões: torna checkboxes clicveis e marca o card como alterado.
 function markPermissionCardDirtyV192(input) {
   try {
     const card = input?.closest?.("[data-permission-card]");
@@ -11162,23 +11162,23 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-// v213 - limpeza final: login robusto, Configuracoes organizadas e blocos tecnicos no sitio certo.
+// v213 - limpeza final: login robusto, Configurações organizadas e blocos tecnicos no sitio certo.
 const ADMIN_SECTION_CHOICES_V213 = [
   ["users", "Users", "Contas e acessos"],
   ["results", "Resultados", "Jogos e Excel"],
   ["points", "Pontos", "Regras de pontos"],
   ["knockout", "Fase Final", "Jogos a eliminar"],
-  ["system", "Sistema", "Fica nas Configuraes"]
+  ["system", "Sistema", "Fica nas Configurações"]
 ];
 
 const PAGE_LOCATION_CHOICES_V213 = [
-  ["calendar", "Calendrio", "calendarTab"],
-  ["score", "Pontuao", "scoreTab"],
+  ["calendar", "Calendário", "calendarTab"],
+  ["score", "Pontuação", "scoreTab"],
   ["knockout", "Fase Final", "knockoutTab"],
-  ["notifications", "Notificaes", "notificationsTab"],
+  ["notifications", "Notificações", "notificationsTab"],
   ["logs", "Logs", "logsTab"],
   ["adminTab", "Admin", "adminTab"],
-  ["settings", "Configuraes", "settingsTab"]
+  ["settings", "Configurações", "settingsTab"]
 ];
 
 const SETTINGS_SECTIONS_V213 = [
@@ -11374,7 +11374,7 @@ function renderOrganizationPanelV213() {
       ? `<span class="settings-org-fixed-v215">Fixo em Config.</span>`
       : `<select data-admin-section-location-v213="${escapeHtml(key)}">
           <option value="admin" ${value === "admin" ? "selected" : ""}>Mostrar no Admin</option>
-          <option value="settings" ${value === "settings" ? "selected" : ""}>Mostrar em Configuraes</option>
+          <option value="settings" ${value === "settings" ? "selected" : ""}>Mostrar em Configurações</option>
           <option value="hidden" ${value === "hidden" ? "selected" : ""}>No mostrar</option>
         </select>`;
     return `
@@ -11400,7 +11400,7 @@ function renderOrganizationPanelV213() {
     </div>
     <div class="settings-org-summary-v214">
       <span><b>${adminCount}</b> no Admin</span>
-      <span><b>${settingsCount}</b> em Configuraes</span>
+      <span><b>${settingsCount}</b> em Configurações</span>
       <span><b>${hiddenCount}</b> escondidas</span>
       <span><b>${visiblePagesCount}</b> pginas visveis</span>
     </div>
@@ -11977,7 +11977,7 @@ if (renderOnlineUsersOriginalV220 && !window.__renderOnlineUsersV220) {
 }
 
 
-// v221  cor ativa dos botes de filtro do calendrio.
+// v221  cor ativa dos botes de filtro do calendário.
 function calendarFilterModeV221() {
   return String(calendarViewMode || "missing").trim().toLowerCase();
 }
@@ -12043,7 +12043,7 @@ if (renderAllOriginalV221 && !window.__renderAllButtonsV221) {
 }
 
 
-// v228 - Admin e Configuracoes com colapsaveis unicos e estaveis.
+// v228 - Admin e Configurações com colapsaveis unicos e estaveis.
 const COLLAPSE_STATE_KEY_V228 = `${STORAGE_KEY}_collapse_state_v228`;
 const COLLAPSE_TOUCHED_KEY_V228 = `${STORAGE_KEY}_collapse_touched_v228`;
 
@@ -12391,8 +12391,8 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-// v241  Ligao Users  Jogadores + apostas da Fase Final por playerId.
-// Users/Auth = contas/permisses. Players/Jogadores = identidade oficial de apostas/pontuao.
+// v241  Ligação Users  Jogadores + apostas da Fase Final por playerId.
+// Users/Auth = contas/permissões. Players/Jogadores = identidade oficial de apostas/pontuação.
 
 function playersCatalogV241() {
   const byId = new Map();
@@ -12777,12 +12777,12 @@ if (renderPermissionsUsersOriginalV241 && !window.__renderPermissionsPlayerLinkV
     const linked = permissionsCache.length - missing;
 
     const labels = {
-      calendar: "Ver Calendrio",
-      score: "Ver Pontuao",
+      calendar: "Ver Calendário",
+      score: "Ver Pontuação",
       knockout: "Ver Fase Final",
-      notifications: "Ver Notificaes",
+      notifications: "Ver Notificações",
       logs: "Ver Logs",
-      settings: "Ver Configuraes",
+      settings: "Ver Configurações",
       adminTab: "Ver Admin",
       admin: "Poder Admin",
       editResults: "Editar resultados",
@@ -12790,13 +12790,13 @@ if (renderPermissionsUsersOriginalV241 && !window.__renderPermissionsPlayerLinkV
       editUsers: "Users do jogo",
       editPoints: "Sistema pontos",
       editKnockout: "Editar Fase Final",
-      managePermissions: "Permisses"
+      managePermissions: "Permissões"
     };
 
     list.innerHTML = `
       <section class="player-link-summary-v241">
         <div>
-          <strong>Ligao Users  Jogadores</strong>
+          <strong>Ligação Users  Jogadores</strong>
           <span>${linked} ligado(s)  ${missing} por ligar  ${playersCatalogV241().length} jogador(es) na liga</span>
         </div>
         <button class="secondary small" type="button" data-auto-link-players-v241>Auto ligar sugestes</button>
@@ -12844,7 +12844,7 @@ if (renderPermissionsUsersOriginalV241 && !window.__renderPermissionsPlayerLinkV
             ${status.key === "suggestion" && !user.linkedPlayerId ? `
               <div class="player-link-suggestion-v241">
                 Sugesto: <strong>${escapeHtml(status.player.name)}</strong>
-                <button class="secondary small" type="button" data-confirm-player-link-v241="${escapeHtml(email)}" data-player-id="${escapeHtml(status.player.id)}">Confirmar ligao</button>
+                <button class="secondary small" type="button" data-confirm-player-link-v241="${escapeHtml(email)}" data-player-id="${escapeHtml(status.player.id)}">Confirmar ligação</button>
               </div>
             ` : ""}
             <div class="permission-grid">
@@ -12916,8 +12916,8 @@ if (savePermissionUserOriginalV241 && !window.__savePermissionPlayerLinkV241) {
     await withTimeout(setDoc(doc(db, "users", normalized), profile, { merge: true }), 12000, "guardar utilizador");
 
     markSettingsPending();
-    saveLocalData("guardar ligao user jogador");
-    scheduleFullSync("guardar ligao user jogador", 300);
+    saveLocalData("guardar ligação user jogador");
+    scheduleFullSync("guardar ligação user jogador", 300);
 
     addSystemLog("Utilizador guardado", `${visibleName} (${normalized}) ficou ligado a ${linkedPlayer?.name || "nenhum jogador"}.`, {
       email: normalized,
@@ -12993,7 +12993,7 @@ if (readUserProfileOriginalV241 && !window.__readProfilePlayerLinkV241) {
         profile.linkedPlayerName = linked.name;
       }
     } catch (error) {
-      console.warn("Ligao jogador no perfil falhou:", error);
+      console.warn("Ligação jogador no perfil falhou:", error);
     }
     return profile;
   };
@@ -13467,7 +13467,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 // v245  Pgina inicial com boto obrigatrio para apostas/resultados da Fase Final.
-// Substitui a dependncia do modal automtico por uma zona visvel e persistente no Calendrio.
+// Substitui a dependncia do modal automtico por uma zona visvel e persistente no Calendário.
 function isPrivilegedKnockoutAdminV245() {
   try { return Boolean(isAdmin || isAdminProfile()); } catch { return Boolean(isAdmin); }
 }
@@ -13578,7 +13578,7 @@ function knockoutRequiredHomePanelHtmlV245() {
         : done.length
           ? "No tens jogos obrigatrios por preencher neste momento."
           : "Ainda no existem jogos da Fase Final abertos para apostar."
-    : "Para ser obrigatrio, primeiro o Admin tem de ligar esta conta ao jogador correto.";
+    : "Para ser obrigatrio, primeiro o Admin tem de ligar está conta ao jogador correto.";
 
   const requiredRows = required.map(match => knockoutRequiredUserRowHtmlV245(match, "open")).join("");
   const missedRows = missed.slice(0, 6).map(match => knockoutRequiredUserRowHtmlV245(match, "missed")).join("");
@@ -13764,7 +13764,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }, 1600);
 });
 
-// v247 - Modal automatico obrigatorio para apostas da Fase Final.
+// v247 - Modal automático obrigatorio para apostas da Fase Final.
 // Mantem a estrutura de apostas existente em "bets" e volta a abrir sozinho quando ha pendentes.
 const KNOCKOUT_MANDATORY_CHECK_MS_V247 = 14000;
 let knockoutMandatoryTimerV247 = null;
@@ -13845,7 +13845,7 @@ function knockoutMandatoryDoneMatchesV247() {
 function knockoutMandatoryStatusV247(match) {
   const player = knockoutMandatoryPlayerV247();
   if (!player) return { key: "no-player", label: "Sem jogador ligado" };
-  if (!knockoutMatchMandatoryReadyV247(match)) return { key: "not-ready", label: "Nao obrigatorio" };
+  if (!knockoutMatchMandatoryReadyV247(match)) return { key: "not-ready", label: "Não obrigatorio" };
   if (knockoutMatchHasResult(match)) return { key: "result", label: "Resultado lancado" };
   const bet = knockoutBetForPlayerMatchV241(player.id, match.id);
   if (bet) return { key: "done", label: "Apostado" };
@@ -13950,7 +13950,7 @@ function renderKnockoutMandatoryModalV247() {
     body.innerHTML = `
       <div class="ko-mandatory-empty-v247 success">
         <strong>Sem apostas obrigatorias pendentes</strong>
-        <span>${missed.length ? `${missed.length} jogo(s) ja passaram o prazo sem aposta.` : done.length ? "As apostas abertas estao em dia." : "Ainda nao ha jogos da Fase Final abertos para apostar."}</span>
+        <span>${missed.length ? `${missed.length} jogo(s) já passaram o prazo sem aposta.` : done.length ? "As apostas abertas estão em dia." : "Ainda não ha jogos da Fase Final abertos para apostar."}</span>
       </div>
     `;
     return;
@@ -13959,7 +13959,7 @@ function renderKnockoutMandatoryModalV247() {
   body.innerHTML = `
     <div class="ko-mandatory-warning-v247">
       <strong>Obrigatorio antes do prazo</strong>
-      <span>Este modal so fecha quando guardares todas as apostas pendentes ou quando o prazo terminar.</span>
+      <span>Este modal só fecha quando guardares todas as apostas pendentes ou quando o prazo terminar.</span>
     </div>
     ${pending.map(match => knockoutMandatoryRowHtmlV247(match, player)).join("")}
   `;
@@ -13994,8 +13994,8 @@ function closeKnockoutMandatoryModalV247(force = false) {
 async function saveMandatoryKnockoutBetV247(matchId) {
   const match = knockoutMatchById(matchId);
   const player = knockoutMandatoryPlayerV247();
-  if (!match || !player) return toast("A tua conta ainda nao esta ligada a um jogador.");
-  if (!knockoutMatchMandatoryReadyV247(match)) return toast("Este jogo ainda nao esta aberto para apostar.");
+  if (!match || !player) return toast("A tua conta ainda não está ligada a um jogador.");
+  if (!knockoutMatchMandatoryReadyV247(match)) return toast("Este jogo ainda não está aberto para apostar.");
   if (!knockoutMandatoryDeadlineOpenV247(match)) {
     renderKnockoutMandatoryModalV247();
     scheduleKnockoutMandatoryCheckV247(100);
@@ -14004,7 +14004,7 @@ async function saveMandatoryKnockoutBetV247(matchId) {
   if (knockoutBetForPlayerMatchV241(player.id, match.id)) {
     renderKnockoutMandatoryModalV247();
     scheduleKnockoutMandatoryCheckV247(100);
-    return toast("Esta aposta ja esta guardada.");
+    return toast("Está aposta já está guardada.");
   }
 
   const row = document.querySelector(`[data-ko-mandatory-match="${CSS.escape(matchId)}"]`);
@@ -14022,10 +14022,10 @@ async function saveMandatoryKnockoutBetV247(matchId) {
     return toast("A equipa qualificada tem de ser uma das duas equipas do jogo.");
   }
   if (home > away && normalizeComparable(qualified) !== normalizeComparable(match.homeTeam)) {
-    return toast("A equipa qualificada nao bate certo com o resultado apostado.");
+    return toast("A equipa qualificada não bate certo com o resultado apostado.");
   }
   if (away > home && normalizeComparable(qualified) !== normalizeComparable(match.awayTeam)) {
-    return toast("A equipa qualificada nao bate certo com o resultado apostado.");
+    return toast("A equipa qualificada não bate certo com o resultado apostado.");
   }
 
   const bet = {
@@ -14294,7 +14294,7 @@ startKnockoutMandatoryWatcherV247();
 // v250  correo real do foco nos campos/selects.
 // Problema: os watchers automticos da Fase Final e alguns renders globais corriam
 // logo depois de tocar num input/select/textarea. Isso reconstrua DOM ou abria modal
-// e o campo perdia foco imediatamente. Esta guarda no mexe no valor dos campos:
+// e o campo perdia foco imediatamente. Está guarda no mexe no valor dos campos:
 // apenas adia renders/modais automticos enquanto h um campo ativo.
 const FORM_FOCUS_IDLE_MS_V250 = 1400;
 let mundialFormLastInteractionV250 = 0;
@@ -14504,7 +14504,7 @@ window.debugFocusV250 = function debugFocusV250() {
 };
 
 // v251  lgica segura para detetar apostas obrigatrias da Fase Final.
-// Esta camada centraliza a deciso "por apostar / apostado / fora do prazo" sem redesenhar o modal.
+// Está camada centraliza a deciso "por apostar / apostado / fora do prazo" sem redesenhar o modal.
 const KNOCKOUT_REQUIRED_VERSION_V251 = "251.0";
 const KNOCKOUT_REQUIRED_LOCK_MINUTES_V251 = 5;
 
@@ -14965,8 +14965,8 @@ window.debugKnockoutAdminResultV253 = debugKnockoutAdminResultV253;
 
 // v254  Correo calma do modal obrigatrio para USERS.
 // O problema provvel: depois do login, um input/select escondido podia continuar com foco
-// e a proteo v250 adiava o modal para sempre. Esta camada s corrige o disparo do modal;
-// no mexe em pontuao nem na passagem de equipas.
+// e a proteo v250 adiava o modal para sempre. Está camada s corrige o disparo do modal;
+// no mexe em pontuação nem na passagem de equipas.
 const KNOCKOUT_MANDATORY_USER_MODAL_VERSION_V254 = "257.0";
 let knockoutMandatoryTimerV254 = null;
 let knockoutMandatoryIntervalV254 = null;
@@ -15542,7 +15542,7 @@ if (!window.__koMandatoryDiagnosticsV255) {
 
 // v257  Correo real da deteo de apostas obrigatrias da Fase Final.
 // A v256 j corrigiu o login, mas alguns users continuavam a ver "em dia" mesmo com jogo aberto.
-// Esta camada usa uma fonte nica e simples: jogos da Fase Final com equipas + data/hora + sem resultado,
+// Está camada usa uma fonte nica e simples: jogos da Fase Final com equipas + data/hora + sem resultado,
 // cruzados com o jogador ligado ao user e as apostas j existentes.
 const KNOCKOUT_MANDATORY_FINAL_FIX_VERSION_V257 = "257.0";
 let knockoutMandatoryTimerV257 = null;
@@ -15578,7 +15578,7 @@ function koV257CurrentPlayer() {
   if (linkedId) {
     player = players.find(item => String(item.id || item.playerId || "") === linkedId) || null;
     if (player) return { ...player, id: String(player.id || player.playerId), name: String(player.name || player.playerName || "") };
-    // Mesmo que o catlogo ainda no tenha o jogador, usa a ligao do perfil para no perder a obrigatoriedade.
+    // Mesmo que o catlogo ainda no tenha o jogador, usa a ligação do perfil para no perder a obrigatoriedade.
     return { id: linkedId, playerId: linkedId, name: linkedName || linkedId, playerName: linkedName || linkedId, source: "profile-link-v257" };
   }
 
@@ -16604,9 +16604,9 @@ if (!window.__koExplicitRequiredV258) {
 }
 
 
-// v259  Sistema simples: Fase Final entra no Calendrio normal.
+// v259  Sistema simples: Fase Final entra no Calendário normal.
 // A partir daqui deixamos de depender de modal automtico/pendncias especiais.
-// O Admin guarda o jogo na rvore, a app cria/atualiza um jogo normal no calendrio,
+// O Admin guarda o jogo na rvore, a app cria/atualiza um jogo normal no calendário,
 // e o User aposta atravs do boto do prprio jogo.
 const APP_VERSION_V259 = "259.0";
 
@@ -16720,7 +16720,7 @@ function knockoutCalendarGameFromMatchV259(match, existing = {}) {
   };
 }
 
-function syncKnockoutCalendarGameV259(match, { persist = false, removeIfIncomplete = false, reason = "fase final calendrio v259" } = {}) {
+function syncKnockoutCalendarGameV259(match, { persist = false, removeIfIncomplete = false, reason = "fase final calendário v259" } = {}) {
   if (!match?.id) return null;
   const gameIndex = games.findIndex(game => String(game.id || "") === String(match.id));
   if (!knockoutMatchIsCalendarReadyV259(match)) {
@@ -16744,7 +16744,7 @@ function syncKnockoutCalendarGameV259(match, { persist = false, removeIfIncomple
   return next;
 }
 
-function ensureKnockoutCalendarGamesV259({ persist = false, reason = "fase final calendrio v259" } = {}) {
+function ensureKnockoutCalendarGamesV259({ persist = false, reason = "fase final calendário v259" } = {}) {
   try { ensureKnockoutSettings?.(); } catch {}
   const matches = typeof knockoutMatches === "function" ? knockoutMatches() : (appSettings?.knockout?.matches || []);
   let changed = false;
@@ -16831,7 +16831,7 @@ if (renderMatchRowOriginalV259 && !renderMatchRowOriginalV259.__koCalendarV259) 
 const renderCalendarOriginalV259 = typeof renderCalendar === "function" ? renderCalendar : null;
 if (renderCalendarOriginalV259 && !renderCalendarOriginalV259.__koCalendarV259) {
   renderCalendar = function renderCalendarKoCalendarV259() {
-    ensureKnockoutCalendarGamesV259({ persist: false, reason: "render calendrio fase final v259" });
+    ensureKnockoutCalendarGamesV259({ persist: false, reason: "render calendário fase final v259" });
     disableKnockoutMandatorySystemV259();
     const result = renderCalendarOriginalV259.apply(this, arguments);
     disableKnockoutMandatorySystemV259();
@@ -16859,7 +16859,7 @@ const loadDataOriginalV259 = typeof loadData === "function" ? loadData : null;
 if (loadDataOriginalV259 && !loadDataOriginalV259.__koCalendarV259) {
   loadData = async function loadDataKoCalendarV259() {
     const result = await loadDataOriginalV259.apply(this, arguments);
-    ensureKnockoutCalendarGamesV259({ persist: false, reason: "load fase final calendrio v259" });
+    ensureKnockoutCalendarGamesV259({ persist: false, reason: "load fase final calendário v259" });
     disableKnockoutMandatorySystemV259();
     return result;
   };
@@ -16872,15 +16872,15 @@ if (saveKnockoutMatchFromAdminOriginalV259 && !saveKnockoutMatchFromAdminOrigina
     const result = await saveKnockoutMatchFromAdminOriginalV259.apply(this, arguments);
     try {
       const match = knockoutMatchById?.(matchId);
-      if (match) syncKnockoutCalendarGameV259(match, { persist: true, reason: "fase final para calendrio v259" });
-      ensureKnockoutCalendarGamesV259({ persist: true, reason: "fase final para calendrio v259" });
+      if (match) syncKnockoutCalendarGameV259(match, { persist: true, reason: "fase final para calendário v259" });
+      ensureKnockoutCalendarGamesV259({ persist: true, reason: "fase final para calendário v259" });
       try { appSettings.knockoutRequired = { version: APP_VERSION_V259, updatedAt: new Date().toISOString(), items: [] }; markSettingsPending?.(); } catch {}
       disableKnockoutMandatorySystemV259();
       if ($("calendarTab")?.classList.contains("active")) renderCalendar?.();
-      toast?.("Jogo da Fase Final atualizado no Calendrio.");
+      toast?.("Jogo da Fase Final atualizado no Calendário.");
     } catch (error) {
-      console.warn("v259: falhou sincronizar jogo da Fase Final no calendrio", error);
-      scheduleFullSync?.("fase final calendrio v259", 800);
+      console.warn("v259: falhou sincronizar jogo da Fase Final no calendário", error);
+      scheduleFullSync?.("fase final calendário v259", 800);
     }
     return result;
   };
@@ -16967,7 +16967,7 @@ if (setResultOriginalV259 && !setResultOriginalV259.__koCalendarV259) {
     game.qualifiedTeam = qualified;
     game.winner = qualified;
     game.winnerTeam = qualified;
-    stampGame?.(game, "resultado fase final calendrio v259");
+    stampGame?.(game, "resultado fase final calendário v259");
     markGamePending?.(game.id);
 
     if (match) {
@@ -16983,14 +16983,14 @@ if (setResultOriginalV259 && !setResultOriginalV259.__koCalendarV259) {
       match.time = match.matchDate;
       match.updatedAt = new Date().toISOString();
       try { propagateKnockoutWinners?.(true); } catch {}
-      syncKnockoutCalendarGameV259(match, { persist: false, reason: "resultado fase final calendrio v259" });
+      syncKnockoutCalendarGameV259(match, { persist: false, reason: "resultado fase final calendário v259" });
       try { markSettingsPending?.(); } catch {}
     }
 
     addSystemLog?.("Resultado Fase Final", `${game.homeTeam} ${home}-${away} ${game.awayTeam}  qualificada: ${qualified}`, { gameId: game.id, before, after: { homeScore: home, awayScore: away, qualified } }, { sync: true });
-    saveLocalData?.("resultado fase final calendrio v259");
+    saveLocalData?.("resultado fase final calendário v259");
     renderAll?.();
-    scheduleFullSync?.("resultado fase final calendrio v259", 350);
+    scheduleFullSync?.("resultado fase final calendário v259", 350);
     toast("Resultado da Fase Final guardado.");
     return true;
   };
@@ -17011,7 +17011,7 @@ if (clearResultOriginalV259 && !clearResultOriginalV259.__koCalendarV259) {
     game.qualifiedTeam = "";
     game.winner = "";
     game.winnerTeam = "";
-    stampGame?.(game, "limpar resultado fase final calendrio v259");
+    stampGame?.(game, "limpar resultado fase final calendário v259");
     markGamePending?.(game.id);
     if (match) {
       match.homeScore = null;
@@ -17027,9 +17027,9 @@ if (clearResultOriginalV259 && !clearResultOriginalV259.__koCalendarV259) {
       try { markSettingsPending?.(); } catch {}
     }
     addSystemLog?.("Resultado Fase Final limpo", `${game.homeTeam} vs ${game.awayTeam}`, { gameId: game.id }, { sync: true });
-    saveLocalData?.("limpar resultado fase final calendrio v259");
+    saveLocalData?.("limpar resultado fase final calendário v259");
     renderAll?.();
-    scheduleFullSync?.("limpar resultado fase final calendrio v259", 350);
+    scheduleFullSync?.("limpar resultado fase final calendário v259", 350);
     toast("Resultado da Fase Final limpo.");
     return true;
   };
@@ -17040,7 +17040,7 @@ const saveKnockoutBetFromModalOriginalV259 = typeof saveKnockoutBetFromModalV241
 if (saveKnockoutBetFromModalOriginalV259 && !saveKnockoutBetFromModalOriginalV259.__koCalendarV259) {
   saveKnockoutBetFromModalV241 = async function saveKnockoutBetFromModalKoCalendarV259() {
     const result = await saveKnockoutBetFromModalOriginalV259.apply(this, arguments);
-    try { ensureKnockoutCalendarGamesV259({ persist: false, reason: "aposta fase final calendrio v259" }); } catch {}
+    try { ensureKnockoutCalendarGamesV259({ persist: false, reason: "aposta fase final calendário v259" }); } catch {}
     try { if ($("calendarTab")?.classList.contains("active")) renderCalendar?.(); } catch {}
     return result;
   };
@@ -17236,7 +17236,7 @@ document.addEventListener("click", event => {
 }, true);
 
 function debugFaseFinalCalendarioV259() {
-  ensureKnockoutCalendarGamesV259({ persist: false, reason: "debug fase final calendrio v259" });
+  ensureKnockoutCalendarGamesV259({ persist: false, reason: "debug fase final calendário v259" });
   return {
     version: APP_VERSION_V259,
     calendarKnockoutGames: games.filter(isKnockoutCalendarGameV259).map(game => ({
@@ -17257,13 +17257,13 @@ function debugFaseFinalCalendarioV259() {
 
 window.debugFaseFinalCalendarioV259 = debugFaseFinalCalendarioV259;
 window.syncFaseFinalCalendarioV259 = function syncFaseFinalCalendarioV259() {
-  const changed = ensureKnockoutCalendarGamesV259({ persist: true, reason: "sync manual fase final calendrio v259" });
+  const changed = ensureKnockoutCalendarGamesV259({ persist: true, reason: "sync manual fase final calendário v259" });
   renderAll?.();
   return { changed, debug: debugFaseFinalCalendarioV259() };
 };
 
 setTimeout(() => {
-  ensureKnockoutCalendarGamesV259({ persist: false, reason: "arranque fase final calendrio v259" });
+  ensureKnockoutCalendarGamesV259({ persist: false, reason: "arranque fase final calendário v259" });
   disableKnockoutMandatorySystemV259();
   try { if ($("calendarTab")?.classList.contains("active")) renderCalendar?.(); } catch {}
 }, 1200);
@@ -17345,10 +17345,10 @@ function koV260Status(match) {
   const hasResult = Boolean(knockoutMatchHasResult?.(match));
   const winner = koV260Winner(match);
   if (!hasTeams) return { key: "waiting", label: "Equipas por definir", detail: " espera das equipas" };
-  if (!date) return { key: "no-date", label: "Sem data/hora", detail: "Define a data para aparecer no Calendrio" };
+  if (!date) return { key: "no-date", label: "Sem data/hora", detail: "Define a data para aparecer no Calendário" };
   if (hasResult && winner) return { key: "done", label: "Resultado lanado", detail: `Qualificada: ${winner}` };
   if (hasResult && !winner) return { key: "needs-qualified", label: "Falta qualificada", detail: "Escolhe quem passou" };
-  return { key: "open", label: "Aberto para apostas", detail: "Aparece no Calendrio normal" };
+  return { key: "open", label: "Aberto para apostas", detail: "Aparece no Calendário normal" };
 }
 
 function koV260ScoreText(match) {
@@ -17405,7 +17405,7 @@ function koV260RenderMatchCard(match) {
         <span>${date ? escapeHtml(dateTimePortugal(date)) : "Sem data/hora"}</span>
         ${pens ? `<span>${escapeHtml(pens)}</span>` : ""}
         <span>${betsCount} aposta(s)</span>
-        ${readyForCalendar ? `<span class="calendar-ok">No Calendrio</span>` : `<span>No aparece no Calendrio</span>`}
+        ${readyForCalendar ? `<span class="calendar-ok">No Calendário</span>` : `<span>No aparece no Calendário</span>`}
       </div>
 
       ${winner ? `<div class="ko-list-qualified-v260">Qualificada: <strong>${escapeHtml(winner)}</strong></div>` : `<div class="ko-list-qualified-v260 muted">${escapeHtml(status.detail)}</div>`}
@@ -17482,7 +17482,7 @@ function koV260RenderKnockoutList() {
 
       <div class="ko-list-stats-v260">
         <span><strong>${results}</strong> resultados lanados</span>
-        <span><strong>${readyCalendar}</strong> jogos no Calendrio</span>
+        <span><strong>${readyCalendar}</strong> jogos no Calendário</span>
         <span><strong>${totalMatches}</strong> jogos totais</span>
       </div>
 
@@ -17626,13 +17626,13 @@ function koV261ReconcileKnockoutCalendarResults({ persist = false, reason = "fas
     const game = games.find(item => String(item.id || "") === String(match.id));
     if (!game) return;
 
-    // Se a API atualizou o jogo do Calendrio, copia o resultado para a Fase Final.
+    // Se a API atualizou o jogo do Calendário, copia o resultado para a Fase Final.
     if (koV261MatchHasResultObject(game) && !koV261MatchHasResultObject(match)) {
       changed = koV261CopyResultFields(match, game) || changed;
       try { markSettingsPending?.(); } catch {}
     }
 
-    // Se a API atualizou a Fase Final, copia o resultado para o Calendrio.
+    // Se a API atualizou a Fase Final, copia o resultado para o Calendário.
     if (koV261MatchHasResultObject(match) && !koV261MatchHasResultObject(game)) {
       changed = koV261CopyResultFields(game, match) || changed;
       try { markGamePending?.(game.id); } catch {}
@@ -17681,7 +17681,7 @@ function koV261ApplyRoundColors() {
 const renderCalendarOriginalV261 = typeof renderCalendar === "function" ? renderCalendar : null;
 if (renderCalendarOriginalV261 && !renderCalendarOriginalV261.__koV261) {
   renderCalendar = function renderCalendarV261() {
-    try { koV261ReconcileKnockoutCalendarResults({ persist: false, reason: "render calendrio resultados fase final v261" }); } catch {}
+    try { koV261ReconcileKnockoutCalendarResults({ persist: false, reason: "render calendário resultados fase final v261" }); } catch {}
     const result = renderCalendarOriginalV261.apply(this, arguments);
     try { koV261ApplyRoundColors(); } catch {}
     setTimeout(() => { try { koV261ApplyRoundColors(); } catch {} }, 60);
@@ -17722,7 +17722,7 @@ if (saveKnockoutMatchFromAdminOriginalV261 && !saveKnockoutMatchFromAdminOrigina
         if (apiDate) koV261SetDateFields(match, apiDate);
         const winner = koV261ResultWinner(match);
         if (winner) ["winner", "winnerTeam", "qualified", "qualifiedTeam"].forEach(key => { match[key] = winner; });
-        syncKnockoutCalendarGameV259?.(match, { persist: true, reason: "fase final calendrio cores/api v261" });
+        syncKnockoutCalendarGameV259?.(match, { persist: true, reason: "fase final calendário cores/api v261" });
       }
       koV261ReconcileKnockoutCalendarResults({ persist: true, reason: "fase final guardar admin v261" });
       if ($("calendarTab")?.classList.contains("active")) renderCalendar?.();
@@ -17740,7 +17740,7 @@ function debugFaseFinalApiV261() {
   const matches = typeof knockoutMatches === "function" ? knockoutMatches() : (appSettings?.knockout?.matches || []);
   return {
     version: APP_VERSION_V261,
-    explicacao: "A API procura jogos por footballDataId ou por equipas. Quando encontra, grava hora oficial, estado e resultado final tanto na Fase Final como no Calendrio.",
+    explicacao: "A API procura jogos por footballDataId ou por equipas. Quando encontra, grava hora oficial, estado e resultado final tanto na Fase Final como no Calendário.",
     knockout: (Array.isArray(matches) ? matches : []).map(match => ({
       id: match.id,
       round: match.round,
@@ -17778,7 +17778,7 @@ setTimeout(() => {
 }, 1400);
 
 
-// v262  cores progressivas tambm nas barras de data do Calendrio quando o dia tem jogos da Fase Final.
+// v262  cores progressivas tambm nas barras de data do Calendário quando o dia tem jogos da Fase Final.
 const APP_VERSION_V262 = "265.0";
 
 function koV262RoundPriority(key) {
@@ -17858,7 +17858,7 @@ setTimeout(() => {
 }, 1300);
 
 
-// v264 - Dono controla quais tipos de notificaes globais podem ir para todos os users.
+// v264 - Dono controla quais tipos de notificações globais podem ir para todos os users.
 const APP_VERSION_V264 = "265.0";
 
 
@@ -17874,7 +17874,7 @@ async function clearKnockoutMatchRecordV265(matchId, button = null) {
 
   const label = `${knockoutRoundLabel?.(match.round) || match.roundLabel || "Fase Final"}  Jogo ${match.index || ""}`.trim();
   const teams = `${match.homeTeam || "Equipa 1"} vs ${match.awayTeam || "Equipa 2"}`;
-  const ok = window.confirm(`Limpar o registo deste jogo?\n\n${label}\n${teams}\n\nIsto limpa equipas/data do jogo inicial, resultado, qualificada, qualificada, jogo no Calendrio e apostas desse jogo.`);
+  const ok = window.confirm(`Limpar o registo deste jogo?\n\n${label}\n${teams}\n\nIsto limpa equipas/data do jogo inicial, resultado, qualificada, qualificada, jogo no Calendário e apostas desse jogo.`);
   if (!ok) return false;
 
   if (button) {
@@ -18144,7 +18144,7 @@ setTimeout(() => {
 }, 1000);
 
 
-// v267  Pontuao da Fase Final por 90 minutos + compensao e equipa qualificada.
+// v267  Pontuação da Fase Final por 90 minutos + compensao e equipa qualificada.
 // Remove a lgica de penltis das apostas/resultados e usa "equipa qualificada".
 const APP_VERSION_V267 = "267.0";
 
@@ -18436,8 +18436,8 @@ saveKnockoutMatchFromAdmin = async function saveKnockoutMatchFromAdminV267(match
     }
   }, { sync: true });
   markSettingsPending();
-  try { syncKnockoutCalendarGameV259?.(match, { persist: false, reason: "fase final calendrio v267" }); } catch {}
-  try { ensureKnockoutCalendarGamesV259?.({ persist: false, reason: "fase final calendrio v267" }); } catch {}
+  try { syncKnockoutCalendarGameV259?.(match, { persist: false, reason: "fase final calendário v267" }); } catch {}
+  try { ensureKnockoutCalendarGamesV259?.({ persist: false, reason: "fase final calendário v267" }); } catch {}
   saveLocalData("fase final jogo guardado v267");
   renderKnockout();
   renderKnockoutAdmin();
@@ -18448,7 +18448,7 @@ saveKnockoutMatchFromAdmin = async function saveKnockoutMatchFromAdminV267(match
   if (sourceModal) closeKnockoutRecordModal();
   try {
     await saveSettingsFastToFirebase("fase final jogo guardado v267");
-    try { await awaitMaybeV265?.(ensureKnockoutCalendarGamesV259?.({ persist: true, reason: "fase final calendrio v267" })); } catch {}
+    try { await awaitMaybeV265?.(ensureKnockoutCalendarGamesV259?.({ persist: true, reason: "fase final calendário v267" })); } catch {}
     setFirebaseStatus("success", "Firebase: Fase Final guardada");
   } catch (error) {
     console.error("Falhou guardar Fase Final:", error);
@@ -18686,7 +18686,7 @@ function renderFootballApiDiagnosticPanelV269(data = null, error = null) {
     .map(item => {
       const api = item.api || {};
       const target = item.matchedCalendar || item.matchedKnockout || {};
-      const kind = item.matchedCalendar ? "Calendrio" : "Fase Final";
+      const kind = item.matchedCalendar ? "Calendário" : "Fase Final";
       return `<li><b>${escapeHtml(kind)}</b>  ${escapeHtml(formatFootballApiDiagMatchV269(api))}<small>  ${escapeHtml(target.homeTeam || "")} vs ${escapeHtml(target.awayTeam || "")} ${target.orientation ? `(${escapeHtml(target.orientation)})` : ""}</small></li>`;
     }).join("");
   const unmatchedRows = unmatched.slice(0, 12).map(match => `<li>${escapeHtml(formatFootballApiDiagMatchV269(match))}</li>`).join("");
@@ -18699,11 +18699,11 @@ function renderFootballApiDiagnosticPanelV269(data = null, error = null) {
     <div class="football-api-diag-grid-v269">
       <div><b>${apiMatches}</b><span>Jogos vindos da API</span></div>
       <div><b>${finished}</b><span>Terminados</span></div>
-      <div><b>${matchedCalendar}</b><span>Casados no Calendrio</span></div>
+      <div><b>${matchedCalendar}</b><span>Casados no Calendário</span></div>
       <div><b>${matchedKnockout}</b><span>Casados na Fase Final</span></div>
       <div><b>${unmatched.length}</b><span>Sem correspondncia</span></div>
     </div>
-    <div class="football-api-diag-note-v269">Este teste no grava resultados, no muda equipas e no mexe na pontuao.</div>
+    <div class="football-api-diag-note-v269">Este teste no grava resultados, no muda equipas e no mexe na pontuação.</div>
     ${matchedRows ? `<details open><summary>Jogos que a app conseguiu casar</summary><ul>${matchedRows}</ul></details>` : ""}
     ${unmatchedRows ? `<details><summary>Jogos da API sem correspondncia</summary><ul>${unmatchedRows}</ul></details>` : ""}
   `;
@@ -19270,7 +19270,7 @@ const APP_VERSION_V273 = "274.0";
 })();
 
 
-/* v276  Calendrio mobile dimenses certas */
+/* v276  Calendário mobile dimenses certas */
 const APP_VERSION_V276_CAL_MOBILE = "276.0";
 window.debugCalendarioMobileV276 = function debugCalendarioMobileV276() {
   const card = document.querySelector("#calendarTab .match-row");
@@ -19307,7 +19307,7 @@ window.debugFaseFinalWebFitV277 = function debugFaseFinalWebFitV277() {
 };
 
 
-/* v278  Calendrio mobile compacto real */
+/* v278  Calendário mobile compacto real */
 const APP_VERSION_V278_CALENDAR_REAL_COMPACT = "278.0";
 window.debugCalendarioMobileCompactoRealV278 = function debugCalendarioMobileCompactoRealV278() {
   const rows = [...document.querySelectorAll("#calendarTab .match-row")].slice(0, 5);
@@ -19787,7 +19787,7 @@ function koV284RenderCard(match, player) {
       </label>
 
       <footer>
-        ${bet ? `<div class="ko-bet-saved-v284">Guardado: <strong>${escapeHtml(knockoutBetDisplay?.(bet) || "")}</strong></div>` : `<div class="ko-bet-saved-v284 muted">${locked ? "Sem aposta guardada. Este jogo vale 0 pontos." : "Ainda falta guardar esta aposta."}</div>`}
+        ${bet ? `<div class="ko-bet-saved-v284">Guardado: <strong>${escapeHtml(knockoutBetDisplay?.(bet) || "")}</strong></div>` : `<div class="ko-bet-saved-v284 muted">${locked ? "Sem aposta guardada. Este jogo vale 0 pontos." : "Ainda falta guardar está aposta."}</div>`}
         <div class="ko-bet-actions-v284">
           ${!locked ? `<button class="primary" type="button" data-ko-v284-save="${escapeHtml(match.id)}">${bet ? "Guardar alterao" : "Guardar aposta"}</button>` : ""}
           ${bet && !locked ? `<button class="secondary" type="button" data-ko-v284-delete="${escapeHtml(match.id)}">Apagar</button>` : ""}
@@ -19966,7 +19966,7 @@ function koV284RenderEntryPoints() {
     if (deleteBtn) {
       event.preventDefault();
       event.stopPropagation();
-      if (confirm("Apagar esta aposta da Fase Final?")) koV284DeleteBet(deleteBtn.dataset.koV284Delete);
+      if (confirm("Apagar está aposta da Fase Final?")) koV284DeleteBet(deleteBtn.dataset.koV284Delete);
       return;
     }
   }, true);
@@ -20021,7 +20021,7 @@ window.debugCentralApostasFaseFinalV284 = function debugCentralApostasFaseFinalV
 };
 
 
-/* v285  Calendrio: dias mistos no herdam cor da Fase Final */
+/* v285  Calendário: dias mistos no herdam cor da Fase Final */
 const APP_VERSION_V285_MIXED_DAY_COLOR_FIX = "285.0";
 
 (function installCalendarMixedDayColorFixV285() {
@@ -20111,7 +20111,7 @@ window.debugCalendarMixedDayColorV285 = function debugCalendarMixedDayColorV285(
 };
 
 
-/* v286  Filtro Fase Final no Calendrio + jogos bloqueados at estarem prontos */
+/* v286  Filtro Fase Final no Calendário + jogos bloqueados at estarem prontos */
 const APP_VERSION_V286_FF_FILTER_READY = "286.0";
 
 function koV286IsKnockoutGame(game = {}) {
@@ -20341,7 +20341,7 @@ window.debugFaseFinalFiltroV286 = function debugFaseFinalFiltroV286() {
 };
 
 
-/* v287  limpar banner Apostas FF no Calendrio e alinhar boto Fase Final */
+/* v287  limpar banner Apostas FF no Calendário e alinhar boto Fase Final */
 const APP_VERSION_V287_UI_FILTER_CLEAN = "287.0";
 
 (function installApostasFFCleanV287() {
@@ -20353,7 +20353,7 @@ const APP_VERSION_V287_UI_FILTER_CLEAN = "287.0";
     koV284RenderEntryPoints = function koV284RenderEntryPointsTopbarOnlyV287() {
       const html = typeof koV284EntryButtonHtml === "function" ? koV284EntryButtonHtml() : "";
 
-      // Remove o banner grande dentro do Calendrio.
+      // Remove o banner grande dentro do Calendário.
       document.querySelectorAll(".ko-bet-calendar-banner-v284").forEach(el => el.remove());
 
       // Mantm/atualiza apenas o boto compacto no topo.
@@ -21200,7 +21200,7 @@ function koV294SavedLockedLabel() {
         }
 
         const subtitle = document.getElementById("knockoutBetSubtitleV241");
-        if (subtitle) subtitle.textContent = "Esta aposta j foi guardada e no pode ser alterada.";
+        if (subtitle) subtitle.textContent = "Está aposta j foi guardada e no pode ser alterada.";
       }, 0);
       return result;
     };
@@ -21794,7 +21794,7 @@ window.debugAvisoCheckboxV296 = function debugAvisoCheckboxV296() {
 };
 
 
-/* v297  Notificaes sem repetir no mesmo dispositivo */
+/* v297  Notificações sem repetir no mesmo dispositivo */
 const APP_VERSION_V297_NOTIF_DEDUP = "297.0";
 const NOTIFICATION_SEEN_KEY_V297 = `${STORAGE_KEY || "mundial"}_notification_seen_v297`;
 const NOTIFICATION_SEEN_MAX_V297 = 140;
@@ -21920,7 +21920,7 @@ window.debugNotificacoesV297 = function debugNotificacoesV297() {
 };
 
 
-/* v298  Cada user pode ativar/desativar notificaes */
+/* v298  Cada user pode ativar/desativar notificações */
 const APP_VERSION_V298_USER_NOTIFICATIONS_TOGGLE = "298.0";
 
 function userNotificationSettingsKeyV298() {
@@ -21952,7 +21952,7 @@ function saveUserNotificationsEnabledV298(enabled) {
 }
 
 function userNotificationsLabelV298() {
-  return userNotificationsEnabledV298() ? "Notificaes ativas" : "Notificaes desligadas";
+  return userNotificationsEnabledV298() ? "Notificações ativas" : "Notificações desligadas";
 }
 
 function renderUserNotificationsToggleV298() {
@@ -21973,11 +21973,11 @@ function renderUserNotificationsToggleV298() {
     const enabled = userNotificationsEnabledV298();
     card.innerHTML = `
       <div>
-        <strong>Notificaes deste user</strong>
+        <strong>Notificações deste user</strong>
         <span>${enabled ? "Este user/dispositivo pode receber alertas." : "Este user/dispositivo no recebe alertas."}</span>
       </div>
       <button class="${enabled ? "secondary" : "primary"}" type="button" data-toggle-user-notifications-v298>
-        ${enabled ? "Desativar notificaes" : "Ativar notificaes"}
+        ${enabled ? "Desativar notificações" : "Ativar notificações"}
       </button>
       <em>${escapeHtml(userNotificationsLabelV298())}</em>
     `;
@@ -22001,7 +22001,7 @@ function toggleUserNotificationsV298() {
 
   renderUserNotificationsToggleV298();
   try { renderPushNotificationsPanelV165?.(); } catch {}
-  toast?.(next ? "Notificaes ativadas para este user." : "Notificaes desativadas para este user.");
+  toast?.(next ? "Notificações ativadas para este user." : "Notificações desativadas para este user.");
 }
 
 (function installUserNotificationsToggleV298() {
@@ -22124,7 +22124,7 @@ window.debugNotificacoesUserV298 = function debugNotificacoesUserV298() {
 };
 
 
-/* v299  Pgina Minha Conta para users controlarem notificaes */
+/* v299  Pgina Minha Conta para users controlarem notificações */
 const APP_VERSION_V299_USER_SETTINGS_PAGE = "299.0";
 
 function permissionTabAllowedUserSettingsV299(tabId) {
@@ -22163,7 +22163,7 @@ function renderUserSettingsPageV299() {
     <section class="user-settings-card-v299 user-notification-card-v299">
       <div class="user-settings-card-head-v299">
         <div>
-          <h3>Notificaes</h3>
+          <h3>Notificações</h3>
           <p>Controla se este user/dispositivo recebe alertas da app.</p>
         </div>
         <b class="${enabled ? "is-on" : "is-off"}">${enabled ? "Ativas" : "Desligadas"}</b>
@@ -22175,7 +22175,7 @@ function renderUserSettingsPageV299() {
       </div>
 
       <button class="${enabled ? "secondary danger-soft-v299" : "primary"}" type="button" data-toggle-user-notifications-v298>
-        ${enabled ? "Desativar notificaes" : "Ativar notificaes"}
+        ${enabled ? "Desativar notificações" : "Ativar notificações"}
       </button>
 
       <small>
@@ -22547,7 +22547,7 @@ function applyPageBarPermissionsV301() {
     button.setAttribute("aria-hidden", visible ? "false" : "true");
   });
 
-  // Algumas verses antigas criavam barras duplicadas dentro da Fase Final.
+  // Algumas versões antigas criavam barras duplicadas dentro da Fase Final.
   document.querySelectorAll("#knockoutTab [data-tab]").forEach(button => {
     const tabId = button.dataset.tab || "";
     const key = tabKeyForTabIdV301(tabId);
@@ -22656,7 +22656,7 @@ window.debugBarraPaginasV301 = function debugBarraPaginasV301() {
 };
 
 
-/* v302  Calendrio: cards estveis, sem se ajeitarem sozinhos */
+/* v302  Calendário: cards estveis, sem se ajeitarem sozinhos */
 const APP_VERSION_V302_CALENDAR_STABLE_CARDS = "302.0";
 let calendarLastSignatureV302 = "";
 let calendarLastRenderAtV302 = 0;
@@ -22711,7 +22711,7 @@ function freezeCalendarCardsV302() {
       const now = Date.now();
 
       // Quando o contedo  igual, no voltar a destruir/recriar os cards.
-      // Isto era o que fazia o Calendrio estar sempre a "ajeitar" visualmente.
+      // Isto era o que fazia o Calendário estar sempre a "ajeitar" visualmente.
       if (
         active &&
         container &&
@@ -22888,7 +22888,7 @@ function resolveLinkedPlayerForProfileV303(profile = currentProfile) {
     const byId = players.find(player => String(player.id || player.playerId || "") === directId);
     if (byId) return playerObjectV303(byId, mergedProfile);
 
-    // Mesmo que o catlogo ainda no tenha este jogador, se o perfil tem nome atribudo, cria uma ligao vlida.
+    // Mesmo que o catlogo ainda no tenha este jogador, se o perfil tem nome atribudo, cria uma ligação vlida.
     if (mergedProfile.linkedPlayerName) {
       return playerObjectV303({ id: directId, name: mergedProfile.linkedPlayerName }, mergedProfile);
     }
@@ -23019,7 +23019,7 @@ function enrichProfileWithLinkedPlayerV303(profile, user = currentUser) {
     window.renderAll = renderAll;
   }
 
-  // Quando o Admin renderiza a lista, tambm recalcula os badges com a nova ligao.
+  // Quando o Admin renderiza a lista, tambm recalcula os badges com a nova ligação.
   const originalRenderPermissions = typeof renderPermissionsUsers === "function" ? renderPermissionsUsers : null;
   if (originalRenderPermissions && !originalRenderPermissions.__userLinkV303) {
     renderPermissionsUsers = function renderPermissionsUsersLinkFixedV303() {
@@ -23056,7 +23056,7 @@ window.debugUserJogadorV303 = function debugUserJogadorV303(email = "") {
 };
 
 
-/* v305  Calendrio > filtro Fase Final sem flash amarelo */
+/* v305  Calendário > filtro Fase Final sem flash amarelo */
 const APP_VERSION_V305_CALENDAR_KO_FILTER_NO_FLASH = "305.0";
 
 function calendarKoFilterActiveV305() {
@@ -23321,7 +23321,7 @@ function renderOwnerKoBetUnlockPanelV306() {
 
           <div class="owner-ko-actions-v306">
             <button id="ownerKoSaveBetV306" class="primary" type="button">${existing ? "Guardar alterao" : "Criar aposta"}</button>
-            <button id="ownerKoClearBetV306" class="secondary danger-soft" type="button" ${existing ? "" : "disabled"}>Limpar esta aposta</button>
+            <button id="ownerKoClearBetV306" class="secondary danger-soft" type="button" ${existing ? "" : "disabled"}>Limpar está aposta</button>
             <button id="ownerKoClearGameV306" class="secondary danger-soft" type="button" ${gameBets.length ? "" : "disabled"}>Limpar apostas deste jogo (${gameBets.length})</button>
           </div>
         </div>
@@ -23552,7 +23552,7 @@ window.debugDonoApostasEliminatoriasV306 = function debugDonoApostasEliminatoria
 };
 
 
-/* v307  Dono edita/limpa apostas direto no "Ver apostas" do Calendrio */
+/* v307  Dono edita/limpa apostas direto no "Ver apostas" do Calendário */
 const APP_VERSION_V307_PENCIL_EDIT_BETS_MODAL = "307.0";
 let ownerKoEditGameIdV307 = "";
 let ownerKoEditBetIdV307 = "";
@@ -23626,7 +23626,7 @@ function koModalRenderEditBoxV307(gameId, betId) {
         <strong>️ Editar aposta</strong>
         <span>${escapeHtml(bet.playerName || bet.playerId || "Jogador")}  ${escapeHtml(match.homeTeam || "")} vs ${escapeHtml(match.awayTeam || "")}</span>
       </div>
-      <button class="icon-button" type="button" id="koModalCloseEditV307" aria-label="Fechar edio">x</button>
+      <button class="icon-button" type="button" id="koModalCloseEditV307" aria-label="Fechar edição">x</button>
     </div>
 
     <div class="ko-modal-edit-fields-v307">
@@ -24038,7 +24038,7 @@ window.debugLapisDiretoV308 = function debugLapisDiretoV308(gameId = "") {
 };
 
 
-/* v309  Calendrio mostra marcador live dos golos sem esperar pelo resultado final */
+/* v309  Calendário mostra marcador live dos golos sem esperar pelo resultado final */
 const APP_VERSION_V309_CALENDAR_LIVE_SCORE = "309.0";
 
 function numberFromScoreKeysV309(source = {}, keys = []) {
@@ -24180,7 +24180,7 @@ function isFinishedStatusV309(game = {}) {
     queueRealtimeRender = function queueRealtimeRenderLiveScoreV309(reason = "firebase realtime") {
       const isGameRealtime = String(reason || "").includes("jogos");
       if (isGameRealtime && document.querySelector(".tab-panel.active")?.id === "calendarTab") {
-        // Para golos, no esperar 1.2s. Atualiza o Calendrio quase logo.
+        // Para golos, no esperar 1.2s. Atualiza o Calendário quase logo.
         if (realtimeRenderTimer) clearTimeout(realtimeRenderTimer);
         realtimeRenderTimer = setTimeout(() => {
           realtimeRenderTimer = null;
@@ -24270,10 +24270,10 @@ function appHealthCheckV311() {
     try { return linkedPlayerForCurrentUserV241?.() || null; } catch { return null; }
   })();
 
-  add("DOM principal", Boolean(document.getElementById("calendarTab") && document.getElementById("gamesList")), "Calendrio e lista de jogos existem.", "error");
+  add("DOM principal", Boolean(document.getElementById("calendarTab") && document.getElementById("gamesList")), "Calendário e lista de jogos existem.", "error");
   add("Jogos carregados", Array.isArray(games) && games.length > 0, `${(games || []).length} jogos`, "error");
   add("Apostas carregadas", Array.isArray(bets), `${(bets || []).length} apostas`, "error");
-  add("Configuraes", Boolean(appSettings && typeof appSettings === "object"), "appSettings ativo", "error");
+  add("Configurações", Boolean(appSettings && typeof appSettings === "object"), "appSettings ativo", "error");
   add("Fase Final", koReady, `${knockoutMatches.length} jogos eliminatrios`, "error");
   add("IDs de jogos", duplicateGames.length === 0, duplicateGames.length ? `Duplicados: ${duplicateGames.slice(0, 8).join(", ")}` : "Sem duplicados", "warn");
   add("IDs de apostas", duplicateBets.length === 0, duplicateBets.length ? `Duplicadas: ${duplicateBets.slice(0, 8).join(", ")}` : "Sem duplicados", "warn");
@@ -24329,7 +24329,7 @@ function appQuickFixSafeV311() {
 })();
 
 
-/* v312  Pontuao reconstruda de raiz: grupos + Fase Final no mesmo sistema */
+/* v312  Pontuação reconstruda de raiz: grupos + Fase Final no mesmo sistema */
 const APP_VERSION_V312_SCORE_CLEAN_REBUILD = "312.0";
 
 function scoreCleanParseDateV312(value) {
@@ -24579,7 +24579,7 @@ function renderScoreCleanV312() {
     <div class="score-clean-page-v312">
       <div class="score-clean-toolbar-v312">
         <div>
-          <strong>Pontuao</strong>
+          <strong>Pontuação</strong>
           <span>Jogos ordenados do mais recente para o mais antigo. Fase Final entra no dia certo.</span>
         </div>
         <div class="score-clean-chips-v312">
@@ -24632,7 +24632,7 @@ function renderScoreCleanV312() {
   `;
 }
 
-// Neutraliza a combinao antiga playerGameRows + renderScore apenas na pgina Pontuao.
+// Neutraliza a combinao antiga playerGameRows + renderScore apenas na pgina Pontuação.
 playerGameRows = function playerGameRowsCleanV312(playerName) {
   return scoreCleanRowsForPlayerV312(playerName).map(row => ({
     game: row.game,
@@ -24890,7 +24890,7 @@ window.debugEstabilidadeV313 = function debugEstabilidadeV313() {
 };
 
 
-/* v314  Design system global + Calendrio clean, sem alterar regras */
+/* v314  Design system global + Calendário clean, sem alterar regras */
 const APP_VERSION_V314_DESIGN_CALENDAR_CLEAN = "314.0";
 
 function calendarModernGameTypeV314(game = {}) {
@@ -25037,7 +25037,7 @@ window.debugDesignCalendarioV314 = function debugDesignCalendarioV314() {
 };
 
 
-/* v315  Remover boto Pesquisar dos cards de jogos no Calendrio */
+/* v315  Remover boto Pesquisar dos cards de jogos no Calendário */
 const APP_VERSION_V315_NO_SEARCH_BUTTON_GAME_CARDS = "315.0";
 
 function removeSearchButtonsFromGameCardsV315() {
@@ -25062,13 +25062,13 @@ function isCalendarGameCardSearchTargetV315(element) {
   if (originalAddSearchButtons && !originalAddSearchButtons.__noCardsV315) {
     addSearchButtonsToResultCards = function addSearchButtonsNoGameCardsV315() {
       // Mantm o boto global "Pesquisar todos" e pesquisa fora dos cards.
-      // Nos cards do calendrio, o boto antigo era injetado por interval/setTimeout e causava piscar.
+      // Nos cards do calendário, o boto antigo era injetado por interval/setTimeout e causava piscar.
       const before = document.querySelectorAll("#gamesList [data-search-result-game], #calendarTab [data-search-result-game]").length;
 
       // Corre o sistema antigo para no quebrar outros ecrs onde possa ser necessrio.
       const result = originalAddSearchButtons.apply(this, arguments);
 
-      // Remove imediatamente s dos cards/jogos do Calendrio.
+      // Remove imediatamente s dos cards/jogos do Calendário.
       removeSearchButtonsFromGameCardsV315();
 
       return result;
@@ -25202,7 +25202,7 @@ function parsePortugalDateV327(value) {
   return new Date(raw);
 }
 
-// Corrige a funo global usada por calendrio, pontuao e Fase Final.
+// Corrige a funo global usada por calendário, pontuação e Fase Final.
 try {
   parsePortugalDate = parsePortugalDateV327;
   window.parsePortugalDate = parsePortugalDate;
@@ -25894,7 +25894,7 @@ function applyKoUnlockStateV330(enabled) {
 
   setKoUnlockLocalV330(value);
 
-  // gravar em todos os campos que verses antigas/novas podem ler
+  // gravar em todos os campos que versões antigas/novas podem ler
   s.globalOpen = value;
   s.unlockAll = value;
   s.allUsers = value;
@@ -26279,9 +26279,9 @@ function koOwnerEditModalV331(gameId, playerId = "") {
     <section class="ko-owner-edit-modal-v331">
       <header>
         <div>
-          <span>Dono  edio manual</span>
+          <span>Dono  edição manual</span>
           <h3>${escapeHtml(teams.home)} - ${escapeHtml(teams.away)}</h3>
-          <small>Esta edio ignora o bloqueio do jogo, mas s para ti como Dono.</small>
+          <small>Está edição ignora o bloqueio do jogo, mas s para ti como Dono.</small>
         </div>
         <button type="button" class="secondary" data-ko-owner-close-v331></button>
       </header>
@@ -26711,7 +26711,7 @@ function cleanupAdminKnockoutV332() {
   list?.classList.add("ko-admin-list-clean-v332");
   panel.querySelectorAll(".ko-admin-row").forEach(row => row.classList.add("ko-admin-row-clean-v332"));
 
-  // esconder painis antigos de desbloqueio para no sujar a aba; agora a edio  feita pelo lpis em Ver apostas
+  // esconder painis antigos de desbloqueio para no sujar a aba; agora a edição  feita pelo lpis em Ver apostas
   panel.querySelectorAll(".real-unlock-bets-v328,#koGlobalUnlockPanelV329,#koUnlockPanelV330").forEach(el => { el.style.display = "none"; });
 
   if (!panel.querySelector(".ko-admin-clean-head-v332")) {
@@ -26930,7 +26930,7 @@ window.debugKnockoutPointsV333 = function debugKnockoutPointsV333(playerName = "
 };
 
 
-/* v334  Lpis/edio manual do Dono nas apostas da Fase Final
+/* v334  Lpis/edição manual do Dono nas apostas da Fase Final
    Correo cirrgica: usa gameId real, no depende do ttulo do modal nem de "desbloquear apostas".
 */
 const APP_VERSION_V334_OWNER_EDIT_BETS = "334.0";
@@ -27221,7 +27221,7 @@ function showOwnerEditBetsModalV334(gameId) {
   modal.dataset.ownerEditIdsV334 = JSON.stringify(resolved.ids);
 
   title.textContent = `${teams.home} - ${teams.away}`;
-  subtitle.textContent = `${resolved.game.group || resolved.match.roundLabel || resolved.match.round || "Fase Final"}  edio segura por gameId`;
+  subtitle.textContent = `${resolved.game.group || resolved.match.roundLabel || resolved.match.round || "Fase Final"}  edição segura por gameId`;
   summary.innerHTML = `
     <div class="bets-summary-card main">
       <span>Resultado</span>
@@ -27316,9 +27316,9 @@ function openOwnerEditBetModal(gameId, playerId = "") {
     <section class="owner-edit-bet-modal-v334" role="dialog" aria-modal="true">
       <header>
         <div>
-          <span>Dono  edio manual</span>
+          <span>Dono  edição manual</span>
           <h3>${escapeHtml(teams.home)} vs ${escapeHtml(teams.away)}</h3>
-          <small>Esta edio no desbloqueia apostas para os users.</small>
+          <small>Está edição no desbloqueia apostas para os users.</small>
         </div>
         <button type="button" class="icon-button" data-owner-edit-close-v334 aria-label="Fechar"></button>
       </header>
@@ -27563,7 +27563,7 @@ window.debugOwnerEditBetsV334 = function debugOwnerEditBetsV334(gameId = "") {
 
 
 /* v338  Fase Final com IDs limpos por fase, sem resetar jogos guardados.
-   Base limpa: v334 + esta correo.
+   Base limpa: v334 + está correo.
    No usa as camadas v335/v336/v337.
 */
 const CLEAN_KNOCKOUT_IDS_V338 = {
@@ -27946,7 +27946,7 @@ function koNormalizeManualFieldsV339() {
       match[manualField] = String(match[manualField] || "").trim();
       match[lockField] = Boolean(match[lockField]);
 
-      // Compatibilidade: nos 16 avos as equipas definidas pelo Admin sao a fonte manual.
+      // Compatibilidade: nos 16 avos as equipas definidas pelo Admin são a fonte manual.
       if (isFirstKnockoutRound(match) && match[slot] && !match[lockField]) {
         match[manualField] = String(match[slot] || "").trim();
         match[lockField] = true;
@@ -28126,7 +28126,7 @@ function koPatchAdminManualControlsV339() {
     if (!row.querySelector("[data-ko-auto-slot-v339]")) {
       row.insertAdjacentHTML("beforeend", `
         <button class="secondary small ko-auto-slot-btn-v339" type="button" data-ko-auto-slot-v339="both" data-ko-match-v339="${escapeHtml(match.id)}">
-          Voltar a automatico
+          Voltar a automático
         </button>
       `);
     }
@@ -28188,7 +28188,7 @@ renderKnockoutMatch = function renderKnockoutMatchManualBadgesV339(match, layout
 
 const saveKnockoutMatchFromAdminOriginalV339 = typeof saveKnockoutMatchFromAdmin === "function" ? saveKnockoutMatchFromAdmin : null;
 saveKnockoutMatchFromAdmin = async function saveKnockoutMatchFromAdminManualSafeV339(matchId, sourceElement = null) {
-  if (!hasPermission("editKnockout")) { toast("Sem permissao."); return; }
+  if (!hasPermission("editKnockout")) { toast("Sem permissão."); return; }
 
   ensureKnockoutSettings();
   applyCleanKnockoutIdsV338?.();
@@ -28296,11 +28296,11 @@ saveKnockoutMatchFromAdmin = async function saveKnockoutMatchFromAdminManualSafe
         return;
       }
       if (hasFullScore && !isDraw && ((Number(match.homeScore) > Number(match.awayScore) && !homeQualified) || (Number(match.awayScore) > Number(match.homeScore) && !awayQualified))) {
-        toast("A equipa qualificada nao bate certo com o resultado.");
+        toast("A equipa qualificada não bate certo com o resultado.");
         return;
       }
       if (isDraw && match.homePenalties !== null && match.awayPenalties !== null && ((Number(match.homePenalties) > Number(match.awayPenalties) && !homeQualified) || (Number(match.awayPenalties) > Number(match.homePenalties) && !awayQualified))) {
-        toast("A equipa qualificada nao bate certo com os penaltis.");
+        toast("A equipa qualificada não bate certo com os penáltis.");
         return;
       }
       match.winner = qualifiedValue;
@@ -28375,11 +28375,11 @@ document.addEventListener("click", event => {
   koClearManualSlotV339(match, "awayTeam");
   propagateKnockoutWinnersV339(false);
   markSettingsPending();
-  saveLocalData("fase final slot voltou a automatico");
-  scheduleFullSync("fase final slot voltou a automatico", 300);
+  saveLocalData("fase final slot voltou a automático");
+  scheduleFullSync("fase final slot voltou a automático", 300);
   renderKnockout();
   renderKnockoutAdmin();
-  toast("Slot voltou a automatico.");
+  toast("Slot voltou a automático.");
 }, true);
 
 window.debugKnockout = function debugKnockout() {
@@ -28533,11 +28533,11 @@ function validateBackupPayloadV340(payload) {
   if (!payload || typeof payload !== "object") errors.push("Ficheiro invalido.");
   if (!Array.isArray(payload?.data?.games)) errors.push("Backup sem lista de jogos.");
   if (!Array.isArray(payload?.data?.bets)) errors.push("Backup sem lista de apostas.");
-  if (!payload?.data?.settings || typeof payload.data.settings !== "object") errors.push("Backup sem configuracoes.");
+  if (!payload?.data?.settings || typeof payload.data.settings !== "object") errors.push("Backup sem configurações.");
   if (payload?.data?.games?.some(game => !game?.id)) errors.push("Existem jogos sem id.");
   if (payload?.data?.bets?.some(bet => !bet?.id || !bet?.gameId || !(bet?.playerId || bet?.playerName))) warnings.push("Algumas apostas incompletas podem ser ignoradas pela app.");
-  if (!payload?.data?.settings?.knockout) warnings.push("Backup sem Fase Final nas configuracoes.");
-  if (payload?.checksum && backupHashV340(payload.data) !== payload.checksum) errors.push("Checksum do backup nao corresponde aos dados.");
+  if (!payload?.data?.settings?.knockout) warnings.push("Backup sem Fase Final nas configurações.");
+  if (payload?.checksum && backupHashV340(payload.data) !== payload.checksum) errors.push("Checksum do backup não corresponde aos dados.");
   return { ok: errors.length === 0, errors, warnings };
 }
 
@@ -28547,7 +28547,7 @@ function backupSummaryHtmlV340(payload, validation = validateBackupPayloadV340(p
   return `
     <div class="backup-preview-v340 ${validation.ok ? "ok" : "bad"}">
       <strong>${validation.ok ? "Backup pronto para restaurar" : "Backup com problemas"}</strong>
-      <span>${escapeHtml(date)} - ${escapeHtml(payload.appVersion || "sem versao")} - ${escapeHtml(payload.checksum || "")}</span>
+      <span>${escapeHtml(date)} - ${escapeHtml(payload.appVersion || "sem versão")} - ${escapeHtml(payload.checksum || "")}</span>
       <div class="backup-counts-v340">
         <b>${payload.counts.games}</b><small>jogos</small>
         <b>${payload.counts.bets}</b><small>apostas</small>
@@ -28577,12 +28577,12 @@ function renderBackupPanelV340() {
       <div>
         <span>Backup seguro</span>
         <strong>Jogos, apostas e Fase Final</strong>
-        <p>Exporta tudo para JSON e restaura com snapshot automatico antes de mexer nos dados.</p>
+        <p>Exporta tudo para JSON e restaura com snapshot automático antes de mexer nos dados.</p>
       </div>
       <button id="downloadBackupBtnV340" class="primary" type="button">Exportar backup</button>
     </div>
     <div class="backup-grid-v340">
-      <article><span>Jogos</span><strong>${currentCounts.games}</strong><p>Calendario e resultados.</p></article>
+      <article><span>Jogos</span><strong>${currentCounts.games}</strong><p>Calendário e resultados.</p></article>
       <article><span>Apostas</span><strong>${currentCounts.bets}</strong><p>Grupo + Fase Final.</p></article>
       <article><span>Fase Final</span><strong>${currentCounts.knockoutMatches}</strong><p>Jogos, equipas e locks manuais.</p></article>
       <article><span>Snapshots locais</span><strong>${history.length}</strong><p>Guardados neste dispositivo.</p></article>
@@ -28594,7 +28594,7 @@ function renderBackupPanelV340() {
     </div>
     <label class="check-row backup-confirm-v340">
       <input id="backupConfirmInputV340" type="checkbox" />
-      Confirmo que quero substituir jogos, apostas e configuracoes por este backup.
+      Confirmo que quero substituir jogos, apostas e configurações por este backup.
     </label>
     <div id="backupPreviewV340" class="backup-preview-wrap-v340">${backupSummaryHtmlV340(null)}</div>
     <div class="backup-history-v340">
@@ -28604,7 +28604,7 @@ function renderBackupPanelV340() {
           <span>${escapeHtml(shortDateTimeV187?.(item.createdAt) || item.createdAt || "")}</span>
           <small>${escapeHtml(item.reason || "snapshot")} - ${escapeHtml(item.checksum || "")}</small>
         </button>
-      `).join("") : `<p>Ainda nao ha snapshots locais.</p>`}
+      `).join("") : `<p>Ainda não ha snapshots locais.</p>`}
     </div>
   `;
 }
@@ -28631,12 +28631,12 @@ async function previewBackupFileV340() {
     if (preview) preview.innerHTML = `<p class="error-line">${escapeHtml(error.message || error)}</p>`;
     const restoreBtn = $("restoreBackupBtnV340");
     if (restoreBtn) restoreBtn.disabled = true;
-    toast("Nao consegui ler o backup.");
+    toast("Não consegui ler o backup.");
   }
 }
 
 async function restoreBackupV340(payload = pendingBackupImportV340) {
-  if (!hasPermission("admin")) return toast("Sem permissao Admin.");
+  if (!hasPermission("admin")) return toast("Sem permissão Admin.");
   const validation = validateBackupPayloadV340(payload);
   if (!validation.ok) return toast("Backup invalido.");
   if (!$("backupConfirmInputV340")?.checked) return toast("Confirma a caixa antes de restaurar.");
@@ -28667,13 +28667,13 @@ async function restoreBackupV340(payload = pendingBackupImportV340) {
   renderAll?.();
   scheduleFullSync?.("restaurar backup", 250);
   pendingBackupImportV340 = null;
-  toast("Backup restaurado e sincronizacao iniciada.");
+  toast("Backup restaurado e sincronização iniciada.");
 }
 
 function restoreLocalSnapshotV340(key) {
   try {
     const raw = localStorage.getItem(key);
-    if (!raw) return toast("Snapshot local nao encontrado.");
+    if (!raw) return toast("Snapshot local não encontrado.");
     pendingBackupImportV340 = normalizeBackupPayloadV340(JSON.parse(raw));
     const preview = $("backupPreviewV340");
     if (preview) preview.innerHTML = backupSummaryHtmlV340(pendingBackupImportV340);
@@ -28682,7 +28682,7 @@ function restoreLocalSnapshotV340(key) {
     toast("Snapshot carregado. Confirma para restaurar.");
   } catch (error) {
     console.warn("Snapshot invalido:", error);
-    toast("Nao consegui abrir este snapshot.");
+    toast("Não consegui abrir este snapshot.");
   }
 }
 
@@ -28756,7 +28756,7 @@ function allBetsExcelBoolV343(value) {
   if (value === true || value === false) return value;
   const text = String(value ?? "").trim().toLowerCase();
   if (["true", "sim", "yes", "1", "x"].includes(text)) return true;
-  if (["false", "nao", "não", "no", "0"].includes(text)) return false;
+  if (["false", "não", "não", "no", "0"].includes(text)) return false;
   return "";
 }
 
@@ -28770,7 +28770,7 @@ function allBetsExcelGameV343(bet) {
 
   try {
     const normal = games.find(game => ids.includes(String(game.id)));
-    if (normal) return { game: normal, type: "Calendario" };
+    if (normal) return { game: normal, type: "Calendário" };
   } catch {}
 
   try {
@@ -28787,7 +28787,7 @@ function allBetsExcelGameV343(bet) {
     if (match) return { game: match, type: "Fase Final" };
   } catch {}
 
-  return { game: null, type: bet?.type === "knockout" || bet?.knockout ? "Fase Final" : "Calendario" };
+  return { game: null, type: bet?.type === "knockout" || bet?.knockout ? "Fase Final" : "Calendário" };
 }
 
 function allBetsExcelBetRowsV343() {
@@ -28929,8 +28929,8 @@ function allBetsBuildImportedBetV343(row, map) {
   const awayGuess = allBetsExcelNumberOrBlankV343(allBetsCellV343(row, map, ["awayGuess", "away guess", "aposta fora"]) || raw.awayGuess);
   const homeScore = allBetsExcelNumberOrBlankV343(allBetsCellV343(row, map, ["homeScore", "home score"]) || raw.homeScore);
   const awayScore = allBetsExcelNumberOrBlankV343(allBetsCellV343(row, map, ["awayScore", "away score"]) || raw.awayScore);
-  const homePenalties = allBetsExcelNumberOrBlankV343(allBetsCellV343(row, map, ["homePenalties", "home penalties", "penaltis casa"]) || raw.homePenalties);
-  const awayPenalties = allBetsExcelNumberOrBlankV343(allBetsCellV343(row, map, ["awayPenalties", "away penalties", "penaltis fora"]) || raw.awayPenalties);
+  const homePenalties = allBetsExcelNumberOrBlankV343(allBetsCellV343(row, map, ["homePenalties", "home penalties", "penáltis casa"]) || raw.homePenalties);
+  const awayPenalties = allBetsExcelNumberOrBlankV343(allBetsCellV343(row, map, ["awayPenalties", "away penalties", "penáltis fora"]) || raw.awayPenalties);
   const qualifiedTeam = allBetsCellV343(row, map, ["qualifiedTeam", "qualified team", "equipa qualificada"]) || raw.qualifiedTeam || raw.qualified || raw.qualifier || "";
   const winnerTeam = allBetsCellV343(row, map, ["winnerTeam", "winner team", "winner"]) || raw.winnerTeam || raw.winner || raw.predictedWinner || qualifiedTeam || "";
   const predictedWinner = allBetsCellV343(row, map, ["predictedWinner", "predicted winner"]) || raw.predictedWinner || winnerTeam || qualifiedTeam || "";
@@ -29788,5 +29788,277 @@ window.debugPrivateBetsViewV345 = function debugPrivateBetsViewV345(gameId = "")
     totalRowsInternal: rows.length,
     ownRows: ownRows.length,
     currentPlayer: privateBetsCurrentPlayerV345()
+  };
+};
+
+
+/* v346 — Corrige nomes das equipas com acentos.
+   Também normaliza nomes antigos vindos do Firebase/localStorage que ficaram sem letras acentuadas.
+*/
+const APP_VERSION_V346_TEAM_NAMES_FIX = "346.0";
+
+const TEAM_NAME_FIXES_V346 = {
+  "Arábia Saudita": "Arábia Saudita",
+  "Argélia": "Argélia",
+  "Áustria": "Áustria",
+  "Áustria": "Áustria",
+  "Bélgica": "Bélgica",
+  "Bósnia": "Bósnia",
+  "Canadá": "Canadá",
+  "Chéquia": "Chéquia",
+  "Colômbia": "Colômbia",
+  "Croácia": "Croácia",
+  "Curaçao": "Curaçao",
+  "Escócia": "Escócia",
+  "França": "França",
+  "África do Sul": "África do Sul",
+  "Irão": "Irão",
+  "Japão": "Japão",
+  "Jordânia": "Jordânia",
+  "México": "México",
+  "Nova Zelândia": "Nova Zelândia",
+  "Panamá": "Panamá",
+  "Países Baixos": "Países Baixos",
+  "Suíça": "Suíça",
+  "Suécia": "Suécia",
+  "Tunísia": "Tunísia",
+  "Uzbequistão": "Uzbequistão"
+};
+
+function fixTeamNameV346(name) {
+  const raw = String(name || "").trim();
+  return TEAM_NAME_FIXES_V346[raw] || raw;
+}
+
+function fixTeamNamesInObjectV346(item) {
+  if (!item || typeof item !== "object") return item;
+
+  ["homeTeam", "awayTeam", "home", "away", "team", "winnerTeam", "qualifiedTeam", "manualHomeTeam", "manualAwayTeam"].forEach(key => {
+    if (typeof item[key] === "string") item[key] = fixTeamNameV346(item[key]);
+  });
+
+  return item;
+}
+
+function fixAllTeamNamesV346() {
+  try { (games || []).forEach(fixTeamNamesInObjectV346); } catch {}
+  try { (bets || []).forEach(fixTeamNamesInObjectV346); } catch {}
+  try { (appSettings?.knockout?.matches || []).forEach(fixTeamNamesInObjectV346); } catch {}
+  try {
+    if (Array.isArray(appSettings?.teams)) {
+      appSettings.teams = appSettings.teams.map(fixTeamNameV346);
+    }
+  } catch {}
+}
+
+if (typeof ensureKnockoutSettings === "function" && !ensureKnockoutSettings.__teamNamesFixV346) {
+  const originalEnsureKnockoutSettingsV346 = ensureKnockoutSettings;
+  ensureKnockoutSettings = function ensureKnockoutSettingsTeamNamesFixV346() {
+    const result = originalEnsureKnockoutSettingsV346.apply(this, arguments);
+    fixAllTeamNamesV346();
+    return result;
+  };
+  ensureKnockoutSettings.__teamNamesFixV346 = true;
+}
+
+if (typeof renderAll === "function" && !renderAll.__teamNamesFixV346) {
+  const originalRenderAllV346 = renderAll;
+  renderAll = function renderAllTeamNamesFixV346() {
+    fixAllTeamNamesV346();
+    return originalRenderAllV346.apply(this, arguments);
+  };
+  renderAll.__teamNamesFixV346 = true;
+}
+
+fixAllTeamNamesV346();
+
+window.debugTeamNamesV346 = function debugTeamNamesV346() {
+  const names = new Set();
+  try { (games || []).forEach(game => { names.add(game.homeTeam); names.add(game.awayTeam); }); } catch {}
+  try { (appSettings?.knockout?.matches || []).forEach(match => { names.add(match.homeTeam); names.add(match.awayTeam); }); } catch {}
+
+  const broken = [...names].filter(name => TEAM_NAME_FIXES_V346[String(name || "").trim()]);
+  return {
+    version: APP_VERSION_V346_TEAM_NAMES_FIX,
+    brokenStillPresent: broken,
+    fixedMap: TEAM_NAME_FIXES_V346
+  };
+};
+
+
+/* v347 — Correção ortográfica visual.
+   Corrige palavras que ficaram sem letras/acentos depois da limpeza de encoding.
+   Não mexe em lógica, pontuação, Firebase ou permissões.
+*/
+const APP_VERSION_V347_SPELLING_FIX = "347.0";
+
+const SPELLING_FIXES_V347 = {
+  "Configuracoes": "Configurações",
+  "Configuraes": "Configurações",
+  "Notificacoes": "Notificações",
+  "Notificaes": "Notificações",
+  "Classificacao": "Classificação",
+  "Classificaao": "Classificação",
+  "Pontuacao": "Pontuação",
+  "Pontuao": "Pontuação",
+  "Qualificacao": "Qualificação",
+  "Qualificao": "Qualificação",
+  "Sincronizacao": "Sincronização",
+  "Sincronizao": "Sincronização",
+  "Ligacao": "Ligação",
+  "Ligao": "Ligação",
+  "Edicao": "Edição",
+  "Edio": "Edição",
+  "Historico": "Histórico",
+  "Vitoria": "Vitória",
+  "Penaltis": "Penáltis",
+  "Calendario": "Calendário",
+  "Calendrio": "Calendário",
+  "Descricao": "Descrição",
+  "Descrio": "Descrição",
+  "Informacao": "Informação",
+  "Informao": "Informação",
+  "Permissoes": "Permissões",
+  "Permisses": "Permissões",
+  "Permissao": "Permissão",
+  "Acoes": "Ações",
+  "Opcoes": "Opções",
+  "Selecao": "Seleção",
+  "Selecoes": "Seleções",
+  "Atencao": "Atenção",
+  "Atenao": "Atenção",
+  "Nao": "Não",
+  "Sao": "São",
+  "Estao": "Estão",
+  "Ja": "Já",
+  "So": "Só",
+  "Ate": "Até",
+  "Tambem": "Também",
+  "Numero": "Número",
+  "Numeros": "Números",
+  "Codigo": "Código",
+  "Versao": "Versão",
+  "Verses": "Versões",
+  "Pagina": "Página",
+  "Paginas": "Páginas",
+  "Atualizacao": "Atualização",
+  "Atualizao": "Atualização",
+  "Automatica": "Automática",
+  "Automatico": "Automático",
+  "Disponivel": "Disponível",
+  "Indisponivel": "Indisponível",
+  "Visivel": "Visível",
+  "Invisivel": "Invisível",
+  "Publico": "Público",
+  "Arabia Saudita": "Arábia Saudita",
+  "Arglia": "Argélia",
+  "Argelia": "Argélia",
+  "Austria": "Áustria",
+  "ustria": "Áustria",
+  "Belgica": "Bélgica",
+  "Bosnia": "Bósnia",
+  "Canada": "Canadá",
+  "Chquia": "Chéquia",
+  "Chequia": "Chéquia",
+  "Colmbia": "Colômbia",
+  "Colombia": "Colômbia",
+  "Croacia": "Croácia",
+  "Curaao": "Curaçao",
+  "Curacao": "Curaçao",
+  "Escocia": "Escócia",
+  "Frana": "França",
+  "Franca": "França",
+  "frica do Sul": "África do Sul",
+  "Africa do Sul": "África do Sul",
+  "Iro": "Irão",
+  "Irao": "Irão",
+  "Japo": "Japão",
+  "Japao": "Japão",
+  "Jordnia": "Jordânia",
+  "Jordania": "Jordânia",
+  "Mexico": "México",
+  "Mxico": "México",
+  "Nova Zelndia": "Nova Zelândia",
+  "Nova Zelandia": "Nova Zelândia",
+  "Panam": "Panamá",
+  "Panama": "Panamá",
+  "Pases Baixos": "Países Baixos",
+  "Paises Baixos": "Países Baixos",
+  "Sua": "Suíça",
+  "Suica": "Suíça",
+  "Sucia": "Suécia",
+  "Suecia": "Suécia",
+  "Tunisia": "Tunísia",
+  "Uzbequisto": "Uzbequistão",
+  "Uzbequistao": "Uzbequistão"
+};
+
+function fixVisibleTextV347(text) {
+  let output = String(text ?? "");
+  Object.entries(SPELLING_FIXES_V347)
+    .sort((a, b) => b[0].length - a[0].length)
+    .forEach(([wrong, right]) => {
+      output = output.replace(new RegExp(`(^|[^\\wÀ-ÿ])${wrong.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^\\wÀ-ÿ])`, "g"), `$1${right}$2`);
+    });
+  return output;
+}
+
+function fixObjectTextFieldsV347(item) {
+  if (!item || typeof item !== "object") return item;
+  [
+    "homeTeam", "awayTeam", "home", "away", "team",
+    "winnerTeam", "qualifiedTeam", "manualHomeTeam", "manualAwayTeam",
+    "name", "playerName", "label", "title", "description", "message", "group", "roundLabel"
+  ].forEach(key => {
+    if (typeof item[key] === "string") item[key] = fixVisibleTextV347(item[key]);
+  });
+  return item;
+}
+
+function fixRuntimeSpellingV347() {
+  try { (games || []).forEach(fixObjectTextFieldsV347); } catch {}
+  try { (bets || []).forEach(fixObjectTextFieldsV347); } catch {}
+  try { (appSettings?.knockout?.matches || []).forEach(fixObjectTextFieldsV347); } catch {}
+  try {
+    if (Array.isArray(appSettings?.teams)) appSettings.teams = appSettings.teams.map(fixVisibleTextV347);
+  } catch {}
+}
+
+if (typeof renderAll === "function" && !renderAll.__spellingFixV347) {
+  const originalRenderAllV347 = renderAll;
+  renderAll = function renderAllSpellingFixV347() {
+    fixRuntimeSpellingV347();
+    return originalRenderAllV347.apply(this, arguments);
+  };
+  renderAll.__spellingFixV347 = true;
+}
+
+if (typeof ensureKnockoutSettings === "function" && !ensureKnockoutSettings.__spellingFixV347) {
+  const originalEnsureKnockoutSettingsV347 = ensureKnockoutSettings;
+  ensureKnockoutSettings = function ensureKnockoutSettingsSpellingFixV347() {
+    const result = originalEnsureKnockoutSettingsV347.apply(this, arguments);
+    fixRuntimeSpellingV347();
+    return result;
+  };
+  ensureKnockoutSettings.__spellingFixV347 = true;
+}
+
+fixRuntimeSpellingV347();
+
+window.debugOrtografiaV347 = function debugOrtografiaV347() {
+  const text = JSON.stringify({
+    games: games || [],
+    knockout: appSettings?.knockout?.matches || [],
+    bets: bets || []
+  });
+
+  const found = Object.keys(SPELLING_FIXES_V347).filter(wrong =>
+    new RegExp(`(^|[^\\wÀ-ÿ])${wrong.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^\\wÀ-ÿ])`).test(text)
+  );
+
+  return {
+    version: APP_VERSION_V347_SPELLING_FIX,
+    stillFound: found,
+    totalFixes: Object.keys(SPELLING_FIXES_V347).length
   };
 };

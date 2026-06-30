@@ -8733,7 +8733,7 @@ body{
     flex:1 1 130px!important;
   }
 }
-/* v162 - gestao mais profissional: Admin, Logs, Configuracoes, PWA e estados. */
+/* v162 - gestao mais profissional: Admin, Logs, Configurações, PWA e estados. */
 :root{
   --v162-panel:rgba(12,19,32,.92);
   --v162-line:rgba(255,255,255,.13);
@@ -8963,7 +8963,7 @@ body.modal-open-v162{
   }
 }
 
-/* v164 - centro de notificacoes, instalacao guiada e acesso admin. */
+/* v164 - centro de notificações, instalacao guiada e acesso admin. */
 .tab-badge-v164{
   display:inline-flex!important;
   align-items:center!important;
@@ -9416,7 +9416,7 @@ button,
   touch-action: manipulation;
 }
 
-/* v187 - saude Firebase, admin organizado e historico push */
+/* v187 - saude Firebase, admin organizado e histórico push */
 .firebase-health-v187,
 .push-history-v187{
   margin:12px 0!important;
@@ -10029,7 +10029,7 @@ button,
 }
 
 
-/* v213 - Configuracoes limpas, sem clones globais */
+/* v213 - Configurações limpas, sem clones globais */
 body.app-authenticated-v213 #loginScreen{
   display:none!important;
 }
@@ -10762,7 +10762,7 @@ body.online-users-open-v220 .tab-panel{
 }
 
 
-/* v229 - Admin e Configuracoes com secoes reais e sub-abas clicaveis */
+/* v229 - Admin e Configurações com secoes reais e sub-abas clicaveis */
 #adminTab,
 #settingsTab{
   display:flex;
@@ -18243,3 +18243,7 @@ html.app-modern-v314 .tab[aria-selected="true"]{
 .private-bets-empty-v345{
   border:1px dashed rgba(255,255,255,.16)!important;
 }
+
+/* v346-corrigir-nomes-equipas */
+
+/* v347-correcao-ortografia */

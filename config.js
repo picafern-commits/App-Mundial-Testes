@@ -1,5 +1,5 @@
 window.MUNDIAL_CONFIG = {
-  appVersion: "345.0",
+  appVersion: "347.0",
   adminPin: "1234",
   adminEmails: ["pica.fern@gmail.com"],
   firebase: {
